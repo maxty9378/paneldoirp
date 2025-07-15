@@ -1,0 +1,920 @@
+import React, { useState, useEffect } from 'react';
+import { FileText, Calendar, MapPin, Users, Clock, User, Star, ArrowLeft, Link as LinkIcon, TableIcon as TablerIcon, CheckCircle, XCircle, AlertTriangle, Play, MessageSquare } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../hooks/useAuth';
+import { Briefcase, Phone, Hash } from 'lucide-react';
+import { EventTestsList } from './admin/EventTestsList';
+import { FeedbackTab } from './feedback/FeedbackTab';
+import { clsx } from 'clsx';
+import { format, parseISO } from 'date-fns';
+import { ru } from 'date-fns/locale';
+
+// Явно экспортируем компонент по умолчанию
+interface EventDetailViewProps {
+  eventId: string;
+  onStartTest?: (testType: 'entry' | 'final' | 'annual', testId: string, eventId: string, attemptId: string) => void;
+  onBack?: () => void;
+}
+
+interface Event {
+  id: string;
+  title: string;
+  description?: string;
+  start_date: string;
+  end_date?: string;
+  location?: string;
+  meeting_link?: string;
+  points: number;
+  status: string;
+  max_participants: number;
+  created_at: string;
+  event_type: {
+    id: string;
+    name: string;
+    name_ru: string;
+    description: string;
+    is_online: boolean;
+    requires_location: boolean;
+    has_entry_test: boolean;
+    has_final_test: boolean;
+    has_feedback_form: boolean;
+  };
+  creator: {
+    id: string;
+    full_name: string;
+    email: string;
+    role?: string;
+  };
+  participants?: Array<{
+    id: string;
+    user: {
+      id: string;
+      full_name: string;
+      email?: string;
+      sap_number?: string;
+      phone?: string;
+      position?: {
+        name: string;
+      };
+      territory?: {
+        name: string;
+      };
+    };
+    attended: boolean;
+  }>;
+  isParticipant?: boolean; // Флаг, указывающий, является ли текущий пользователь участником
+  userTestAttempts?: Array<{
+    id: string;
+    test_id: string;
+    test_type?: string;
+    status: string;
+    score: number | null;
+    test: {
+      id: string;
+      title: string;
+      type: string;
+    };
+  }>;
+}
+
+interface Test {
+  id: string;
+  title: string;
+  description?: string;
+  type: 'entry' | 'final' | 'annual';
+  passing_score: number;
+  time_limit: number;
+  event_type_id: string;
+  status: string;
+}
+
+export default function EventDetailView({ eventId, onStartTest, onBack }: EventDetailViewProps) {
+  const { user, userProfile } = useAuth();
+  const [event, setEvent] = useState<Event | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [loadingTests, setLoadingTests] = useState(false);
+  const [activeTab, setActiveTab] = useState('details');
+  const [allTestsForEventType, setAllTestsForEventType] = useState<Test[]>([]);
+  const [testStatus, setTestStatus] = useState({
+    entry: { available: false, completed: false, score: null, attemptId: null },
+    final: { available: false, completed: false, score: null, attemptId: null },
+    annual: { available: false, completed: false, score: null, attemptId: null }
+  });
+
+  const fetchEvent = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const { data, error: fetchError } = await supabase
+        .from('events')
+        .select(`
+          id,
+          title,
+          description,
+          start_date,
+          end_date,
+          location,
+          meeting_link,
+          points,
+          status,
+          max_participants,
+          created_at,
+          updated_at,
+          event_type_id,
+          creator_id,
+          event_type:event_type_id(*),
+          creator:users!events_creator_id_fkey(id, full_name, email, role),
+          participants:event_participants(
+            id,
+            user_id,
+            attended,
+            user:user_id(
+              id, 
+              full_name, 
+              email,
+              sap_number,
+              phone,
+              position:position_id(name),
+              territory:territory_id(name)
+            )
+          )
+        `)
+        .eq('id', eventId)
+        .single();
+
+      if (fetchError) {
+        throw fetchError;
+      }
+      
+      // Проверяем, является ли текущий пользователь участником этого мероприятия
+      if (userProfile?.id) {
+        const { data: participantData } = await supabase
+          .from('event_participants')
+          .select('id, attended')
+          .eq('event_id', eventId)
+          .eq('user_id', userProfile.id)
+          .maybeSingle();
+
+        const isParticipant = !!participantData;
+        const hasAttended = participantData?.attended || false;
+
+        // Если пользователь участник и присутствовал, проверяем тесты
+        if (isParticipant && hasAttended) {
+          setLoadingTests(true);
+          // Проверка входного теста
+          if (data.event_type?.has_entry_test) {
+            await checkTestStatus(eventId, data.event_type_id, userProfile.id, 'entry');
+          }
+          
+          // Проверка финального теста
+          if (data.event_type?.has_final_test) {
+            await checkTestStatus(eventId, data.event_type_id, userProfile.id, 'final');
+          }
+          
+          // Проверка годового теста
+          await checkTestStatus(eventId, data.event_type_id, userProfile.id, 'annual');
+          
+          // Загружаем все попытки прохождения тестов
+          const { data: attempts } = await supabase
+            .from('user_test_attempts')
+            .select(`
+              id,
+              test_id,
+              status,
+              score,
+              test:tests(
+                id,
+                title,
+                type
+              )
+            `)
+            .eq('event_id', eventId)
+            .eq('user_id', userProfile.id);
+            
+          // Добавляем дополнительную информацию в объект события
+          setEvent({
+            ...data,
+            isParticipant,
+            userTestAttempts: attempts || []
+          });
+          setLoadingTests(false);
+        } else {
+          setEvent({
+            ...data,
+            isParticipant,
+            userTestAttempts: []
+          });
+        }
+      } else {
+        setEvent(data);
+      }
+      
+      // Загружаем все тесты для данного типа мероприятия
+      if (data.event_type_id) {
+        const { data: testsData, error: testsError } = await supabase
+          .from('tests')
+          .select('*')
+          .eq('event_type_id', data.event_type_id)
+          .eq('status', 'active');
+          
+        if (!testsError && testsData) {
+          setAllTestsForEventType(testsData);
+        }
+      }
+    } catch (err) {
+      console.error('Ошибка загрузки мероприятия:', err);
+      setError('Не удалось загрузить данные мероприятия');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Проверка статуса теста указанного типа
+  const checkTestStatus = async (eventId: string, eventTypeId: string, userId: string, testType: 'entry' | 'final' | 'annual') => {
+    console.log(`Проверка статуса теста ${testType} для типа мероприятия ${eventTypeId}`);
+    try {
+      // Находим тест указанного типа для данного типа мероприятия
+      const { data: testData } = await supabase
+        .from('tests')
+        .select('id')
+        .eq('event_type_id', eventTypeId)
+        .eq('type', testType)
+        .eq('status', 'active')
+        .maybeSingle();
+        
+      if (!testData?.id) {
+        console.log(`Тест типа ${testType} не найден для типа мероприятия ${eventTypeId}`);
+        return;
+      }
+      
+      console.log(`Найден тест ${testType} с ID ${testData.id}`);
+      
+      // Проверяем попытки прохождения
+      const { data: attemptData } = await supabase
+        .from('user_test_attempts')
+        .select('id, status, score')
+        .eq('test_id', testData.id)
+        .eq('user_id', userId)
+        .eq('event_id', eventId)
+        .maybeSingle();
+        
+      setTestStatus(prev => ({
+        ...prev,
+        [testType]: {
+          available: true,
+          completed: attemptData?.status === 'completed',
+          score: attemptData?.score,
+          attemptId: attemptData?.id || null
+        }
+      }));
+        
+      // Если попытки нет и это входной тест, создаем автоматически
+      if (!attemptData && testType === 'entry') {
+        // Создаем новую попытку для входного теста
+        const { data: newAttempt } = await supabase
+          .from('user_test_attempts')
+          .insert({
+            user_id: userId,
+            test_id: testData.id,
+            event_id: eventId,
+            status: 'in_progress',
+            start_time: new Date().toISOString()
+          })
+          .select()
+          .single();
+          
+        if (newAttempt) {
+          setTestStatus(prev => ({
+            ...prev,
+            entry: {
+              available: true,
+              completed: false,
+              score: null,
+              attemptId: newAttempt.id
+            }
+          }));
+        }
+      }
+      
+      // Если входной тест пройден успешно и это финальный тест, создаем автоматически
+      if (!attemptData && testType === 'final' && testStatus.entry.completed && (testStatus.entry.score || 0) >= 70) {
+        // Создаем новую попытку для финального теста
+        const { data: newAttempt } = await supabase
+          .from('user_test_attempts')
+          .insert({
+            user_id: userId,
+            test_id: testData.id,
+            event_id: eventId,
+            status: 'in_progress',
+            start_time: new Date().toISOString()
+          })
+          .select()
+          .single();
+          
+        if (newAttempt) {
+          setTestStatus(prev => ({
+            ...prev,
+            final: {
+              available: true,
+              completed: false,
+              score: null,
+              attemptId: newAttempt.id
+            }
+          }));
+        }
+      }
+    } catch (error) {
+      console.error(`Ошибка проверки статуса теста ${testType}:`, error);
+    }
+  };
+
+  // Обработчик изменения статуса присутствия участника
+  const toggleParticipantAttendance = async (participantId: string, currentAttendance: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('event_participants')
+        .update({ attended: !currentAttendance })
+        .eq('id', participantId);
+        
+      if (error) {
+        throw error;
+      }
+      
+      // Перезагружаем данные мероприятия
+      await fetchEvent();
+      
+    } catch (err) {
+      console.error('Ошибка при изменении статуса присутствия:', err);
+      alert('Ошибка при изменении статуса присутствия. Пожалуйста, попробуйте еще раз.');
+    }
+  };
+
+  useEffect(() => {
+    if (eventId && userProfile) {
+      fetchEvent();
+    }
+  }, [eventId, userProfile?.id]);
+  
+  // Обновляем тесты после монтирования компонента
+  useEffect(() => {
+    if (event?.event_type_id && userProfile?.id && event.isParticipant) {
+      // Находим тесты для мероприятия "Технология эффективных продаж"
+      const checkAndAssignTests = async () => {
+        setLoadingTests(true);
+        
+        try {
+          // Найти все доступные тесты для этого типа мероприятия
+          const { data: availableTests, error: testsError } = await supabase
+            .from('tests')
+            .select('*')
+            .eq('event_type_id', event.event_type_id)
+            .eq('status', 'active');
+            
+          if (testsError) throw testsError;
+          
+          console.log(`Найдено ${availableTests?.length || 0} доступных тестов для мероприятия`);
+          
+          // Проверяем статус каждого типа теста
+          for (const test of availableTests || []) {
+            if (['entry', 'final', 'annual'].includes(test.type)) {
+              await checkTestStatus(eventId, event.event_type_id, userProfile.id, test.type as any);
+            }
+          }
+        } catch (error) {
+          console.error('Ошибка загрузки тестов:', error);
+        } finally {
+          setLoadingTests(false);
+        }
+      };
+      
+      checkAndAssignTests();
+    }
+  }, [event?.event_type_id, userProfile?.id, event?.isParticipant]);
+
+  const canViewFullDetails = () => {
+    if (!user) return false;
+  
+    const adminRoles = ['administrator', 'moderator', 'trainer', 'expert'];
+    return adminRoles.includes(userProfile?.role || '') || event?.creator?.id === user?.id;
+  };
+  
+  // Проверяем, может ли пользователь видеть тесты
+  const canViewTests = () => {
+    if (!user || !event) return false;
+
+    // Администраторы могут всегда
+    if (canViewFullDetails()) return true;
+
+    // Участники мероприятия могут видеть свои тесты
+    return event.isParticipant === true;
+  };
+
+  const findTestForType = (testType: 'entry' | 'final' | 'annual') => {
+    if (!event?.userTestAttempts) return null;   
+    return event.userTestAttempts.find(attempt => attempt.test?.type === testType);
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      const date = parseISO(dateString);
+      return format(date, 'd MMMM yyyy', { locale: ru });
+    } catch (e) {
+      return 'Дата не указана';
+    }
+  };
+
+  const formatTime = (dateString: string) => {
+    try {
+      const date = parseISO(dateString);
+      return format(date, 'HH:mm', { locale: ru });
+    } catch (e) {
+      return '';
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'draft': return 'bg-gray-100 text-gray-800';
+      case 'published': return 'bg-blue-100 text-blue-800';
+      case 'ongoing': return 'bg-purple-100 text-purple-800';
+      case 'completed': return 'bg-green-100 text-green-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'draft': return 'Черновик';
+      case 'published': return 'Опубликовано';
+      case 'ongoing': return 'В процессе';
+      case 'completed': return 'Завершено';
+      case 'cancelled': return 'Отменено';
+      default: return status;
+    }
+  };
+
+  const startTest = async (testType: 'entry' | 'final' | 'annual', attemptId: string | null) => {
+    if (!attemptId) {
+      alert(`Не удалось найти попытку прохождения теста. Обратитесь к администратору.`);
+      return; 
+    }
+
+    // Get the test ID for the specified attempt
+    try {
+      const { data: attemptData, error: attemptError } = await supabase
+        .from('user_test_attempts')
+        .select('test_id')
+        .eq('id', attemptId)
+        .single();
+        
+      if (attemptError || !attemptData) {
+        alert('Ошибка получения данных теста. Попробуйте обновить страницу.');
+        return;
+      }
+      
+      if (onStartTest) {
+        onStartTest(testType, attemptData.test_id, eventId, attemptId);
+      } else {
+        // Fallback for when onStartTest is not provided
+        alert(`Переход к тесту ID: ${attemptId}\nВ полноценном приложении здесь открывался бы интерфейс для прохождения теста.`);
+      }
+    } catch (error) {
+      console.error('Ошибка при запуске теста:', error);
+      alert('Произошла ошибка при запуске теста. Пожалуйста, попробуйте еще раз.');
+    }
+  };
+
+  // Определяем тесты для использования в JSX
+  const entryTest = allTestsForEventType.find(test => test.type === 'entry');
+  const finalTest = allTestsForEventType.find(test => test.type === 'final');
+  const annualTest = allTestsForEventType.find(test => test.type === 'annual');
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <p className="text-red-600">{error}</p>
+        <button 
+          onClick={onBack} 
+          className="mt-4 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200"
+        >
+          Вернуться к списку мероприятий
+        </button>
+      </div>
+    );
+  }
+
+  if (!event) {
+    return (
+      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <p className="text-yellow-600">Мероприятие не найдено</p>
+        <button 
+          onClick={onBack} 
+          className="mt-4 px-4 py-2 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200"
+        >
+          Вернуться к списку мероприятий
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Заголовок */}
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <div className="flex items-center mb-4">
+              <button 
+                onClick={onBack} 
+                className="mr-4 text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center transition-colors duration-200"
+              >
+                <ArrowLeft className="h-4 w-4 mr-1" /> Назад к мероприятиям
+              </button>
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">{event.title}</h1>
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(event.status)}`}>
+              {getStatusText(event.status)}
+            </span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Star className="h-5 w-5 text-yellow-400" />
+            <span className="text-sm font-medium text-gray-700">{event.points} баллов</span>
+          </div>
+        </div>
+
+        {event.description && (
+          <p className="text-gray-600 mb-4">{event.description}</p>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex items-center">
+            <Calendar className="h-5 w-5 text-gray-400 mr-2" />
+            <div>
+              <p className="text-sm text-gray-500">Начало</p>
+              <p className="font-medium">{formatDate(event.start_date)}</p>
+            </div>
+          </div>
+
+          {event.end_date && (
+            <div className="flex items-center">
+              <Clock className="h-5 w-5 text-gray-400 mr-2" />
+              <div>
+                <p className="text-sm text-gray-500">Окончание</p>
+                <p className="font-medium">{formatDate(event.end_date)}</p>
+              </div>
+            </div>
+          )}
+
+          {event.location && (
+            <div className="flex items-center">
+              <MapPin className="h-5 w-5 text-gray-400 mr-2" />
+              <div>
+                <p className="text-sm text-gray-500">Место проведения</p>
+                <p className="font-medium">{event.location}</p>
+              </div>
+            </div>
+          )}
+
+          {event.max_participants && (
+            <div className="flex items-center">
+              <Users className="h-5 w-5 text-gray-400 mr-2" />
+              <div>
+                <p className="text-sm text-gray-500">Максимум участников</p>
+                <p className="font-medium">{event.max_participants}</p>
+              </div>
+            </div>
+          )}
+
+          {event.meeting_link && (
+            <div className="flex items-center md:col-span-2">
+              <LinkIcon className="h-5 w-5 text-gray-400 mr-2" />
+              <div>
+                <p className="text-sm text-gray-500">Ссылка на встречу</p>
+                <a 
+                  href={event.meeting_link} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-blue-600 hover:underline font-medium"
+                >
+                  {event.meeting_link}
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Информация о создателе */}
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Организатор</h3>
+        <div className="flex items-center">
+          <User className="h-10 w-10 text-gray-400 bg-gray-100 rounded-full p-2" />
+          <div className="ml-3">
+            <p className="font-medium text-gray-900">{event.creator?.full_name || 'Неизвестно'}</p>
+            <p className="text-sm text-gray-500">{event.creator?.email || 'Email не указан'}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Тип мероприятия */}
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Тип мероприятия</h3>
+        <div className="space-y-2">
+          <p className="font-medium text-gray-900">{event.event_type.name_ru}</p>
+          {event.event_type.description && (
+            <p className="text-gray-600">{event.event_type.description}</p>
+          )}
+          <div className="flex flex-wrap gap-2 mt-3">
+            {event.event_type.is_online && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                Онлайн
+              </span>
+            )}
+            {event.event_type.has_entry_test && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                Входное тестирование
+              </span>
+            )}
+            {event.event_type.has_final_test && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                Итоговое тестирование
+              </span>
+            )}
+            {event.event_type.has_feedback_form && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                Обратная связь
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Участники */}
+      {canViewFullDetails() && event.participants && event.participants.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            Участники ({event.participants.length}) 
+            <span className="ml-2 text-sm font-normal text-green-600">
+              {event.participants.filter(p => p.attended).length} присутствовало
+            </span>
+          </h3>
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {event.participants.map((participant) => (
+              <div key={participant.id} className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <div className="flex items-center">
+                  <div className={clsx(
+                    "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
+                    participant.attended ? "bg-green-100 text-green-600" : "bg-gray-200 text-gray-500"
+                  )}>
+                    <User className="h-5 w-5" />
+                  </div>
+                  <div className="ml-3 flex flex-col">
+                    <p className="font-medium text-gray-900">{participant.user.full_name}</p>
+                    
+                    {/* Должность */}
+                    {participant.user.position && (
+                      <div className="flex items-center text-sm text-gray-600 mt-0.5">
+                        <Briefcase className="w-3.5 h-3.5 mr-1 text-gray-400" />
+                        <span>{participant.user.position.name}</span>
+                      </div>
+                    )}
+                    
+                    {/* SAP номер (приоритет) или Email */}
+                    <div className="flex items-center text-xs text-gray-500 mt-0.5">
+                      {participant.user.sap_number ? (
+                        <>
+                          <Hash className="w-3 h-3 mr-1 text-gray-400" />
+                          <span>SAP: {participant.user.sap_number}</span>
+                        </>
+                      ) : participant.user.email ? (
+                        <span>{participant.user.email}</span>
+                      ) : (
+                        <span className="text-gray-400 italic">Нет контактных данных</span>
+                      )}
+                    </div>
+                    
+                    {/* Телефон (если есть) */}
+                    {participant.user.phone && (
+                      <div className="flex items-center text-xs text-gray-500 mt-0.5">
+                        <Phone className="w-3 h-3 mr-1 text-gray-400" />
+                        <span>{participant.user.phone}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {/* Кнопка переключения статуса присутствия */}
+                {userProfile?.role && ['trainer', 'moderator', 'administrator'].includes(userProfile.role) && (
+                  <span className={clsx(
+                    "inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer",
+                    participant.attended 
+                      ? "bg-green-100 text-green-800 hover:bg-green-200"
+                      : "bg-red-100 text-red-800 hover:bg-red-200"
+                  )}
+                  onClick={() => toggleParticipantAttendance(participant.id, participant.attended)}>
+                    {participant.attended ? 'Присутствовал' : 'Отсутствовал'}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+  // Основная секция "Тестирование тестов" с улучшенным стилем и свернутостью
+const AdminTestSection = ({ entryTest, finalTest, annualTest, userProfile, eventId, startTest }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const renderTestCard = (test, type, color) => {
+    const colorStyles = {
+      blue: {
+        bg: 'bg-blue-50',
+        border: 'border-blue-200',
+        text: 'text-blue-800',
+        textSecondary: 'text-blue-700',
+        textInfo: 'text-blue-600',
+        btn: 'bg-blue-600 hover:bg-blue-700',
+      },
+      purple: {
+        bg: 'bg-purple-50',
+        border: 'border-purple-200',
+        text: 'text-purple-800',
+        textSecondary: 'text-purple-700',
+        textInfo: 'text-purple-600',
+        btn: 'bg-purple-600 hover:bg-purple-700',
+      },
+      amber: {
+        bg: 'bg-amber-50',
+        border: 'border-amber-200',
+        text: 'text-amber-800',
+        textSecondary: 'text-amber-700',
+        textInfo: 'text-amber-600',
+        btn: 'bg-amber-600 hover:bg-amber-700',
+      },
+    };
+    const styles = colorStyles[color];
+
+    return (
+      <div className={`${styles.bg} ${styles.border} rounded-lg p-4 transition-shadow hover:shadow-md`}>
+        <h4 className={`font-medium ${styles.text} flex items-center`}>
+          <FileText className="h-4 w-4 mr-2" />
+          {type === 'entry' ? 'Входной тест' : type === 'final' ? 'Финальный тест' : 'Годовой тест'}
+        </h4>
+        <p className={`text-sm ${styles.textSecondary} mt-1 mb-3`}>{test.title}</p>
+        <div className={`text-xs ${styles.textInfo} mb-4 space-y-1`}>
+          <div className="flex items-center">
+            <Clock className="h-3.5 w-3.5 mr-1" />
+            <span>{test.time_limit === 0 ? 'Без ограничения времени' : `${test.time_limit} минут`}</span>
+          </div>
+          <div className="flex items-center">
+            <CheckCircle className="h-3.5 w-3.5 mr-1" />
+            <span>Проходной балл: {test.passing_score}%</span>
+          </div>
+        </div>
+        <button
+          onClick={async () => {
+            try {
+              const { data: existingAttempt } = await supabase
+                .from('user_test_attempts')
+                .select('id')
+                .eq('user_id', userProfile?.id)
+                .eq('test_id', test.id)
+                .eq('event_id', eventId)
+                .maybeSingle();
+
+              if (existingAttempt) {
+                startTest(type, existingAttempt.id);
+              } else {
+                const { data: newAttempt, error } = await supabase
+                  .from('user_test_attempts')
+                  .insert({
+                    user_id: userProfile?.id,
+                    test_id: test.id,
+                    event_id: eventId,
+                    status: 'in_progress',
+                    start_time: new Date().toISOString(),
+                  })
+                  .select()
+                  .single();
+
+                if (error) throw error;
+                if (newAttempt) startTest(type, newAttempt.id);
+              }
+            } catch (err) {
+              console.error('Ошибка при создании попытки теста:', err);
+              alert('Не удалось создать попытку теста. Пожалуйста, попробуйте еще раз.');
+            }
+          }}
+          className={`w-full ${styles.btn} text-white px-3 py-2 rounded-lg transition-all flex items-center justify-center`}
+        >
+          <Play size={16} className="mr-2" />
+          Тестировать
+        </button>
+      </div>
+    );
+  };
+
+  return (
+    (entryTest || finalTest || annualTest) && (
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden mt-6">
+        {/* Header toggle */}
+        <button
+          className="w-full flex justify-between items-center px-6 py-4 hover:bg-gray-50 transition cursor-pointer"
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
+          <div className="flex items-center">
+            <FileText className="h-5 w-5 mr-2 text-purple-600" />
+            <h3 className="text-lg font-semibold text-gray-900">
+              Тестирование тестов (для администраторов)
+            </h3>
+          </div>
+          {isExpanded ? <ChevronUp className="h-5 w-5 text-gray-500" /> : <ChevronDown className="h-5 w-5 text-gray-500" />}
+        </button>
+
+        {/* Содержимое */}
+        <div
+          className={`transition-all duration-300 ease-in-out ${
+            isExpanded ? 'max-h-[2000px] p-6 pt-0' : 'max-h-0 p-0'
+          } overflow-hidden`}
+        >
+          <div className="text-sm text-gray-500 mb-4">
+            Инструмент для проверки тестов от лица участника
+          </div>
+
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
+            <p className="text-sm text-purple-800">
+              В этом разделе вы можете протестировать тесты, чтобы увидеть как они будут выглядеть для участников.
+              При нажатии на кнопку "Тестировать" для вас будет создана специальная попытка прохождения теста.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {entryTest && renderTestCard(entryTest, 'entry', 'blue')}
+            {finalTest && renderTestCard(finalTest, 'final', 'purple')}
+            {annualTest && renderTestCard(annualTest, 'annual', 'amber')}
+          </div>
+
+          <div className="mt-4 text-sm text-gray-600 bg-gray-50 p-4 rounded-lg border border-gray-200">
+            <p>
+              <strong>Примечание:</strong> Тестирование тестов от имени администратора не влияет на статистику прохождения и не отображается в отчетах для обычных участников.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  );
+};
+
+export default AdminTestSection;
+
+                        {/* Сообщение при отсутствии тестов */}
+                        {(!event.userTestAttempts || event.userTestAttempts.length === 0) && 
+                         !testStatus.entry.available && !testStatus.final.available && (
+                          <div className="col-span-2 p-6 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
+                            <FileText size={40} className="mx-auto text-blue-500 mb-3" />
+                            <h3 className="font-medium text-lg text-gray-800 mb-2">Загрузка тестов</h3>
+                            <p className="text-gray-600 mb-4">Идёт загрузка тестов для мероприятия...</p>
+                            <button
+                              onClick={() => window.location.reload()}
+                              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                            >
+                              Обновить
+                            </button>
+                          </div>
+                        )}
+                         
+                         <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                           <h4 className="font-medium text-blue-800 text-sm">Как проходить тесты:</h4>
+                           <ol className="list-decimal list-inside text-sm text-blue-700 mt-2 space-y-1">
+                             <li>Сначала пройдите <b>Входной тест</b> для оценки базовых знаний</li>
+                             <li>После успешного прохождения (≥70%) станет доступен <b>Финальный тест</b></li>
+                             <li>Через 3 месяца система автоматически назначит <b>Годовой тест</b></li>
+                           </ol>
+                         </div>
+                       </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Вкладка с обратной связью */}
+            {activeTab === 'feedback' && (
+              <FeedbackTab eventId={eventId} />
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

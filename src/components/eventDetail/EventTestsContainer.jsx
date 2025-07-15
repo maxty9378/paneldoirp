@@ -1,0 +1,340 @@
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
+import EventTestPrompts from './EventTestPrompts';
+import AdminTestSection from './AdminTestSection';
+import { TestTakingView } from '../admin/TestTakingView';
+import TestResults from './TestResults';
+import { useNavigate } from 'react-router-dom';
+
+export default function EventTestsContainer({ eventId, userProfile, isAdmin, onStartTest }) {
+  const [activeView, setActiveView] = useState('list'); // 'list', 'test', 'results'
+  const [activeTestType, setActiveTestType] = useState(null); // 'entry', 'final', 'annual'
+  const [activeTestId, setActiveTestId] = useState(null);
+  const [activeAttemptId, setActiveAttemptId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [tests, setTests] = useState([]); // все тесты для типа мероприятия
+  const [testStatus, setTestStatus] = useState({
+    entry: { available: false, completed: false, score: null, attemptId: null, testId: null },
+    final: { available: false, completed: false, score: null, attemptId: null, testId: null },
+    annual: { available: false, completed: false, score: null, attemptId: null, testId: null }
+  });
+  const navigate = useNavigate();
+  
+  // Функция для загрузки тестов и попыток
+  const fetchTestsAndAttempts = async () => {
+    if (!eventId || !userProfile?.id) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Получаем event_type_id по eventId
+      const { data: eventData, error: eventError } = await supabase
+        .from('events')
+        .select('event_type_id')
+        .eq('id', eventId)
+        .single();
+        
+      if (eventError) {
+        console.error('Ошибка при получении типа мероприятия:', eventError);
+        throw new Error('Не удалось получить информацию о мероприятии');
+      }
+      
+      if (!eventData) {
+        throw new Error('Мероприятие не найдено');
+      }
+      
+      const eventTypeId = eventData.event_type_id;
+      console.log('eventTypeId:', eventTypeId);
+      
+      // Получаем все тесты для типа мероприятия
+      const { data: testsData, error: testsError } = await supabase
+        .from('tests')
+        .select('*')
+        .eq('event_type_id', eventTypeId)
+        .eq('status', 'active');
+        
+      if (testsError) {
+        console.error('Ошибка при получении тестов:', testsError);
+        throw new Error('Не удалось загрузить тесты');
+      }
+      
+      setTests(testsData || []);
+      console.log('tests:', testsData);
+
+      // Создаем новый объект статуса
+      const statusObj = {
+        entry: { available: false, completed: false, score: null, attemptId: null, testId: null },
+        final: { available: false, completed: false, score: null, attemptId: null, testId: null },
+        annual: { available: false, completed: false, score: null, attemptId: null, testId: null }
+      };
+      
+      // Новый способ: ищем завершённую попытку, иначе берём последнюю
+      for (const test of testsData || []) {
+        if (!['entry', 'final', 'annual'].includes(test.type)) {
+          console.warn(`Неизвестный тип теста: ${test.type}`);
+          continue;
+        }
+        const { data: attempts, error: attemptError } = await supabase
+          .from('user_test_attempts')
+          .select('id, status, score, created_at')
+          .eq('test_id', test.id)
+          .eq('user_id', userProfile.id)
+          .eq('event_id', eventId)
+          .order('created_at', { ascending: false });
+        if (attemptError) {
+          console.error(`Ошибка при получении попытки для теста ${test.type}:`, attemptError);
+        }
+        let completedAttempt = null;
+        let lastAttempt = null;
+        if (attempts && attempts.length > 0) {
+          completedAttempt = attempts.find(a => a.status === 'completed');
+          lastAttempt = attempts[0];
+        }
+        if (completedAttempt) {
+          statusObj[test.type] = {
+            available: true,
+            completed: true,
+            score: completedAttempt.score,
+            attemptId: completedAttempt.id,
+            testId: test.id
+          };
+        } else if (lastAttempt) {
+          statusObj[test.type] = {
+            available: true,
+            completed: false,
+            score: lastAttempt.score,
+            attemptId: lastAttempt.id,
+            testId: test.id
+          };
+        } else {
+          statusObj[test.type] = {
+            ...statusObj[test.type],
+            available: false,
+            completed: false,
+            score: null,
+            attemptId: null,
+            testId: test.id
+          };
+        }
+      }
+      
+      // Теперь создаем попытки, если необходимо
+      // Для входного теста
+      const entryTest = testsData?.find(t => t.type === 'entry');
+      if (entryTest && !statusObj.entry.attemptId) {
+        const { data: newAttempt, error: createError } = await supabase
+          .from('user_test_attempts')
+          .insert({
+            user_id: userProfile.id,
+            test_id: entryTest.id,
+            event_id: eventId,
+            status: 'in_progress',
+            start_time: new Date().toISOString()
+          })
+          .select()
+          .single();
+          
+        if (createError) {
+          console.error('Ошибка при создании попытки для входного теста:', createError);
+        } else if (newAttempt) {
+          statusObj.entry = {
+            ...statusObj.entry,
+            attemptId: newAttempt.id
+          };
+        }
+      }
+      
+      // Для финального теста (если входной пройден)
+      const finalTest = testsData?.find(t => t.type === 'final');
+      if (finalTest && !statusObj.final.attemptId && 
+          statusObj.entry.completed) {
+        const { data: newAttempt, error: createError } = await supabase
+          .from('user_test_attempts')
+          .insert({
+            user_id: userProfile.id,
+            test_id: finalTest.id,
+            event_id: eventId,
+            status: 'in_progress',
+            start_time: new Date().toISOString()
+          })
+          .select()
+          .single();
+          
+        if (createError) {
+          console.error('Ошибка при создании попытки для финального теста:', createError);
+        } else if (newAttempt) {
+          statusObj.final = {
+            ...statusObj.final,
+            attemptId: newAttempt.id
+          };
+        }
+      }
+      
+      setTestStatus(statusObj);
+      
+    } catch (err) {
+      console.error('Ошибка при загрузке тестов:', err);
+      setError(err.message || 'Ошибка загрузки тестов');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Загрузка тестов при монтировании компонента
+  useEffect(() => {
+    fetchTestsAndAttempts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId, userProfile?.id]);
+  
+  // Запуск теста (создаёт attempt если нужно)
+  const handleStartTest = async (testType) => {
+    const test = tests.find(t => t.type === testType);
+    if (!test) {
+      alert('Тест не найден');
+      return;
+    }
+    let attemptId = testStatus[testType]?.attemptId;
+    if (!attemptId) {
+      try {
+        const { data: newAttempt, error } = await supabase
+          .from('user_test_attempts')
+          .insert({
+            user_id: userProfile.id,
+            test_id: test.id,
+            event_id: eventId,
+            status: 'in_progress',
+            start_time: new Date().toISOString()
+          })
+          .select()
+          .single();
+        if (error) {
+          console.error('Ошибка при создании попытки теста:', error);
+          alert('Ошибка создания попытки теста');
+          return;
+        }
+        if (!newAttempt) {
+          alert('Не удалось создать попытку теста');
+          return;
+        }
+        attemptId = newAttempt.id;
+        setTestStatus(prev => ({
+          ...prev,
+          [testType]: {
+            ...prev[testType],
+            attemptId: newAttempt.id
+          }
+        }));
+      } catch (err) {
+        console.error('Ошибка при создании попытки теста:', err);
+        alert('Произошла ошибка при создании попытки теста');
+        return;
+      }
+    }
+    if (onStartTest) {
+      onStartTest(testType, test.id, eventId, attemptId);
+    }
+  };
+  
+  // После завершения теста — обновить статусы
+  const handleCompleteTest = () => {
+    setActiveView('results');
+    // Перезагрузить статусы тестов
+    fetchTestsAndAttempts(); // Используем нашу функцию вместо перезагрузки страницы
+  };
+  
+  // Обработчик возврата к списку тестов
+  const handleBackToList = () => {
+    setActiveView('list');
+    setActiveTestType(null);
+    setActiveTestId(null);
+    setActiveAttemptId(null);
+    fetchTestsAndAttempts(); // Обновляем данные при возврате к списку
+  };
+  
+  // Обработчик просмотра результатов теста
+  const handleViewResults = (testType, attemptId) => {
+    setActiveTestType(testType);
+    setActiveAttemptId(attemptId);
+    setActiveView('results');
+  };
+  
+  // Удаляю внешний контейнер, возвращаю только содержимое
+  return (
+    <>
+      {loading ? (
+        <div className="bg-white rounded-xl shadow-lg p-4 overflow-x-auto font-mabry">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-gray-800">Тесты мероприятия</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[1,2,3].map(i => (
+              <div key={i} className="bg-gray-100 border border-gray-200 rounded-xl p-4 animate-pulse flex flex-col justify-between h-full min-h-[180px]">
+                <div>
+                  <div className="h-5 w-32 bg-gray-200 rounded mb-2" />
+                  <div className="h-4 w-40 bg-gray-200 rounded mb-1" />
+                  <div className="h-3 w-24 bg-gray-200 rounded mb-1" />
+                  <div className="h-3 w-28 bg-gray-200 rounded mb-2" />
+                </div>
+                <div className="mt-2">
+                  <div className="h-10 w-full bg-gray-200 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : error ? (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+          <p className="text-red-600">{error}</p>
+          <button 
+            onClick={fetchTestsAndAttempts}
+            className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            Попробовать снова
+          </button>
+        </div>
+      ) : (
+        <>
+          {activeView === 'list' && (
+            <div className="bg-white rounded-xl shadow-lg p-4 overflow-x-auto font-mabry">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-gray-800">Тесты мероприятия</h2>
+                {/* Если нужна кнопка обновления, можно добавить здесь */}
+              </div>
+              <EventTestPrompts 
+                eventId={eventId} 
+                userProfile={userProfile} 
+                onStartTest={handleStartTest}
+                testStatus={testStatus}
+              />
+              {isAdmin && (
+                <AdminTestSection 
+                  eventId={eventId} 
+                  userProfile={userProfile} 
+                  onStartTest={handleStartTest}
+                  testStatus={testStatus}
+                />
+              )}
+            </div>
+          )}
+          {activeView === 'test' && activeTestId && activeAttemptId && (
+            <TestTakingView
+              testId={activeTestId}
+              eventId={eventId}
+              attemptId={activeAttemptId}
+              onComplete={handleCompleteTest}
+              onCancel={handleBackToList}
+            />
+          )}
+          {activeView === 'results' && activeAttemptId && (
+            <TestResults 
+              attemptId={activeAttemptId}
+              onClose={handleBackToList}
+            />
+          )}
+        </>
+      )}
+    </>
+  );
+}

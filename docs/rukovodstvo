@@ -1,0 +1,565 @@
+Руководство по внедрению аналитики тестов и обучения
+Введение
+Данное руководство предназначено для разработчиков, которым необходимо внедрить функционал аналитики тестов и обучения в существующее приложение. Руководство основано на анализе текущей структуры базы данных и содержит рекомендации по созданию информативных дашбордов и отчетов.
+Структура данных
+Система использует следующие основные таблицы для хранения данных о тестах и обучении:
+•	tests - информация о тестах
+•	test_questions - вопросы тестов
+•	test_answers - варианты ответов на вопросы
+•	user_test_attempts - попытки прохождения тестов пользователями
+•	user_test_answers - ответы пользователей на вопросы тестов
+•	events - информация о мероприятиях
+•	event_types - типы мероприятий
+•	event_participants - участники мероприятий
+•	feedback_submissions - отзывы о мероприятиях
+•	feedback_questions - вопросы для сбора обратной связи
+•	feedback_answers - ответы на вопросы обратной связи
+Рекомендуемые аналитические панели
+1. Панель "Общая статистика по тестам"
+// Компонент для отображения общей статистики по тестам
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabaseClient';
+import { BarChart, PieChart } from '../components/Charts';
+
+const TestStatisticsPanel = () => {
+  const [testCompletionStats, setTestCompletionStats] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    async function fetchTestCompletionStats() {
+      setLoading(true);
+      
+      // SQL запрос для получения статистики завершения тестов
+      const { data, error } = await supabase.rpc('get_test_completion_stats');
+      
+      if (error) {
+        console.error('Ошибка при получении статистики:', error);
+      } else {
+        setTestCompletionStats(data);
+      }
+      
+      setLoading(false);
+    }
+    
+    fetchTestCompletionStats();
+  }, []);
+  
+  return (
+    <div className="panel">
+      <h2>Статистика по тестам</h2>
+      {loading ? (
+        <p>Загрузка данных...</p>
+      ) : (
+        <>
+          <div className="stats-grid">
+            <div className="stat-card">
+              <h3>Соотношение завершенных и незавершенных попыток</h3>
+              <PieChart 
+                data={testCompletionStats} 
+                nameKey="Тест"
+                dataKeys={["Процент завершения", "Процент незавершенных"]}
+              />
+            </div>
+            <div className="stat-card">
+              <h3>Средние баллы по тестам</h3>
+              <BarChart 
+                data={testCompletionStats}
+                xAxisKey="Тест"
+                yAxisKey="Средний балл"
+              />
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+export default TestStatisticsPanel;
+
+2. Хранимая процедура для статистики завершения тестов
+CREATE OR REPLACE FUNCTION public.get_test_completion_stats()
+RETURNS TABLE (
+    "Тест" text,
+    "Тип теста" text,
+    "Всего попыток" bigint,
+    "Завершено" bigint,
+    "В процессе" bigint,
+    "Процент завершения" numeric,
+    "Процент незавершенных" numeric,
+    "Средний балл" numeric
+) 
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    RETURN QUERY
+    WITH test_completion_stats AS (
+        SELECT 
+            t.id as test_id,
+            t.title,
+            t.type,
+            COUNT(uta.id) as total_attempts,
+            COUNT(CASE WHEN uta.status = 'completed' THEN 1 END) as completed_attempts,
+            COUNT(CASE WHEN uta.status = 'in_progress' THEN 1 END) as in_progress_attempts,
+            ROUND(AVG(CASE WHEN uta.status = 'completed' THEN uta.score END)::numeric, 2) as avg_score
+        FROM tests t
+        JOIN user_test_attempts uta ON t.id = uta.test_id
+        GROUP BY t.id, t.title, t.type
+    )
+    SELECT 
+        title as "Тест",
+        type as "Тип теста",
+        total_attempts as "Всего попыток",
+        completed_attempts as "Завершено",
+        in_progress_attempts as "В процессе",
+        ROUND((completed_attempts::float / NULLIF(total_attempts, 0) * 100)::numeric, 2) as "Процент завершения",
+        ROUND((in_progress_attempts::float / NULLIF(total_attempts, 0) * 100)::numeric, 2) as "Процент незавершенных",
+        avg_score as "Средний балл"
+    FROM test_completion_stats
+    ORDER BY "Процент завершения";
+END;
+$$;
+3. Панель "Анализ времени прохождения тестов"
+// Компонент для отображения статистики по времени прохождения тестов
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabaseClient';
+import { BarChart, LineChart } from '../components/Charts';
+
+const TestTimeAnalysisPanel = () => {
+  const [testTimeStats, setTestTimeStats] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    async function fetchTestTimeStats() {
+      setLoading(true);
+      
+      // SQL запрос для получения статистики по времени прохождения тестов
+      const { data, error } = await supabase.rpc('get_test_time_stats');
+      
+      if (error) {
+        console.error('Ошибка при получении статистики времени:', error);
+      } else {
+        setTestTimeStats(data);
+      }
+      
+      setLoading(false);
+    }
+    
+    fetchTestTimeStats();
+  }, []);
+  
+  return (
+    <div className="panel">
+      <h2>Анализ времени прохождения тестов</h2>
+      {loading ? (
+        <p>Загрузка данных...</p>
+      ) : (
+        <>
+          <div className="stats-grid">
+            <div className="stat-card">
+              <h3>Среднее время прохождения (минуты)</h3>
+              <BarChart 
+                data={testTimeStats} 
+                xAxisKey="Тест"
+                yAxisKey="Среднее время (минуты)"
+              />
+            </div>
+            <div className="stat-card">
+              <h3>Диапазон времени прохождения</h3>
+              <LineChart 
+                data={testTimeStats}
+                xAxisKey="Тест"
+                yAxisKeys={["Минимальное время (минуты)", "Среднее время (минуты)", "Максимальное время (минуты)"]}
+              />
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+export default TestTimeAnalysisPanel;
+4. Хранимая процедура для статистики времени прохождения тестов
+CREATE OR REPLACE FUNCTION public.get_test_time_stats()
+RETURNS TABLE (
+    "Тест" text,
+    "Тип теста" text,
+    "Количество попыток" bigint,
+    "Среднее время (минуты)" numeric,
+    "Минимальное время (минуты)" numeric,
+    "Максимальное время (минуты)" numeric
+) 
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        t.title as "Тест",
+        t.type as "Тип теста",
+        COUNT(uta.id) as "Количество попыток",
+        ROUND(AVG(EXTRACT(EPOCH FROM (uta.end_time - uta.start_time)) / 60)::numeric, 2) as "Среднее время (минуты)",
+        ROUND(MIN(EXTRACT(EPOCH FROM (uta.end_time - uta.start_time)) / 60)::numeric, 2) as "Минимальное время (минуты)",
+        ROUND(MAX(EXTRACT(EPOCH FROM (uta.end_time - uta.start_time)) / 60)::numeric, 2) as "Максимальное время (минуты)"
+    FROM tests t
+    JOIN user_test_attempts uta ON t.id = uta.test_id
+    WHERE uta.status = 'completed' AND uta.end_time IS NOT NULL
+    GROUP BY t.id, t.title, t.type
+    ORDER BY t.type, "Среднее время (минуты)" DESC;
+END;
+$$;
+5. Панель "Анализ ответов на вопросы"
+// Компонент для отображения анализа ответов на вопросы
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabaseClient';
+import { BarChart, DataTable } from '../components/Charts';
+
+const QuestionAnswersAnalysisPanel = () => {
+  const [answerDistribution, setAnswerDistribution] = useState([]);
+  const [selectedQuestion, setSelectedQuestion] = useState(null);
+  const [questions, setQuestions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    async function fetchQuestions() {
+      setLoading(true);
+      
+      // Получаем список всех вопросов
+      const { data, error } = await supabase
+        .from('test_questions')
+        .select('id, question, test_id, tests(title)')
+        .order('question');
+      
+      if (error) {
+        console.error('Ошибка при получении вопросов:', error);
+      } else {
+        setQuestions(data);
+        if (data.length > 0) {
+          setSelectedQuestion(data[0].id);
+        }
+      }
+      
+      setLoading(false);
+    }
+    
+    fetchQuestions();
+  }, []);
+  
+  useEffect(() => {
+    async function fetchAnswerDistribution() {
+      if (!selectedQuestion) return;
+      
+      setLoading(true);
+      
+      // SQL запрос для получения распределения ответов на выбранный вопрос
+      const { data, error } = await supabase.rpc('get_answer_distribution', {
+        question_id: selectedQuestion
+      });
+      
+      if (error) {
+        console.error('Ошибка при получении распределения ответов:', error);
+      } else {
+        setAnswerDistribution(data);
+      }
+      
+      setLoading(false);
+    }
+    
+    fetchAnswerDistribution();
+  }, [selectedQuestion]);
+  
+  return (
+    <div className="panel">
+      <h2>Анализ ответов на вопросы</h2>
+      
+      <div className="question-selector">
+        <label htmlFor="question-select">Выберите вопрос:</label>
+        <select 
+          id="question-select"
+          value={selectedQuestion || ''}
+          onChange={(e) => setSelectedQuestion(e.target.value)}
+        >
+          {questions.map(q => (
+            <option key={q.id} value={q.id}>
+              {q.tests.title} - {q.question.substring(0, 50)}...
+            </option>
+          ))}
+        </select>
+      </div>
+      
+      {loading ? (
+        <p>Загрузка данных...</p>
+      ) : (
+        <>
+          <div className="stats-grid">
+            <div className="stat-card">
+              <h3>Распределение ответов</h3>
+              <BarChart 
+                data={answerDistribution} 
+                xAxisKey="Вариант ответа"
+                yAxisKey="Количество выборов"
+                colorKey="Правильный"
+                colorMapping={{
+                  'Да': '#4CAF50',
+                  'Нет': '#F44336'
+                }}
+              />
+            </div>
+            <div className="stat-card">
+              <h3>Детальная информация</h3>
+              <DataTable 
+                data={answerDistribution}
+                columns={[
+                  { header: 'Вариант ответа', accessor: 'Вариант ответа' },
+                  { header: 'Правильный', accessor: 'Правильный' },
+                  { header: 'Количество выборов', accessor: 'Количество выборов' },
+                  { 
+                    header: '% от общего числа', 
+                    accessor: row => {
+                      const total = answerDistribution.reduce((sum, item) => sum + item['Количество выборов'], 0);
+                      return `${((row['Количество выборов'] / total) * 100).toFixed(2)}%`;
+                    }
+                  }
+                ]}
+              />
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+export default QuestionAnswersAnalysisPanel;
+
+6. Хранимая процедура для анализа ответов на вопросы
+CREATE OR REPLACE FUNCTION public.get_answer_distribution(question_id uuid)
+RETURNS TABLE (
+    "Тест" text,
+    "Вопрос" text,
+    "Вариант ответа" text,
+    "Правильный" text,
+    "Количество выборов" bigint
+) 
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    RETURN QUERY
+    WITH answer_distribution AS (
+        SELECT 
+            tq.id as question_id,
+            t.title as test_title,
+            tq.question,
+            ta.text as answer_text,
+            ta.is_correct,
+            COUNT(uta.id) as answer_count
+        FROM test_questions tq
+        JOIN tests t ON tq.test_id = t.id
+        JOIN test_answers ta ON tq.id = ta.question_id
+        LEFT JOIN user_test_answers uta ON ta.id = uta.answer_id
+        WHERE tq.id = question_id
+        GROUP BY tq.id, t.title, tq.question, ta.text, ta.is_correct
+    )
+    SELECT 
+        test_title as "Тест",
+        question as "Вопрос",
+        answer_text as "Вариант ответа",
+        CASE WHEN is_correct THEN 'Да' ELSE 'Нет' END as "Правильный",
+        answer_count as "Количество выборов"
+    FROM answer_distribution
+    ORDER BY is_correct DESC, answer_count DESC;
+END;
+$$;
+
+7. Панель "Анализ отзывов участников"
+// Компонент для отображения анализа отзывов участников
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabaseClient';
+import { RadarChart, BarChart } from '../components/Charts';
+
+const FeedbackAnalysisPanel = () => {
+  const [feedbackStats, setFeedbackStats] = useState([]);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    async function fetchEvents() {
+      setLoading(true);
+      
+      // Получаем список всех мероприятий
+      const { data, error } = await supabase
+        .from('events')
+        .select('id, title')
+        .order('title');
+      
+      if (error) {
+        console.error('Ошибка при получении мероприятий:', error);
+      } else {
+        setEvents(data);
+        if (data.length > 0) {
+          setSelectedEvent(data[0].id);
+        }
+      }
+      
+      setLoading(false);
+    }
+    
+    fetchEvents();
+  }, []);
+  
+  useEffect(() => {
+    async function fetchFeedbackStats() {
+      if (!selectedEvent) return;
+      
+      setLoading(true);
+      
+      // SQL запрос для получения статистики отзывов по выбранному мероприятию
+      const { data, error } = await supabase.rpc('get_feedback_stats', {
+        event_id: selectedEvent
+      });
+      
+      if (error) {
+        console.error('Ошибка при получении статистики отзывов:', error);
+      } else {
+        setFeedbackStats(data);
+      }
+      
+      setLoading(false);
+    }
+    
+    fetchFeedbackStats();
+  }, [selectedEvent]);
+  
+  return (
+    <div className="panel">
+      <h2>Анализ отзывов участников</h2>
+      
+      <div className="event-selector">
+        <label htmlFor="event-select">Выберите мероприятие:</label>
+        <select 
+          id="event-select"
+          value={selectedEvent || ''}
+          onChange={(e) => setSelectedEvent(e.target.value)}
+        >
+          {events.map(e => (
+            <option key={e.id} value={e.id}>{e.title}</option>
+          ))}
+        </select>
+      </div>
+      
+      {loading ? (
+        <p>Загрузка данных...</p>
+      ) : (
+        <>
+          <div className="stats-grid">
+            <div className="stat-card">
+              <h3>Средние оценки по критериям</h3>
+              <RadarChart 
+                data={feedbackStats} 
+                nameKey="Критерий оценки"
+                dataKey="Средняя оценка"
+                maxValue={5}
+              />
+            </div>
+            <div className="stat-card">
+              <h3>Распределение оценок</h3>
+              <BarChart 
+                data={feedbackStats}
+                xAxisKey="Критерий оценки"
+                yAxisKey="Средняя оценка"
+                maxValue={5}
+              />
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+export default FeedbackAnalysisPanel;
+
+8. Хранимая процедура для анализа отзывов
+
+CREATE OR REPLACE FUNCTION public.get_feedback_stats(event_id uuid)
+RETURNS TABLE (
+    "Мероприятие" text,
+    "Критерий оценки" text,
+    "Средняя оценка" numeric,
+    "Минимальная оценка" integer,
+    "Максимальная оценка" integer,
+    "Количество оценок" bigint
+) 
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        e.title as "Мероприятие",
+        fq.question as "Критерий оценки",
+        ROUND(AVG(fa.rating_value)::numeric, 2) as "Средняя оценка",
+        MIN(fa.rating_value) as "Минимальная оценка",
+        MAX(fa.rating_value) as "Максимальная оценка",
+        COUNT(fa.id) as "Количество оценок"
+    FROM feedback_questions fq
+    JOIN feedback_answers fa ON fq.id = fa.question_id
+    JOIN feedback_submissions fs ON fa.submission_id = fs.id
+    JOIN events e ON fs.event_id = e.id
+    WHERE fa.rating_value IS NOT NULL AND e.id = event_id
+    GROUP BY e.title, fq.question
+    ORDER BY "Средняя оценка" DESC;
+END;
+$$;
+
+9. Панель "Корреляция между тестами и отзывами"
+// Компонент для отображения корреляции между результатами тестов и отзывами
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabaseClient';
+import { ScatterChart, DataTable } from '../components/Charts';
+
+const TestFeedbackCorrelationPanel = () => {
+  const [correlationData, setCorrelationData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    async function fetchCorrelationData() {
+      setLoading(true);
+      
+      // SQL запрос для получения данных о корреляции
+      const { data, error } = await supabase.rpc('get_test_feedback_correlation');
+      
+      if (error) {
+        console.error('Ошибка при получении данных о корреляции:', error);
+      } else {
+        setCorrelationData(data);
+      }
+      
+      setLoading(false);
+    }
+    
+    fetchCorrelationData();
+  }, []);
+  
+  return (
+    <div className="panel">
+      <h2>Корреляция между результатами тестов и отзывами</h2>
+      {loading ? (
+        <p>Загрузка данных...</p>
+      ) : (
+        <>
+          <div className="stats-grid">
+            <div className="stat-card">
+              <h3>Корреляция между финальным тестом и общей оценкой</h3>
+              <ScatterChart 
+                data={correlationData} 
+                xAxisKey="Финальный тест"
+                yAxisKey="Общая оценка"
+                nameKey="Участник"
+              />
+            </div>
+            <div className="

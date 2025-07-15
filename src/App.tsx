@@ -1,0 +1,207 @@
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom';
+import { AuthProvider, useAuth } from './hooks/useAuth';
+import { Layout } from './components/Layout';
+import { TestTakingView } from './components/admin/TestTakingView';
+import { LoginForm } from './components/LoginForm';
+import { CreateEventModal } from './components/events/CreateEventModal';
+import { DashboardView } from './components/DashboardView';
+import { AdminView } from './components/AdminView';
+import { EventsView } from './components/EventsView';
+import EmployeesView from './components/EmployeesView';
+import EventDetailView from './components/EventDetailView';
+import { CalendarView } from './components/CalendarView';
+import { RepresentativesView } from './components/RepresentativesView';
+import { SupervisorsView } from './components/SupervisorsView';
+import { ExpertEventsView } from './components/ExpertEventsView';
+import { TasksView } from './components/TasksView'; 
+import { TestingView } from './components/admin/TestingView';
+import { Loader2, RefreshCw, AlertOctagon, Users } from 'lucide-react';
+
+function EventDetailPage({ onStartTest }: { onStartTest: (testType: 'entry' | 'final' | 'annual', testId: string, eventId: string, attemptId: string) => void }) {
+  const { eventId } = useParams();
+  if (!eventId) return <div>Некорректный ID мероприятия</div>;
+  return <EventDetailView eventId={eventId} onStartTest={onStartTest} />;
+}
+
+function AppContent() {
+  const { 
+    user, 
+    userProfile, 
+    loading, 
+    resetAuth, 
+    authError, 
+    loadingPhase,
+    retryFetchProfile 
+  } = useAuth();
+  const [showCreateEventModal, setShowCreateEventModal] = useState(false);
+  const [testAttemptDetails, setTestAttemptDetails] = useState<{testId: string; eventId: string; attemptId: string; testTitle?: string} | null>(null);
+  const [loadingSeconds, setLoadingSeconds] = useState(0);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Для Layout: определяем текущий view по location.pathname
+  const getCurrentView = () => {
+    if (location.pathname.startsWith('/events')) return 'events';
+    if (location.pathname.startsWith('/event/')) return 'event-detail';
+    if (location.pathname.startsWith('/calendar')) return 'calendar';
+    if (location.pathname.startsWith('/representatives')) return 'representatives';
+    if (location.pathname.startsWith('/supervisors')) return 'supervisors';
+    if (location.pathname.startsWith('/expert-events')) return 'expert-events';
+    if (location.pathname.startsWith('/tasks')) return 'tasks';
+    if (location.pathname.startsWith('/testing')) return 'testing';
+    if (location.pathname.startsWith('/admin')) return 'admin';
+    if (location.pathname.startsWith('/employees')) return 'employees';
+    if (location.pathname.startsWith('/create-event')) return 'create-event';
+    return 'dashboard';
+  };
+  const currentView = getCurrentView();
+
+  // Track loading time
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (loading) {
+      timer = setInterval(() => {
+        setLoadingSeconds(prev => prev + 1);
+      }, 1000);
+    } else {
+      setLoadingSeconds(0);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [loading]);
+
+  // Навигация для запуска теста
+  const handleStartTest = (testType: 'entry' | 'final' | 'annual', testId: string, eventId: string, attemptId: string) => {
+    setTestAttemptDetails({ testId, eventId, attemptId });
+    navigate('/take-test');
+  };
+  const handleTestComplete = (score: number) => {
+    navigate(-1); // Вернуться назад после теста
+    setTestAttemptDetails(null);
+  };
+  const handleCancelTest = () => {
+    navigate(-1);
+    setTestAttemptDetails(null);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="mb-4">
+            <Loader2 className="h-10 w-10 text-blue-600 animate-spin mx-auto" />
+          </div>
+          {(loadingPhase !== 'session-fetch' && loadingPhase !== 'initializing') && (
+            <>
+              <h2 className="text-xl font-semibold text-gray-800 mb-2">Загрузка приложения</h2>
+              <p className="text-gray-600 mb-4">
+                Фаза: <span className="font-medium text-blue-600">{loadingPhase}</span>
+              </p>
+            </>
+          )}
+          {loadingSeconds > 0 && (
+            <p className="text-sm text-gray-500 mb-4">
+              Время загрузки: {loadingSeconds} сек.
+            </p>
+          )}
+          {authError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 text-left">
+              <div className="flex items-start">
+                <AlertOctagon className="h-5 w-5 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-red-800 font-medium text-sm">Ошибка загрузки</p>
+                  <p className="text-red-700 text-sm mt-1">{authError}</p>
+                </div>
+              </div>
+            </div>
+          )}
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            {authError && retryFetchProfile && (
+              <button
+                onClick={retryFetchProfile}
+                className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Повторить попытку
+              </button>
+            )}
+            <button
+              onClick={resetAuth}
+              className="inline-flex items-center justify-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+            >
+              Сбросить
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (!user) {
+    return <LoginForm />;
+  }
+  return (
+    <Layout currentView={currentView}>
+      <Routes>
+        <Route path="/" element={<DashboardView />} />
+        <Route path="/events" element={<EventsView onNavigateToEvent={id => navigate(`/event/${id}`)} onCreateEvent={() => setShowCreateEventModal(true)} />} />
+        <Route path="/event/:eventId" element={<EventDetailPage onStartTest={handleStartTest} />} />
+        <Route path="/calendar" element={<CalendarView />} />
+        <Route path="/representatives" element={<RepresentativesView />} />
+        <Route path="/supervisors" element={<SupervisorsView />} />
+        <Route path="/expert-events" element={<ExpertEventsView />} />
+        <Route path="/tasks" element={<TasksView />} />
+        <Route path="/testing" element={<TestingView />} />
+        <Route path="/admin" element={<AdminView />} />
+        <Route path="/employees" element={<EmployeesView />} />
+        <Route path="/create-event" element={
+          <div className="space-y-6">
+            <div className="flex items-center">
+              <button onClick={() => navigate('/events')} className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center transition-colors duration-200">
+                ← Назад к мероприятиям
+              </button>
+            </div>
+            <div className="text-center">
+              <button onClick={() => setShowCreateEventModal(true)} className="bg-sns-600 text-white px-6 py-3 rounded-xl hover:bg-sns-700">
+                Создать мероприятие
+              </button>
+            </div>
+          </div>
+        } />
+        <Route path="/take-test" element={
+          testAttemptDetails && (
+            <TestTakingView
+              testId={testAttemptDetails.testId}
+              eventId={testAttemptDetails.eventId}
+              attemptId={testAttemptDetails.attemptId}
+              onComplete={handleTestComplete}
+              onCancel={handleCancelTest}
+              onTestLoaded={title => setTestAttemptDetails(prev => prev ? { ...prev, testTitle: title } : prev)}
+            />
+          )
+        } />
+      </Routes>
+      <CreateEventModal 
+        isOpen={showCreateEventModal}
+        onClose={() => setShowCreateEventModal(false)}
+        onSuccess={() => {
+          setShowCreateEventModal(false);
+          navigate('/events');
+        }}
+      />
+    </Layout>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <AppContent />
+      </Router>
+    </AuthProvider>
+  );
+}
+
+export default App;

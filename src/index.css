@@ -1,0 +1,229 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CSS переменные для тем */
+:root {
+  --color-primary: #06A478;
+  --color-primary-hover: #05996b;
+  --color-primary-light: #e6faf4;
+  --color-primary-dark: #047a5a;
+  --card-bg: theme('colors.white');
+  --card-border: theme('colors.gray.100');
+  --card-shadow: theme('boxShadow.sm');
+  --text-primary: theme('colors.gray.900');
+  --text-secondary: theme('colors.gray.600');
+  --text-muted: theme('colors.gray.500');
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-primary: #06A478;
+    --color-primary-hover: #05996b;
+    --color-primary-light: #0e2e25;
+    --color-primary-dark: #047a5a;
+    --card-bg: theme('colors.gray.800');
+    --card-border: theme('colors.gray.700');
+    --card-shadow: theme('boxShadow.lg');
+    --text-primary: theme('colors.gray.100');
+    --text-secondary: theme('colors.gray.300');
+    --text-muted: theme('colors.gray.400');
+  }
+}
+
+/* Улучшенные анимации */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s ease-out;
+}
+
+/* Улучшенные карточки мероприятий */
+.event-card, .card {
+  background: var(--card-bg);
+  border: 1.5px solid var(--card-border);
+  border-radius: 1.25rem;
+  box-shadow: 0 2px 8px 0 rgba(6,164,120,0.06);
+  padding: 1.5rem;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.event-card:hover, .card:hover {
+  box-shadow: 0 8px 32px 0 rgba(6,164,120,0.12);
+  transform: translateY(-2px) scale(1.01);
+}
+
+/* Стилизация скроллбара */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-primary-light) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: var(--color-primary-light);
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-primary);
+}
+
+/* Улучшенные состояния фокуса */
+.focus-ring {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-primary-light), 0 0 0 4px var(--color-primary);
+}
+
+/* Анимация скелетона */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Улучшенная анимация загрузки */
+.loading-dots::after {
+  content: '';
+  animation: loading-dots 1.5s infinite;
+}
+
+@keyframes loading-dots {
+  0%, 20% {
+    content: '.';
+  }
+  40% {
+    content: '..';
+  }
+  60%, 100% {
+    content: '...';
+  }
+}
+
+/* Плавные переходы для всех интерактивных элементов */
+button, input, select, textarea {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Стилизация для мобильных устройств */
+@media (max-width: 768px) {
+  .mobile-optimized {
+    touch-action: manipulation;
+  }
+  
+  .mobile-card {
+    padding: 1rem !important;
+    border-radius: 1rem !important;
+  }
+  
+  .mobile-text {
+    font-size: 1rem !important;
+  }
+  
+  .btn-primary, .btn-outline {
+    width: 100%;
+    padding: 1rem 0.5rem;
+    font-size: 1.1rem;
+  }
+}
+
+/* Кнопки */
+.btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  padding: 0.625rem 1.5rem;
+  transition: background 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 8px 0 rgba(6,164,120,0.08);
+}
+.btn-primary:hover, .btn-primary:focus {
+  background: var(--color-primary-hover);
+  box-shadow: 0 4px 16px 0 rgba(6,164,120,0.12);
+}
+.btn-primary:active {
+  background: var(--color-primary-dark);
+}
+
+.btn-outline {
+  background: #fff;
+  color: var(--color-primary);
+  border: 1.5px solid var(--color-primary);
+  border-radius: 0.5rem;
+  font-weight: 600;
+  padding: 0.625rem 1.5rem;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+.btn-outline:hover, .btn-outline:focus {
+  background: var(--color-primary-light);
+  color: var(--color-primary-dark);
+  box-shadow: 0 2px 8px 0 rgba(6,164,120,0.08);
+}
+
+/* Ссылки */
+a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+a:hover, a:focus {
+  color: var(--color-primary-dark);
+}
+
+/* Акценты и выделения */
+.text-primary {
+  color: var(--color-primary) !important;
+}
+.bg-primary {
+  background: var(--color-primary) !important;
+  color: #fff !important;
+}
+.bg-primary-light {
+  background: var(--color-primary-light) !important;
+}
+.border-primary {
+  border-color: var(--color-primary) !important;
+}
+
+/* Placeholder */
+::placeholder {
+  color: var(--color-primary-dark);
+  opacity: 0.6;
+}
