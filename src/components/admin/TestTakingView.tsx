@@ -628,7 +628,7 @@ return (
         )}
         {/* Navigation Buttons */}
         <div className="fixed bottom-0 left-0 w-full z-40 flex justify-center pointer-events-none px-2 pb-6 sm:px-4 sm:pb-8">
-          <div className="w-full max-w-md mx-auto bg-white/30 backdrop-blur-[40px] rounded-2xl px-2 py-2 border border-white/50 flex items-center justify-between gap-2 pointer-events-auto font-mabry">
+          <div className="w-full max-w-md mx-auto bg-white/10 backdrop-blur-md border border-white/20 shadow-lg ring-1 ring-white/10 rounded-3xl px-4 py-3 flex items-center justify-between gap-4 pointer-events-auto transition-all duration-300 sm:backdrop-blur-lg sm:rounded-2xl sm:px-3">
             <button
               type="button"
               onClick={() => {
@@ -637,15 +637,16 @@ return (
                 setQuestionStartTime(Date.now());
               }}
               disabled={submitting || currentQuestionIndex === 0}
-              className="flex items-center gap-2 min-w-[90px] h-10 px-3 text-base font-normal text-gray-400 bg-white/50 backdrop-blur-sm rounded-2xl hover:bg-gray-200 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none border border-gray-200"
-              aria-label="Предыдущий вопрос"
+              className="flex items-center gap-2 min-w-[90px] h-10 px-3 text-sm font-medium text-white bg-white/10 border border-white/20 rounded-xl hover:bg-white/20 hover:ring-1 hover:ring-emerald-500 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <ChevronLeft size={20} />
+              <ChevronLeft size={18} />
               Назад
             </button>
-            <div className="flex items-center justify-center min-w-[50px] h-10 px-2 text-sm font-normal text-gray-400">
-              {currentQuestionIndex + 1} из {questions.length}
+
+            <div className="flex items-center justify-center min-w-[50px] h-10 px-2 text-xs text-gray-200 tracking-wide font-mono">
+              {currentQuestionIndex + 1} / {questions.length}
             </div>
+
             <button
               type="button"
               onClick={() => {
@@ -658,11 +659,10 @@ return (
                 }
               }}
               disabled={submitting}
-              className="flex items-center gap-2 min-w-[90px] h-10 px-6 text-base font-medium text-white bg-emerald-600 rounded-2xl hover:bg-emerald-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none border border-white/70"
-              aria-label={currentQuestionIndex < questions.length - 1 ? "Следующий вопрос" : "Завершить тест"}
+              className="flex items-center gap-2 min-w-[90px] h-10 px-4 text-sm font-semibold text-white bg-emerald-600 rounded-xl border border-emerald-700 hover:bg-emerald-700 shadow-[0_0_0_2px_#10B98133] hover:shadow-[0_0_0_4px_#10B98144] transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Далее
-              <ChevronRight size={20} className="ml-2" />
+              <ChevronRight size={18} />
             </button>
           </div>
         </div>
