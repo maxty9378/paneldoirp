@@ -50,6 +50,18 @@ interface UserAnswer {
   userOrder?: (string | number)[];
 }
 
+// Утилита для перехода в fullscreen
+function requestFullscreen() {
+  const element = document.documentElement;
+  if (element.requestFullscreen) {
+    element.requestFullscreen();
+  } else if ((element as any).webkitRequestFullscreen) {
+    (element as any).webkitRequestFullscreen();
+  } else if ((element as any).msRequestFullscreen) {
+    (element as any).msRequestFullscreen();
+  }
+}
+
 export function TestTakingView({ testId, eventId, attemptId, onComplete, onCancel, onTestLoaded }: TestTakingViewProps) {
   const { userProfile } = useAuth();
   const [test, setTest] = useState<Test | null>(null);
