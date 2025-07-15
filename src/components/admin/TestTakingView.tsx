@@ -67,6 +67,9 @@ export function TestTakingView({ testId, eventId, attemptId, onComplete, onCance
   const [showCongrats, setShowCongrats] = useState(false);
   const congratsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Overlay для fullscreen на мобильных
+  const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(TouchSensor, {
@@ -410,6 +413,23 @@ return () => {
 };
 }, []);
 
+useEffect(() => {
+  // Overlay для fullscreen на мобильных
+  const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const isFullscreen = document.fullscreenElement !== null;
+
+  if (isMobileDevice && !isFullscreen) {
+    setShowFullscreenPrompt(true);
+  } else {
+    setShowFullscreenPrompt(false);
+  }
+}, []);
+
+const handleFullscreenPrompt = async () => {
+  await requestFullscreen();
+  setShowFullscreenPrompt(false);
+};
+
 return (
 <div className="font-sans">
   {/* Congratulatory Modal */}
@@ -420,6 +440,41 @@ return (
         <h2 className="text-2xl font-bold text-gray-900">Поздравляем!</h2>
         <p className="text-base text-gray-600 mt-2">Вы успешно завершили тест.</p>
         <p className="text-sm text-gray-500 mt-2">Перенаправление через несколько секунд...</p>
+      </div>
+    </div>
+  )}
+  {/* Overlay-кнопка для fullscreen на мобильных */}
+  {showFullscreenPrompt && (
+    <div
+      style={{
+        position: 'fixed',
+        top: 0, left: 0, right: 0, bottom: 0,
+        background: 'rgba(0,0,0,0.85)',
+        zIndex: 9999,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <button
+        onClick={handleFullscreenPrompt}
+        style={{
+          fontSize: 22,
+          padding: '18px 36px',
+          borderRadius: 16,
+          background: '#10b981',
+          color: '#fff',
+          border: 'none',
+          boxShadow: '0 4px 24px rgba(16,185,129,0.2)',
+          marginBottom: 24,
+        }}
+      >
+        Открыть во весь экран
+      </button>
+      <div style={{ color: '#fff', fontSize: 16, textAlign: 'center', maxWidth: 320 }}>
+        Для лучшего погружения в тест нажмите кнопку.<br />
+        После этого вы сможете пользоваться приложением без отвлекающих элементов браузера.
       </div>
     </div>
   )}

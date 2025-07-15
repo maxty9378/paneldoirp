@@ -17,6 +17,7 @@ import { ExpertEventsView } from './components/ExpertEventsView';
 import { TasksView } from './components/TasksView'; 
 import { TestingView } from './components/admin/TestingView';
 import { Loader2, RefreshCw, AlertOctagon, Users } from 'lucide-react';
+import TakeTestPage from './pages/TakeTestPage';
 
 function EventDetailPage({ onStartTest }: { onStartTest: (testType: 'entry' | 'final' | 'annual', testId: string, eventId: string, attemptId: string) => void }) {
   const { eventId } = useParams();
@@ -35,7 +36,7 @@ function AppContent() {
     retryFetchProfile 
   } = useAuth();
   const [showCreateEventModal, setShowCreateEventModal] = useState(false);
-  const [testAttemptDetails, setTestAttemptDetails] = useState<{testId: string; eventId: string; attemptId: string; testTitle?: string} | null>(null);
+  // Удаляем testAttemptDetails и связанные функции
   const [loadingSeconds, setLoadingSeconds] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
@@ -57,6 +58,11 @@ function AppContent() {
   };
   const currentView = getCurrentView();
 
+  // Новый обработчик запуска теста
+  const handleStartTest = (testType: 'entry' | 'final' | 'annual', testId: string, eventId: string) => {
+    navigate(`/take-test?eventId=${eventId}&testId=${testId}`);
+  };
+
   // Track loading time
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -73,18 +79,7 @@ function AppContent() {
   }, [loading]);
 
   // Навигация для запуска теста
-  const handleStartTest = (testType: 'entry' | 'final' | 'annual', testId: string, eventId: string, attemptId: string) => {
-    setTestAttemptDetails({ testId, eventId, attemptId });
-    navigate('/take-test');
-  };
-  const handleTestComplete = (score: number) => {
-    navigate(-1); // Вернуться назад после теста
-    setTestAttemptDetails(null);
-  };
-  const handleCancelTest = () => {
-    navigate(-1);
-    setTestAttemptDetails(null);
-  };
+  // Удаляем handleStartTest, handleTestComplete, handleCancelTest
 
   if (loading) {
     return (
@@ -169,18 +164,7 @@ function AppContent() {
             </div>
           </div>
         } />
-        <Route path="/take-test" element={
-          testAttemptDetails && (
-            <TestTakingView
-              testId={testAttemptDetails.testId}
-              eventId={testAttemptDetails.eventId}
-              attemptId={testAttemptDetails.attemptId}
-              onComplete={handleTestComplete}
-              onCancel={handleCancelTest}
-              onTestLoaded={title => setTestAttemptDetails(prev => prev ? { ...prev, testTitle: title } : prev)}
-            />
-          )
-        } />
+        <Route path="/take-test" element={<TakeTestPage />} />
       </Routes>
       <CreateEventModal 
         isOpen={showCreateEventModal}
