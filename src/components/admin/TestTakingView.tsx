@@ -3,8 +3,8 @@ import { ArrowLeft, ArrowRight, Clock, AlertTriangle, CheckCircle, Save, Flag, X
 import { supabase } from '../../lib/supabase';
 import { clsx } from 'clsx';
 import { useAuth } from '../../hooks/useAuth';
-import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors, KeyboardSensor } from '@dnd-kit/core';
-import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
 interface TestTakingViewProps {
@@ -68,20 +68,12 @@ export function TestTakingView({ testId, eventId, attemptId, onComplete, onCance
   const congratsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
+    useSensor(PointerSensor),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 250,
-        tolerance: 5,
-        distance: 10,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
+        delay: 0,
+        tolerance: 20
+      }
     })
   );
 
@@ -682,7 +674,6 @@ function SortableSequenceItem({ id, text, index }: { id: string; text?: string; 
       {...listeners}
       aria-label={`Вариант ответа ${index + 1}: ${text || '—'}`}
     >
-      {/* Убрана иконка GripVertical */}
       <span className="mr-2 text-gray-500 font-medium">{index + 1}.</span>
       <span className="text-gray-800 text-base">{text || '—'}</span>
     </li>
