@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, ArrowRight, Clock, AlertTriangle, CheckCircle, Save, Flag, X, LifeBuoy, Send, FileText, GripVertical } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Clock, AlertTriangle, CheckCircle, Save, Flag, X, LifeBuoy, Send, FileText, GripVertical, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { clsx } from 'clsx';
 import { useAuth } from '../../hooks/useAuth';
@@ -59,7 +59,13 @@ function requestFullscreen() {
     (element as any).webkitRequestFullscreen();
   } else if ((element as any).msRequestFullscreen) {
     (element as any).msRequestFullscreen();
+  } else {
+    alert('Ваш браузер не поддерживает полноэкранный режим для этого приложения. На iPhone/iPad используйте «Добавить на главный экран».');
   }
+}
+
+function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !('MSStream' in window);
 }
 
 export function TestTakingView({ testId, eventId, attemptId, onComplete, onCancel, onTestLoaded }: TestTakingViewProps) {
@@ -79,8 +85,7 @@ export function TestTakingView({ testId, eventId, attemptId, onComplete, onCance
   const [showCongrats, setShowCongrats] = useState(false);
   const congratsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Overlay для fullscreen на мобильных
-  const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
+  // Удалены showFullscreenPrompt, isIOSDevice, handleFullscreenPrompt
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -425,22 +430,7 @@ return () => {
 };
 }, []);
 
-useEffect(() => {
-  // Overlay для fullscreen на мобильных
-  const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  const isFullscreen = document.fullscreenElement !== null;
-
-  if (isMobileDevice && !isFullscreen) {
-    setShowFullscreenPrompt(true);
-  } else {
-    setShowFullscreenPrompt(false);
-  }
-}, []);
-
-const handleFullscreenPrompt = async () => {
-  await requestFullscreen();
-  setShowFullscreenPrompt(false);
-};
+// Удалены showFullscreenPrompt, isIOSDevice, handleFullscreenPrompt
 
 return (
 <div className="font-sans">
@@ -456,40 +446,7 @@ return (
     </div>
   )}
   {/* Overlay-кнопка для fullscreen на мобильных */}
-  {showFullscreenPrompt && (
-    <div
-      style={{
-        position: 'fixed',
-        top: 0, left: 0, right: 0, bottom: 0,
-        background: 'rgba(0,0,0,0.85)',
-        zIndex: 9999,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <button
-        onClick={handleFullscreenPrompt}
-        style={{
-          fontSize: 22,
-          padding: '18px 36px',
-          borderRadius: 16,
-          background: '#10b981',
-          color: '#fff',
-          border: 'none',
-          boxShadow: '0 4px 24px rgba(16,185,129,0.2)',
-          marginBottom: 24,
-        }}
-      >
-        Открыть во весь экран
-      </button>
-      <div style={{ color: '#fff', fontSize: 16, textAlign: 'center', maxWidth: 320 }}>
-        Для лучшего погружения в тест нажмите кнопку.<br />
-        После этого вы сможете пользоваться приложением без отвлекающих элементов браузера.
-      </div>
-    </div>
-  )}
+  {/* Удален overlay-контент fullscreen */}
   {/* Main Content */}
   <main className="w-full p-2 sm:p-6">
     {loading && (
@@ -510,12 +467,6 @@ return (
       <div className="bg-transparent sm:bg-white sm:rounded-2xl sm:shadow-lg p-0 sm:p-8 w-full mt-2 mb-2">
         {/* Progress Bar */}
         <div className="mb-8">
-          <div className="flex justify-between items-center mb-3">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Вопрос {currentQuestionIndex + 1} из {questions.length}
-            </h2>
-            {/* Кнопка "Сохранить" удалена */}
-          </div>
           <div className="w-full bg-gray-200 rounded-full h-3">
             <div
               className="bg-gradient-to-r from-emerald-500 to-teal-500 h-3 rounded-full transition-all duration-500"
@@ -532,11 +483,12 @@ return (
               <label
                 key={answer.id}
                 className={clsx(
-                  'flex items-center space-x-3 p-4 border rounded-lg cursor-pointer transition-all duration-200 relative',
+                  'flex items-center space-x-3 p-3 border rounded-2xl cursor-pointer transition-all duration-200 relative',
                   userAnswers.find(a => a.questionId === questions[currentQuestionIndex].id)?.answerId === answer.id
                     ? 'bg-emerald-50 border-emerald-200'
-                    : 'bg-gray-50 border-gray-200 hover:bg-emerald-50/50'
+                    : 'bg-white border-gray-200 hover:bg-gray-50'
                 )}
+                style={{ minHeight: 0 }}
               >
                 <input
                   type="radio"
@@ -558,9 +510,9 @@ return (
                   aria-label={`Выбрать ответ: ${answer.text}`}
                 />
                 <span className="w-5 h-5 min-w-[1.25rem] min-h-[1.25rem] aspect-square rounded-full border-2 border-emerald-500 bg-white flex items-center justify-center peer-checked:bg-emerald-500 peer-checked:border-emerald-500 transition overflow-hidden">
-                  <span className="w-2.5 h-2.5 rounded-full bg-white peer-checked:bg-white transition-all"></span>
+                  <span className="w-3 h-3 rounded-full bg-white peer-checked:bg-white transition-all"></span>
                 </span>
-                <span className="text-gray-800 text-base">{answer.text}</span>
+                <span className="text-gray-800 text-sm leading-tight">{answer.text}</span>
               </label>
             ))}
           </div>
@@ -571,11 +523,12 @@ return (
               <label
                 key={answer.id}
                 className={clsx(
-                  'flex items-center space-x-3 p-4 border rounded-lg cursor-pointer transition-all duration-200 relative',
+                  'flex items-center space-x-3 p-3 border rounded-2xl cursor-pointer transition-all duration-200 relative',
                   userAnswers.find(a => a.questionId === questions[currentQuestionIndex].id)?.answerId?.split(',').includes(answer.id)
                     ? 'bg-emerald-50 border-emerald-200'
-                    : 'bg-gray-50 border-gray-200 hover:bg-emerald-50/50'
+                    : 'bg-white border-gray-200 hover:bg-gray-50'
                 )}
+                style={{ minHeight: 0 }}
               >
                 <input
                   type="checkbox"
@@ -615,7 +568,7 @@ return (
                     <polyline points="4,8 7,11 12,5" />
                   </svg>
                 </span>
-                <span className="text-gray-800 text-base">{answer.text}</span>
+                <span className="text-gray-800 text-sm leading-tight">{answer.text}</span>
               </label>
             ))}
           </div>
@@ -641,7 +594,7 @@ return (
               }}
             >
               <SortableContext items={userAnswers.find(a => a.questionId === questions[currentQuestionIndex].id)?.userOrder || []} strategy={verticalListSortingStrategy}>
-                <ul className="space-y-3">
+                <ul className="space-y-2">
                   {userAnswers.find(a => a.questionId === questions[currentQuestionIndex].id)?.userOrder?.map((answerId, idx) => {
                     const answer = questions[currentQuestionIndex].answers?.find(a => String(a.id) === String(answerId));
                     return (
@@ -674,46 +627,44 @@ return (
           />
         )}
         {/* Navigation Buttons */}
-        <div className="flex justify-between mt-8">
-          {currentQuestionIndex > 0 ? (
+        <div className="fixed bottom-0 left-0 w-full z-40 flex justify-center pointer-events-none px-2 pb-6 sm:px-4 sm:pb-8">
+          <div className="w-full max-w-md mx-auto bg-white/30 backdrop-blur-[40px] rounded-2xl px-2 py-2 border border-white/50 flex items-center justify-between gap-2 pointer-events-auto font-mabry">
             <button
+              type="button"
               onClick={() => {
                 saveUserAnswer();
                 setCurrentQuestionIndex(prev => Math.max(0, prev - 1));
                 setQuestionStartTime(Date.now());
               }}
-              disabled={submitting}
-              className="flex items-center px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={submitting || currentQuestionIndex === 0}
+              className="flex items-center gap-2 min-w-[90px] h-10 px-3 text-base font-normal text-gray-400 bg-white/50 backdrop-blur-sm rounded-2xl hover:bg-gray-200 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none border border-gray-200"
               aria-label="Предыдущий вопрос"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
+              <ChevronLeft size={20} />
               Назад
             </button>
-          ) : <div />}
-          <button
-            onClick={() => {
-              saveUserAnswer();
-              if (currentQuestionIndex < questions.length - 1) {
-                setCurrentQuestionIndex(prev => prev + 1);
-                setQuestionStartTime(Date.now());
-              } else {
-                handleSubmitTest();
-              }
-            }}
-            disabled={submitting}
-            className="flex items-center px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label={currentQuestionIndex < questions.length - 1 ? "Следующий вопрос" : "Завершить тест"}
-          >
-            {currentQuestionIndex < questions.length - 1 ? (
-              <>
-                Далее <ArrowRight className="h-4 w-4 ml-2" />
-              </>
-            ) : (
-              <>
-                Завершить <Send className="h-4 w-4 ml-2" />
-              </>
-            )}
-          </button>
+            <div className="flex items-center justify-center min-w-[50px] h-10 px-2 text-sm font-normal text-gray-400">
+              {currentQuestionIndex + 1} из {questions.length}
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                saveUserAnswer();
+                if (currentQuestionIndex < questions.length - 1) {
+                  setCurrentQuestionIndex(prev => prev + 1);
+                  setQuestionStartTime(Date.now());
+                } else {
+                  handleSubmitTest();
+                }
+              }}
+              disabled={submitting}
+              className="flex items-center gap-2 min-w-[90px] h-10 px-6 text-base font-medium text-white bg-emerald-600 rounded-2xl hover:bg-emerald-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none border border-white/70"
+              aria-label={currentQuestionIndex < questions.length - 1 ? "Следующий вопрос" : "Завершить тест"}
+            >
+              Далее
+              <ChevronRight size={20} className="ml-2" />
+            </button>
+          </div>
         </div>
       </div>
     )}
@@ -734,15 +685,22 @@ function SortableSequenceItem({ id, text, index }: { id: string; text?: string; 
         touchAction: 'none',
       }}
       className={clsx(
-        'bg-white rounded-lg px-4 py-3 flex items-center shadow-sm border border-gray-200',
+        'bg-white rounded-2xl px-3 py-3 flex items-center shadow-sm border border-gray-200',
         isDragging ? 'ring-2 ring-emerald-400 shadow-md' : 'hover:bg-emerald-50/50'
       )}
-      {...attributes}
-      {...listeners}
       aria-label={`Вариант ответа ${index + 1}: ${text || '—'}`}
     >
-      <span className="mr-2 text-gray-500 font-medium">{index + 1}.</span>
-      <span className="text-gray-800 text-base">{text || '—'}</span>
+      <span
+        className="flex items-center cursor-grab active:cursor-grabbing select-none" // убрал w-8 и mr-1
+        {...attributes}
+        {...listeners}
+        tabIndex={0}
+        aria-label="Перетащить"
+      >
+        <GripVertical className="text-gray-400" size={18} />
+        <span className="ml-0.5 text-gray-500 font-medium text-xs">{index + 1}.</span> {/* минимальный отступ */}
+      </span>
+      <span className="text-gray-800 text-sm leading-tight flex-1">{text || '—'}</span>
     </li>
   );
 }
