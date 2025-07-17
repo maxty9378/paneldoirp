@@ -102,32 +102,29 @@ const SortableSequenceItem: React.FC<{
       ref={setNodeRef}
       style={{
         transform: CSS.Transform.toString(transform),
-        transition: isDragging ? 'none' : transition,
         zIndex: isDragging ? 50 : 'auto',
       }}
       className={`
-        group relative bg-white rounded-xl border-2 shadow-sm transition-all duration-200
+        group relative bg-white rounded-xl border-2 shadow-sm
+        transition-all duration-200 ease-[cubic-bezier(.4,1.2,.4,1)]
+        text-sm
         ${isDragging 
-          ? 'border-blue-500 shadow-lg scale-[1.02] rotate-1' 
-          : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+          ? 'border-[#19A980] shadow-lg'
+          : 'border-gray-200 hover:border-[#19A980]/60 hover:shadow-md'
         }
       `}
     >
-      <div className="flex items-center p-4 space-x-3">
+      <div className="flex items-center p-2 sm:p-3 gap-2">
         <div
-          className="flex items-center space-x-2 cursor-grab active:cursor-grabbing touch-none"
+          className="flex flex-col items-center gap-1 cursor-grab active:cursor-grabbing touch-none min-w-[2.25rem]"
           {...attributes}
           {...listeners}
         >
-          <GripVertical 
-            className="text-gray-400 group-hover:text-gray-600 transition-colors" 
-            size={20} 
-          />
-          <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center font-semibold text-sm">
+          <div className="w-7 h-7 bg-[#19A980]/10 text-[#19A980] rounded-lg flex items-center justify-center font-semibold text-xs mb-1">
             {index + 1}
           </div>
         </div>
-        <span className="text-gray-900 leading-relaxed flex-1 text-sm sm:text-base">
+        <span className="text-gray-900 flex-1 break-words whitespace-pre-line">
           {text || '—'}
         </span>
       </div>
@@ -512,6 +509,20 @@ export const TestTakingView: React.FC<TestTakingViewProps> = ({
   const currentAnswer = userAnswers.find((a) => a.questionId === currentQuestion?.id);
   const progress = questions.length > 0 ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0;
 
+  // Проверка заполненности ответа
+  let isAnswerFilled = false;
+  if (currentQuestion) {
+    if (currentQuestion.question_type === 'single_choice') {
+      isAnswerFilled = !!currentAnswer?.answerId;
+    } else if (currentQuestion.question_type === 'multiple_choice') {
+      isAnswerFilled = !!currentAnswer?.answerId && currentAnswer.answerId.split(',').filter(Boolean).length > 0;
+    } else if (currentQuestion.question_type === 'sequence') {
+      isAnswerFilled = Array.isArray(currentAnswer?.userOrder) && currentAnswer.userOrder.length === (currentQuestion.answers?.length || 0);
+    } else if (currentQuestion.question_type === 'text') {
+      isAnswerFilled = !!currentAnswer?.textAnswer && currentAnswer.textAnswer.trim().length > 0;
+    }
+  }
+
   // Loading state
   if (loading) {
     return (
@@ -576,83 +587,58 @@ export const TestTakingView: React.FC<TestTakingViewProps> = ({
   return (
     <>
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-lg border-b border-gray-200/50 shadow-sm rounded-lg">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={onCancel}
-                className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
-                aria-label="Выйти из теста"
-              >
-                <X size={20} className="text-gray-600" />
-              </button>
-              <div>
-                <h1 className="font-semibold text-gray-900 text-lg">{test.title}</h1>
-                <div className="flex items-center space-x-4 text-sm text-gray-500">
-                  <span className="flex items-center space-x-1">
-                    <BookOpen size={14} />
-                    <span>Вопрос {currentQuestionIndex + 1} из {questions.length}</span>
-                  </span>
-                  {test.passing_score > 0 && (
-                    <span className="flex items-center space-x-1">
-                      <Target size={14} />
-                      <span>Проходной балл: {test.passing_score}%</span>
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {timeRemaining !== null && timeRemaining > 0 && (
-              <div
-                className={`
-                  flex items-center space-x-2 px-3 py-2 rounded-xl font-mono text-sm
-                  ${timeRemaining <= 300
-                    ? 'bg-red-50 text-red-700 border border-red-200'
-                    : 'bg-[#19A980]/10 text-[#19A980] border border-[#19A980]/30'
-                  }
-                `}
-              >
-                <Clock size={16} />
-                <span>{formatTime(timeRemaining)}</span>
-              </div>
+      <header className="sticky top-0 z-40 bg-[#DDE8E7] text-white backdrop-blur-lg border-b border-gray-200/50 shadow-sm rounded-2xl">
+        <div className="max-w-4xl mx-auto px-4 py-4 text-white">
+          <div>
+            <h1 className="font-semibold text-gray-900 text-lg">{test.title}</h1>
+            {test.passing_score > 0 && (
+              <span className="flex items-center space-x-1 text-sm text-gray-500">
+                <Target size={14} />
+                <span>Проходной балл: {test.passing_score}%</span>
+              </span>
             )}
-          </div>
-
-          {/* Progress bar */}
-          <div className="mt-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-gray-700">Прогресс</span>
-              <span className="text-xs text-gray-500">{Math.round(progress)}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div
-                className="bg-gradient-to-r from-[#19A980] to-[#148A6B] h-2 rounded-full transition-all duration-500 ease-out"
-                style={{ width: `${progress}%` }}
-              />
+            <div className="mt-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-gray-700">Прогресс</span>
+                <span className="text-xs text-gray-500">{Math.round(progress)}%</span>
+              </div>
+              <div className="w-full bg-white rounded-full h-2">
+                <div
+                  className="bg-gradient-to-r from-[#4EC8A4] to-[#148A6B] h-2 rounded-full transition-all duration-500 ease-out"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
             </div>
           </div>
+          {timeRemaining !== null && timeRemaining > 0 && (
+            <div
+              className={`
+                flex items-center space-x-2 px-3 py-2 rounded-xl font-mono text-sm
+                ${timeRemaining <= 300
+                  ? 'bg-red-50 text-red-700 border border-red-200'
+                  : 'bg-[#19A980]/10 text-[#19A980] border border-[#19A980]/30'
+                }
+              `}
+            >
+              <Clock size={16} />
+              <span>{formatTime(timeRemaining)}</span>
+            </div>
+          )}
         </div>
       </header>
 
       {/* Main content */}
-      <main className="py-6 pb-32 bg-gradient-to-br from-slate-50 to-blue-50">
-        <div className="max-w-4xl mx-auto px-4">
+      <main className="py-6 pb-32 font-mabry">
+        <div className="max-w-4xl mx-auto">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200/50 overflow-hidden">
             <div className="p-6">
               {/* Question header */}
               <div className="flex items-start justify-between mb-6">
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 mb-3">
-                    <span className="px-3 py-1 bg-[#19A980]/10 text-[#19A980] rounded-full text-xs font-medium">
-                      {getQuestionTypeLabel(currentQuestion.question_type)}
-                    </span>
-                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">
-                      {currentQuestion.points} {currentQuestion.points === 1 ? 'балл' : 'баллов'}
-                    </span>
+                    {/* Тип вопроса убран по запросу */}
                   </div>
-                  <h2 className="text-xl font-semibold text-gray-900 leading-relaxed">
+                  <h2 className="font-semibold text-gray-900 text-lg leading-relaxed">
                     {currentQuestion.question}
                   </h2>
                 </div>
@@ -668,7 +654,7 @@ export const TestTakingView: React.FC<TestTakingViewProps> = ({
                         key={answer.id}
                         className={
                           [
-                            "group flex items-start space-x-4 p-4 border-2 rounded-2xl cursor-pointer transition-all duration-200",
+                            "group flex items-start space-x-3 p-3 border-2 rounded-2xl cursor-pointer transition-all duration-200 text-sm",
                             currentAnswer?.answerId === answer.id
                               ? "border-[#19A980] ring-1 ring-[#19A980]/10 shadow-sm bg-white"
                               : "border-gray-200 hover:border-gray-300 hover:bg-gray-50 bg-white"
@@ -679,7 +665,7 @@ export const TestTakingView: React.FC<TestTakingViewProps> = ({
                           <div
                             className={
                               [
-                                "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all",
+                                "w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all",
                                 currentAnswer?.answerId === answer.id
                                   ? "border-[#19A980] bg-[#19A980]"
                                   : "border-gray-300 group-hover:border-gray-400"
@@ -729,7 +715,7 @@ export const TestTakingView: React.FC<TestTakingViewProps> = ({
                         key={answer.id}
                         className={
                           [
-                            "group flex items-start space-x-4 p-4 border-2 rounded-2xl cursor-pointer transition-all duration-200",
+                            "group flex items-start space-x-3 p-3 border-2 rounded-2xl cursor-pointer transition-all duration-200 text-sm",
                             currentAnswer?.answerId?.split(',').includes(answer.id)
                               ? "border-[#19A980] ring-1 ring-[#19A980]/10 shadow-sm bg-white"
                               : "border-gray-200 hover:border-gray-300 hover:bg-gray-50 bg-white"
@@ -740,7 +726,7 @@ export const TestTakingView: React.FC<TestTakingViewProps> = ({
                           <div
                             className={
                               [
-                                "w-5 h-5 rounded border-2 flex items-center justify-center transition-all",
+                                "w-4 h-4 rounded border-2 flex items-center justify-center transition-all",
                                 currentAnswer?.answerId?.split(',').includes(answer.id)
                                   ? "border-[#19A980] bg-[#19A980]"
                                   : "border-gray-300 group-hover:border-gray-400"
@@ -876,7 +862,7 @@ export const TestTakingView: React.FC<TestTakingViewProps> = ({
 
                 <button
                   onClick={handleNext}
-                  disabled={submitting}
+                  disabled={submitting || !isAnswerFilled}
                   className="flex items-center space-x-2 px-6 py-3 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-[#19A980] hover:bg-[#148A6B] text-white shadow-lg"
                 >
                   {submitting ? (
@@ -922,7 +908,7 @@ export const TestTakingView: React.FC<TestTakingViewProps> = ({
             {/* Далее / Завершить */}
             <button
               onClick={handleNext}
-              disabled={submitting}
+              disabled={submitting || !isAnswerFilled}
               className="flex items-center space-x-2 px-4 py-2 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-[#19A980] hover:bg-[#148A6B] text-white shadow-md"
             >
               {submitting ? (

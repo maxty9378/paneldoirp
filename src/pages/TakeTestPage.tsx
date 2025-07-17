@@ -57,8 +57,8 @@ export default function TakeTestPage() {
       eventId={eventId}
       testId={testId}
       attemptId={attemptId}
-      onComplete={() => navigate('/')} // или ваша логика
-      onCancel={() => navigate('/')}
+      onComplete={() => navigate(`/event/${eventId}`)}
+      onCancel={() => navigate(`/event/${eventId}`)}
     />
   );
 } 
