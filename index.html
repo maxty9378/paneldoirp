@@ -12,15 +12,18 @@
   <body class="font-sans antialiased">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script src="https://unpkg.com/css-paint-polyfill@3.4.0/dist/css-paint-polyfill.js"></script>
     <script>
       (async function () {
-        if (!("paintWorklet" in CSS)) {
-          await import("css-paint-polyfill");
+        try {
+          if (!('paintWorklet' in CSS)) {
+            await import('https://unpkg.com/css-paint-polyfill@3.4.0/dist/css-paint-polyfill.js');
+          }
+          await CSS.paintWorklet.addModule(
+            'https://www.unpkg.com/css-houdini-squircle@1.0.2/squircle.min.js'
+          );
+        } catch (error) {
+          console.warn('Failed to load paint worklet:', error);
         }
-        CSS.paintWorklet.addModule(
-          "https://www.unpkg.com/css-houdini-squircle/squircle.min.js"
-        );
       })();
     </script>
   </body>
