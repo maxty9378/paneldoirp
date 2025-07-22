@@ -1,0 +1,107 @@
+[33mcommit 2b8b8cdf16a6f3e33467ff63447f82c518b378c6[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m
+Author: Maxty9378 <maxim.kadochkin@gmail.com>
+Date:   Tue Jul 22 09:01:44 2025 +0300
+
+    Первоначальный коммит
+
+[33mcommit bac268d7ca1bb50e1c5ce1686dfb00304fb224b0[m
+Author: Maxty9378 <maxim.kadochkin@gmail.com>
+Date:   Thu Jul 17 14:23:29 2025 +0300
+
+    Обновления интерфейса: центрирование кнопки сайдбара, улучшения тестирования и навигации
+
+[33mcommit 6356610e4c1160c092ecb27d90690056d050a493[m
+Author: Maxty9378 <maxim.kadochkin@gmail.com>
+Date:   Thu Jul 17 12:35:50 2025 +0300
+
+    Обновлён дизайн карточки вопроса: единый max-w, скругления, стили, фон
+
+[33mcommit 71250d796f0fabc7d6ac4f9a48d8ffb216bfab3c[m
+Author: Maxty9378 <maxim.kadochkin@gmail.com>
+Date:   Tue Jul 15 17:58:22 2025 +0300
+
+    UI: update bottom navigation menu to new glassmorphic design
+
+[33mcommit 38066dc58b14d975b33c973d221142aff26e230e[m
+Author: Maxty9378 <maxim.kadochkin@gmail.com>
+Date:   Tue Jul 15 17:18:22 2025 +0300
+
+    UI: make sequence drag icon and number as close as possible
+
+[33mcommit 9d9daae6b0cd0106b1664b86e77a6d6ea42b31ce[m
+Author: Maxty9378 <maxim.kadochkin@gmail.com>
+Date:   Tue Jul 15 15:21:35 2025 +0300
+
+    feat: добавлен manifest.json для поддержки PWA
+
+[33mcommit 41d87748ea84d0f13c1b7671af7b2c80569ad781[m
+Author: Maxty9378 <maxim.kadochkin@gmail.com>
+Date:   Tue Jul 15 15:14:35 2025 +0300
+
+    fix: определена функция requestFullscreen для корректной работы fullscreen на мобильных
+
+[33mcommit 14c83f2fd45160c5706dd11910887ffa52a91e67[m
+Author: Maxty9378 <maxim.kadochkin@gmail.com>
+Date:   Tue Jul 15 15:07:40 2025 +0300
+
+    Обновление логики теста, исправления перехода и attemptId
+
+[33mcommit 8194fd61419d175c3b838a63d957db6379cc5492[m
+Author: Maxty9378 <maxim.kadochkin@gmail.com>
+Date:   Tue Jul 15 14:58:16 2025 +0300
+
+    Trigger redeploy
+
+[33mcommit d40e0ebad64f8fff0be7a15fba41b986fa2e7148[m
+Author: Maxty9378 <maxim.kadochkin@gmail.com>
+Date:   Tue Jul 15 14:53:58 2025 +0300
+
+    Trigger redeploy
+
+[33mcommit 56a1abaaad316cdf7b162fe0c255ca5a3d902f7c[m
+Author: Maxty9378 <maxim.kadochkin@gmail.com>
+Date:   Tue Jul 15 14:39:40 2025 +0300
+
+    Fix SPA routing for Vercel
+
+[33mcommit 1457541fa2f651e39b292a020a12ed1f69174da7[m
+Author: Maxty9378 <maxim.kadochkin@gmail.com>
+Date:   Tue Jul 15 14:32:18 2025 +0300
+
+    Trigger Vercel redeploy
+
+[33mcommit b67a6e48e070cb444c1397b3950cd6fe32de2c04[m
+Author: Maxty9378 <maxim.kadochkin@gmail.com>
+Date:   Tue Jul 15 14:31:34 2025 +0300
+
+    Trigger Vercel redeploy
+
+[33mcommit bd9c2d1ee669adf16a694657e1fc5b3723e4352b[m
+Author: DOIRP <doirp.sns777@gmail.com>
+Date:   Tue Jul 15 14:26:37 2025 +0300
+
+    Trigger Vercel redeploy
+
+[33mcommit 278afded29df4e5a6f9db4561f5912bc9b4c8826[m
+Author: DOIRP <doirp.sns777@gmail.com>
+Date:   Tue Jul 15 14:19:39 2025 +0300
+
+    Исправлен drag-and-drop на мобильных
+
+[33mcommit fc49af11ac1aa51dfc4abed23e223deb2c6fc212[m
+Author: DOIRP <doirp.sns777@gmail.com>
+Date:   Tue Jul 15 14:12:56 2025 +0300
+
+    Исправлен drag-and-drop на мобильных, улучшен UI
+
+[33mcommit ceb9e73110eab2d06fe2ff9012cf88459243d84e[m
+Author: DOIRP <doirp.sns777@gmail.com>
+Date:   Tue Jul 15 14:08:03 2025 +0300
+
+    Исправлен drag-and-drop на мобильных, улучшен UI
+
+[33mcommit d873376d8a984fe7e1d2fe5f7b18b234f39a0965[m
+Author: DOIRP <doirp.sns777@gmail.com>
+Date:   Tue Jul 15 13:39:28 2025 +0300
+
+    Initial commit
