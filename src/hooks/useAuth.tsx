@@ -118,14 +118,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchProfileWithTimeout = async (userId: string, timeoutMs: number = 20000) => {
     console.log(`🔍 Fetching profile for userId: ${userId} with ${timeoutMs}ms timeout`);
     
-    return Promise.race([
-      supabase.from('users').select('*').eq('id', userId).maybeSingle(),
-      new Promise<never>((_, reject) => {
-        setTimeout(() => {
-          reject(new Error('Profile fetch timeout exceeded'));
-        }, timeoutMs);
-      })
-    ]);
+    // First, fetch the user data
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (userError || !userData) {
+      return { data: null, error: userError || new Error('User not found') };
+    }
+
+    // If user has a position_id, fetch the position name
+    if (userData.position_id) {
+      const { data: positionData, error: positionError } = await supabase
+        .from('positions')
+        .select('name')
+        .eq('id', userData.position_id)
+        .single();
+
+      if (!positionError && positionData) {
+        // Add position name to user data
+        userData.position = positionData.name;
+      }
+    }
+
+    return { data: userData, error: null };
   };
 
   // Handle missing profile creation
@@ -205,8 +223,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const cachedUser = getUserFromCache();
     if (cachedUser && cachedUser.id === userId) {
       console.log('✅ Using cached user profile:', cachedUser.id);
-      setUser(cachedUser);
-      setUserProfile(cachedUser);
+      // Ensure position has a default value in cached user
+      const userWithDefaultPosition = {
+        ...cachedUser,
+        position: cachedUser.position || 'Должность не указана'
+      };
+      setUser(userWithDefaultPosition);
+      setUserProfile(userWithDefaultPosition);
       setLoadingPhase('complete');
       setLoading(false);
       setRetryCount(0);
@@ -222,19 +245,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (userError) {
         console.warn('⚠️ Profile not found in database, creating from auth data');
         const fallbackUser = await handleMissingProfile(userId);
-        setUser(fallbackUser);
-        setUserProfile(fallbackUser);
+        const userWithPosition = {
+          ...fallbackUser,
+          position: fallbackUser.position || 'Должность не указана'
+        };
+        setUser(userWithPosition);
+        setUserProfile(userWithPosition);
+        cacheUserProfile(userWithPosition);
       } else if (userData) {
         console.log('✅ Profile found in database');
-        setUser(userData as User);
-        setUserProfile(userData as User);
-        cacheUserProfile(userData as User);
+        const userWithPosition = {
+          ...userData,
+          position: userData.position || 'Должность не указана'
+        } as User;
+        setUser(userWithPosition);
+        setUserProfile(userWithPosition);
+        cacheUserProfile(userWithPosition);
       } else {
         console.warn('⚠️ No profile data returned, creating fallback');
         const fallbackUser = await handleMissingProfile(userId);
-        setUser(fallbackUser);
-        setUserProfile(fallbackUser);
-        cacheUserProfile(fallbackUser);
+        const userWithPosition = {
+          ...fallbackUser,
+          position: fallbackUser.position || 'Должность не указана'
+        };
+        setUser(userWithPosition);
+        setUserProfile(userWithPosition);
+        cacheUserProfile(userWithPosition);
       }
       
       // Reset retry count on success

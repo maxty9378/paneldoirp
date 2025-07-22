@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import snsLogo from '../assets/sns-logo.svg';
 import { User, LogOut, Settings, Camera } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { USER_ROLE_LABELS } from '../types';
 
 import { AvatarModal } from './profile/AvatarModal';
 
@@ -15,16 +16,16 @@ export function Header() {
 
   const isAdmin = userProfile?.role === 'administrator';
 
-  // Мемоизация вычислений имени и роли
+  // Мемоизация вычислений имени и должности
   const displayName = useMemo(() => {
     if (loading) return '...';
     return userProfile?.full_name || user?.email?.split('@')[0] || 'Пользователь';
   }, [userProfile, user, loading]);
 
-  const displayRole = useMemo(() => {
+  const displayPosition = useMemo(() => {
     if (loading) return '...';
-    return userProfile?.role ? userProfile.role : 'Пользователь';
-  }, [userProfile, loading]); // Оставляем только для отображения роли, не для переключения
+    return userProfile?.position || 'Должность не указана';
+  }, [userProfile, loading]);
 
   
   const handleSignOut = async () => {
@@ -90,8 +91,7 @@ export function Header() {
             <div className="text-right">
               <p className="text-sm font-medium text-gray-900">{displayName}</p>
               <div className="flex items-center space-x-1">
-                <p className="text-xs text-gray-500">{displayRole}</p>
-                
+                <p className="text-xs text-gray-500">{displayPosition}</p>
               </div>
             </div>
             {/* Аватар */}
