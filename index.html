@@ -18,9 +18,8 @@
           if (!('paintWorklet' in CSS)) {
             await import('https://unpkg.com/css-paint-polyfill@3.4.0/dist/css-paint-polyfill.js');
           }
-          await CSS.paintWorklet.addModule(
-            'https://www.unpkg.com/css-houdini-squircle@1.0.2/squircle.min.js'
-          );
+          // Используем CDN для загрузки squircle
+          await CSS.paintWorklet.addModule('https://cdn.jsdelivr.net/npm/css-houdini-squircle@0.3.0/lib/squircle.min.js');
         } catch (error) {
           console.warn('Failed to load paint worklet:', error);
         }
