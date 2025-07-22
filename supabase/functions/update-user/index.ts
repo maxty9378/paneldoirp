@@ -116,6 +116,18 @@ Deno.serve(async (req) => {
     }
 
     // Update the user in the database
+    // Валидация роли, если она есть в updates
+    const VALID_ROLES = [
+      'employee',
+      'supervisor',
+      'trainer',
+      'expert',
+      'moderator',
+      'administrator'
+    ];
+    if (updates.role) {
+      updates.role = VALID_ROLES.includes(updates.role) ? updates.role : 'employee';
+    }
     const updateData = {
       ...updates,
       updated_at: new Date().toISOString()

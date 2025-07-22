@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "Supabase": {
+      "command": "npx @supabase/mcp-server-postgrest --apiUrl https://oaockmesooydvausfoca.supabase.co/rest/v1 --apiKey eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hb2NrbWVzb295ZHZhdXNmb2NhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEzNzI4NDEsImV4cCI6MjA2Njk0ODg0MX0.gwWS35APlyST7_IUvQvJtGO4QmGsvbE95lnQf0H1PUE --schema public",
+      "env": {}
+    }
+  }
+}

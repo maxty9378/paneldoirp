@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase, getUserFromCache, cacheUserProfile, clearUserCache } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
+import { getUserFromCache, cacheUserProfile, clearUserCache } from '../lib/userCache';
 import { Session } from '@supabase/supabase-js';
 
 interface User {
@@ -456,7 +457,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       try {
         // Get initial session with timeout
-        const sessionResult = await getSessionWithTimeout(15000);
+        const sessionResult = await getSessionWithTimeout(30000);
         setSessionLoaded(true);
         if (!isMounted) return;
         
@@ -496,13 +497,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         if (!isMounted) return;
         
-        if (error.message.includes('timeout')) {
-          setAuthError('Превышено время ожидания при получении сессии. Попробуйте обновить страницу.');
-        } else {
-          setAuthError(`Ошибка инициализации: ${error.message}`);
-        }
+        // Don't show error immediately on timeout, just complete loading
+        // User can still try to login
+        console.warn('⚠️ Auth initialization failed:', error.message);
         
-        setLoadingPhase('error');
+        setLoadingPhase('ready');
         setLoading(false);
       }
     };
@@ -511,11 +510,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     timeoutId = setTimeout(() => {
       if (loading && !sessionLoaded && isMounted) {
         console.warn('⚠️ Auth initialization timeout reached');
-        setAuthError('Превышено время инициализации. Пожалуйста, обновите страницу.');
-        setLoadingPhase('error');
+        // Don't show error, just complete loading so user can try to login
+        setLoadingPhase('ready');
         setLoading(false);
       }
-    }, 15000);
+    }, 30000);
 
     // Start initialization
     initializeAuth();

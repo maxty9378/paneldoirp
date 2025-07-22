@@ -12,7 +12,7 @@ interface StatsCardProps {
 
 export function StatsCard({ title, value, change, changeType, icon }: StatsCardProps) {
   return (
-    <div className="bg-white rounded-squircle-lg shadow-soft p-6 hover:shadow-medium transition-all duration-200 hover:scale-[1.02]">
+    <div className="bg-white rounded-squircle-lg shadow-soft p-6 hover:shadow-medium transition-all duration-200 hover:scale-[1.02] squircle24">
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>

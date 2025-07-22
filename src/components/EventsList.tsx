@@ -644,82 +644,49 @@ export function EventsList({ onCreateEvent }: EventsListProps) {
             : 'grid-cols-1'
         )}>
           {filteredEvents.map((event) => (
+            {/* Модернизированная карточка мероприятия */}
             <div
               key={event.id}
-              className="card group hover:scale-[1.02] transition-all duration-200 overflow-hidden mobile-card"
+              className="group transition-all duration-300 overflow-hidden rounded-2xl shadow-2xl bg-gradient-to-br from-white via-blue-50 to-purple-50 border border-primary/10 hover:shadow-[0_8px_32px_rgba(80,36,255,0.10)] hover:-translate-y-1 mobile-card"
             >
-              <div className="p-6 mobile-card">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
-                      {getTypeIcon(event.type)}
-                      <span className="text-sm text-primary font-medium mobile-text">
-                        {EVENT_TYPE_LABELS[event.type as keyof typeof EVENT_TYPE_LABELS] || 'Неизвестный тип'}
-                      </span>
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-900 group-hover:text-primary transition-colors duration-200 mb-2 mobile-text">
-                      {event.title}
-                    </h3>
+              <div className="p-7 flex flex-col h-full">
+                {/* Верхняя строка: дата и статус */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center text-primary font-medium text-sm space-x-2">
+                    <Calendar className="h-5 w-5 mr-1 text-primary" />
+                    {format(new Date(event.start_date || event.date_time), 'dd MMMM yyyy', { locale: ru })}
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <span className={clsx(
-                      "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-light text-primary"
-                    )}>
-                      {getStatusIcon(event.status)}
-                      <span className="ml-1">{getStatusText(event.status)}</span>
-                    </span>
-                    {canCreateEvents && (
-                      <div className="relative">
-                        <button className="p-1 text-gray-400 hover:text-primary rounded-xl hover:bg-primary-light transition-colors">
-                          <MoreVertical size={16} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  <span className={clsx(
+                    "inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-blue-200 via-purple-200 to-blue-100 text-primary shadow-sm border border-blue-100"
+                  )}>
+                    {getStatusIcon(event.status)}
+                    <span className="ml-1">{getStatusText(event.status)}</span>
+                  </span>
                 </div>
-
+                {/* Название */}
+                <h3 className="text-xl font-extrabold text-gray-900 mb-2 group-hover:text-primary transition-colors duration-200">
+                  {event.title}
+                </h3>
+                {/* Описание */}
                 {event.description && (
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-2 mobile-text">
+                  <p className="text-gray-600 text-sm mb-4 line-clamp-2 bg-white/60 rounded-lg px-2 py-1">
                     {event.description}
                   </p>
                 )}
-
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center text-sm text-gray-500 mobile-text">
-                    <Calendar className="h-4 w-4 mr-2 flex-shrink-0 text-primary" />
-                    {format(new Date(event.start_date || event.date_time), 'dd MMMM yyyy', { locale: ru })}
-                  </div>
-                  
-                  <div className="flex items-center text-sm text-gray-500 mobile-text">
-                    <Clock className="h-4 w-4 mr-2 flex-shrink-0 text-primary" />
-                    {format(new Date(event.start_date || event.date_time), 'HH:mm')}
-                    {event.end_date && ` - ${format(new Date(event.end_date), 'HH:mm')}`}
-                  </div>
-
+                {/* Метаданные: время, место, участники */}
+                <div className="flex flex-wrap gap-3 text-sm text-gray-500 mb-4">
+                  <div className="flex items-center"><Clock className="h-4 w-4 mr-1" />{format(new Date(event.start_date || event.date_time), 'HH:mm')}{event.end_date && ` - ${format(new Date(event.end_date), 'HH:mm')}`}</div>
                   {event.location && (
-                    <div className="flex items-center text-sm text-gray-500 mobile-text">
-                      <MapPin className="h-4 w-4 mr-2 flex-shrink-0 text-primary" />
-                      <span className="truncate">{event.location}</span>
-                    </div>
+                    <div className="flex items-center"><MapPin className="h-4 w-4 mr-1" />{event.location}</div>
                   )}
-
+                  <div className="flex items-center"><Users className="h-4 w-4 mr-1" />{event.participants_count || 0} участников{event.max_participants && ` из ${event.max_participants}`}</div>
                   {(event.meeting_link || event.link) && (
-                    <div className="flex items-center text-sm text-gray-500 mobile-text">
-                      <LinkIcon className="h-4 w-4 mr-2 flex-shrink-0 text-primary" />
-                      <span className="truncate">Ссылка на встречу</span>
-                    </div>
+                    <div className="flex items-center"><LinkIcon className="h-4 w-4 mr-1" />Ссылка на встречу</div>
                   )}
-
-                  <div className="flex items-center text-sm text-gray-500 mobile-text">
-                    <Users className="h-4 w-4 mr-2 flex-shrink-0 text-primary" />
-                    {event.participants_count || 0} участников
-                    {event.max_participants && ` из ${event.max_participants}`}
-                  </div>
                 </div>
-
-                {/* Urgent Tasks */}
+                {/* Срочные задачи */}
                 {getUrgentTasks(event).length > 0 && (
-                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl">
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl animate-pulse">
                     <div className="flex items-center space-x-2 mb-2">
                       <Zap size={16} className="text-red-600" />
                       <span className="text-sm font-medium text-red-800">Требует внимания</span>
@@ -731,8 +698,8 @@ export function EventsList({ onCreateEvent }: EventsListProps) {
                     </ul>
                   </div>
                 )}
-
-                <div className="flex items-center justify-between pt-4 border-t border-primary-light">
+                {/* Нижний блок: дата создания, баллы, кнопки */}
+                <div className="flex items-center justify-between pt-4 border-t border-primary-light mt-auto">
                   <div className="flex items-center space-x-4">
                     <div className="text-xs text-gray-500">
                       Создано {format(new Date(event.created_at), 'dd.MM.yyyy')}
@@ -744,19 +711,19 @@ export function EventsList({ onCreateEvent }: EventsListProps) {
                       </div>
                     )}
                   </div>
-                  
                   <div className="flex items-center space-x-2">
-                    <button className="btn-outline flex items-center" title="Просмотр">
+                    {/* Кнопки управления с анимацией и тултипами */}
+                    <button className="btn-outline flex items-center transition-all duration-200 hover:bg-primary hover:text-white" title="Просмотр">
                       <Eye size={16} />
                     </button>
                     {canCreateEvents && (
                       <>
-                        <button className="btn-outline flex items-center" title="Редактировать">
+                        <button className="btn-outline flex items-center transition-all duration-200 hover:bg-primary/80 hover:text-white" title="Редактировать">
                           <Edit size={16} />
                         </button>
                         <button 
                           onClick={() => handleDeleteEvent(event.id)}
-                          className="btn-outline flex items-center border-red-400 text-red-600 hover:bg-red-50" 
+                          className="btn-outline flex items-center border-red-400 text-red-600 hover:bg-red-50 transition-all duration-200" 
                           title="Удалить"
                         >
                           <Trash2 size={16} />
@@ -767,9 +734,9 @@ export function EventsList({ onCreateEvent }: EventsListProps) {
                 </div>
               </div>
             </div>
+            {/* --- конец карточки --- */}
           ))}
         </div>
       )}
     </div>
   );
-}

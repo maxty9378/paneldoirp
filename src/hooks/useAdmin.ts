@@ -98,84 +98,71 @@ export function useAdmin() {
   const [error, setError] = useState<string | null>(null);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
-  const loadData = async () => {
-    // Don't show loading indicator for refresh operations after initial load
-    const isInitialLoad = !initialLoadComplete;
-    if (isInitialLoad) {
+  const loadData = async (forceRefresh = false) => {
+    // For manual refreshes, we want to show the loading indicator.
+    if (forceRefresh) {
       setLoading(true);
     }
     setError(null);
-    
-    // Try to get data from cache first for initial loads
-    if (isInitialLoad) {
-      const cachedData = getAdminDataFromCache();
-      if (cachedData) {
-        setUsers(cachedData.users || []);
-        setTerritories(cachedData.territories || []);
-        setBranches(cachedData.branches || []);
-        setPositions(cachedData.positions || []);
-        setStatistics(cachedData.statistics || null);
-        setLoading(false);
-        setInitialLoadComplete(true);
-        console.log('Loaded admin data from cache');
-        return;
+
+    // Load from cache first to show stale data quickly
+    const cachedData = getAdminDataFromCache();
+    if (cachedData) {
+      setUsers(cachedData.users || []);
+      setTerritories(cachedData.territories || []);
+      setBranches(cachedData.branches || []);
+      setPositions(cachedData.positions || []);
+      setStatistics(cachedData.statistics || null);
+      if (!forceRefresh) {
+        setLoading(false); // Stop loading if we have cache and it's not a forced refresh
       }
     }
 
     try {
-      // Загружаем пользователей
-      const { data: usersData, error: usersError } = await supabase
-        .from('users')
-        .select('*')
-        .order('full_name');
+      // Always fetch fresh data from the server
+      const [
+        usersResponse,
+        territoriesResponse,
+        branchesResponse,
+        positionsResponse
+      ] = await Promise.all([
+        supabase.from('users').select('*').order('full_name'),
+        supabase.from('territories').select('*').order('name'),
+        supabase.from('branches').select('*').order('name'),
+        supabase.from('positions').select('*').order('name')
+      ]);
 
-      if (usersError) throw usersError;
+      if (usersResponse.error) throw usersResponse.error;
+      if (territoriesResponse.error) throw territoriesResponse.error;
+      if (branchesResponse.error) throw branchesResponse.error;
+      if (positionsResponse.error) throw positionsResponse.error;
 
-      // Загружаем территории
-      const { data: territoriesData, error: territoriesError } = await supabase
-        .from('territories')
-        .select('*')
-        .order('name');
+      const usersData: User[] = usersResponse.data || [];
+      const territoriesData: Territory[] = territoriesResponse.data || [];
+      const branchesData: Branch[] = branchesResponse.data || [];
+      const positionsData: Position[] = positionsResponse.data || [];
 
-      if (territoriesError) throw territoriesError;
-
-      // Загружаем филиалы
-      const { data: branchesData, error: branchesError } = await supabase
-        .from('branches')
-        .select('*')
-        .order('name');
-
-      if (branchesError) throw branchesError;
-
-      // Загружаем должности
-      const { data: positionsData, error: positionsError } = await supabase
-        .from('positions')
-        .select('*')
-        .order('name');
-
-      if (positionsError) throw positionsError;
-
-      setUsers(usersData || []);
-      setTerritories(territoriesData || []);
-      setBranches(branchesData || []);
-      setPositions(positionsData || []);
+      setUsers(usersData);
+      setTerritories(territoriesData);
+      setBranches(branchesData);
+      setPositions(positionsData);
 
       // Вычисляем статистику
       const stats = {
-        total_users: usersData?.length || 0,
-        active_users: usersData?.filter(u => u.is_active).length || 0,
-        inactive_users: usersData?.filter(u => !u.is_active).length || 0,
-        administrators: usersData?.filter(u => u.role === 'administrator').length || 0,
-        trainers: usersData?.filter(u => u.role === 'trainer').length || 0,
+        total_users: usersData.length,
+        active_users: usersData.filter(u => u.is_active).length,
+        inactive_users: usersData.filter(u => !u.is_active).length,
+        administrators: usersData.filter(u => u.role === 'administrator').length,
+        trainers: usersData.filter(u => u.role === 'trainer').length,
       };
       setStatistics(stats);
 
       // Cache the data for future use
       cacheAdminData({
-        users: usersData || [],
-        territories: territoriesData || [],
-        branches: branchesData || [],
-        positions: positionsData || [],
+        users: usersData,
+        territories: territoriesData,
+        branches: branchesData,
+        positions: positionsData,
         statistics: stats
       });
       
@@ -183,31 +170,23 @@ export function useAdmin() {
       setInitialLoadComplete(true);
     } catch (err) {
       console.error('Error loading admin data:', err);
-      setError(err instanceof Error ? err.message : 'Ошибка загрузки данных');
+      // Only set error if we don't have cached data to show
+      if (!cachedData) {
+        setError(err instanceof Error ? err.message : 'Ошибка загрузки данных');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    // Load data only once during initialization
-    if (!initialLoadComplete) {
-      loadData();
-    }
+    loadData();
     
-    // Set timeout only for initial load
-    const timeout = setTimeout(() => {
-      if (loading) {
-        console.log('Admin data loading timeout reached, stopping loading state');
-        setLoading(false);
-        setError('Превышено время ожидания загрузки данных. Пожалуйста, обновите страницу.');
-      }
-    }, 15000); // 15 seconds maximum for loading
-    
+    // Cleanup function for the effect
     return () => {
-      clearTimeout(timeout);
+      // You can add cleanup logic here if needed, for example, aborting a fetch request.
     };
-  }, [initialLoadComplete]);
+  }, []); // Run only once on component mount
 
   return {
     users,
@@ -217,6 +196,6 @@ export function useAdmin() {
     statistics,
     loading,
     error,
-    loadData
+    loadData: () => loadData(true) // Expose a function to manually trigger a refresh
   };
 }

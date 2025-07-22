@@ -8,6 +8,116 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  // Минимальный endpoint для создания пользователя: только ФИО и email
+  if (new URL(req.url).pathname === '/simple-create' && req.method === 'POST') {
+    try {
+      const supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        }
+      );
+      const body = await req.json();
+      const full_name = body.full_name ?? '';
+      const email = body.email ?? '';
+      if (!full_name || !email) {
+        return new Response(JSON.stringify({ success: false, error: 'full_name and email required' }), {
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+          status: 400
+        });
+      }
+      const { data, error } = await supabaseClient.auth.admin.createUser({
+        email,
+        password: '123456',
+        email_confirm: true,
+        user_metadata: { full_name }
+      });
+      if (error) {
+        return new Response(JSON.stringify({ success: false, error }), {
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+          status: 400
+        });
+      }
+      return new Response(JSON.stringify({ success: true, user: data.user }), {
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        status: 201
+      });
+    } catch (e) {
+      return new Response(JSON.stringify({ success: false, error: String(e) }), {
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        status: 500
+      });
+    }
+  }
+
+  // MCP TEST ENDPOINT: /test-mcp-create
+  if (new URL(req.url).pathname === '/test-mcp-create' && req.method === 'POST') {
+    try {
+      const supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        }
+      );
+      const random = Math.floor(Math.random()*1000000);
+      const email = `cascade-mcp-test-${random}@example.com`;
+      const password = 'CascadeTest123!';
+      const full_name = 'Cascade MCP Test User';
+      // 1. Создаём пользователя в Auth
+      const { data: authData, error: authError } = await supabaseClient.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: {
+          full_name,
+          role: 'authenticated'
+        }
+      });
+      if (authError) {
+        return new Response(JSON.stringify({ success: false, error: authError }), {
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+          status: 500
+        });
+      }
+      const userId = authData.user.id;
+      // 2. Создаём профиль в public.users
+      const { data: userData, error: userError } = await supabaseClient.from('users').insert({
+        id: userId,
+        full_name,
+        role: 'authenticated', // Проверяем, что триггер/валидация защитит
+        branch: 'rnd_branch',
+        avatar_url: 'https://example.com/avatar.png',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }).select().single();
+      if (userError) {
+        // Чистим auth если не удалось создать профиль
+        await supabaseClient.auth.admin.deleteUser(userId);
+        return new Response(JSON.stringify({ success: false, error: userError }), {
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+          status: 500
+        });
+      }
+      return new Response(JSON.stringify({ success: true, auth_user: authData.user, public_user: userData }), {
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        status: 201
+      });
+    } catch (e) {
+      return new Response(JSON.stringify({ success: false, error: String(e) }), {
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        status: 500
+      });
+    }
+  }
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
@@ -113,12 +223,22 @@ serve(async (req) => {
     }
 
     // Create user profile in public.users table
+    // Валидация роли
+    const VALID_ROLES = [
+      'employee',
+      'supervisor',
+      'trainer',
+      'expert',
+      'moderator',
+      'administrator'
+    ];
+    const safeRole = VALID_ROLES.includes(role) ? role : 'employee';
     const userData = {
       id: userId,
       email: email || null,
       sap_number: sap_number || null,
       full_name,
-      role: role || 'employee',
+      role: safeRole,
       position_id,
       territory_id,
       subdivision: subdivision || 'management_company',
@@ -129,6 +249,7 @@ serve(async (req) => {
       is_active: true,
       department: department || 'management_company'
     };
+
 
     const { data: profileData, error: profileError } = await supabaseClient
       .from('users')

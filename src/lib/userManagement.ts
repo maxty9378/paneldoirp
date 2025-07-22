@@ -36,17 +36,19 @@ export async function createRegularUser(
     phone?: string;
     territory_id?: string | null;
     branch_id?: string | null;
+    position_id?: string | null;
     work_experience_days?: number;
   } = {}
 ): Promise<UserCreationResult> {
   try {
     console.log(`📝 Создание пользователя через Edge Function: ${email}, роль: ${role}`);
     
-    // Используем Edge Function для создания пользователя в обеих таблицах
     // Ensure sap_number is null if it's empty string to avoid unique constraint issues
     const sanitizedSapNumber = additionalData.sap_number && additionalData.sap_number.trim() !== '' 
       ? additionalData.sap_number 
       : null;
+    
+    // Используем Edge Function для создания пользователя в обеих таблицах
     
     const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user-and-auth`, {
       method: 'POST',
@@ -95,37 +97,6 @@ export async function createRegularUser(
     }
   } catch (error) {
     console.error('❌ Ошибка создания пользователя:', error);
-    
-    // Пробуем использовать RPC функцию как запасной вариант
-    if (error instanceof Error && error.message.includes('fetch')) {
-      try {
-        console.log("📝 Edge Function недоступна, используем RPC функцию");
-        const { data, error: rpcError } = await supabase.rpc('rpc_create_user_safe', {
-          p_email: email,
-          p_full_name: fullName,
-          p_role: role,
-          p_sap_number: sanitizedSapNumber,
-          p_phone: additionalData.phone,
-          p_territory_id: additionalData.territory_id,
-         p_branch_id: additionalData.branch_id,
-         p_position_id: additionalData.position_id
-        });
-        
-        if (rpcError) {
-          throw rpcError;
-        }
-        
-        return {
-          success: true,
-          message: 'Пользователь успешно создан через резервный метод',
-          email,
-          password: customPassword,
-          user: data?.user || null
-        };
-      } catch (rpcError) {
-        console.error('❌ Ошибка RPC функции:', rpcError);
-      }
-    }
     
     // Обработка специфических ошибок
     if (error instanceof Error) {

@@ -1,3 +1,74 @@
+@font-face {
+  font-family: 'Mabry';
+  src: url('./assets/fonts/MABRYPRO-REGULAR.TTF') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Mabry';
+  src: url('./assets/fonts/MABRYPRO-ITALIC.TTF') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Mabry';
+  src: url('./assets/fonts/MABRYPRO-MEDIUM.TTF') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Mabry';
+  src: url('./assets/fonts/MABRYPRO-MEDIUMITALIC.TTF') format('truetype');
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Mabry';
+  src: url('./assets/fonts/MABRYPRO-BOLD.TTF') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Mabry';
+  src: url('./assets/fonts/MABRYPRO-BOLDITALIC.TTF') format('truetype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Mabry';
+  src: url('./assets/fonts/MABRYPRO-BLACK.TTF') format('truetype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Mabry';
+  src: url('./assets/fonts/MABRYPRO-BLACKITALIC.TTF') format('truetype');
+  font-weight: 900;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Mabry';
+  src: url('./assets/fonts/MABRYPRO-LIGHT.TTF') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Mabry';
+  src: url('./assets/fonts/MABRYPRO-LIGHTITALIC.TTF') format('truetype');
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -142,6 +213,13 @@ button, input, select, textarea {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.superellipse {
+  --squircle-radius: 12px;
+  --squircle-smooth: 1;
+  mask-image: paint(squircle);
+  -webkit-mask-image: paint(squircle);
+}
+
 /* Стилизация для мобильных устройств */
 @media (max-width: 768px) {
   .mobile-optimized {
@@ -226,4 +304,34 @@ a:hover, a:focus {
 ::placeholder {
   color: var(--color-primary-dark);
   opacity: 0.6;
+}
+
+/* Универсальный squircle только для шейпов */
+.squircle24 {
+  --squircle-radius: 24px;
+  --squircle-smooth: 1;
+  mask-image: paint(squircle);
+  -webkit-mask-image: paint(squircle);
+  /* box-shadow: 0 0 0 2px #2196f3;  // Добавлять только если нужна обводка */
+}
+
+.squirclesbs24 div {
+  --squircle-radius: 24px;
+  --squircle-smooth: 1;
+  mask-image: paint(squircle);
+  -webkit-mask-image: paint(squircle);
+}
+
+.squircleform24 .t-input-block {
+  --squircle-radius: 24px;
+  --squircle-smooth: 1;
+  mask-image: paint(squircle);
+  -webkit-mask-image: paint(squircle);
+}
+
+.squircleform24 .tn-form__submit button {
+  --squircle-radius: 24px;
+  --squircle-smooth: 1;
+  mask-image: paint(squircle);
+  -webkit-mask-image: paint(squircle);
 }

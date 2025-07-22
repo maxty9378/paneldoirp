@@ -8,6 +8,72 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  // Минимальный endpoint для создания администратора: только ФИО и email
+  if (new URL(req.url).pathname === '/simple-admin-create' && req.method === 'POST') {
+    try {
+      const supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        }
+      );
+      const body = await req.json();
+      const full_name = body.full_name ?? '';
+      const email = body.email ?? '';
+      if (!full_name || !email) {
+        return new Response(JSON.stringify({ success: false, error: 'full_name and email required' }), {
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+          status: 400
+        });
+      }
+      // 1. Создаём пользователя в Auth
+      const { data: authData, error: authError } = await supabaseClient.auth.admin.createUser({
+        email,
+        password: '123456',
+        email_confirm: true,
+        user_metadata: { full_name, role: 'administrator' }
+      });
+      if (authError) {
+        return new Response(JSON.stringify({ success: false, error: authError }), {
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+          status: 400
+        });
+      }
+      const userId = authData.user.id;
+      // 2. Явно создаём профиль администратора в public.users
+      const { data: userData, error: userError } = await supabaseClient.from('users').insert({
+        id: userId,
+        full_name,
+        role: 'administrator',
+        branch: 'rnd_branch',
+        avatar_url: 'https://example.com/avatar.png',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }).select().single();
+      if (userError) {
+        // Чистим auth если не удалось создать профиль
+        await supabaseClient.auth.admin.deleteUser(userId);
+        return new Response(JSON.stringify({ success: false, error: userError }), {
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+          status: 500
+        });
+      }
+      return new Response(JSON.stringify({ success: true, auth_user: authData.user, public_user: userData }), {
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        status: 201
+      });
+    } catch (e) {
+      return new Response(JSON.stringify({ success: false, error: String(e) }), {
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        status: 500
+      });
+    }
+  }
+
   // Handle CORS preflight request
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -76,7 +142,17 @@ serve(async (req) => {
           id: authData?.user?.id || (userExists ? null : undefined),
           email,
           full_name: fullName,
-          role,
+          // Валидация роли
+          const VALID_ROLES = [
+            'employee',
+            'supervisor',
+            'trainer',
+            'expert',
+            'moderator',
+            'administrator'
+          ];
+          const safeRole = VALID_ROLES.includes(role) ? role : 'employee';
+          role: safeRole,
           subdivision: 'management_company',
           status: 'active',
           is_active: true,

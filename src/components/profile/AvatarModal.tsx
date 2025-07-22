@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Upload, Camera } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 interface AvatarModalProps {
   isOpen: boolean;
@@ -15,16 +16,39 @@ export function AvatarModal({ isOpen, onClose, user, onSuccess }: AvatarModalPro
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || !user?.id) return;
 
     setUploading(true);
     try {
-      // Здесь будет логика загрузки файла в Supabase Storage
-      // Пока просто имитируем загрузку
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Генерируем уникальное имя файла
+      const fileExt = file.name.split('.').pop();
+      const filePath = `public/${user.id}.${fileExt}`;
+
+      // Загружаем файл в бакет avatars
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, {
+          upsert: true,
+          contentType: file.type,
+        });
+      if (uploadError) throw uploadError;
+
+      // Получаем публичную ссылку
+      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const publicUrl = data?.publicUrl;
+      if (!publicUrl) throw new Error('Не удалось получить ссылку на аватар');
+
+      // Обновляем avatar_url в таблице users
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ avatar_url: publicUrl })
+        .eq('id', user.id);
+      if (updateError) throw updateError;
+
       onSuccess();
     } catch (error) {
       console.error('Error uploading avatar:', error);
+      alert('Ошибка загрузки аватара. Попробуйте другой файл.');
     } finally {
       setUploading(false);
     }

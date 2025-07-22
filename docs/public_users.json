@@ -1,0 +1,29 @@
+[
+  {
+    "id": "83634bf4-35bc-42d1-a13c-ff8f16223c00",
+    "full_name": "Максим Максимов",
+    "role": "trainer",
+    "branch": "Max",
+    "avatar_url": null,
+    "created_at": "2025-04-04 11:11:07.533678+00",
+    "updated_at": "2025-04-07 06:37:46.967792+00"
+  },
+  {
+    "id": "af049de8-e1f4-4115-80b5-113432253a4d",
+    "full_name": "Иван Иванов",
+    "role": "trainer",
+    "branch": "ввввв",
+    "avatar_url": null,
+    "created_at": "2025-04-07 06:52:47.672512+00",
+    "updated_at": "2025-04-07 06:52:47.672512+00"
+  },
+  {
+    "id": "9c62d559-d783-4deb-a3fa-b83fc0714150",
+    "full_name": "Кадочкин Максим",
+    "role": "administrator",
+    "branch": "Москва",
+    "avatar_url": null,
+    "created_at": "2025-04-04 11:09:04.440834+00",
+    "updated_at": "2025-07-18 09:36:55.190491+00"
+  }
+]

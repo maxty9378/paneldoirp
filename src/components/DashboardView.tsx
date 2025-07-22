@@ -110,6 +110,11 @@ export function DashboardView() {
     return 'Добрый вечер';
   };
 
+  function extractFirstName(fullName: string): string {
+    const parts = fullName.split(' ');
+    return parts.length > 1 ? parts[1] : parts[0];
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -128,7 +133,7 @@ export function DashboardView() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold mb-1">
-              {getGreeting()}, {userProfile?.full_name?.split(' ')[0] || user?.full_name?.split(' ')[0] || 'Пользователь'}!
+              {getGreeting()}, {extractFirstName(userProfile?.full_name || 'Пользователь')}!
             </h1>
             <p className="text-white/90 text-base sm:text-lg mb-2">
               Добро пожаловать в личный кабинет своего обучения
