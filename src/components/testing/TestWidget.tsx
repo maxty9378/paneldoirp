@@ -53,15 +53,15 @@ export function TestWidget({ eventId, testType }: TestWidgetProps) {
       </div>
 
       {testStatus === 'not_started' && (
-        <button className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2">
-          <Play size={16} />
-          <span>Начать тест</span>
+        <button className="w-full bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-all duration-300 flex items-center justify-center space-x-3 group font-semibold">
+          <Play size={18} className="group-hover:animate-pulse" />
+          <span className="text-base">Начать тест</span>
         </button>
       )}
 
       {testStatus === 'completed' && (
-        <button className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors">
-          Просмотреть результаты
+        <button className="w-full bg-gray-100 text-gray-700 px-6 py-3 rounded-xl hover:bg-gray-200 transition-all duration-300 font-semibold">
+          <span className="text-base">Просмотреть результаты</span>
         </button>
       )}
     </div>

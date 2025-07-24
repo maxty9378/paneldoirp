@@ -30,10 +30,26 @@ export function useEventDetail(eventId: string) {
   async function fetchEvent() {
     const { data, error }: any = await supabase
       .from('events')
-      .select('*, event_type: event_type_id(*), creator: creator_id(*)')
+      .select(`
+        *, 
+        event_type: event_type_id(*), 
+        creator: creator_id(
+          id,
+          full_name,
+          email,
+          phone,
+          avatar_url,
+          position: position_id(name),
+          territory: territory_id(name),
+          branch: branch_id(name)
+        )
+      `)
       .eq('id', eventId)
       .single();
     if (error) throw error;
+    
+
+    
     setEvent(data);
   }
   async function fetchParticipants() {

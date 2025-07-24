@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { X, Star, StarIcon, Send, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { X, Star, Send, AlertTriangle, CheckCircle2, MessageSquare } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { clsx } from 'clsx';
 
@@ -48,6 +48,7 @@ export function FeedbackForm({ eventId, onClose, onSuccess }: FeedbackFormProps)
   useEffect(() => {
     const fetchTemplate = async () => {
       try {
+        console.log('Fetching feedback template for event:', eventId);
         setLoading(true);
         
         // Получаем тип мероприятия
@@ -57,7 +58,11 @@ export function FeedbackForm({ eventId, onClose, onSuccess }: FeedbackFormProps)
           .eq('id', eventId)
           .single();
         
-        if (eventError) throw eventError;
+        if (eventError) {
+          console.error('Error fetching event data:', eventError);
+          throw eventError;
+        }
+        console.log('Event data:', eventData);
         
         // Находим шаблон обратной связи для этого типа мероприятия
         const { data: templateData, error: templateError } = await supabase
@@ -69,11 +74,16 @@ export function FeedbackForm({ eventId, onClose, onSuccess }: FeedbackFormProps)
         
         if (templateError) {
           console.error('Error fetching feedback template:', templateError);
-          setError('Не удалось загрузить шаблон обратной связи');
+          if (templateError.code === 'PGRST116') {
+            setError('Для этого типа мероприятия не настроена форма обратной связи');
+          } else {
+            setError('Не удалось загрузить шаблон обратной связи');
+          }
           setLoading(false);
           return;
         }
         
+        console.log('Template data:', templateData);
         setTemplate(templateData);
         
         // Загружаем вопросы для шаблона
@@ -83,9 +93,19 @@ export function FeedbackForm({ eventId, onClose, onSuccess }: FeedbackFormProps)
           .eq('template_id', templateData.id)
           .order('order_num');
         
-        if (questionsError) throw questionsError;
+        if (questionsError) {
+          console.error('Error fetching questions:', questionsError);
+          throw questionsError;
+        }
         
+        console.log('Questions data:', questionsData);
         setQuestions(questionsData || []);
+        
+        if (!questionsData || questionsData.length === 0) {
+          setError('В шаблоне обратной связи нет вопросов');
+          setLoading(false);
+          return;
+        }
         
         // Инициализируем ответы
         setAnswers(
@@ -98,7 +118,17 @@ export function FeedbackForm({ eventId, onClose, onSuccess }: FeedbackFormProps)
         
       } catch (err) {
         console.error('Error fetching feedback template:', err);
-        setError('Произошла ошибка при загрузке формы обратной связи');
+        if (err instanceof Error) {
+          if (err.message.includes('function does not exist')) {
+            setError('Функция загрузки шаблона не найдена в базе данных');
+          } else if (err.message.includes('permission denied')) {
+            setError('Нет прав для загрузки шаблона обратной связи');
+          } else {
+            setError(`Произошла ошибка при загрузке формы обратной связи: ${err.message}`);
+          }
+        } else {
+          setError('Произошла ошибка при загрузке формы обратной связи');
+        }
       } finally {
         setLoading(false);
       }
@@ -111,6 +141,7 @@ export function FeedbackForm({ eventId, onClose, onSuccess }: FeedbackFormProps)
   
   // Обновление рейтинга
   const handleRatingChange = (questionId: string, rating: number) => {
+    console.log('Rating changed:', questionId, rating);
     setAnswers(prev => prev.map(a => 
       a.questionId === questionId 
         ? { ...a, ratingValue: rating }
@@ -129,41 +160,54 @@ export function FeedbackForm({ eventId, onClose, onSuccess }: FeedbackFormProps)
   
   // Проверка валидности формы
   const isFormValid = () => {
+    console.log('Checking form validity:', { questions: questions.length, answers: answers.length });
+    
     // Проверяем, что на все обязательные вопросы с рейтингом даны ответы
     const requiredRatingQuestions = questions.filter(q => q.required && q.question_type === 'rating');
+    console.log('Required rating questions:', requiredRatingQuestions.length);
     
     for (const question of requiredRatingQuestions) {
       const answer = answers.find(a => a.questionId === question.id);
+      console.log('Question:', question.question, 'Answer:', answer);
       if (!answer || answer.ratingValue === undefined || answer.ratingValue === null) {
+        console.log('Missing answer for question:', question.question);
         return false;
       }
     }
     
+    console.log('Form is valid');
     return true;
   };
   
   // Вычисляем средний рейтинг
   const calculateAverageRating = () => {
     const ratingAnswers = answers.filter(a => a.ratingValue !== undefined && a.ratingValue !== null);
+    console.log('Rating answers:', ratingAnswers.length);
     
     if (ratingAnswers.length === 0) {
+      console.log('No rating answers found');
       return null;
     }
     
     const sum = ratingAnswers.reduce((total, answer) => total + (answer.ratingValue || 0), 0);
-    return Math.round((sum / ratingAnswers.length) * 10) / 10; // Округляем до 1 знака
+    const average = Math.round((sum / ratingAnswers.length) * 10) / 10; // Округляем до 1 знака
+    console.log('Average rating:', average);
+    return average;
   };
   
   // Отправка формы
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Form submitted');
     
     if (!isFormValid()) {
+      console.log('Form is not valid');
       setError('Пожалуйста, ответьте на все обязательные вопросы');
       return;
     }
     
     if (!userProfile || !template) {
+      console.log('Missing userProfile or template:', { userProfile: !!userProfile, template: !!template });
       setError('Ошибка идентификации пользователя или шаблона');
       return;
     }
@@ -174,6 +218,7 @@ export function FeedbackForm({ eventId, onClose, onSuccess }: FeedbackFormProps)
     try {
       // Создаем запись о заполненной форме
       const calculatedRating = overallRating || calculateAverageRating() || 0;
+      console.log('Calculated rating:', calculatedRating, 'Overall rating:', overallRating);
       
       const { data: submission, error: submissionError } = await supabase
         .from('feedback_submissions')
@@ -188,7 +233,10 @@ export function FeedbackForm({ eventId, onClose, onSuccess }: FeedbackFormProps)
         .select()
         .single();
       
-      if (submissionError) throw submissionError;
+      if (submissionError) {
+        console.error('Error creating feedback submission:', submissionError);
+        throw submissionError;
+      }
       
       // Создаем записи об ответах на вопросы
       const answersToInsert = answers
@@ -200,31 +248,53 @@ export function FeedbackForm({ eventId, onClose, onSuccess }: FeedbackFormProps)
           text_value: answer.textValue || null
         }));
       
+      console.log('Answers to insert:', answersToInsert.length);
+      
       if (answersToInsert.length > 0) {
         const { error: answersError } = await supabase
           .from('feedback_answers')
           .insert(answersToInsert);
         
-        if (answersError) throw answersError;
+        if (answersError) {
+          console.error('Error creating feedback answers:', answersError);
+          throw answersError;
+        }
       }
       
       // Обновляем статус заполнения обратной связи в таблице участников
-      await supabase
+      const { error: updateError } = await supabase
         .from('event_participants')
         .update({ feedback_submitted: true })
         .match({ event_id: eventId, user_id: userProfile.id });
       
+      if (updateError) {
+        console.error('Error updating participant status:', updateError);
+        // Не прерываем процесс, так как основная форма уже отправлена
+      }
+      
+      console.log('Feedback submitted successfully');
       setSuccess(true);
       
       // Закрываем форму после успешной отправки
       setTimeout(() => {
+        console.log('Closing form after success');
         onSuccess();
         onClose();
       }, 2000);
       
     } catch (err) {
       console.error('Error submitting feedback:', err);
-      setError('Произошла ошибка при отправке обратной связи');
+      if (err instanceof Error) {
+        if (err.message.includes('duplicate key')) {
+          setError('Вы уже отправили обратную связь для этого мероприятия');
+        } else if (err.message.includes('foreign key')) {
+          setError('Ошибка связи с базой данных');
+        } else {
+          setError(`Произошла ошибка при отправке обратной связи: ${err.message}`);
+        }
+      } else {
+        setError('Произошла ошибка при отправке обратной связи');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -233,38 +303,54 @@ export function FeedbackForm({ eventId, onClose, onSuccess }: FeedbackFormProps)
   // Рендерим звезды для рейтинга
   const renderStars = (questionId: string, currentRating: number | undefined | null) => {
     return (
-      <div className="flex items-center space-x-1 mt-2">
-        {[1, 2, 3, 4, 5].map((rating) => (
-          <button
-            key={rating}
-            type="button"
-            onClick={() => handleRatingChange(questionId, rating)}
-            className={`p-1 rounded-full transition-colors ${
-              (currentRating || 0) >= rating
-                ? 'text-yellow-500 hover:text-yellow-600'
-                : 'text-gray-300 hover:text-gray-400'
-            }`}
-            title={`${rating} ${rating === 1 ? 'балл' : rating < 5 ? 'балла' : 'баллов'}`}
-          >
-            <Star className="w-6 h-6 fill-current" />
-          </button>
-        ))}
-        <span className="ml-2 text-sm text-gray-700">
-          {currentRating ? `${currentRating} ${currentRating === 1 ? 'балл' : currentRating < 5 ? 'балла' : 'баллов'}` : 'Не выбрано'}
-        </span>
+      <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1">
+          {[1, 2, 3, 4, 5].map((rating) => (
+            <button
+              key={rating}
+              type="button"
+              onClick={() => handleRatingChange(questionId, rating)}
+              className={clsx(
+                "p-2 rounded-full transition-all duration-200",
+                (currentRating || 0) >= rating
+                  ? "hover:bg-amber-50"
+                  : "text-gray-300 hover:text-gray-400 hover:bg-gray-50"
+              )}
+              style={(currentRating || 0) >= rating ? { color: '#F59E0B', fill: '#F59E0B' } : {}}
+              title={`${rating} ${rating === 1 ? 'балл' : rating < 5 ? 'балла' : 'баллов'}`}
+            >
+              <Star className="w-7 h-7 fill-current" />
+            </button>
+          ))}
+        </div>
+        <div className="ml-4 px-3 py-1 bg-gray-100 rounded-full">
+          <span className="text-sm font-semibold text-gray-700">
+            {currentRating ? `${currentRating} ${currentRating === 1 ? 'балл' : currentRating < 5 ? 'балла' : 'баллов'}` : 'Не выбрано'}
+          </span>
+        </div>
       </div>
     );
   };
 
+  // --- Новый компактный и адаптивный рендер ---
+  console.log('FeedbackForm render:', {
+    loading,
+    error,
+    success,
+    template: !!template,
+    questionsCount: questions.length,
+    eventId
+  });
+
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-xl shadow-lg max-w-lg w-full p-6 animate-pulse">
-          <div className="h-8 bg-gray-200 rounded mb-4"></div>
-          <div className="space-y-4">
-            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-            <div className="h-4 bg-gray-200 rounded"></div>
-            <div className="h-4 bg-gray-200 rounded"></div>
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
+        <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-4 animate-pulse">
+          <div className="h-6 bg-gray-200 rounded mb-3"></div>
+          <div className="space-y-2">
+            <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+            <div className="h-3 bg-gray-200 rounded"></div>
+            <div className="h-3 bg-gray-200 rounded"></div>
           </div>
         </div>
       </div>
@@ -272,112 +358,170 @@ export function FeedbackForm({ eventId, onClose, onSuccess }: FeedbackFormProps)
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-gray-200 sticky top-0 bg-white z-10 flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-gray-900">
-            {template?.name || 'Обратная связь по мероприятию'}
-          </h2>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-200 max-w-lg w-full max-h-[95vh] overflow-y-auto flex flex-col">
+        {/* Шапка с заголовком и описанием */}
+        <div className="flex items-start justify-between gap-2 px-4 py-3 border-b border-gray-100 sticky top-0 bg-white z-10 rounded-t-2xl">
+          <div className="flex items-center gap-2">
+            <div className="p-1 rounded-lg bg-sns-100">
+              <MessageSquare className="h-5 w-5 text-sns-500" />
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-gray-900 leading-tight">
+                {template?.name || 'Стандартная форма обратной связи для оценки качества проведения тренинга'}
+              </h2>
+              {template?.description && (
+                <p className="text-xs sm:text-sm text-gray-500 mt-1 leading-snug">
+                  {template.description}
+                </p>
+              )}
+            </div>
+          </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="p-2 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-all duration-200"
+            aria-label="Закрыть"
           >
-            <X size={20} />
+            <X size={22} />
           </button>
         </div>
 
         {success ? (
-          <div className="p-10 text-center">
-            <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-4">
-              <CheckCircle2 className="w-8 h-8 text-green-600" />
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+            <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 shadow-lg" style={{ backgroundColor: '#10B981' }}>
+              <CheckCircle2 className="w-8 h-8 text-white" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">
               Спасибо за вашу обратную связь!
             </h3>
-            <p className="text-gray-600 mb-4">
-              Ваши ответы помогут нам улучшить качество обучения.
+            <p className="text-gray-600 text-sm mb-4">
+              Ваши ответы помогут нам улучшить качество обучения и сделать будущие мероприятия еще лучше.
             </p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
-            {template?.description && (
-              <div className="bg-blue-50 text-blue-700 p-4 rounded-lg text-sm">
-                <p>{template.description}</p>
-              </div>
-            )}
-
+          <form onSubmit={handleSubmit} className="flex-1 flex flex-col gap-4 p-4">
             {error && (
-              <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
-                <div className="flex items-center">
-                  <AlertTriangle className="h-5 w-5 text-red-500 mr-2" />
-                  <p className="text-red-600">{error}</p>
-                </div>
+              <div className="bg-red-50 border-l-4 border-red-500 p-3 rounded-xl text-sm flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-red-400" />
+                <span className="text-red-600 font-medium">{error}</span>
               </div>
             )}
 
-            <p className="text-gray-600 text-sm">
-              Оцените качество проведенного мероприятия по шкале от 1 до 5, где:
-              <br />1 - очень плохо, 2 - плохо, 3 - удовлетворительно, 4 - хорошо, 5 - отлично
-            </p>
+            {/* Инструкция по оценке */}
+            <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 text-xs sm:text-sm flex items-center gap-2">
+              <Star className="h-4 w-4 text-amber-400" />
+              <span>1 — очень плохо, 2 — плохо, 3 — удовлетворительно, 4 — хорошо, 5 — отлично</span>
+            </div>
 
-            <div className="space-y-8">
+            <div className="flex-1 flex flex-col gap-4">
               {questions.map((question) => (
                 <div key={question.id} className={clsx(
-                  "p-4 border rounded-lg",
-                  question.required ? "border-gray-300" : "border-gray-200 bg-gray-50"
+                  'p-3 border rounded-xl bg-white flex flex-col gap-2',
+                  question.required ? 'border-blue-200' : 'border-gray-200'
                 )}>
-                  <label className="block font-medium text-gray-900">
+                  <label className="block font-semibold text-gray-900 text-sm mb-1">
                     {question.question}
                     {question.required && <span className="text-red-500 ml-1">*</span>}
                   </label>
-                  
                   {question.question_type === 'rating' ? (
-                    renderStars(
-                      question.id, 
-                      answers.find(a => a.questionId === question.id)?.ratingValue
-                    )
+                    <div className="flex items-center gap-2">
+                      {[1, 2, 3, 4, 5].map((rating) => {
+                        const currentRating = answers.find(a => a.questionId === question.id)?.ratingValue;
+                        return (
+                          <button
+                            key={rating}
+                            type="button"
+                            onClick={() => handleRatingChange(question.id, rating)}
+                            className={clsx(
+                              'p-1 rounded-full transition-all duration-200',
+                              currentRating && currentRating >= rating
+                                ? 'text-amber-400' : 'text-gray-300 hover:text-amber-400'
+                            )}
+                            style={currentRating && currentRating >= rating ? { color: '#F59E0B', fill: '#F59E0B' } : {}}
+                            title={`${rating} ${rating === 1 ? 'балл' : rating < 5 ? 'балла' : 'баллов'}`}
+                          >
+                            <Star className="w-6 h-6 fill-current" />
+                          </button>
+                        );
+                      })}
+                      {/* Не показываем подпись "Не выбрано" */}
+                      {(() => {
+                        const currentRating = answers.find(a => a.questionId === question.id)?.ratingValue;
+                        return currentRating ? (
+                          <span className="ml-2 px-2 py-0.5 bg-gray-100 rounded-full text-xs font-semibold text-gray-700">
+                            {currentRating} {currentRating === 1 ? 'балл' : currentRating < 5 ? 'балла' : 'баллов'}
+                          </span>
+                        ) : null;
+                      })()}
+                    </div>
                   ) : (
                     <textarea
-                      className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white text-sm"
                       rows={3}
                       value={answers.find(a => a.questionId === question.id)?.textValue || ''}
-                      onChange={(e) => handleTextChange(question.id, e.target.value)}
+                      onChange={e => handleTextChange(question.id, e.target.value)}
                       placeholder="Введите ваш ответ..."
                       required={question.required}
                     />
                   )}
                 </div>
               ))}
-
-              <div className="p-4 border border-gray-300 rounded-lg">
-                <label className="block font-medium text-gray-900">
-                  Общая оценка мероприятия
-                </label>
-                {renderStars('overall', overallRating)}
-                <p className="text-sm text-gray-500 mt-2">
-                  Если не указано, будет автоматически рассчитана как среднее значение всех оценок.
-                </p>
-              </div>
-
-              <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
-                <label className="block font-medium text-gray-900 mb-2">
-                  Дополнительные комментарии
-                </label>
-                <textarea
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  rows={3}
-                  value={comments}
-                  onChange={(e) => setComments(e.target.value)}
-                  placeholder="Поделитесь вашими мыслями о мероприятии..."
-                />
-              </div>
             </div>
 
-            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+            {/* Общая оценка */}
+            <div className="p-3 border border-purple-200 rounded-xl bg-purple-50 flex flex-col gap-2">
+              <label className="block font-semibold text-gray-900 text-sm mb-1">
+                Общая оценка мероприятия
+              </label>
+              <div className="flex items-center gap-2">
+                {[1, 2, 3, 4, 5].map((rating) => (
+                  <button
+                    key={rating}
+                    type="button"
+                    onClick={() => setOverallRating(rating)}
+                    className={clsx(
+                      'p-1 rounded-full transition-all duration-200',
+                      overallRating && overallRating >= rating
+                        ? 'text-purple-500' : 'text-gray-300 hover:text-purple-500'
+                    )}
+                    style={overallRating && overallRating >= rating ? { color: '#a78bfa', fill: '#a78bfa' } : {}}
+                    title={`${rating} ${rating === 1 ? 'балл' : rating < 5 ? 'балла' : 'баллов'}`}
+                  >
+                    <Star className="w-6 h-6 fill-current" />
+                  </button>
+                ))}
+                {/* Не показываем подпись "Не выбрано" */}
+                {overallRating ? (
+                  <span className="ml-2 px-2 py-0.5 bg-white border border-purple-200 rounded-full text-xs font-semibold text-purple-700">
+                    {overallRating} {overallRating === 1 ? 'балл' : overallRating < 5 ? 'балла' : 'баллов'}
+                  </span>
+                ) : null}
+              </div>
+              <p className="text-xs text-gray-500 bg-white p-2 rounded-lg border border-gray-200 mt-1">
+                <span className="font-medium">💡</span> Если не указано, будет автоматически рассчитана как среднее значение всех оценок.
+              </p>
+            </div>
+
+            {/* Комментарии */}
+            <div className="p-3 border border-gray-200 rounded-xl bg-gray-50 flex flex-col gap-2">
+              <label className="block font-semibold text-gray-900 text-sm mb-1">
+                Дополнительные комментарии
+              </label>
+              <textarea
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white text-sm"
+                rows={3}
+                value={comments}
+                onChange={e => setComments(e.target.value)}
+                placeholder="Поделитесь вашими мыслями о мероприятии..."
+              />
+            </div>
+
+            {/* Кнопки */}
+            <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-gray-100 mt-2">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="w-full sm:w-auto px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 font-semibold text-sm"
               >
                 Отмена
               </button>
@@ -385,20 +529,20 @@ export function FeedbackForm({ eventId, onClose, onSuccess }: FeedbackFormProps)
                 type="submit"
                 disabled={submitting || !isFormValid()}
                 className={clsx(
-                  "px-4 py-2 rounded-lg transition-colors",
+                  'w-full sm:w-auto px-6 py-2 rounded-lg transition-all duration-200 font-semibold shadow-md text-sm',
                   submitting || !isFormValid()
-                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                    : "bg-green-600 text-white hover:bg-green-700"
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'text-white hover:shadow-lg bg-sns-500'
                 )}
               >
                 {submitting ? (
-                  <div className="flex items-center">
+                  <div className="flex items-center justify-center">
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
                     <span>Отправка...</span>
                   </div>
                 ) : (
-                  <div className="flex items-center">
-                    <Send className="w-4 h-4 mr-2" />
+                  <div className="flex items-center justify-center">
+                    <Send className="w-4 h-4 mr-1" />
                     <span>Отправить отзыв</span>
                   </div>
                 )}

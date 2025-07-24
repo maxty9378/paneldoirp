@@ -150,6 +150,9 @@ export const TestTakingView: React.FC<TestTakingViewProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showCongrats, setShowCongrats] = useState(false);
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const [hasExistingProgress, setHasExistingProgress] = useState(false);
+  const [lastAnsweredQuestion, setLastAnsweredQuestion] = useState(0);
   const congratsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Touch sensors for drag and drop
@@ -200,6 +203,11 @@ export const TestTakingView: React.FC<TestTakingViewProps> = ({
 
       if (attemptError || !attemptData) {
         throw new Error('Попытка прохождения теста не найдена или недоступна');
+      }
+
+      // Проверяем, не завершён ли уже тест
+      if (attemptData.status === 'completed') {
+        throw new Error('Тест уже завершён. Повторное прохождение не допускается.');
       }
 
       // Load questions
@@ -273,10 +281,15 @@ export const TestTakingView: React.FC<TestTakingViewProps> = ({
         .eq('attempt_id', attemptId);
 
       if (!answersError && existingAnswers && existingAnswers.length > 0) {
+        // Определяем последний отвеченный вопрос
+        let lastAnswered = 0;
         initialUserAnswers = [...initialUserAnswers];
+        
         for (const answer of existingAnswers || []) {
           const questionIndex = questionsWithAnswers.findIndex((q: any) => q.id === answer.question_id);
           if (questionIndex >= 0) {
+            lastAnswered = Math.max(lastAnswered, questionIndex);
+            
             if (answer.text_answer) {
               initialUserAnswers[questionIndex] = {
                 ...initialUserAnswers[questionIndex],
@@ -308,6 +321,14 @@ export const TestTakingView: React.FC<TestTakingViewProps> = ({
             }
           }
         }
+        
+        setUserAnswers(initialUserAnswers);
+        setHasExistingProgress(true);
+        setLastAnsweredQuestion(lastAnswered);
+        
+        // Показываем модальное окно восстановления
+        setShowRestoreModal(true);
+      } else {
         setUserAnswers(initialUserAnswers);
       }
     } catch (err) {
@@ -339,6 +360,52 @@ export const TestTakingView: React.FC<TestTakingViewProps> = ({
   useEffect(() => {
     loadTestData();
   }, [loadTestData]);
+
+  // Handle restore choice
+  const handleRestoreChoice = (restore: boolean) => {
+    setShowRestoreModal(false);
+    
+    if (restore) {
+      // Восстанавливаем прогресс - переходим к последнему отвеченному вопросу
+      setCurrentQuestionIndex(lastAnsweredQuestion);
+    } else {
+      // Начинаем сначала - очищаем все ответы
+      const resetAnswers = questions.map((q: any) => {
+        if (q.question_type === 'sequence') {
+          const shuffled = (q.answers || [])
+            .map((a: any) => String(a.id))
+            .sort(() => Math.random() - 0.5);
+          return {
+            questionId: q.id,
+            marked: false,
+            userOrder: shuffled,
+            textAnswer: '',
+            answerId: '',
+          };
+        }
+        return {
+          questionId: q.id,
+          marked: false,
+          textAnswer: '',
+          answerId: '',
+        };
+      });
+      setUserAnswers(resetAnswers);
+      setCurrentQuestionIndex(0);
+      
+      // Очищаем сохраненные ответы в базе данных
+      supabase
+        .from('user_test_answers')
+        .delete()
+        .eq('attempt_id', attemptId)
+        .then(() => {
+          console.log('Сохраненные ответы очищены');
+        })
+        .catch((error) => {
+          console.error('Ошибка при очистке ответов:', error);
+        });
+    }
+  };
 
   // Save user answer
   const saveUserAnswer = async () => {
@@ -586,66 +653,101 @@ export const TestTakingView: React.FC<TestTakingViewProps> = ({
 
   return (
     <>
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#DDE8E7] text-white backdrop-blur-lg border-b border-gray-200/50 shadow-sm rounded-2xl">
-        <div className="max-w-4xl mx-auto px-4 py-4 text-white">
-          <div>
-            <h1 className="font-semibold text-gray-900 text-lg">{test.title}</h1>
-            {test.passing_score > 0 && (
-              <span className="flex items-center space-x-1 text-sm text-gray-500">
-                <Target size={14} />
-                <span>Проходной балл: {test.passing_score}%</span>
-              </span>
-            )}
-            <div className="mt-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-gray-700">Прогресс</span>
-                <span className="text-xs text-gray-500">{Math.round(progress)}%</span>
-              </div>
-              <div className="w-full bg-white rounded-full h-2">
-                <div
-                  className="bg-gradient-to-r from-[#4EC8A4] to-[#148A6B] h-2 rounded-full transition-all duration-500 ease-out"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
+      {/* Restore Progress Modal */}
+      {showRestoreModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-8 shadow-2xl text-center max-w-md w-full border border-gray-200 animate-in fade-in-0 zoom-in-95 duration-300">
+            <div className="w-16 h-16 bg-[#06A478]/10 rounded-full flex items-center justify-center mx-auto mb-6">
+              <BookOpen className="text-[#06A478]" size={32} />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">Восстановить прогресс?</h2>
+            <p className="text-gray-600 mb-6">
+              Обнаружен сохраненный прогресс прохождения теста. 
+              Вы ответили на {lastAnsweredQuestion + 1} из {questions.length} вопросов.
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={() => handleRestoreChoice(true)}
+                className="w-full bg-gradient-to-r from-[#06A478] to-[#148A6B] hover:from-[#148A6B] hover:to-[#06A478] text-white font-semibold py-3 px-6 rounded-2xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              >
+                Продолжить с вопроса {lastAnsweredQuestion + 1}
+              </button>
+              <button
+                onClick={() => handleRestoreChoice(false)}
+                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-3 px-6 rounded-2xl transition-all duration-300"
+              >
+                Начать сначала
+              </button>
             </div>
           </div>
-          {timeRemaining !== null && timeRemaining > 0 && (
-            <div
-              className={`
-                flex items-center space-x-2 px-3 py-2 rounded-xl font-mono text-sm
-                ${timeRemaining <= 300
-                  ? 'bg-red-50 text-red-700 border border-red-200'
-                  : 'bg-[#19A980]/10 text-[#19A980] border border-[#19A980]/30'
-                }
-              `}
-            >
-              <Clock size={16} />
-              <span>{formatTime(timeRemaining)}</span>
+        </div>
+      )}
+
+      {/* Header */}
+      <header className="sticky top-0 z-40 bg-gradient-to-r from-[#06A478] to-[#148A6B] shadow-lg rounded-b-2xl">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <h1 className="font-bold text-white text-lg mb-1">{test.title}</h1>
+              {test.passing_score > 0 && (
+                <div className="flex items-center space-x-2 text-xs text-white/90 mb-3">
+                  <Target size={14} className="text-white/80" />
+                  <span>Проходной балл: {test.passing_score}%</span>
+                </div>
+              )}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-white">Прогресс</span>
+                  <span className="text-xs font-bold text-white">{Math.round(progress)}%</span>
+                </div>
+                <div className="w-full bg-white/20 rounded-full h-2 backdrop-blur-sm">
+                  <div
+                    className="bg-gradient-to-r from-white to-white/90 h-2 rounded-full transition-all duration-700 ease-out shadow-sm"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              </div>
             </div>
-          )}
+            {timeRemaining !== null && timeRemaining > 0 && (
+              <div
+                className={`
+                  flex items-center space-x-2 px-4 py-3 rounded-2xl font-mono text-sm bg-white/10 backdrop-blur-sm border border-white/20
+                  ${timeRemaining <= 300
+                    ? 'bg-red-500/20 text-red-100 border-red-300/30'
+                    : 'text-white'
+                  }
+                `}
+              >
+                <Clock size={16} />
+                <span>{formatTime(timeRemaining)}</span>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
       {/* Main content */}
-      <main className="py-6 pb-32 font-mabry">
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200/50 overflow-hidden">
-            <div className="p-6">
+      <main className="pb-32 font-mabry">
+        <div className="max-w-7xl mx-auto px-2">
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden mt-6">
+            <div className="p-0">
               {/* Question header */}
-              <div className="flex items-start justify-between mb-6">
+              <div className="flex items-start justify-between p-6 pb-4">
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 mb-3">
-                    {/* Тип вопроса убран по запросу */}
+                    <div className="w-6 h-6 bg-gradient-to-br from-[#06A478] to-[#148A6B] rounded-full flex items-center justify-center">
+                      <span className="text-white font-bold text-xs">{currentQuestionIndex + 1}</span>
+                    </div>
+                    <span className="text-xs font-medium text-gray-500">Вопрос {currentQuestionIndex + 1} из {questions.length}</span>
                   </div>
-                  <h2 className="font-semibold text-gray-900 text-lg leading-relaxed">
+                  <h2 className="font-bold text-gray-900 text-lg leading-relaxed">
                     {currentQuestion.question}
                   </h2>
                 </div>
               </div>
 
               {/* Answer options */}
-              <div className="space-y-4">
+              <div className="space-y-3 px-6 pb-6">
                 {/* Single Choice */}
                 {currentQuestion.question_type === 'single_choice' && (
                   <div className="space-y-3">
@@ -654,21 +756,21 @@ export const TestTakingView: React.FC<TestTakingViewProps> = ({
                         key={answer.id}
                         className={
                           [
-                            "group flex items-start space-x-3 p-3 border-2 rounded-2xl cursor-pointer transition-all duration-200 text-sm",
+                            "group flex items-start space-x-3 p-4 border-2 rounded-xl cursor-pointer transition-all duration-300 text-sm hover:shadow-md",
                             currentAnswer?.answerId === answer.id
-                              ? "border-[#19A980] ring-1 ring-[#19A980]/10 shadow-sm bg-white"
-                              : "border-gray-200 hover:border-gray-300 hover:bg-gray-50 bg-white"
+                              ? "border-[#06A478] bg-[#06A478]/15"
+                              : "border-gray-200 hover:border-[#06A478]/50 hover:bg-gray-50/80 bg-white"
                           ].join(' ')
                         }
                       >
-                        <div className="flex-shrink-0 mt-1">
+                        <div className="flex-shrink-0 mt-0.5">
                           <div
                             className={
                               [
-                                "w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all",
+                                "w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all duration-300",
                                 currentAnswer?.answerId === answer.id
-                                  ? "border-[#19A980] bg-[#19A980]"
-                                  : "border-gray-300 group-hover:border-gray-400"
+                                  ? "border-[#06A478] bg-[#06A478]"
+                                  : "border-gray-300 group-hover:border-[#06A478]/50"
                               ].join(' ')
                             }
                           >
@@ -715,10 +817,10 @@ export const TestTakingView: React.FC<TestTakingViewProps> = ({
                         key={answer.id}
                         className={
                           [
-                            "group flex items-start space-x-3 p-3 border-2 rounded-2xl cursor-pointer transition-all duration-200 text-sm",
+                            "group flex items-start space-x-3 p-4 border-2 rounded-xl cursor-pointer transition-all duration-300 text-sm hover:shadow-md",
                             currentAnswer?.answerId?.split(',').includes(answer.id)
-                              ? "border-[#19A980] ring-1 ring-[#19A980]/10 shadow-sm bg-white"
-                              : "border-gray-200 hover:border-gray-300 hover:bg-gray-50 bg-white"
+                              ? "border-[#06A478] bg-[#06A478]/15"
+                              : "border-gray-200 hover:border-[#06A478]/50 hover:bg-gray-50/80 bg-white"
                           ].join(' ')
                         }
                       >
@@ -726,10 +828,10 @@ export const TestTakingView: React.FC<TestTakingViewProps> = ({
                           <div
                             className={
                               [
-                                "w-4 h-4 rounded border-2 flex items-center justify-center transition-all",
+                                "w-4 h-4 rounded border-2 flex items-center justify-center transition-all duration-300",
                                 currentAnswer?.answerId?.split(',').includes(answer.id)
-                                  ? "border-[#19A980] bg-[#19A980]"
-                                  : "border-gray-300 group-hover:border-gray-400"
+                                  ? "border-[#06A478] bg-[#06A478]"
+                                  : "border-gray-300 group-hover:border-[#06A478]/50"
                               ].join(' ')
                             }
                           >
@@ -849,12 +951,12 @@ export const TestTakingView: React.FC<TestTakingViewProps> = ({
             </div>
 
             {/* Navigation */}
-            <div className="border-t border-gray-200/50 p-6 hidden sm:block">
+            <div className="border-t border-gray-100 p-6 hidden sm:block">
               <div className="flex items-center justify-between">
                 <button
                   onClick={handlePrevious}
                   disabled={submitting || currentQuestionIndex === 0}
-                  className="flex items-center space-x-2 px-6 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center space-x-2 px-6 py-3 text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-xl font-semibold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-md"
                 >
                   <ChevronLeft size={18} />
                   <span>Назад</span>
@@ -863,7 +965,7 @@ export const TestTakingView: React.FC<TestTakingViewProps> = ({
                 <button
                   onClick={handleNext}
                   disabled={submitting || !isAnswerFilled}
-                  className="flex items-center space-x-2 px-6 py-3 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-[#19A980] hover:bg-[#148A6B] text-white shadow-lg"
+                  className="flex items-center space-x-2 px-6 py-3 rounded-xl font-bold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-[#06A478] to-[#148A6B] hover:from-[#148A6B] hover:to-[#06A478] text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                 >
                   {submitting ? (
                     <>
@@ -883,33 +985,41 @@ export const TestTakingView: React.FC<TestTakingViewProps> = ({
         </div>
 
         {/* Mobile floating navigation - updated */}
-        <div className="fixed bottom-4 left-4 right-4 z-50 sm:hidden">
+        <div className="fixed bottom-4 left-2 right-2 z-50 sm:hidden">
           <div
             className="
               flex items-center justify-between gap-2 px-4 py-3 rounded-2xl shadow-xl
-              bg-white/70 backdrop-blur-md border border-gray-200
+              bg-white/95 backdrop-blur-xl
             "
           >
             {/* Назад */}
             <button
               onClick={handlePrevious}
               disabled={submitting || currentQuestionIndex === 0}
-              className="flex items-center space-x-2 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center space-x-2 px-3 py-2 text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-xl font-semibold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <ChevronLeft size={18} />
+              <ChevronLeft size={16} />
               <span>Назад</span>
             </button>
 
             {/* Текущий номер вопроса */}
-            <span className="text-sm text-gray-600 font-medium px-2">
-              {currentQuestionIndex + 1} из {questions.length}
-            </span>
+            <div className="flex flex-col items-center">
+              <span className="text-xs text-gray-500 font-medium">
+                {currentQuestionIndex + 1} из {questions.length}
+              </span>
+              <div className="w-12 h-1 bg-gray-200 rounded-full mt-1">
+                <div 
+                  className="h-1 bg-gradient-to-r from-[#06A478] to-[#148A6B] rounded-full transition-all duration-500"
+                  style={{ width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }}
+                />
+              </div>
+            </div>
 
             {/* Далее / Завершить */}
             <button
               onClick={handleNext}
               disabled={submitting || !isAnswerFilled}
-              className="flex items-center space-x-2 px-4 py-2 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-[#19A980] hover:bg-[#148A6B] text-white shadow-md"
+              className="flex items-center space-x-2 px-3 py-2 rounded-xl font-bold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-[#06A478] to-[#148A6B] hover:from-[#148A6B] hover:to-[#06A478] text-white shadow-lg"
             >
               {submitting ? (
                 <>

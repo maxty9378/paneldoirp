@@ -146,10 +146,10 @@ export default function AdminTestSection({ eventId, userProfile, onStartTest }) 
         </div>
         <button
           onClick={() => onStartTest(type)}
-          className={`w-full ${styles.btn} text-white px-3 py-2 rounded-lg transition-all flex items-center justify-center`}
+          className={`w-full ${styles.btn} text-white px-4 py-3 rounded-xl transition-all duration-300 flex items-center justify-center group font-semibold`}
         >
-          <PlayIcon size={16} className="mr-2" />
-          Тестировать
+          <PlayIcon size={18} className="mr-3 group-hover:animate-pulse" />
+          <span className="text-base">Тестировать</span>
         </button>
       </div>
     );

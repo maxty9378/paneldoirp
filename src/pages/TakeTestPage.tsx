@@ -8,14 +8,34 @@ function Loader() {
   return <div style={{ textAlign: 'center', marginTop: 40 }}>Загрузка...</div>;
 }
 
-// Пример функции создания attempt (замените на свою при необходимости)
+// Функция создания или получения существующей попытки
 async function createAttempt({ eventId, testId, userId }: { eventId: string, testId: string, userId: string }) {
+  // Сначала проверяем, есть ли уже попытка для этого пользователя, теста и мероприятия
+  const { data: existingAttempt, error: checkError } = await supabase
+    .from('user_test_attempts')
+    .select('id, status')
+    .eq('event_id', eventId)
+    .eq('test_id', testId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (checkError) throw checkError;
+
+  // Если попытка уже существует, возвращаем её ID
+  if (existingAttempt) {
+    console.log('Найдена существующая попытка:', existingAttempt.id, 'статус:', existingAttempt.status);
+    return existingAttempt.id;
+  }
+
+  // Если попытки нет, создаём новую
   const { data, error } = await supabase
     .from('user_test_attempts')
     .insert({ event_id: eventId, test_id: testId, user_id: userId, status: 'in_progress' })
     .select()
     .single();
+  
   if (error) throw error;
+  console.log('Создана новая попытка:', data.id);
   return data.id;
 }
 

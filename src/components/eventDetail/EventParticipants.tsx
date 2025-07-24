@@ -1,6 +1,17 @@
 import React from 'react';
+import { useAuth } from '../../hooks/useAuth';
 
 export function EventParticipants({ participants, onAction }: { participants: any[]; onAction?: (participant: any) => void }) {
+  const { userProfile } = useAuth();
+  
+  // Определяем, является ли пользователь участником (employee)
+  const isEmployee = userProfile?.role === 'employee';
+  
+  // Если пользователь является участником, не показываем компонент
+  if (isEmployee) {
+    return null;
+  }
+  
   if (!participants?.length) return null;
   return (
     <div className="bg-white rounded-xl p-4 border font-mabry">

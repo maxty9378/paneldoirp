@@ -470,7 +470,7 @@ export function TestDetailView({ testId, onClose, onEdit }: TestDetailViewProps)
                 <p className="text-gray-600">У этого теста нет вопросов</p>
                 <button
                   onClick={() => onEdit(test.id)}
-                  className="mt-4 px-4 py-2 bg-sns-green text-white rounded-lg hover:bg-sns-green-dark transition-colors inline-flex items-center"
+                  className="mt-4 px-4 py-2 bg-sns-green text-white rounded-xl hover:bg-sns-green-dark transition-all duration-300 inline-flex items-center"
                 >
                   <Edit className="h-4 w-4 mr-2" />
                   Редактировать тест
@@ -534,13 +534,13 @@ export function TestDetailView({ testId, onClose, onEdit }: TestDetailViewProps)
             </div>
             <button
               onClick={onClose}
-              className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="px-4 py-2 text-gray-600 border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-300"
             >
               Закрыть
             </button>
             <button
               onClick={() => onEdit(test.id)}
-              className="px-4 py-2 bg-sns-green text-white rounded-lg hover:bg-sns-green-dark transition-colors flex items-center"
+              className="px-4 py-2 bg-sns-green text-white rounded-xl hover:bg-sns-green-dark transition-all duration-300 flex items-center"
             >
               <Edit size={16} className="mr-2" />
               <span>Редактировать</span>

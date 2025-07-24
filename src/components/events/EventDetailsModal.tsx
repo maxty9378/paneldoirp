@@ -90,8 +90,7 @@ export function EventDetailsModal({ isOpen, onClose, event, onEdit }: EventDetai
               {onEdit && (
                 <button
                   onClick={onEdit}
-                  className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center space-x-1"
-                  className="px-3 py-1 bg-sns-600 text-white rounded-lg hover:bg-sns-700 transition-colors text-sm flex items-center space-x-1"
+                  className="px-4 py-2 bg-sns-600 text-white rounded-xl hover:bg-sns-700 transition-all duration-300 text-sm flex items-center space-x-2"
                 >
                   <Edit size={14} />
                   <span>Редактировать</span>

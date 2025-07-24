@@ -1,0 +1,68 @@
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Анимации для кнопок меню */
+.menu-button-hover {
+  transition: all 0.2s ease-out;
+}
+
+.menu-button-hover:hover {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+/* Стили для кнопок в стеклянном меню */
+.glass-menu-button {
+  transition: all 0.2s ease-out;
+  border-radius: 0.5rem;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.glass-menu-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Эффект стекла */
+.glass-effect {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+/* Анимация для модального окна */
+.modal-backdrop {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.modal-content {
+  animation: scaleIn 0.3s ease-out;
+} 

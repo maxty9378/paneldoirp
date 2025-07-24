@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { clsx } from 'clsx';
+import { EventDetailsCard } from './eventDetail/EventDetailsCard';
 
 interface EventDetailModalProps {
   isOpen: boolean;
@@ -126,29 +127,50 @@ export function EventDetailModal({ isOpen, eventId, onClose }: EventDetailModalP
                   }
                 }));
               } else {
-                // Создаем новую попытку если её нет
-                const { data: newAttempt } = await supabase
+                // Проверяем, есть ли уже попытка для этого теста
+                const { data: existingAttempt } = await supabase
                   .from('user_test_attempts')
-                  .insert({
-                    user_id: userProfile.id,
-                    test_id: entryTestData.id,
-                    event_id: eventId,
-                    status: 'in_progress',
-                    start_time: new Date().toISOString()
-                  })
-                  .select()
-                  .single();
+                  .select('id, status, score')
+                  .eq('test_id', entryTestData.id)
+                  .eq('user_id', userProfile.id)
+                  .eq('event_id', eventId)
+                  .maybeSingle();
 
-                if (newAttempt) {
+                if (existingAttempt) {
                   setTestStatus(prev => ({
                     ...prev,
                     entry: {
                       available: true,
-                      completed: false,
-                      score: null,
-                      attemptId: newAttempt.id
+                      completed: existingAttempt.status === 'completed',
+                      score: existingAttempt.score,
+                      attemptId: existingAttempt.id
                     }
                   }));
+                } else {
+                  // Создаем новую попытку только если её нет
+                  const { data: newAttempt } = await supabase
+                    .from('user_test_attempts')
+                    .insert({
+                      user_id: userProfile.id,
+                      test_id: entryTestData.id,
+                      event_id: eventId,
+                      status: 'in_progress',
+                      start_time: new Date().toISOString()
+                    })
+                    .select()
+                    .single();
+
+                  if (newAttempt) {
+                    setTestStatus(prev => ({
+                      ...prev,
+                      entry: {
+                        available: true,
+                        completed: false,
+                        score: null,
+                        attemptId: newAttempt.id
+                      }
+                    }));
+                  }
                 }
               }
             }
@@ -184,29 +206,50 @@ export function EventDetailModal({ isOpen, eventId, onClose }: EventDetailModalP
                   }
                 }));
               } else {
-                // Создаем новую попытку если её нет
-                const { data: newAttempt } = await supabase
+                // Проверяем, есть ли уже попытка для этого теста
+                const { data: existingAttempt } = await supabase
                   .from('user_test_attempts')
-                  .insert({
-                    user_id: userProfile.id,
-                    test_id: finalTestData.id,
-                    event_id: eventId,
-                    status: 'in_progress',
-                    start_time: new Date().toISOString()
-                  })
-                  .select()
-                  .single();
+                  .select('id, status, score')
+                  .eq('test_id', finalTestData.id)
+                  .eq('user_id', userProfile.id)
+                  .eq('event_id', eventId)
+                  .maybeSingle();
 
-                if (newAttempt) {
+                if (existingAttempt) {
                   setTestStatus(prev => ({
                     ...prev,
                     final: {
                       available: true,
-                      completed: false,
-                      score: null,
-                      attemptId: newAttempt.id
+                      completed: existingAttempt.status === 'completed',
+                      score: existingAttempt.score,
+                      attemptId: existingAttempt.id
                     }
                   }));
+                } else {
+                  // Создаем новую попытку только если её нет
+                  const { data: newAttempt } = await supabase
+                    .from('user_test_attempts')
+                    .insert({
+                      user_id: userProfile.id,
+                      test_id: finalTestData.id,
+                      event_id: eventId,
+                      status: 'in_progress',
+                      start_time: new Date().toISOString()
+                    })
+                    .select()
+                    .single();
+
+                  if (newAttempt) {
+                    setTestStatus(prev => ({
+                      ...prev,
+                      final: {
+                        available: true,
+                        completed: false,
+                        score: null,
+                        attemptId: newAttempt.id
+                      }
+                    }));
+                  }
                 }
               }
             }
@@ -341,79 +384,20 @@ export function EventDetailModal({ isOpen, eventId, onClose }: EventDetailModalP
                 )}
 
                 {/* Детали мероприятия */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <Calendar className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Дата</p>
-                      <p className="font-medium text-gray-900">{formatEventDate(event.start_date)}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-                      <Clock className="w-5 h-5 text-amber-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Время</p>
-                      <p className="font-medium text-gray-900">{formatEventTime(event.start_date)}</p>
-                    </div>
-                  </div>
-
-                  {event.location && (
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                        <MapPin className="w-5 h-5 text-green-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Место проведения</p>
-                        <p className="font-medium text-gray-900">{event.location}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {event.points > 0 && (
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-                        <Award className="w-5 h-5 text-yellow-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Баллы за участие</p>
-                        <p className="font-medium text-gray-900">{event.points} баллов</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {event.meeting_link && (
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <LinkIcon className="w-5 h-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Ссылка на встречу</p>
-                        <a 
-                          href={event.meeting_link} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="font-medium text-blue-600 hover:underline"
-                        >
-                          Перейти к встрече
-                        </a>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                      <User className="w-5 h-5 text-purple-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Организатор</p>
-                      <p className="font-medium text-gray-900">{event.creator?.full_name}</p>
-                    </div>
-                  </div>
+                <div className="mb-6">
+                  <EventDetailsCard 
+                    event={event} 
+                    isCreator={event.creator_id === userProfile?.id}
+                    onUpdateOrganizerData={(newAvatarUrl) => {
+                      setEvent(prevEvent => prevEvent ? {
+                        ...prevEvent,
+                        creator: {
+                          ...prevEvent.creator,
+                          avatar_url: newAvatarUrl
+                        }
+                      } : null);
+                    }}
+                  />
                 </div>
 
                 {/* Тесты для сотрудника */}
@@ -513,17 +497,19 @@ export function EventDetailModal({ isOpen, eventId, onClose }: EventDetailModalP
                     >
                       Детали мероприятия
                     </button>
-                    <button
-                      onClick={() => setActiveTab('participants')}
-                      className={clsx(
-                        "py-4 px-3 border-b-2 font-medium text-sm transition-colors",
-                        activeTab === 'participants' 
-                          ? 'border-sns-600 text-sns-600'
-                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                      )}
-                    >
-                      Участники ({participants.length})
-                    </button>
+                    {!isEmployee && (
+                      <button
+                        onClick={() => setActiveTab('participants')}
+                        className={clsx(
+                          "py-4 px-3 border-b-2 font-medium text-sm transition-colors",
+                          activeTab === 'participants' 
+                            ? 'border-sns-600 text-sns-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        )}
+                      >
+                        Участники ({participants.length})
+                      </button>
+                    )}
                     <button
                       onClick={() => setActiveTab('tests')}
                       className={clsx(
@@ -637,7 +623,7 @@ export function EventDetailModal({ isOpen, eventId, onClose }: EventDetailModalP
                   )}
 
                   {/* Вкладка с участниками */}
-                  {activeTab === 'participants' && (
+                  {activeTab === 'participants' && !isEmployee && (
                     <div>
                       {participants.length === 0 ? (
                         <div className="text-center py-8">
@@ -765,92 +751,7 @@ export function EventDetailModal({ isOpen, eventId, onClose }: EventDetailModalP
                         </ul>
                       </div>
 
-                      {/* Статистика по тестам */}
-                      <div className="bg-white p-4 rounded-lg border border-gray-200">
-                        <h3 className="font-medium text-gray-900 mb-3">Статистика прохождения тестов</h3>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          {event.event_type?.has_entry_test && (
-                            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                              <h4 className="text-sm font-medium text-blue-800 mb-1">Входной тест</h4>
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-2xl font-bold text-blue-900">
-                                    {participants.filter(p => p.entry_test_score !== null).length} / {participants.length}
-                                  </p>
-                                  <p className="text-xs text-blue-600">Прошедшие / Всего</p>
-                                </div>
-                                <div>
-                                  <p className="text-xl font-semibold text-blue-900">
-                                    {participants.some(p => p.entry_test_score !== null)
-                                      ? Math.round(
-                                          participants
-                                            .filter(p => p.entry_test_score !== null)
-                                            .reduce((sum, p) => sum + p.entry_test_score, 0) / 
-                                          participants.filter(p => p.entry_test_score !== null).length
-                                        )
-                                      : 0}%
-                                  </p>
-                                  <p className="text-xs text-blue-600">Средний балл</p>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                          
-                          {event.event_type?.has_final_test && (
-                            <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
-                              <h4 className="text-sm font-medium text-purple-800 mb-1">Финальный тест</h4>
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-2xl font-bold text-purple-900">
-                                    {participants.filter(p => p.final_test_score !== null).length} / {participants.length}
-                                  </p>
-                                  <p className="text-xs text-purple-600">Прошедшие / Всего</p>
-                                </div>
-                                <div>
-                                  <p className="text-xl font-semibold text-purple-900">
-                                    {participants.some(p => p.final_test_score !== null)
-                                      ? Math.round(
-                                          participants
-                                            .filter(p => p.final_test_score !== null)
-                                            .reduce((sum, p) => sum + p.final_test_score, 0) / 
-                                          participants.filter(p => p.final_test_score !== null).length
-                                        )
-                                      : 0}%
-                                  </p>
-                                  <p className="text-xs text-purple-600">Средний балл</p>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                          
-                          {/* Годовой тест */}
-                          {event.event_type?.name === 'online_training' && event.title.includes("Технология эффективных продаж") && (
-                            <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                              <h4 className="text-sm font-medium text-green-800 mb-1">Годовой тест</h4>
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-2xl font-bold text-green-900">
-                                    {/* Здесь будут данные о прохождении годового теста */}
-                                    0 / {participants.length}
-                                  </p>
-                                  <p className="text-xs text-green-600">Прошедшие / Всего</p>
-                                </div>
-                                <div>
-                                  <p className="text-xl font-semibold text-green-900">
-                                    {/* Средний балл по годовому тесту */}
-                                    0%
-                                  </p>
-                                  <p className="text-xs text-green-600">Средний балл</p>
-                                </div>
-                              </div>
-                              <p className="text-xs text-green-700 mt-2 bg-white p-1.5 rounded">
-                                Годовой тест автоматически назначается через 3 месяца после мероприятия
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+
                     </div>
                   )}
                 </div>

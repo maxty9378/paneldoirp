@@ -152,10 +152,10 @@ export function LoginForm() {
                   type="submit"
                   disabled={loading}
                   className={clsx(
-                    'group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#06A478]',
+                    'group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#06A478]',
                     loading
                       ? 'bg-gray-400 cursor-not-allowed'
-                      : 'bg-[#06A478] hover:bg-[#05976b] shadow-md hover:shadow-lg'
+                      : 'bg-[#06A478] hover:bg-[#05976b]'
                   )}
                 >
                   {loading ? (

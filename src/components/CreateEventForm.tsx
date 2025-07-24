@@ -385,10 +385,10 @@ export function CreateEventForm({ onSuccess }: CreateEventFormProps) {
               type="submit"
               disabled={isLoading}
               className={clsx(
-                "px-6 py-3 rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sns-500",
+                "px-6 py-3 rounded-xl font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sns-500",
                 isLoading
                   ? "bg-gray-400 text-white cursor-not-allowed"
-                  : "bg-gradient-to-r from-sns-500 to-sns-600 hover:from-sns-600 hover:to-sns-700 text-white shadow-medium hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+                  : "bg-gradient-to-r from-sns-500 to-sns-600 hover:from-sns-600 hover:to-sns-700 text-white"
               )}
             >
               {isLoading ? (

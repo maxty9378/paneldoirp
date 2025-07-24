@@ -118,32 +118,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchProfileWithTimeout = async (userId: string, timeoutMs: number = 20000) => {
     console.log(`🔍 Fetching profile for userId: ${userId} with ${timeoutMs}ms timeout`);
     
-    // First, fetch the user data
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
-
-    if (userError || !userData) {
-      return { data: null, error: userError || new Error('User not found') };
-    }
-
-    // If user has a position_id, fetch the position name
-    if (userData.position_id) {
-      const { data: positionData, error: positionError } = await supabase
-        .from('positions')
-        .select('name')
-        .eq('id', userData.position_id)
-        .single();
-
-      if (!positionError && positionData) {
-        // Add position name to user data
-        userData.position = positionData.name;
-      }
-    }
-
-    return { data: userData, error: null };
+    return Promise.race([
+      supabase.from('users').select('*').eq('id', userId).maybeSingle(),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Profile fetch timeout exceeded'));
+        }, timeoutMs);
+      })
+    ]);
   };
 
   // Handle missing profile creation
@@ -253,11 +235,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUserProfile(userWithPosition);
         cacheUserProfile(userWithPosition);
       } else if (userData) {
-        console.log('✅ Profile found in database');
         const userWithPosition = {
           ...userData,
           position: userData.position || 'Должность не указана'
         } as User;
+        
         setUser(userWithPosition);
         setUserProfile(userWithPosition);
         cacheUserProfile(userWithPosition);
@@ -331,8 +313,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshProfile = async () => {
     if (session?.user) {
+      console.log('🔄 Refreshing user profile...');
       setRetryCount(0); // Reset retry count for manual refresh
+      
+      // Очищаем кэш перед обновлением
+      clearUserCache();
+      
+      // Принудительно обновляем профиль
       await fetchUserProfile(session.user.id);
+      
+      console.log('✅ Profile refresh completed');
     }
   };
 

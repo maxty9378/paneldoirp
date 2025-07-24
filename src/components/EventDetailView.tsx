@@ -1,19 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, BarChart3 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { EventHeader } from './eventDetail/EventHeader';
-import { EventInfo } from './eventDetail/EventInfo';
-import { EventPlace } from './eventDetail/EventPlace';
+import { EventDetailsCard } from './eventDetail/EventDetailsCard';
 // @ts-ignore
 import EventParticipantsList from './eventDetail/EventParticipantsList.jsx';
 // @ts-ignore
 import EventTestsContainer from './eventDetail/EventTestsContainer.jsx';
 import { FeedbackTab } from './feedback/FeedbackTab';
+import { useNavigate } from 'react-router-dom';
 
-// Добавляем импорт компонента статистики
-import { EventAnalyticsPanel } from './eventDetail/EventAnalyticsPanel';
-import EventAnalytics from './EventAnalytics';
+
 
 interface EventDetailViewProps {
   eventId: string;
@@ -23,10 +21,12 @@ interface EventDetailViewProps {
 
 export default function EventDetailView({ eventId, onStartTest, onBack }: EventDetailViewProps) {
   const { userProfile } = useAuth();
+  const navigate = useNavigate();
   const [organizerPosition, setOrganizerPosition] = useState<string>('Организатор');
   const [event, setEvent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     async function fetchEvent() {
@@ -35,7 +35,18 @@ export default function EventDetailView({ eventId, onStartTest, onBack }: EventD
       try {
         const { data, error } = await supabase
           .from('events')
-          .select('*, creator:creator_id(*)')
+          .select(`
+            *,
+            creator:creator_id(
+              id,
+              full_name,
+              email,
+              phone,
+              position:position_id(name),
+              territory:territory_id(name),
+              branch:branch_id(name)
+            )
+          `)
           .eq('id', eventId)
           .single();
         if (error) throw error;
@@ -51,77 +62,105 @@ export default function EventDetailView({ eventId, onStartTest, onBack }: EventD
   }, [eventId]);
 
   useEffect(() => {
-    let ignore = false;
-    async function fetchPosition() {
-      if (event?.creator?.position) {
-        setOrganizerPosition(event.creator.position);
-      } else if (event?.creator?.position_id) {
-        const { data } = await supabase
-          .from('positions')
-          .select('name')
-          .eq('id', event.creator.position_id)
-          .single<{ name: string }>();
-        if (!ignore && data?.name) {
-          setOrganizerPosition(data.name);
-        } else if (!ignore) {
-          setOrganizerPosition('Организатор');
-        }
-      } else {
-        setOrganizerPosition('Организатор');
-      }
+    if (event?.creator?.position?.name) {
+      setOrganizerPosition(event.creator.position.name);
+    } else {
+      setOrganizerPosition('Организатор');
     }
-    if (event) fetchPosition();
-    return () => { ignore = true; };
   }, [event]);
 
   const organizerName = event?.creator?.full_name || '';
 
+  // Функция для принудительного обновления данных
+  const handleRefreshData = () => {
+    setRefreshKey(prev => prev + 1);
+  };
+
+  // Функция для обновления данных организатора
+  const handleUpdateOrganizerData = (newAvatarUrl: string) => {
+    if (event) {
+      setEvent(prevEvent => ({
+        ...prevEvent,
+        creator: {
+          ...prevEvent.creator,
+          avatar_url: newAvatarUrl
+        }
+      }));
+    }
+  };
+
   return (
-    <div className="max-w-4xl mx-auto p-2 sm:p-6 space-y-6">
-      {onBack && (
-        <button
-          onClick={onBack}
-          className="mb-3 ml-1 flex items-center gap-2 text-sns-green font-semibold rounded-full px-3 py-1.5 bg-transparent hover:bg-sns-green/10 focus:outline-none focus:ring-2 focus:ring-sns-green transition-colors text-sm"
-          aria-label="Назад к мероприятиям"
-        >
-          <ArrowLeft className="w-4 h-4 -ml-1" strokeWidth={2} />
-          <span className="hidden sm:inline">Назад к мероприятиям</span>
-          <span className="inline sm:hidden">Назад</span>
-        </button>
-      )}
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="p-4 sm:p-6 lg:p-8 lg:pt-0">
+        <div className="space-y-8">
+          {/* Кнопка просмотра результатов тестов (только для администраторов) */}
+          {userProfile?.role && ['administrator', 'moderator', 'trainer', 'expert'].includes(userProfile.role) && (
+            <div className="flex justify-end">
+              <button
+                onClick={() => navigate(`/event-test-results/${eventId}`)}
+                className="group flex items-center gap-2 sm:gap-3 text-blue-600 font-semibold rounded-xl px-3 py-2.5 sm:px-6 sm:py-3 bg-white hover:bg-blue-50 border border-blue-200 hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 text-xs sm:text-sm shadow-sm hover:shadow-md active:scale-95 sm:hover:scale-105 touch-manipulation"
+                aria-label="Просмотр результатов тестов"
+              >
+                <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform duration-200 flex-shrink-0" strokeWidth={2.5} />
+                <span className="hidden sm:inline">Результаты тестов</span>
+                <span className="inline sm:hidden">Тесты</span>
+              </button>
+            </div>
+          )}
       {loading && (
-        <div className="py-12 text-center text-gray-500 text-lg">Загрузка мероприятия...</div>
+        <div className="flex flex-col items-center justify-center py-20">
+          <div className="w-12 h-12 border-4 border-sns-green border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="text-gray-600 text-lg font-medium">Загрузка мероприятия...</p>
+        </div>
       )}
       {error && !loading && (
-        <div className="py-12 text-center text-red-500 text-lg">{error}</div>
+        <div className="flex flex-col items-center justify-center py-20">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+            <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Ошибка загрузки</h3>
+          <p className="text-gray-600 text-center max-w-md">{error}</p>
+        </div>
       )}
       {!loading && !error && !event && (
-        <div className="py-12 text-center text-gray-500 text-lg">Мероприятие не найдено</div>
+        <div className="flex flex-col items-center justify-center py-20">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.47-.881-6.08-2.33" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Мероприятие не найдено</h3>
+          <p className="text-gray-600 text-center max-w-md">Запрашиваемое мероприятие не существует или было удалено</p>
+        </div>
       )}
       {event && !loading && !error && (
         <>
-          <EventHeader event={event} />
-          <EventInfo event={event} />
-          <EventPlace
-            organizerName={organizerName}
-            organizerPosition={organizerPosition}
-            location={event.location}
-            meeting_link={event.meeting_link}
-          />
-          {/* Новый красивый блок аналитики */}
-          <EventAnalyticsPanel eventId={eventId} />
-          {/* Удалён старый блок статистики */}
-          <EventParticipantsList eventId={eventId} />
-          <EventTestsContainer eventId={eventId} userProfile={userProfile} isAdmin={false} onStartTest={onStartTest} />
-          <FeedbackTab eventId={eventId} />
-          {/* СТАРАЯ АНАЛИТИКА: временно для сравнения */}
-          <div className="mt-10">
-            <h2 className="text-2xl font-bold text-center mb-4 text-red-600">Старая аналитика (EventAnalytics.tsx)</h2>
-            {/* @ts-ignore */}
-            <EventAnalytics />
+          <EventHeader event={event} onBack={onBack} />
+          
+          {/* Основной контент */}
+          <div className="space-y-8">
+            <EventDetailsCard 
+              event={event} 
+              isCreator={event.creator_id === userProfile?.id}
+              onUpdateOrganizerData={handleUpdateOrganizerData}
+            />
+            <EventParticipantsList eventId={eventId} refreshKey={refreshKey} />
+            <EventTestsContainer 
+              eventId={eventId} 
+              userProfile={userProfile} 
+              isAdmin={false} 
+              onStartTest={onStartTest}
+              refreshKey={refreshKey}
+              onRefreshData={handleRefreshData}
+            />
+            <FeedbackTab eventId={eventId} />
           </div>
         </>
-      )}
+        )}
+        </div>
+      </div>
     </div>
   );
 }

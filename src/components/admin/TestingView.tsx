@@ -4,6 +4,9 @@ import { supabase } from '../../lib/supabase';
 import { clsx } from 'clsx';
 import { TestCreationModal } from './TestCreationModal';
 import { QuestionPreviewModal } from './QuestionPreviewModal';
+import { useAuth } from '../../hooks/useAuth';
+import { ParticipantTestsView } from '../testing/ParticipantTestsView';
+import { TestResultsOverview } from './TestResultsOverview';
 
 interface Test {
   id: string;
@@ -43,6 +46,7 @@ interface Answer {
 }
 
 export function TestingView() {
+  const { userProfile } = useAuth();
   const [tests, setTests] = useState<Test[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +60,18 @@ export function TestingView() {
   const [selectedType, setSelectedType] = useState<string>('all');
   const [isEditing, setIsEditing] = useState(false);
   const [deletingTestId, setDeletingTestId] = useState<string | null>(null);
+
+  // Проверяем, является ли пользователь участником (employee)
+  const isEmployee = userProfile?.role === 'employee';
+  
+  // Состояние для переключения между режимами просмотра
+  const [viewMode, setViewMode] = useState<'tests' | 'results'>('results');
+  
+  console.log('TestingView render state:', {
+    viewMode,
+    isEmployee,
+    userProfile: userProfile ? { id: userProfile.id, role: userProfile.role } : null
+  });
 
   useEffect(() => {
     fetchTests();
@@ -319,6 +335,16 @@ export function TestingView() {
     ['entry', 'final', 'annual'].includes(test.type))
   );
 
+  // Если пользователь является участником, показываем представление для участников
+  if (isEmployee) {
+    return <ParticipantTestsView />;
+  }
+
+  // Если выбран режим просмотра результатов, показываем обзор результатов
+  if (viewMode === 'results') {
+    return <TestResultsOverview />;
+  }
+
   return (
     <div className="space-y-6">
       {/* Заголовок */}
@@ -327,6 +353,31 @@ export function TestingView() {
           <h1 className="text-2xl font-bold text-gray-900">Управление тестированием</h1>
         </div>
         <div className="flex items-center space-x-3">
+          {/* Переключатель режимов */}
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('tests')}
+              className={clsx(
+                "px-4 py-2 rounded-md text-sm font-medium transition-colors",
+                viewMode === 'tests'
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
+              )}
+            >
+              Управление тестами
+            </button>
+            <button
+              onClick={() => setViewMode('results')}
+              className={clsx(
+                "px-4 py-2 rounded-md text-sm font-medium transition-colors",
+                viewMode === 'results'
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
+              )}
+            >
+              Результаты тестов
+            </button>
+          </div>
           <button 
             onClick={handleCreateTest}
             className="bg-sns-green text-white px-4 py-2 rounded-lg hover:bg-sns-green-dark transition-colors flex items-center space-x-2"

@@ -174,7 +174,7 @@ export function EventCard({ event, onView }: EventCardProps) {
             e.stopPropagation();
             onView();
           }}
-          className="flex items-center px-4 py-1.5 rounded-full bg-sns-500 text-white font-semibold text-sm shadow hover:bg-sns-600 transition-colors"
+          className="flex items-center px-4 py-2 rounded-xl bg-sns-500 text-white font-semibold text-sm hover:bg-sns-600 transition-all duration-300"
         >
           <Eye className="h-4 w-4 mr-2" />
           Подробнее

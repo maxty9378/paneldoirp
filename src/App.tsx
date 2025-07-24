@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
+import { supabase } from './lib/supabase';
 import { Layout } from './components/Layout';
 import { TestTakingView } from './components/admin/TestTakingView';
 import { LoginForm } from './components/LoginForm';
@@ -18,11 +19,20 @@ import { TasksView } from './components/TasksView';
 import { TestingView } from './components/admin/TestingView';
 import { Loader2, RefreshCw, AlertOctagon, Users } from 'lucide-react';
 import TakeTestPage from './pages/TakeTestPage';
+import TestResultsPage from './pages/TestResultsPage';
+import EventTestResultsPage from './pages/EventTestResultsPage';
 
 function EventDetailPage({ onStartTest }: { onStartTest: (testType: 'entry' | 'final' | 'annual', testId: string, eventId: string, attemptId: string) => void }) {
   const { eventId } = useParams();
+  const navigate = useNavigate();
+  
   if (!eventId) return <div>Некорректный ID мероприятия</div>;
-  return <EventDetailView eventId={eventId} onStartTest={onStartTest} />;
+  
+  const handleBack = () => {
+    navigate('/events');
+  };
+  
+  return <EventDetailView eventId={eventId} onStartTest={onStartTest} onBack={handleBack} />;
 }
 
 function AppContent() {
@@ -36,6 +46,7 @@ function AppContent() {
     retryFetchProfile 
   } = useAuth();
   const [showCreateEventModal, setShowCreateEventModal] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<any>(null);
   // Удаляем testAttemptDetails и связанные функции
   const [loadingSeconds, setLoadingSeconds] = useState(0);
   const navigate = useNavigate();
@@ -43,6 +54,8 @@ function AppContent() {
 
   // Для Layout: определяем текущий view по location.pathname
   const getCurrentView = () => {
+    if (location.pathname.startsWith('/take-test')) return 'take-test';
+    if (location.pathname.startsWith('/test-results/')) return 'take-test';
     if (location.pathname.startsWith('/events')) return 'events';
     if (location.pathname.startsWith('/event/')) return 'event-detail';
     if (location.pathname.startsWith('/calendar')) return 'calendar';
@@ -50,7 +63,7 @@ function AppContent() {
     if (location.pathname.startsWith('/supervisors')) return 'supervisors';
     if (location.pathname.startsWith('/expert-events')) return 'expert-events';
     if (location.pathname.startsWith('/tasks')) return 'tasks';
-    if (location.pathname.startsWith('/testing')) return 'testing';
+    if (location.pathname.startsWith('/testing')) return 'tests';
     if (location.pathname.startsWith('/admin')) return 'admin';
     if (location.pathname.startsWith('/employees')) return 'employees';
     if (location.pathname.startsWith('/create-event')) return 'create-event';
@@ -59,8 +72,50 @@ function AppContent() {
   const currentView = getCurrentView();
 
   // Новый обработчик запуска теста
-  const handleStartTest = (testType: 'entry' | 'final' | 'annual', testId: string, eventId: string) => {
-    navigate(`/take-test?eventId=${eventId}&testId=${testId}`);
+  const handleStartTest = (testType: 'entry' | 'final' | 'annual', testId: string, eventId: string, attemptId?: string) => {
+    const params = new URLSearchParams({
+      eventId: eventId,
+      testId: testId
+    });
+    if (attemptId) {
+      params.append('attemptId', attemptId);
+    }
+    navigate(`/take-test?${params.toString()}`);
+  };
+
+  const handleEditEvent = async (eventId: string) => {
+    console.log('handleEditEvent вызвана с eventId:', eventId);
+    try {
+      // Загружаем данные мероприятия
+      const { data: event, error } = await supabase
+        .from('events')
+        .select(`
+          *,
+          event_types (*),
+          event_participants (
+            user_id,
+            users (
+              id,
+              full_name,
+              email,
+              sap_number
+            )
+          )
+        `)
+        .eq('id', eventId)
+        .single();
+
+      if (error) {
+        console.error('Ошибка загрузки мероприятия:', error);
+        return;
+      }
+
+      console.log('Загруженные данные мероприятия:', event);
+      setEditingEvent(event);
+      setShowCreateEventModal(true);
+    } catch (error) {
+      console.error('Ошибка при редактировании мероприятия:', error);
+    }
   };
 
   // Track loading time
@@ -140,7 +195,7 @@ function AppContent() {
     <Layout currentView={currentView}>
       <Routes>
         <Route path="/" element={<DashboardView />} />
-        <Route path="/events" element={<EventsView onNavigateToEvent={id => navigate(`/event/${id}`)} onCreateEvent={() => setShowCreateEventModal(true)} />} />
+        <Route path="/events" element={<EventsView onNavigateToEvent={id => navigate(`/event/${id}`)} onEditEvent={id => handleEditEvent(id)} onCreateEvent={() => setShowCreateEventModal(true)} />} />
         <Route path="/event/:eventId" element={<EventDetailPage onStartTest={handleStartTest} />} />
         <Route path="/calendar" element={<CalendarView />} />
         <Route path="/representatives" element={<RepresentativesView />} />
@@ -165,14 +220,21 @@ function AppContent() {
           </div>
         } />
         <Route path="/take-test" element={<TakeTestPage />} />
+        <Route path="/test-results/:attemptId" element={<TestResultsPage />} />
+        <Route path="/event-test-results/:eventId" element={<EventTestResultsPage />} />
       </Routes>
       <CreateEventModal 
         isOpen={showCreateEventModal}
-        onClose={() => setShowCreateEventModal(false)}
+        onClose={() => {
+          setShowCreateEventModal(false);
+          setEditingEvent(null);
+        }}
         onSuccess={() => {
           setShowCreateEventModal(false);
+          setEditingEvent(null);
           navigate('/events');
         }}
+        editingEvent={editingEvent}
       />
     </Layout>
   );

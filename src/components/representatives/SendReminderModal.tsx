@@ -101,14 +101,14 @@ export function SendReminderModal({ isOpen, onClose, employee }: SendReminderMod
             <div className="flex justify-end space-x-3">
               <button
                 onClick={onClose}
-                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-300"
               >
                 Отмена
               </button>
               <button
                 onClick={handleSend}
                 disabled={sending || !message.trim()}
-                className="px-4 py-2 bg-sns-green text-white rounded-lg hover:bg-sns-green-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                className="px-4 py-2 bg-sns-green text-white rounded-xl hover:bg-sns-green-dark transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
               >
                 <Send size={16} />
                 <span>{sending ? 'Отправка...' : 'Отправить'}</span>

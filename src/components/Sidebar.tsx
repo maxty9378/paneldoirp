@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import {
   AppWindow, Calendar, BookOpen, Users, BarChart3, AlertCircle, Settings,
   TestTube, Building2, GraduationCap, Star, Shield,
-  Sparkles, FileText
+  Sparkles, FileText, X
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -20,7 +20,7 @@ interface NavItem {
 const navigationItems: NavItem[] = [
   { id: 'dashboard', label: 'Главная', icon: <AppWindow />, href: '/dashboard', roles: ['employee', 'supervisor', 'trainer', 'expert', 'moderator', 'administrator'] },
   { id: 'events', label: 'Мои мероприятия', icon: <BookOpen />, href: '/events', roles: ['employee', 'supervisor', 'trainer', 'expert', 'moderator', 'administrator'] },
-  { id: 'tests', label: 'Тесты', icon: <FileText />, href: '/tests', roles: ['employee', 'supervisor', 'trainer', 'expert', 'moderator', 'administrator'] },
+  { id: 'tests', label: 'Тесты', icon: <FileText />, href: '/testing', roles: ['employee', 'supervisor', 'trainer', 'expert', 'moderator', 'administrator'] },
   { id: 'employees', label: 'Мои сотрудники', icon: <Users />, href: '/employees', roles: ['supervisor', 'trainer', 'moderator', 'administrator'] },
   { id: 'representatives', label: 'Торговые представители', icon: <Building2 />, href: '/representatives', roles: ['supervisor', 'trainer', 'moderator', 'administrator'] },
   { id: 'supervisors', label: 'Супервайзеры', icon: <GraduationCap />, href: '/supervisors', roles: ['trainer', 'moderator', 'administrator'] },
@@ -35,11 +35,13 @@ const navigationItems: NavItem[] = [
 interface SidebarProps {
   activeItem: string;
   onItemClick: (itemId: string) => void;
-  isCollapsed: boolean;
-  onToggle: () => void;
+  isCollapsed?: boolean;
+  onToggle?: () => void;
+  isMobile?: boolean;
+  onMobileClose?: () => void;
 }
 
-export function Sidebar({ activeItem, onItemClick, isCollapsed, onToggle }: SidebarProps) {
+export function Sidebar({ activeItem, onItemClick, isCollapsed = false, onToggle, isMobile = false, onMobileClose }: SidebarProps) {
   const { user, userProfile } = useAuth();
 
   const visibleItems = navigationItems.filter(item =>
@@ -54,13 +56,33 @@ export function Sidebar({ activeItem, onItemClick, isCollapsed, onToggle }: Side
   return (
     <aside
       className={clsx(
-        "fixed left-4 top-[96px] z-40 bg-white shadow-xl drop-shadow-xl rounded-2xl transition-all duration-300 ease-in-out flex flex-col h-[calc(100vh-96px-2rem)] pt-0 mb-8",
-        isCollapsed ? "lg:w-20" : "lg:w-80", "w-full"
+        "bg-white shadow-xl drop-shadow-xl transition-all duration-300 ease-in-out flex flex-col",
+        isMobile 
+          ? "w-full h-full rounded-none" 
+          : "fixed left-4 top-[96px] z-40 rounded-2xl h-[calc(100vh-96px-2rem)] pt-0 mb-8",
+        isCollapsed ? "lg:w-20" : "lg:w-80", 
+        isMobile ? "w-full" : "w-full"
       )}
     >
+      {/* Заголовок и кнопка закрытия для мобильной версии */}
+      {isMobile && onMobileClose && (
+        <div className="flex items-center justify-between p-4 border-b border-gray-100">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Меню</h2>
+            <p className="text-sm text-gray-500">Навигация по порталу</p>
+          </div>
+          <button
+            onClick={onMobileClose}
+            className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
+            title="Закрыть меню"
+          >
+            <X size={24} />
+          </button>
+        </div>
+      )}
       {/* Верхняя часть: навигация */}
-      <nav className="flex-1 py-2 overflow-hidden">
-        <ul className="space-y-1 px-2">
+      <nav className="flex-1 overflow-hidden">
+        <ul className={clsx("space-y-1", isMobile ? "px-4 py-4" : "px-2 py-2")}>
           {visibleItems.map(item => {
             const isActive = activeItem === item.id;
             return (
@@ -69,17 +91,19 @@ export function Sidebar({ activeItem, onItemClick, isCollapsed, onToggle }: Side
                   onClick={() => onItemClick(item.id)}
                   className={clsx(
                     "group relative w-full transition-colors font-medium text-sm superellipse",
-                    isCollapsed
-                      ? "h-12 flex items-center justify-center"
-                      : "flex items-center px-4 py-3",
+                    isMobile 
+                      ? "flex items-center px-4 py-4 h-14"
+                      : isCollapsed
+                        ? "h-12 flex items-center justify-center"
+                        : "flex items-center px-4 py-3",
                     isActive ? "bg-sns-500" : "hover:bg-gray-100"
                   )}
                   title={item.label}
                 >
                   {/* Icon (всегда по центру) */}
-                  <div className="flex items-center justify-center w-7 h-7">
+                  <div className={clsx("flex items-center justify-center", isMobile ? "w-8 h-8" : "w-7 h-7")}>
                     {React.cloneElement(item.icon as React.ReactElement, {
-                      size: 22,
+                      size: isMobile ? 24 : 22,
                       strokeWidth: 1.4,
                       className: clsx(
                         'transition-colors duration-200',
@@ -89,29 +113,30 @@ export function Sidebar({ activeItem, onItemClick, isCollapsed, onToggle }: Side
                       )
                     })}
                   </div>
-                  {/* Label (только в развернутом) */}
-                  {!isCollapsed && (
+                  {/* Label (только в развернутом или мобильном) */}
+                  {(isMobile || !isCollapsed) && (
                     <span className={clsx(
                       "ml-3 truncate",
+                      isMobile ? "text-base" : "text-sm",
                       isActive ? "text-white font-semibold" : "text-gray-700"
                     )}>
                       {item.label}
                     </span>
                   )}
                   {/* Badge expanded */}
-                  {item.badge && !isCollapsed && (
+                  {item.badge && (isMobile || !isCollapsed) && (
                     <span className="ml-auto bg-red-500 text-white text-xs rounded-full px-2 py-0.5 font-semibold">
                       {item.badge}
                     </span>
                   )}
                   {/* Badge collapsed */}
-                  {item.badge && isCollapsed && (
+                  {item.badge && !isMobile && isCollapsed && (
                     <span className="absolute top-1 right-2 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center shadow-sm font-medium">
                       {item.badge}
                     </span>
                   )}
                   {/* Tooltip collapsed */}
-                  {isCollapsed && (
+                  {!isMobile && isCollapsed && (
                     <div className="absolute left-full ml-3 px-3 py-2 bg-gray-900 text-white text-sm rounded-squircle shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none whitespace-nowrap">
                       {item.label}
                       {item.badge && (
@@ -131,37 +156,52 @@ export function Sidebar({ activeItem, onItemClick, isCollapsed, onToggle }: Side
       </nav>
 
       {/* User Info — всегда внизу */}
-      <div className="border-t border-gray-100 p-4 mt-0">
-        {isCollapsed ? (
-          <div className="relative flex flex-col items-center gap-2">
-            <div className="relative z-10 w-8 h-8 bg-gradient-to-br from-sns-400 to-sns-600 rounded-squircle flex items-center justify-center squircle24">
-              <span className="text-white font-semibold text-xs">{initials}</span>
+      <div className={clsx("border-t border-gray-100 mt-0", isMobile ? "p-6" : "p-4")}>
+        {isMobile ? (
+          <div className="flex items-center space-x-4">
+            <div className="relative z-10 w-12 h-12 bg-gradient-to-br from-sns-400 to-sns-600 rounded-squircle flex items-center justify-center squircle24">
+              <span className="text-white font-semibold text-sm">{initials}</span>
             </div>
-            {/* Кнопка свернуть/развернуть — рядом с аватаркой, под аватаркой */}
-            <SidebarToggleButton
-              isCollapsed={isCollapsed}
-              onToggle={onToggle}
-              className="absolute right-[-72px] top-1/2 -translate-y-1/2 hidden lg:flex z-0"
-            />
+            <div className="min-w-0 flex-1">
+              <p className="text-base font-medium text-gray-700 truncate">{fullName}</p>
+              <p className="text-sm text-gray-500 truncate">{user?.position}</p>
+            </div>
           </div>
         ) : (
           <>
-            <div className="relative flex items-center space-x-3">
-              <div className="relative z-10 w-8 h-8 bg-gradient-to-br from-sns-400 to-sns-600 rounded-squircle flex items-center justify-center squircle24">
-                <span className="text-white font-semibold text-xs">{initials}</span>
+            {isCollapsed ? (
+              <div className="relative flex flex-col items-center gap-2">
+                <div className="relative z-10 w-8 h-8 bg-gradient-to-br from-sns-400 to-sns-600 rounded-squircle flex items-center justify-center squircle24">
+                  <span className="text-white font-semibold text-xs">{initials}</span>
+                </div>
+                {/* Кнопка свернуть/развернуть — только для десктопа */}
+                {!isMobile && onToggle && (
+                  <SidebarToggleButton
+                    isCollapsed={isCollapsed}
+                    onToggle={onToggle}
+                    className="absolute right-[-72px] top-1/2 -translate-y-1/2 hidden lg:flex z-0"
+                  />
+                )}
               </div>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-700 truncate">{fullName}</p>
-                <p className="text-xs text-gray-500 truncate">{user?.position}</p>
+            ) : (
+              <div className="relative flex items-center space-x-3">
+                <div className="relative z-10 w-8 h-8 bg-gradient-to-br from-sns-400 to-sns-600 rounded-squircle flex items-center justify-center squircle24">
+                  <span className="text-white font-semibold text-xs">{initials}</span>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-700 truncate">{fullName}</p>
+                  <p className="text-xs text-gray-500 truncate">{user?.position}</p>
+                </div>
+                {/* Кнопка свернуть/развернуть — только для десктопа */}
+                {!isMobile && onToggle && (
+                  <SidebarToggleButton
+                    isCollapsed={isCollapsed}
+                    onToggle={onToggle}
+                    className="absolute right-[-72px] top-1/2 -translate-y-1/2 hidden lg:flex"
+                  />
+                )}
               </div>
-              {/* Кнопка свернуть/развернуть — справа на уровне ФИО */}
-              <SidebarToggleButton
-                isCollapsed={isCollapsed}
-                onToggle={onToggle}
-                className="absolute right-[-72px] top-1/2 -translate-y-1/2 hidden lg:flex"
-              />
-            </div>
-
+            )}
           </>
         )}
       </div>

@@ -52,6 +52,14 @@ export default function EventDetailView({ eventId, onStartTest, onBack }: EventD
 
   // Компонент для отображения участников
   const ParticipantsList = ({ participants }: { participants: Participant[] }) => {
+    // Определяем, является ли пользователь участником (employee)
+    const isEmployee = userProfile?.role === 'employee';
+    
+    // Если пользователь является участником, не показываем компонент
+    if (isEmployee) {
+      return null;
+    }
+    
     const attendedCount = participants.filter(p => p.attended).length;
     
     return (

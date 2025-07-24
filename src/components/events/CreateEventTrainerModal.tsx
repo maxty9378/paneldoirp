@@ -999,7 +999,7 @@ export function CreateEventTrainerModal({ isOpen, onClose, onSuccess }: CreateEv
                 <button
                   type="button"
                   onClick={handlePrevStep}
-                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-300"
                 >
                   Назад
                 </button>
@@ -1007,7 +1007,7 @@ export function CreateEventTrainerModal({ isOpen, onClose, onSuccess }: CreateEv
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-4 py-2 bg-sns-600 text-white rounded-lg hover:bg-sns-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  className="px-4 py-2 bg-sns-600 text-white rounded-xl hover:bg-sns-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
                 >
                  {saving ? (
                     <>

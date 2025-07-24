@@ -5,8 +5,9 @@ import AdminTestSection from './AdminTestSection';
 import { TestTakingView } from '../admin/TestTakingView';
 import TestResults from './TestResults';
 import { useNavigate } from 'react-router-dom';
+import { FileText } from 'lucide-react';
 
-export default function EventTestsContainer({ eventId, userProfile, isAdmin, onStartTest }) {
+export default function EventTestsContainer({ eventId, userProfile, isAdmin, onStartTest, refreshKey = 0, onRefreshData }) {
   const [activeView, setActiveView] = useState('list'); // 'list', 'test', 'results'
   const [activeTestType, setActiveTestType] = useState(null); // 'entry', 'final', 'annual'
   const [activeTestId, setActiveTestId] = useState(null);
@@ -15,9 +16,9 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
   const [error, setError] = useState(null);
   const [tests, setTests] = useState([]); // все тесты для типа мероприятия
   const [testStatus, setTestStatus] = useState({
-    entry: { available: false, completed: false, score: null, attemptId: null, testId: null },
-    final: { available: false, completed: false, score: null, attemptId: null, testId: null },
-    annual: { available: false, completed: false, score: null, attemptId: null, testId: null }
+    entry: { available: false, completed: false, score: null, attemptId: null, testId: null, test: null },
+    final: { available: false, completed: false, score: null, attemptId: null, testId: null, test: null },
+    annual: { available: false, completed: false, score: null, attemptId: null, testId: null, test: null }
   });
   const navigate = useNavigate();
   
@@ -65,9 +66,9 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
 
       // Создаем новый объект статуса
       const statusObj = {
-        entry: { available: false, completed: false, score: null, attemptId: null, testId: null },
-        final: { available: false, completed: false, score: null, attemptId: null, testId: null },
-        annual: { available: false, completed: false, score: null, attemptId: null, testId: null }
+        entry: { available: false, completed: false, score: null, attemptId: null, testId: null, test: null },
+        final: { available: false, completed: false, score: null, attemptId: null, testId: null, test: null },
+        annual: { available: false, completed: false, score: null, attemptId: null, testId: null, test: null }
       };
       
       // Новый способ: ищем завершённую попытку, иначе берём последнюю
@@ -98,7 +99,8 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
             completed: true,
             score: completedAttempt.score,
             attemptId: completedAttempt.id,
-            testId: test.id
+            testId: test.id,
+            test: test
           };
         } else if (lastAttempt) {
           statusObj[test.type] = {
@@ -106,7 +108,8 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
             completed: false,
             score: lastAttempt.score,
             attemptId: lastAttempt.id,
-            testId: test.id
+            testId: test.id,
+            test: test
           };
         } else {
           statusObj[test.type] = {
@@ -115,7 +118,8 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
             completed: false,
             score: null,
             attemptId: null,
-            testId: test.id
+            testId: test.id,
+            test: test
           };
         }
       }
@@ -187,6 +191,14 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
     fetchTestsAndAttempts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId, userProfile?.id]);
+
+  // Обновление данных при изменении refreshKey
+  useEffect(() => {
+    if (refreshKey > 0) {
+      fetchTestsAndAttempts();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey]);
   
   // Запуск теста (создаёт attempt если нужно)
   const handleStartTest = async (testType) => {
@@ -198,40 +210,75 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
     let attemptId = testStatus[testType]?.attemptId;
     if (!attemptId) {
       try {
-        const { data: newAttempt, error } = await supabase
+        // Сначала проверяем, есть ли уже попытка
+        const { data: existingAttempt, error: checkError } = await supabase
           .from('user_test_attempts')
-          .insert({
-            user_id: userProfile.id,
-            test_id: test.id,
-            event_id: eventId,
-            status: 'in_progress',
-            start_time: new Date().toISOString()
-          })
-          .select()
-          .single();
-        if (error) {
-          console.error('Ошибка при создании попытки теста:', error);
-          alert('Ошибка создания попытки теста');
+          .select('id, status')
+          .eq('user_id', userProfile.id)
+          .eq('test_id', test.id)
+          .eq('event_id', eventId)
+          .maybeSingle();
+
+        if (checkError) {
+          console.error('Ошибка при проверке существующих попыток:', checkError);
+          alert('Ошибка проверки попыток теста');
           return;
         }
-        if (!newAttempt) {
-          alert('Не удалось создать попытку теста');
-          return;
-        }
-        attemptId = newAttempt.id;
-        setTestStatus(prev => ({
-          ...prev,
-          [testType]: {
-            ...prev[testType],
-            attemptId: newAttempt.id
+
+        if (existingAttempt) {
+          console.log('Найдена существующая попытка:', existingAttempt.id, 'статус:', existingAttempt.status);
+          attemptId = existingAttempt.id;
+          setTestStatus(prev => ({
+            ...prev,
+            [testType]: {
+              ...prev[testType],
+              attemptId: existingAttempt.id
+            }
+          }));
+        } else {
+          // Создаём новую попытку только если её нет
+          const { data: newAttempt, error } = await supabase
+            .from('user_test_attempts')
+            .insert({
+              user_id: userProfile.id,
+              test_id: test.id,
+              event_id: eventId,
+              status: 'in_progress',
+              start_time: new Date().toISOString()
+            })
+            .select()
+            .single();
+          if (error) {
+            console.error('Ошибка при создании попытки теста:', error);
+            alert('Ошибка создания попытки теста');
+            return;
           }
-        }));
+          if (!newAttempt) {
+            alert('Не удалось создать попытку теста');
+            return;
+          }
+          attemptId = newAttempt.id;
+          setTestStatus(prev => ({
+            ...prev,
+            [testType]: {
+              ...prev[testType],
+              attemptId: newAttempt.id
+            }
+          }));
+        }
       } catch (err) {
         console.error('Ошибка при создании попытки теста:', err);
         alert('Произошла ошибка при создании попытки теста');
         return;
       }
     }
+    // Устанавливаем активные параметры теста
+    setActiveTestType(testType);
+    setActiveTestId(test.id);
+    setActiveAttemptId(attemptId);
+    setActiveView('test');
+    
+    // Вызываем внешний обработчик, если он предоставлен
     if (onStartTest) {
       onStartTest(testType, test.id, eventId, attemptId);
     }
@@ -242,6 +289,11 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
     setActiveView('results');
     // Перезагрузить статусы тестов
     fetchTestsAndAttempts(); // Используем нашу функцию вместо перезагрузки страницы
+    
+    // Уведомляем родительский компонент о необходимости обновления данных
+    if (onRefreshData) {
+      onRefreshData();
+    }
   };
   
   // Обработчик возврата к списку тестов
@@ -264,24 +316,23 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
   return (
     <>
       {loading ? (
-        <div className="bg-white rounded-xl shadow-lg p-4 overflow-x-auto font-mabry">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-gray-800">Тесты мероприятия</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[1,2,3].map(i => (
-              <div key={i} className="bg-gray-100 border border-gray-200 rounded-xl p-4 animate-pulse flex flex-col justify-between h-full min-h-[180px]">
-                <div>
-                  <div className="h-5 w-32 bg-gray-200 rounded mb-2" />
-                  <div className="h-4 w-40 bg-gray-200 rounded mb-1" />
-                  <div className="h-3 w-24 bg-gray-200 rounded mb-1" />
-                  <div className="h-3 w-28 bg-gray-200 rounded mb-2" />
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[1,2,3].map(i => (
+                <div key={i} className="bg-gray-100 border border-gray-200 rounded-xl p-4 animate-pulse flex flex-col justify-between h-full min-h-[180px]">
+                  <div>
+                    <div className="h-5 w-32 bg-gray-200 rounded mb-2" />
+                    <div className="h-4 w-40 bg-gray-200 rounded mb-1" />
+                    <div className="h-3 w-24 bg-gray-200 rounded mb-1" />
+                    <div className="h-3 w-28 bg-gray-200 rounded mb-2" />
+                  </div>
+                  <div className="mt-2">
+                    <div className="h-10 w-full bg-gray-200 rounded" />
+                  </div>
                 </div>
-                <div className="mt-2">
-                  <div className="h-10 w-full bg-gray-200 rounded" />
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       ) : error ? (
@@ -297,25 +348,24 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
       ) : (
         <>
           {activeView === 'list' && (
-            <div className="bg-white rounded-xl shadow-lg p-4 overflow-x-auto font-mabry">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-gray-800">Тесты мероприятия</h2>
-                {/* Если нужна кнопка обновления, можно добавить здесь */}
-              </div>
-              <EventTestPrompts 
-                eventId={eventId} 
-                userProfile={userProfile} 
-                onStartTest={handleStartTest}
-                testStatus={testStatus}
-              />
-              {isAdmin && (
-                <AdminTestSection 
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="p-6">
+                <EventTestPrompts 
                   eventId={eventId} 
                   userProfile={userProfile} 
                   onStartTest={handleStartTest}
                   testStatus={testStatus}
+                  refreshKey={refreshKey}
                 />
-              )}
+                {isAdmin && (
+                  <AdminTestSection 
+                    eventId={eventId} 
+                    userProfile={userProfile} 
+                    onStartTest={handleStartTest}
+                    testStatus={testStatus}
+                  />
+                )}
+              </div>
             </div>
           )}
           {activeView === 'test' && activeTestId && activeAttemptId && (

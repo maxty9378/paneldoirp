@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Clock, CheckCircle, XCircle, AlertTriangle, Play, User, Users } from 'lucide-react';
+import { FileText, Clock, CheckCircle, XCircle, AlertTriangle, Play, User, Users, BarChart3 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { clsx } from 'clsx';
 import { useAuth } from '../../hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 import { AssignTestModal } from './AssignTestModal'; 
 
 interface EventTestsListProps {
@@ -33,6 +34,7 @@ interface Test {
 
 export function EventTestsList({ eventId, onSuccess }: EventTestsListProps) {
   const { userProfile } = useAuth();
+  const navigate = useNavigate();
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [tests, setTests] = useState<Test[]>([]);
   const [loading, setLoading] = useState(true);
@@ -520,15 +522,26 @@ export function EventTestsList({ eventId, onSuccess }: EventTestsListProps) {
       {/* Таблица участников и их статусы тестов */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="p-4 border-b border-gray-200">
-          <h3 className="font-medium text-lg">Статус тестов участников</h3>
-          <p className="text-sm text-gray-500 mt-1">
-            Управляйте назначением тестов для участников, присутствовавших на мероприятии
-            {!entryTest && !finalTest && (
-              <span className="ml-1 text-red-600 font-medium">
-                Не найдены тесты для автоматического назначения.
-              </span>
-            )}
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-medium text-lg">Статус тестов участников</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Управляйте назначением тестов для участников, присутствовавших на мероприятии
+                {!entryTest && !finalTest && (
+                  <span className="ml-1 text-red-600 font-medium">
+                    Не найдены тесты для автоматического назначения.
+                  </span>
+                )}
+              </p>
+            </div>
+            <button
+              onClick={() => navigate(`/event-test-results/${eventId}`)}
+              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <BarChart3 size={16} />
+              <span>Просмотр результатов</span>
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto">

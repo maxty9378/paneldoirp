@@ -358,7 +358,7 @@ export function EventsList({ onCreateEvent }: EventsListProps) {
               </button>
               <button className="btn-outline flex items-center space-x-2">
                 <Upload size={18} />
-                <span>Импорт участников</span>
+                <span>Импорт</span>
               </button>
             </>
           )}
@@ -713,17 +713,17 @@ export function EventsList({ onCreateEvent }: EventsListProps) {
                   </div>
                   <div className="flex items-center space-x-2">
                     {/* Кнопки управления с анимацией и тултипами */}
-                    <button className="btn-outline flex items-center transition-all duration-200 hover:bg-primary hover:text-white" title="Просмотр">
+                    <button className="btn-outline flex items-center px-3 py-2 rounded-xl transition-all duration-300 hover:bg-primary hover:text-white" title="Просмотр">
                       <Eye size={16} />
                     </button>
                     {canCreateEvents && (
                       <>
-                        <button className="btn-outline flex items-center transition-all duration-200 hover:bg-primary/80 hover:text-white" title="Редактировать">
+                        <button className="btn-outline flex items-center px-3 py-2 rounded-xl transition-all duration-300 hover:bg-primary/80 hover:text-white" title="Редактировать">
                           <Edit size={16} />
                         </button>
                         <button 
                           onClick={() => handleDeleteEvent(event.id)}
-                          className="btn-outline flex items-center border-red-400 text-red-600 hover:bg-red-50 transition-all duration-200" 
+                          className="btn-outline flex items-center px-3 py-2 rounded-xl border-red-400 text-red-600 hover:bg-red-50 transition-all duration-300" 
                           title="Удалить"
                         >
                           <Trash2 size={16} />

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Play } from 'lucide-react';
 
 export function EventTests({ event, tests, onStartTest, onAction }: { event: any; tests: any[]; onStartTest?: any; onAction?: any }) {
   if (!tests?.length) return <div className="p-4 text-gray-500">Нет тестов для этого мероприятия</div>;
@@ -14,10 +15,11 @@ export function EventTests({ event, tests, onStartTest, onAction }: { event: any
             <div className="text-xs text-gray-500">Проходной балл: {test.passing_score}%</div>
             {onStartTest && (
               <button
-                className="mt-2 px-3 py-1 bg-sns-green text-white rounded hover:bg-sns-green-dark"
+                className="mt-3 px-6 py-3 bg-sns-green text-white rounded-xl hover:bg-sns-green-dark transition-all duration-300 font-semibold flex items-center justify-center group"
                 onClick={() => onStartTest(test.type)}
               >
-                Начать тест
+                <Play className="h-4 w-4 mr-2 group-hover:animate-pulse" />
+                <span className="text-base">Начать тест</span>
               </button>
             )}
           </div>
