@@ -5,7 +5,7 @@ import AdminTestSection from './AdminTestSection';
 import { TestTakingView } from '../admin/TestTakingView';
 import TestResults from './TestResults';
 import { useNavigate } from 'react-router-dom';
-import { FileText } from 'lucide-react';
+import { FileText, BarChart3 } from 'lucide-react';
 
 export default function EventTestsContainer({ eventId, userProfile, isAdmin, onStartTest, refreshKey = 0, onRefreshData }) {
   const [activeView, setActiveView] = useState('list'); // 'list', 'test', 'results'
@@ -20,6 +20,7 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
     final: { available: false, completed: false, score: null, attemptId: null, testId: null, test: null },
     annual: { available: false, completed: false, score: null, attemptId: null, testId: null, test: null }
   });
+  const [isTestsExpanded, setIsTestsExpanded] = useState(false); // состояние сворачивания секции тестирования
   const navigate = useNavigate();
   
   // Функция для загрузки тестов и попыток
@@ -316,19 +317,19 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
   return (
     <>
       {loading ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden -mx-4 sm:mx-0">
+          <div className="p-4 sm:p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               {[1,2,3].map(i => (
-                <div key={i} className="bg-gray-100 border border-gray-200 rounded-xl p-4 animate-pulse flex flex-col justify-between h-full min-h-[180px]">
+                <div key={i} className="bg-gray-100 border border-gray-200 rounded-xl p-3 sm:p-4 animate-pulse flex flex-col justify-between h-full min-h-[160px] sm:min-h-[180px]">
                   <div>
-                    <div className="h-5 w-32 bg-gray-200 rounded mb-2" />
-                    <div className="h-4 w-40 bg-gray-200 rounded mb-1" />
-                    <div className="h-3 w-24 bg-gray-200 rounded mb-1" />
-                    <div className="h-3 w-28 bg-gray-200 rounded mb-2" />
+                    <div className="h-4 sm:h-5 w-24 sm:w-32 bg-gray-200 rounded mb-2" />
+                    <div className="h-3 sm:h-4 w-32 sm:w-40 bg-gray-200 rounded mb-1" />
+                    <div className="h-3 w-20 sm:w-24 bg-gray-200 rounded mb-1" />
+                    <div className="h-3 w-24 sm:w-28 bg-gray-200 rounded mb-2" />
                   </div>
                   <div className="mt-2">
-                    <div className="h-10 w-full bg-gray-200 rounded" />
+                    <div className="h-8 sm:h-10 w-full bg-gray-200 rounded" />
                   </div>
                 </div>
               ))}
@@ -336,11 +337,11 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
           </div>
         </div>
       ) : error ? (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-          <p className="text-red-600">{error}</p>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4 text-center">
+          <p className="text-red-600 text-sm sm:text-base">{error}</p>
           <button 
             onClick={fetchTestsAndAttempts}
-            className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+            className="mt-2 px-3 sm:px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm sm:text-base"
           >
             Попробовать снова
           </button>
@@ -348,24 +349,60 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
       ) : (
         <>
           {activeView === 'list' && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="p-6">
-                <EventTestPrompts 
-                  eventId={eventId} 
-                  userProfile={userProfile} 
-                  onStartTest={handleStartTest}
-                  testStatus={testStatus}
-                  refreshKey={refreshKey}
-                />
-                {isAdmin && (
-                  <AdminTestSection 
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden -mx-4 sm:mx-0">
+              {/* Заголовок с возможностью сворачивания */}
+              <div 
+                className="px-4 sm:px-6 py-3 sm:py-4 bg-white border-b border-gray-100 cursor-pointer"
+                onClick={() => setIsTestsExpanded(!isTestsExpanded)}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900">Тестирование</h3>
+                    <p className="text-xs sm:text-sm text-gray-600">Контролируйте результаты тестирования и анализируйте эффективность обучения</p>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <span className="text-xs text-gray-400 hidden sm:inline">
+                      {isTestsExpanded ? 'Скрыть тесты' : 'Раскрыть тесты'}
+                    </span>
+                    <div 
+                      className="w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-200"
+                      style={{ backgroundColor: '#06A478' }}
+                    >
+                      <svg 
+                        className={`w-3.5 h-3.5 sm:w-5 sm:h-5 transition-transform duration-200 ${isTestsExpanded ? 'rotate-45 text-white' : 'text-white'}`}
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Содержимое секции */}
+              {isTestsExpanded && (
+                <div className="p-4 sm:p-6">
+                  <EventTestPrompts 
                     eventId={eventId} 
                     userProfile={userProfile} 
                     onStartTest={handleStartTest}
                     testStatus={testStatus}
+                    refreshKey={refreshKey}
                   />
-                )}
-              </div>
+                  
+                  {isAdmin && (
+                    <AdminTestSection 
+                      eventId={eventId} 
+                      userProfile={userProfile} 
+                      onStartTest={handleStartTest}
+                      testStatus={testStatus}
+                    />
+                  )}
+                </div>
+              )}
             </div>
           )}
           {activeView === 'test' && activeTestId && activeAttemptId && (

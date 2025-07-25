@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 
 // Иконки
 const FileTextIcon = (props) => (
@@ -453,6 +454,7 @@ function TestCard({ type, testData, onStart, eventEndDate }) {
 
 export default function EventTestPrompts({ eventId, onStartTest, testStatus, refreshKey = 0 }) {
   const { userProfile } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isParticipant, setIsParticipant] = useState(false);
@@ -618,11 +620,36 @@ export default function EventTestPrompts({ eventId, onStartTest, testStatus, ref
     }
     
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {testStatus.entry.test && <AdminTestCard type="entry" testData={testStatus.entry} eventId={eventId} />}
-        {testStatus.final.test && <AdminTestCard type="final" testData={testStatus.final} eventId={eventId} />}
-        {testStatus.annual?.test && <AdminTestCard type="annual" testData={testStatus.annual} eventId={eventId} />}
-      </div>
+      <>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {testStatus.entry.test && <AdminTestCard type="entry" testData={testStatus.entry} eventId={eventId} />}
+          {testStatus.final.test && <AdminTestCard type="final" testData={testStatus.final} eventId={eventId} />}
+          {testStatus.annual?.test && <AdminTestCard type="annual" testData={testStatus.annual} eventId={eventId} />}
+        </div>
+        
+        {/* Кнопка детальной статистики для администраторов */}
+        <div className="mt-4">
+          <div className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="p-2 rounded-lg bg-gray-200 mr-3">
+                <svg className="h-5 w-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold text-base text-gray-800">Детальная статистика</h3>
+                <p className="text-sm text-gray-500">Каждый ответ участника, время прохождения, правильность решений</p>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate(`/event-test-results/${eventId}`)}
+              className="px-6 py-2 bg-[#06A478] text-white rounded-lg font-medium hover:bg-[#059669]"
+            >
+              Открыть
+            </button>
+          </div>
+        </div>
+      </>
     );
   }
 
@@ -678,12 +705,37 @@ export default function EventTestPrompts({ eventId, onStartTest, testStatus, ref
         </div>
       </div>
 
-      {/* Сетка карточек */}
+      {/* Сетка карточек тестов */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {testStatus.entry.test && <TestCard type="entry" testData={testStatus.entry} onStart={handleStartTest} eventEndDate={eventEndDate} />}
         {testStatus.final.test && <TestCard type="final" testData={testStatus.final} onStart={handleStartTest} eventEndDate={eventEndDate} />}
         {testStatus.annual?.test && <TestCard type="annual" testData={testStatus.annual} onStart={handleStartTest} eventEndDate={eventEndDate} />}
       </div>
+      
+              {/* Кнопка детальной статистики (только для администраторов) */}
+        {userProfile?.role && ['administrator', 'moderator', 'trainer', 'expert'].includes(userProfile.role) && (
+          <div className="mt-4">
+            <div className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="p-2 rounded-lg bg-gray-200 mr-3">
+                  <svg className="h-5 w-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-base text-gray-800">Детальная статистика</h3>
+                  <p className="text-sm text-gray-500">Каждый ответ участника, время прохождения, правильность решений</p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate(`/event-test-results/${eventId}`)}
+                className="px-6 py-2 bg-[#06A478] text-white rounded-lg font-medium hover:bg-[#059669]"
+              >
+                Открыть
+              </button>
+            </div>
+          </div>
+        )}
     </div>
   );
 }

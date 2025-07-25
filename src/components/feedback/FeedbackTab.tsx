@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
-import { MessageSquare, CheckCircle, PlusCircle, Star, BarChart, Users, TrendingUp, Award } from 'lucide-react';
+import { MessageSquare, CheckCircle, PlusCircle, Star, BarChart, BarChart3, Users, TrendingUp, Award, FileText } from 'lucide-react';
 import { FeedbackForm } from './FeedbackForm';
+import { FeedbackComments } from './FeedbackComments';
 import { clsx } from 'clsx';
 
 interface FeedbackTabProps {
@@ -30,6 +31,11 @@ export function FeedbackTab({ eventId, adminStatOnly = false }: FeedbackTabProps
   const [averageRating, setAverageRating] = useState<number>(0);
   const [totalSubmissions, setTotalSubmissions] = useState<number>(0);
   const [feedbackStats, setFeedbackStats] = useState<any[]>([]);
+  const [isFeedbackExpanded, setIsFeedbackExpanded] = useState(false); // состояние сворачивания секции обратной связи
+  const [showParticipantsModal, setShowParticipantsModal] = useState(false);
+  const [selectedRating, setSelectedRating] = useState<{rating: number, participants: any[], question: string} | null>(null);
+  const [completionRate, setCompletionRate] = useState<number>(0);
+  const [textComments, setTextComments] = useState<any[]>([]);
 
   const isAdmin = adminStatOnly || (userProfile?.role === 'administrator' || userProfile?.role === 'moderator');
   const isTrainer = adminStatOnly || userProfile?.role === 'trainer' || isAdmin;
@@ -152,54 +158,202 @@ export function FeedbackTab({ eventId, adminStatOnly = false }: FeedbackTabProps
 
   const fetchFeedbackStats = async () => {
     try {
-      const { data, error } = await supabase.rpc('get_event_feedback_stats', {
-        p_event_id: eventId
-      });
-      if (error) {
-        console.error('Error fetching feedback stats:', error);
-        throw error;
+      // Получаем информацию о мероприятии и его типе
+      const { data: eventData, error: eventError } = await supabase
+        .from('events')
+        .select('id, event_type_id')
+        .eq('id', eventId)
+        .single();
+
+      if (eventError) {
+        console.error('Error fetching event data:', eventError);
+        throw eventError;
       }
-      // Получаем имена пользователей
-      if (data && data.length > 0) {
-        const userIds = new Set<string>();
-        data.forEach((question: any) => {
-          if (question.responses) {
-            question.responses.forEach((response: any) => {
-              if (response.user_id) {
-                userIds.add(response.user_id);
-              }
-            });
-          }
+
+      // Получаем шаблон обратной связи для типа мероприятия
+      const { data: templateData, error: templateError } = await supabase
+        .from('feedback_templates')
+        .select('id, name, description')
+        .eq('event_type_id', eventData.event_type_id)
+        .eq('is_default', true)
+        .single();
+
+      if (templateError) {
+        console.error('Error fetching feedback template:', templateError);
+        throw templateError;
+      }
+
+      // Получаем вопросы шаблона
+      const { data: questionsData, error: questionsError } = await supabase
+        .from('feedback_questions')
+        .select('id, question, question_type, required, order_num, options')
+        .eq('template_id', templateData.id)
+        .order('order_num');
+
+      if (questionsError) {
+        console.error('Error fetching feedback questions:', questionsError);
+        throw questionsError;
+      }
+
+      // Получаем все заполненные формы обратной связи для мероприятия
+      const { data: submissionsData, error: submissionsError } = await supabase
+        .from('feedback_submissions')
+        .select(`
+          id, 
+          user_id, 
+          overall_rating, 
+          comments, 
+          is_anonymous,
+          users!inner(full_name)
+        `)
+        .eq('event_id', eventId)
+        .eq('template_id', templateData.id);
+
+      if (submissionsError) {
+        console.error('Error fetching feedback submissions:', submissionsError);
+        throw submissionsError;
+      }
+
+      // Получаем ответы на вопросы
+      const { data: answersData, error: answersError } = await supabase
+        .from('feedback_answers')
+        .select(`
+          id, 
+          submission_id, 
+          question_id, 
+          rating_value, 
+          text_value, 
+          options_value
+        `)
+        .in('submission_id', submissionsData.map(s => s.id));
+
+      if (answersError) {
+        console.error('Error fetching feedback answers:', answersError);
+        throw answersError;
+      }
+
+      // Получаем данные участников для отображения территорий
+      const userIds = submissionsData.map(s => s.user_id);
+      const { data: participantsData } = await supabase
+        .from('event_participants_view')
+        .select('user_id, full_name, territory_name, territory_region')
+        .eq('event_id', eventId)
+        .in('user_id', userIds);
+
+      // Создаем карту данных участников
+      const participantsMap = new Map();
+      if (participantsData) {
+        participantsData.forEach(p => {
+          participantsMap.set(p.user_id, p);
         });
-        // Создаем карту id -> full_name
-        const userNamesMap: Record<string, string> = {};
-        const { data: usersData, error: usersError } = await supabase
-          .from('users')
-          .select('id, full_name')
-          .in('id', Array.from(userIds));
-        
-        if (usersError) {
-          console.error('Error fetching user names:', usersError);
-          // Продолжаем без имен пользователей
+      }
+
+      // Создаем карту ответов по submission_id
+      const answersMap = new Map();
+      answersData.forEach(answer => {
+        if (!answersMap.has(answer.submission_id)) {
+          answersMap.set(answer.submission_id, []);
         }
-        usersData?.forEach((user: any) => {
-          userNamesMap[user.id] = user.full_name || '';
-        });
-        // Добавляем имена в данные ответов
-        data.forEach((question: any) => {
-          if (question.responses) {
-            question.responses.forEach((response: any) => {
-              if (response.user_id && userNamesMap[response.user_id]) {
-                response.user_full_name = userNamesMap[response.user_id];
-              }
-            });
+        answersMap.get(answer.submission_id).push(answer);
+      });
+
+      // Обрабатываем статистику по вопросам
+      const processedStats = questionsData.map(question => {
+        const responses: any[] = [];
+        let totalRating = 0;
+        let ratingCount = 0;
+
+        submissionsData.forEach(submission => {
+          const submissionAnswers = answersMap.get(submission.id) || [];
+          const questionAnswer = submissionAnswers.find(a => a.question_id === question.id);
+          
+          if (questionAnswer) {
+            let value = null;
+            if (question.question_type === 'rating' && questionAnswer.rating_value) {
+              value = questionAnswer.rating_value;
+              totalRating += value;
+              ratingCount++;
+            } else if (question.question_type === 'text' && questionAnswer.text_value) {
+              value = questionAnswer.text_value;
+            } else if (question.question_type === 'options' && questionAnswer.options_value) {
+              value = questionAnswer.options_value;
+            }
+
+            if (value !== null) {
+              const participant = participantsMap.get(submission.user_id);
+              responses.push({
+                user_id: submission.user_id,
+                value: value,
+                user_full_name: participant?.full_name || submission.users?.full_name || 'Неизвестный участник',
+                user_territory: participant?.territory_name || '',
+                user_territory_region: participant?.territory_region || '',
+                submission_id: submission.id,
+                is_anonymous: submission.is_anonymous
+              });
+            }
           }
         });
-      }
-      setFeedbackStats(data || []);
+
+        return {
+          question_id: question.id,
+          question: question.question,
+          question_type: question.question_type,
+          required: question.required,
+          order_num: question.order_num,
+          options: question.options,
+          responses: responses,
+          average_rating: ratingCount > 0 ? totalRating / ratingCount : null,
+          response_count: responses.length
+        };
+      });
+
+      // Вычисляем общую статистику
+      const totalSubmissionsCount = submissionsData.length;
+      const overallRatings = submissionsData
+        .filter(s => s.overall_rating)
+        .map(s => s.overall_rating);
+      
+      const averageOverallRating = overallRatings.length > 0 
+        ? overallRatings.reduce((sum, rating) => sum + rating, 0) / overallRatings.length 
+        : 0;
+
+      setFeedbackStats(processedStats);
+      setTotalSubmissions(totalSubmissionsCount);
+      setAverageRating(averageOverallRating);
+
+      // Собираем текстовые комментарии отдельно
+      const allTextComments: any[] = [];
+      processedStats.forEach(question => {
+        if (question.question_type === 'text') {
+          question.responses.forEach((response: any) => {
+            allTextComments.push({
+              id: `${question.question_id}-${response.submission_id}`,
+              ...response,
+              question_text: question.question
+            });
+          });
+        }
+      });
+      setTextComments(allTextComments);
+
+      // Вычисляем процент участников, оставивших отзыв
+      const { data: totalParticipantsData } = await supabase
+        .from('event_participants_view')
+        .select('user_id')
+        .eq('event_id', eventId);
+
+      const totalParticipants = totalParticipantsData?.length || 0;
+      const completionPercentage = totalParticipants > 0 
+        ? Math.round((totalSubmissionsCount / totalParticipants) * 100) 
+        : 0;
+      
+      setCompletionRate(completionPercentage);
+
     } catch (err) {
       console.error('Error fetching feedback stats:', err);
       setFeedbackStats([]);
+      setTotalSubmissions(0);
+      setAverageRating(0);
     }
   };
 
@@ -210,24 +364,60 @@ export function FeedbackTab({ eventId, adminStatOnly = false }: FeedbackTabProps
     setTimeout(() => setSuccess(false), 3000);
   };
 
-  // Возвращает процент участников, оставивших отзыв (заглушка, если нет данных о количестве участников)
-  const getFeedbackCompletionRate = () => {
-    // Если потребуется — можно добавить загрузку участников и считать процент
-    return 0;
+  const handleRatingClick = (rating: number, participants: any[], question: string) => {
+    setSelectedRating({ rating, participants, question });
+    setShowParticipantsModal(true);
+  };
+
+  // Возвращает процент участников, оставивших отзыв
+  const getFeedbackCompletionRate = async () => {
+    try {
+      // Получаем общее количество участников мероприятия
+      const { data: participantsData, error: participantsError } = await supabase
+        .from('event_participants_view')
+        .select('user_id')
+        .eq('event_id', eventId);
+
+      if (participantsError) {
+        console.error('Error fetching participants:', participantsError);
+        return 0;
+      }
+
+      const totalParticipants = participantsData?.length || 0;
+      const feedbackSubmissions = totalSubmissions;
+
+      if (totalParticipants === 0) return 0;
+      
+      return Math.round((feedbackSubmissions / totalParticipants) * 100);
+    } catch (err) {
+      console.error('Error calculating feedback completion rate:', err);
+      return 0;
+    }
   };
 
   function renderStars(rating: number | null) {
-    if (rating == null) return <span className="text-gray-400">Нет оценок</span>;
+    if (rating == null) return <span className="text-gray-400 text-xs sm:text-sm">Нет оценок</span>;
     const full = Math.floor(rating);
     const half = rating % 1 >= 0.5;
     const empty = 5 - full - (half ? 1 : 0);
     return (
-      <span className="flex items-center">
-        {Array(full).fill(0).map((_, i) => <Star key={i} className="h-5 w-5" style={{ color: '#F59E0B', fill: '#F59E0B' }} />)}
-        {half && <Star className="h-5 w-5 opacity-50" style={{ color: '#F59E0B', fill: '#F59E0B' }} />}
-        {Array(empty).fill(0).map((_, i) => <Star key={i+10} className="h-5 w-5 text-gray-200" />)}
-        <span className="ml-3 font-semibold text-gray-700 bg-gray-100 px-2 py-1 rounded-full text-sm">{rating.toFixed(1)}</span>
-      </span>
+      <div className="flex items-center gap-0.5">
+        {Array(full).fill(0).map((_, i) => (
+          <svg key={i} className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+          </svg>
+        ))}
+        {half && (
+          <svg className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-400 fill-current opacity-75" viewBox="0 0 20 20">
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+          </svg>
+        )}
+        {Array(empty).fill(0).map((_, i) => (
+          <svg key={i+10} className="h-3 w-3 sm:h-4 sm:w-4 text-gray-300" viewBox="0 0 20 20">
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+          </svg>
+        ))}
+      </div>
     );
   }
 
@@ -257,7 +447,7 @@ export function FeedbackTab({ eventId, adminStatOnly = false }: FeedbackTabProps
 
   function renderRatingDistribution(question: any) {
     if (!question.responses || question.responses.length === 0) return null;
-    // Подсчитываем количество каждой оценки и кто поставил
+    // Подсчитываем количество каждой оценки
     const ratings: { [key: number]: any[] } = {1: [], 2: [], 3: [], 4: [], 5: []};
     (question.responses as any[]).forEach((response: any) => {
       if (response.value >= 1 && response.value <= 5) {
@@ -265,55 +455,39 @@ export function FeedbackTab({ eventId, adminStatOnly = false }: FeedbackTabProps
       }
     });
     const totalResponses = (question.responses as any[]).length;
+    
     return (
-      <div className="mt-2 space-y-2">
+      <div className="space-y-1">
         {Object.entries(ratings).reverse().map(([rating, responses]) => {
           const respArr = responses as any[];
           const count = respArr.length;
           const percentage = totalResponses > 0 ? (count / totalResponses) * 100 : 0;
+          
           return (
-            <div key={rating} className="mb-1">
-              <div className="flex items-center text-xs mb-1">
-                <span className="w-6 text-gray-600 font-bold">{rating}</span>
-                <div className="flex-1 mx-2 relative">
-                  {/* Прогресс-бар */}
-                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div 
-                      className={clsx(
-                        "h-full rounded-full",
-                        rating === '5' ? "bg-green-500" :
-                        rating === '4' ? "bg-blue-500" :
-                        rating === '3' ? "bg-yellow-500" :
-                        rating === '2' ? "bg-orange-500" :
-                        "bg-red-500"
-                      )}
-                      style={{ width: `${percentage}%` }}
-                    />
-                  </div>
-                  {/* Аватарки поверх полоски */}
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center w-full pointer-events-none pl-8" style={{ zIndex: 2 }}>
-                    {respArr.map((resp: any, i: number) => {
-                      const initials = resp.user_full_name
-                        ? getInitials(resp.user_full_name)
-                        : (resp.user_id ? resp.user_id.substring(0, 2).toUpperCase() : 'U');
-                      return (
-                        <div
-                          key={resp.user_id || i}
-                          className={clsx(
-                            "inline-flex items-center justify-center w-8 h-8 rounded-full font-medium text-xs shadow border-2 border-white backdrop-blur bg-white/70",
-                            getUserColor(resp.user_id),
-                            i !== 0 && "-ml-3"
-                          )}
-                          title={resp.user_full_name || resp.user_id || 'Пользователь'}
-                          style={{ pointerEvents: 'auto' }}
-                        >
-                          {initials}
-                        </div>
-                      );
-                    })}
-                  </div>
+            <div 
+              key={rating} 
+              className="flex items-center gap-2 p-1 rounded hover:bg-gray-50 cursor-pointer transition-colors duration-200 touch-manipulation"
+              onClick={() => handleRatingClick(parseInt(rating), respArr, question.question)}
+            >
+              <span className="text-xs sm:text-sm text-gray-600 w-3 sm:w-4">{rating}</span>
+              <div className="flex-1">
+                <div className="h-1.5 sm:h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div 
+                    className={clsx(
+                      "h-full rounded-full",
+                      rating === '5' ? "bg-green-500" :
+                      rating === '4' ? "bg-blue-500" :
+                      rating === '3' ? "bg-yellow-500" :
+                      rating === '2' ? "bg-orange-500" :
+                      "bg-red-500"
+                    )}
+                    style={{ width: `${percentage}%` }}
+                  />
                 </div>
-                <span className="w-8 text-right text-gray-600">{count}</span>
+              </div>
+              <div className="flex items-center gap-1 min-w-[50px] sm:min-w-[60px] justify-end">
+                <span className="text-xs sm:text-sm font-medium text-gray-900">{count}</span>
+                <span className="text-xs text-gray-500">({percentage.toFixed(0)}%)</span>
               </div>
             </div>
           );
@@ -333,79 +507,101 @@ export function FeedbackTab({ eventId, adminStatOnly = false }: FeedbackTabProps
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl shadow-lg p-6 mb-6 animate-pulse">
-        <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6 animate-pulse">
+        <div className="h-6 sm:h-8 bg-gray-200 rounded w-1/3 mb-3 sm:mb-4"></div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
           {[1,2,3].map(i => (
-            <div key={i} className="bg-gray-100 rounded-xl h-24 animate-pulse shadow flex flex-col items-center justify-center">
-              <div className="h-8 w-8 bg-gray-200 rounded-full mb-2" />
-              <div className="h-4 w-16 bg-gray-200 rounded" />
+            <div key={i} className="bg-gray-100 rounded-xl h-20 sm:h-24 animate-pulse shadow flex flex-col items-center justify-center">
+              <div className="h-6 w-6 sm:h-8 sm:w-8 bg-gray-200 rounded-full mb-2" />
+              <div className="h-3 w-12 sm:w-16 bg-gray-200 rounded" />
             </div>
           ))}
         </div>
-        <div className="h-10 bg-gray-200 rounded w-40 mx-auto" />
+        <div className="h-8 sm:h-10 bg-gray-200 rounded w-32 sm:w-40 mx-auto" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-xl p-6">
-        <h3 className="text-red-800 font-medium mb-2">Ошибка</h3>
-        <p className="text-red-600">{error}</p>
+      <div className="bg-red-50 border border-red-200 rounded-xl p-4 sm:p-6">
+        <h3 className="text-red-800 font-medium mb-2 text-sm sm:text-base">Ошибка</h3>
+        <p className="text-red-600 text-xs sm:text-sm">{error}</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-      {/* Заголовок */}
-      <div className="px-6 py-4 border-b border-gray-100">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-          <div className="flex-1">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden -mx-4 sm:mx-0">
+        {/* Заголовок с возможностью сворачивания */}
+        <div 
+          className="px-4 sm:px-6 py-3 sm:py-4 bg-white border-b border-gray-100 cursor-pointer"
+          onClick={() => setIsFeedbackExpanded(!isFeedbackExpanded)}
+        >
+          <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl md:text-2xl font-bold text-gray-900">
-                Обратная связь
-              </h2>
-              <p className="text-gray-600 text-sm mt-1 font-medium">
+              <h3 className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900">Обратная связь</h3>
+              <p className="text-xs sm:text-sm text-gray-600">
                 {isTrainer
                   ? "Отзывы участников о качестве проведенного мероприятия"
                   : "Поделитесь вашим мнением о прошедшем мероприятии"}
               </p>
             </div>
+            
+            <div className="flex items-center gap-2 sm:gap-3">
+              <span className="text-xs text-gray-400 hidden sm:inline">
+                {isFeedbackExpanded ? 'Скрыть отзывы' : 'Раскрыть отзывы'}
+              </span>
+              <div 
+                className="w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-200"
+                style={{ backgroundColor: '#06A478' }}
+              >
+                <svg 
+                  className={`w-3.5 h-3.5 sm:w-5 sm:h-5 transition-transform duration-200 ${isFeedbackExpanded ? 'rotate-45 text-white' : 'text-white'}`}
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </div>
+            </div>
           </div>
-          
-          {!feedbackStatus.hasSubmittedFeedback && (
-            <button
-              onClick={() => {
-                console.log('Feedback button clicked');
-                console.log('Current status:', feedbackStatus);
-                console.log('isTrainer:', isTrainer);
-                setShowFeedbackForm(true);
-              }}
-              disabled={!feedbackStatus.canSubmitFeedback && !isTrainer}
-              className={clsx(
-                "inline-flex items-center px-6 py-3 rounded-xl text-base font-semibold transition-all duration-200",
-                (feedbackStatus.canSubmitFeedback || isTrainer)
-                  ? "text-white shadow-md hover:shadow-lg"
-                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
-              )}
-              style={(feedbackStatus.canSubmitFeedback || isTrainer) ? { backgroundColor: '#06A478' } : {}}
-            >
-              <PlusCircle className="h-5 w-5 mr-2" />
-              <span>Оставить отзыв</span>
-            </button>
-          )}
         </div>
-      </div>
 
-      <div className="p-6 space-y-6">
+        {/* Содержимое секции */}
+        {isFeedbackExpanded && (
+          <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+            {/* Кнопка "Оставить отзыв" для обычных пользователей */}
+            {!feedbackStatus.hasSubmittedFeedback && !isTrainer && (
+              <div className="flex justify-end">
+                <button
+                  onClick={() => {
+                    console.log('Feedback button clicked');
+                    console.log('Current status:', feedbackStatus);
+                    console.log('isTrainer:', isTrainer);
+                    setShowFeedbackForm(true);
+                  }}
+                  disabled={!feedbackStatus.canSubmitFeedback}
+                  className={clsx(
+                    "inline-flex items-center px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base font-semibold transition-all duration-200",
+                    feedbackStatus.canSubmitFeedback
+                      ? "text-white shadow-md hover:shadow-lg"
+                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  )}
+                  style={feedbackStatus.canSubmitFeedback ? { backgroundColor: '#06A478' } : {}}
+                >
+                  <PlusCircle className="h-4 w-4 sm:h-5 sm:w-5 mr-1.5 sm:mr-2" />
+                  <span>Оставить отзыв</span>
+                </button>
+              </div>
+            )}
         {/* Информация о статусе обратной связи для обычных пользователей */}
         {!isTrainer && (
         <div className={clsx(
-          "p-6 rounded-xl border border-gray-200 transition-all duration-200",
+          "p-4 sm:p-6 rounded-xl border border-gray-200 transition-all duration-200",
           feedbackStatus.hasSubmittedFeedback
             ? "bg-green-50 border-green-200"
             : feedbackStatus.canSubmitFeedback
@@ -414,42 +610,42 @@ export function FeedbackTab({ eventId, adminStatOnly = false }: FeedbackTabProps
         )}>
           {feedbackStatus.hasSubmittedFeedback ? (
             <div className="flex items-center">
-              <div className="p-2 rounded-full mr-4" style={{ backgroundColor: '#10B981' }}>
-                <CheckCircle className="h-6 w-6 text-white" />
+              <div className="p-1.5 sm:p-2 rounded-full mr-3 sm:mr-4" style={{ backgroundColor: '#10B981' }}>
+                <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </div>
               <div>
-                <p className="text-gray-900 font-semibold text-lg">
+                <p className="text-gray-900 font-semibold text-base sm:text-lg">
                   Спасибо за вашу обратную связь!
                 </p>
-                <p className="text-gray-600 text-sm mt-1">
+                <p className="text-gray-600 text-xs sm:text-sm mt-1">
                   Ваш отзыв очень важен для нас и поможет улучшить качество обучения.
                 </p>
               </div>
             </div>
           ) : feedbackStatus.canSubmitFeedback ? (
             <div className="flex items-center">
-              <div className="p-2 rounded-full mr-4" style={{ backgroundColor: '#06A478' }}>
-                <Star className="h-6 w-6 text-white" />
+              <div className="p-1.5 sm:p-2 rounded-full mr-3 sm:mr-4" style={{ backgroundColor: '#06A478' }}>
+                <Star className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </div>
               <div>
-                <p className="text-gray-900 font-semibold text-lg">
+                <p className="text-gray-900 font-semibold text-base sm:text-lg">
                   Готовы поделиться мнением?
                 </p>
-                <p className="text-gray-600 text-sm mt-1">
+                <p className="text-gray-600 text-xs sm:text-sm mt-1">
                   Вы можете оставить обратную связь по этому мероприятию. Пожалуйста, поделитесь своим мнением.
                 </p>
               </div>
             </div>
           ) : (
             <div className="flex items-center">
-              <div className="p-2 rounded-full mr-4" style={{ backgroundColor: '#F59E0B' }}>
-                <Award className="h-6 w-6 text-white" />
+              <div className="p-1.5 sm:p-2 rounded-full mr-3 sm:mr-4" style={{ backgroundColor: '#F59E0B' }}>
+                <Award className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </div>
               <div>
-                <p className="text-gray-900 font-semibold text-lg">
+                <p className="text-gray-900 font-semibold text-base sm:text-lg">
                   Необходимо пройти тесты
                 </p>
-                <p className="text-gray-600 text-sm mt-1">
+                <p className="text-gray-600 text-xs sm:text-sm mt-1">
                   {feedbackStatus.reasonDisabled || "Для заполнения обратной связи необходимо пройти входной и финальный тесты."}
                 </p>
               </div>
@@ -460,29 +656,114 @@ export function FeedbackTab({ eventId, adminStatOnly = false }: FeedbackTabProps
 
         {/* Статистика обратной связи для тренеров и администраторов */}
         {isTrainer && feedbackStats.length > 0 && (
-          <div>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 rounded-lg" style={{ backgroundColor: '#06A478' }}>
-                <BarChart className="h-5 w-5 text-white" />
+          <div className="space-y-3 sm:space-y-4">
+            {/* Общая статистика */}
+            <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-4 sm:p-6 border border-gray-200 shadow-sm">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="p-1.5 sm:p-2 rounded-lg" style={{ backgroundColor: '#06A47820' }}>
+                    <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: '#06A478' }} />
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-bold text-gray-900">Общая статистика</h3>
+                </div>
+                <div className="text-xs sm:text-sm font-medium" style={{ color: '#06A478' }}>
+                  {completionRate}% участников оставили отзыв
+                </div>
               </div>
-              <h3 className="text-xl font-bold text-gray-900">Статистика по вопросам обратной связи</h3>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {feedbackStats.filter(q => q.question_type === 'rating').map((q, idx) => (
-                <div key={q.question_id || idx} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-all duration-200">
-                  <div className="text-gray-900 font-semibold text-lg mb-4">{q.question}</div>
-                  <div className="flex items-center justify-between mb-4">
-                    {renderStars(q.average_rating)}
-                    <div className="flex items-center gap-2 text-gray-500">
-                      <Users className="h-4 w-4" />
-                      <span className="text-sm font-medium">{q.response_count} ответ(ов)</span>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+                <div className="bg-white rounded-lg p-3 sm:p-4 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="p-1.5 sm:p-2 rounded-lg" style={{ backgroundColor: '#06A47815' }}>
+                      <Users className="w-3 h-3 sm:w-4 sm:h-4" style={{ color: '#06A478' }} />
+                    </div>
+                    <div>
+                      <p className="text-xs sm:text-sm text-gray-600">Всего отзывов</p>
+                      <p className="text-xl sm:text-2xl font-bold text-gray-900">{totalSubmissions}</p>
                     </div>
                   </div>
-                  {/* Распределение оценок */}
-                  {renderRatingDistribution(q)}
+                </div>
+                
+                <div className="bg-white rounded-lg p-3 sm:p-4 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="p-1.5 sm:p-2 rounded-lg" style={{ backgroundColor: '#06A47815' }}>
+                      <Star className="w-3 h-3 sm:w-4 sm:h-4" style={{ color: '#06A478' }} />
+                    </div>
+                    <div>
+                      <p className="text-xs sm:text-sm text-gray-600">Средняя оценка</p>
+                      <div className="flex items-center gap-1.5 sm:gap-2">
+                        <p className="text-xl sm:text-2xl font-bold text-gray-900">{averageRating.toFixed(1)}</p>
+                        {renderStars(averageRating)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-white rounded-lg p-3 sm:p-4 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="p-1.5 sm:p-2 rounded-lg" style={{ backgroundColor: '#06A47815' }}>
+                      <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4" style={{ color: '#06A478' }} />
+                    </div>
+                    <div>
+                      <p className="text-xs sm:text-sm text-gray-600">Комментарии</p>
+                      <p className="text-xl sm:text-2xl font-bold text-gray-900">{textComments.length}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Детальная статистика по вопросам */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-3">
+              {feedbackStats.filter(q => q.question_type !== 'text').map((q, idx) => (
+                <div key={q.question_id || idx} className="bg-white rounded-lg border border-gray-200 p-2.5 sm:p-3">
+                  <div className="flex items-start justify-between mb-1.5 sm:mb-2">
+                    <h4 className="text-gray-900 font-medium text-sm sm:text-base leading-tight pr-2 flex-1">{q.question}</h4>
+                    <div className="flex items-center gap-1 text-gray-500 text-xs sm:text-sm">
+                      <Users className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span>{q.response_count}</span>
+                    </div>
+                  </div>
+                  
+                  {q.question_type === 'rating' && (
+                    <>
+                      <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+                        {renderStars(q.average_rating)}
+                        <span className="text-sm sm:text-base font-semibold text-gray-900">{q.average_rating?.toFixed(1) || '0.0'}</span>
+                      </div>
+                      
+                      {/* Компактное распределение оценок */}
+                      {renderRatingDistribution(q)}
+                    </>
+                  )}
+                  
+
+                  
+                  {q.question_type === 'options' && (
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <div className="text-xs sm:text-sm text-gray-600">
+                        Выбрано вариантов: <span className="font-semibold text-gray-900">{q.response_count}</span>
+                      </div>
+                      {q.options && (
+                        <div className="text-xs text-gray-600">
+                          Доступно: {q.options.split(',').length} вариантов
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
+
+            {/* Комментарии и предложения */}
+            {textComments.length > 0 && (
+              <div className="mt-4 sm:mt-6">
+                <FeedbackComments comments={textComments} />
+              </div>
+            )}
+
+          </div>
+        )}
           </div>
         )}
       </div>
@@ -501,14 +782,93 @@ export function FeedbackTab({ eventId, adminStatOnly = false }: FeedbackTabProps
 
       {/* Всплывающее сообщение об успешной отправке отзыва */}
       {success && (
-        <div className="fixed bottom-6 right-6 text-white px-6 py-4 rounded-xl shadow-lg text-lg font-semibold z-50 animate-fade-in" style={{ backgroundColor: '#10B981' }}>
-          <div className="flex items-center gap-3">
-            <CheckCircle className="h-6 w-6" />
+        <div className="fixed bottom-4 sm:bottom-6 right-4 sm:right-6 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-xl shadow-lg text-base sm:text-lg font-semibold z-50 animate-fade-in" style={{ backgroundColor: '#10B981' }}>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6" />
             <span>Спасибо за ваш отзыв!</span>
           </div>
         </div>
       )}
-      </div>
+
+      {/* Модальное окно со списком участников */}
+      {showParticipantsModal && selectedRating && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-sm sm:max-w-md w-full max-h-[80vh] overflow-hidden">
+            <div className="p-3 sm:p-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900">
+                  Оценка {selectedRating.rating} звезд
+                </h3>
+                <button
+                  onClick={() => setShowParticipantsModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <p className="text-xs sm:text-sm text-gray-600 mt-1">{selectedRating.question}</p>
+            </div>
+            
+            <div className="p-3 sm:p-4 overflow-y-auto max-h-[60vh]">
+              <div className="space-y-2">
+                {selectedRating.participants.map((participant: any, index: number) => (
+                  <div key={participant.user_id || index} className="flex items-center gap-2 sm:gap-3 p-2 rounded-lg hover:bg-gray-50">
+                    <div
+                      className="w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-semibold text-xs sm:text-sm text-white"
+                      style={{ backgroundColor: getUserColor(participant.user_id).includes('bg-blue') ? '#3B82F6' : 
+                               getUserColor(participant.user_id).includes('bg-green') ? '#10B981' :
+                               getUserColor(participant.user_id).includes('bg-purple') ? '#8B5CF6' :
+                               getUserColor(participant.user_id).includes('bg-pink') ? '#EC4899' :
+                               getUserColor(participant.user_id).includes('bg-yellow') ? '#F59E0B' :
+                               getUserColor(participant.user_id).includes('bg-indigo') ? '#6366F1' :
+                               getUserColor(participant.user_id).includes('bg-red') ? '#EF4444' :
+                               getUserColor(participant.user_id).includes('bg-orange') ? '#F97316' :
+                               getUserColor(participant.user_id).includes('bg-teal') ? '#14B8A6' : '#6B7280' }}
+                    >
+                      {getInitials(participant.user_full_name)}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs sm:text-sm font-medium text-gray-900">
+                        {participant.user_full_name || 'Неизвестный участник'}
+                      </p>
+                                             <div className="text-xs text-gray-500 space-y-0.5">
+                         {participant.user_territory && (
+                           <p>Филиал: {participant.user_territory}</p>
+                         )}
+                         {participant.user_territory_region && (
+                           <p>Регион: {participant.user_territory_region}</p>
+                         )}
+                         {!participant.user_territory && !participant.user_territory_region && (
+                           <p>ID: {participant.user_id}</p>
+                         )}
+                       </div>
+                    </div>
+                    <div className="flex items-center gap-0.5 sm:gap-1">
+                      {[...Array(5)].map((_, i) => (
+                        <svg
+                          key={i}
+                          className={`w-3 h-3 sm:w-4 sm:h-4 ${i < selectedRating.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
+                          viewBox="0 0 20 20"
+                        >
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                        </svg>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div className="p-3 sm:p-4 border-t border-gray-200 bg-gray-50">
+              <p className="text-xs sm:text-sm text-gray-600 text-center">
+                Всего участников: {selectedRating.participants.length}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

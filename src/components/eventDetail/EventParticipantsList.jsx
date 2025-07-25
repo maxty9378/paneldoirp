@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import EventTestPrompts from './EventTestPrompts';
 import AdminTestSection from './AdminTestSection';
-import { ChevronDown, ChevronUp, Users, RefreshCw } from 'lucide-react';
+import { Plus, Users, RefreshCw } from 'lucide-react';
 
 const CORPORATE_GREEN = '#06A478';
 
@@ -18,15 +18,15 @@ function StatusIcon({ ok, onClick }) {
   return (
     <button
       onClick={onClick}
-      className="focus:outline-none hover:scale-110 transition-transform duration-200"
+      className="focus:outline-none hover:scale-110 transition-transform duration-200 touch-manipulation"
       title={ok ? 'Отметить как отсутствующего' : 'Отметить как присутствующего'}
     >
       {ok ? (
-        <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
         </svg>
       ) : (
-        <svg className="w-5 h-5 text-gray-400 hover:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 hover:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
         </svg>
       )}
@@ -73,6 +73,7 @@ export default function EventParticipantsList({ eventId, refreshKey = 0 }) {
           .eq('event_id', eventId);
 
         if (error) throw error;
+
         setParticipants(data || []);
       } catch (err) {
         console.error('Ошибка при загрузке данных:', err);
@@ -158,156 +159,143 @@ export default function EventParticipantsList({ eventId, refreshKey = 0 }) {
   const testCompletedCount = participants.filter(p => p.entry_test_score !== null || p.final_test_score !== null).length;
 
   if (loading) return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-      <div className="flex items-center justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-3 text-gray-600">Загрузка участников...</span>
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 -mx-4 sm:mx-0">
+      <div className="flex items-center justify-center py-6 sm:py-8">
+        <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-600"></div>
+        <span className="ml-3 text-gray-600 text-sm sm:text-base">Загрузка участников...</span>
       </div>
     </div>
   );
   
   if (error) return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-      <div className="text-center py-8 text-red-500">
-        <div className="text-lg font-semibold mb-2">Ошибка загрузки</div>
-        <div className="text-sm">{error}</div>
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 -mx-4 sm:mx-0">
+      <div className="text-center py-6 sm:py-8 text-red-500">
+        <div className="text-base sm:text-lg font-semibold mb-2">Ошибка загрузки</div>
+        <div className="text-xs sm:text-sm">{error}</div>
       </div>
     </div>
   );
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden -mx-4 sm:mx-0">
         {/* Заголовок с возможностью сворачивания */}
         <div 
-          className="px-6 py-4 bg-white border-b border-gray-100 cursor-pointer"
+          className="px-4 sm:px-6 py-3 sm:py-4 bg-white border-b border-gray-100 cursor-pointer"
           onClick={() => setIsExpanded(!isExpanded)}
         >
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-green-100">
-              <Users className="w-5 h-5 text-green-600" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">Участники мероприятия</h2>
-                             <div className="flex items-center gap-3 text-xs text-gray-600 mt-1">
-                 <span className="flex items-center gap-1">
-                   <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                   {attendedCount} присутствовало
-                 </span>
-                 <span className="flex items-center gap-1">
-                   <span className="w-2 h-2" style={{ backgroundColor: CORPORATE_GREEN }}></span>
-                   {testCompletedCount} прошли тест
-                 </span>
-                 <span className="flex items-center gap-1">
-                   <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
-                   {feedbackCount} оставили отзыв
-                 </span>
-               </div>
-               
-               {/* Напоминание для администраторов под статистикой */}
-               {isAdmin && (
-                 <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                   <div className="flex items-center gap-2 text-sm text-blue-700">
-                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                     </svg>
-                     <span className="font-semibold">Напоминание:</span>
-                     <span>Не забудьте отметить, кто присутствовал на мероприятии</span>
-                   </div>
-                 </div>
-               )}
-            </div>
+          <div>
+            <h3 className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900">Участники мероприятия</h3>
+            {/* Подзаголовок для администраторов */}
+            {isAdmin && (
+              <p className="text-xs sm:text-sm text-gray-600">Отслеживайте участников тренинга и отмечайте присутствие сотрудников</p>
+            )}
           </div>
           
-          <div className="flex items-center gap-2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                refreshParticipants();
-              }}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
-              title="Обновить данные"
+          <div className="flex items-center gap-2 sm:gap-3">
+            <span className="text-xs text-gray-400 hidden sm:inline">
+              {isExpanded ? 'Скрыть список' : 'Раскрыть список'}
+            </span>
+            <div 
+              className="w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-200"
+              style={{ backgroundColor: isExpanded ? '#06A478' : '#06A478' }}
             >
-              <RefreshCw className="w-4 h-4" />
-            </button>
-            {isExpanded ? (
-              <ChevronUp className="w-5 h-5 text-gray-400" />
-            ) : (
-              <ChevronDown className="w-5 h-5 text-gray-400" />
-            )}
+              <Plus 
+                className={`w-3.5 h-3.5 sm:w-5 sm:h-5 transition-transform duration-200 ${isExpanded ? 'rotate-45 text-white' : 'text-white'}`}
+              />
+            </div>
           </div>
         </div>
       </div>
 
       {/* Содержимое таблицы */}
       {isExpanded && (
-        <div className="p-6">
+        <div className="p-3 sm:p-4 lg:p-6">
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-50 sticky top-0 z-10">
+            <table className="min-w-full">
+              <thead className="bg-gradient-to-r from-gray-50 to-gray-100 sticky top-0 z-10">
                 <tr>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700 rounded-l-lg w-1/3">Участник</th>
-                  <th className={`px-4 py-3 text-left font-semibold text-gray-700 ${!isAdmin ? 'rounded-r-lg' : ''} w-1/4`}>Должность</th>
+                  <th className="px-2 sm:px-3 py-2 sm:py-3 text-left font-semibold text-gray-700 text-xs uppercase tracking-wider rounded-l-lg">Участник</th>
+                  <th className={`px-2 sm:px-3 py-2 sm:py-3 text-left font-semibold text-gray-700 text-xs uppercase tracking-wider ${!isAdmin ? 'rounded-r-lg' : ''}`}>Должность</th>
                   
                   {isAdmin && (
                     <>
-                      <th className="px-3 py-3 text-center font-semibold text-gray-700 w-[120px]">Статус</th>
-                      <th className="px-4 py-3 text-center font-semibold text-gray-700 w-[150px]">Тесты</th>
-                      <th className="px-4 py-3 text-center font-semibold text-gray-700 rounded-r-lg w-[150px]">Обратная связь</th>
+                      <th className="px-1 sm:px-2 py-2 sm:py-3 text-center font-semibold text-gray-700 text-xs uppercase tracking-wider w-[80px] sm:w-[100px]">Статус</th>
+                      <th className="px-1 sm:px-2 py-2 sm:py-3 text-center font-semibold text-gray-700 text-xs uppercase tracking-wider w-[100px] sm:w-[120px]">Тесты</th>
+                      <th className="px-2 sm:px-3 py-2 sm:py-3 text-center font-semibold text-gray-700 text-xs uppercase tracking-wider rounded-r-lg w-[100px] sm:w-[120px]">Обратная связь</th>
                     </>
                   )}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-200">
                 {participants.map((p, idx) => (
                   <tr
                     key={p.id}
-                    className="hover:bg-blue-50/50 transition-colors duration-200"
+                    className={`hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-indigo-50/50 transition-all duration-200 group ${
+                      idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
+                    }`}
                   >
-                    <td className="px-4 py-4 align-top">
-                      <div className="flex gap-3 items-start">
+                    <td className="px-2 sm:px-3 py-2 sm:py-3 align-middle">
+                      <div className="flex gap-2 sm:gap-3 items-center">
                         <div
-                          className="w-10 h-10 rounded-xl text-white flex items-center justify-center font-semibold shadow-sm"
+                          className="w-7 h-7 sm:w-9 sm:h-9 rounded-xl text-white flex items-center justify-center font-semibold shadow-sm group-hover:shadow-md transition-shadow duration-200 text-xs sm:text-sm"
                           style={{ backgroundColor: CORPORATE_GREEN }}
                         >
                           {getInitials(p.full_name)}
                         </div>
-                        <div className="min-w-0">
-                          {(() => {
-                            const { main, extra } = splitFullName(p.full_name);
-                            return (
-                              <div className="font-medium text-gray-900 text-sm max-w-[200px] leading-snug">
-                                <span className="block sm:inline">{main}</span>
-                                {extra && (
-                                  <span className="block sm:inline"> {extra}</span>
-                                )}
-                              </div>
-                            );
-                          })()}
+                        <div className="min-w-0 flex-1">
+                          <div className="font-semibold text-gray-900 text-xs sm:text-sm leading-tight">
+                            {p.full_name}
+                          </div>
                           {p.phone && (
-                            <a href={`tel:${p.phone}`} className="text-xs text-gray-500 hover:text-blue-600 hover:underline transition-colors">
-                              {p.phone}
+                            <a href={`tel:${p.phone}`} className="text-xs text-gray-500 hover:text-blue-600 hover:underline transition-colors flex items-center gap-1 mt-1">
+                              <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                              </svg>
+                              <span className="text-xs sm:text-sm">{p.phone}</span>
                             </a>
                           )}
                         </div>
                       </div>
                     </td>
 
-                    <td className={`px-4 py-4 align-top text-sm text-gray-700 ${!isAdmin ? '' : ''}`}>
-                      <div className="font-medium">{p.position_name || <span className="text-gray-400 italic">Не указана</span>}</div>
-                      <div className="text-xs font-medium mt-1" style={{ color: CORPORATE_GREEN }}>
-                        {p.territory_name || <span className="text-gray-400 italic">Не указана</span>}
-                        {p.territory_region && <span className="text-gray-400 ml-1">({p.territory_region})</span>}
+                    <td className="px-2 sm:px-3 py-2 sm:py-3 align-middle">
+                      <div className="space-y-0.5 sm:space-y-1">
+                        <div className="font-medium text-gray-900 text-xs sm:text-sm">
+                          {p.position_name || <span className="text-gray-400 italic text-xs">Не указана</span>}
+                        </div>
+                        <div className="text-xs font-medium" style={{ color: CORPORATE_GREEN }}>
+                          {p.territory_name || <span className="text-gray-400 italic">Не указана</span>}
+                          {p.territory_region && <span className="text-gray-400 ml-1">({p.territory_region})</span>}
+                        </div>
                       </div>
                     </td>
 
                     {isAdmin && (
                       <>
-                        <td className="px-3 py-4 text-center align-top">
+                        <td className="px-1 sm:px-2 py-2 sm:py-3 text-center align-middle">
                           <div className="flex justify-center">
-                            <StatusIcon ok={p.attended} onClick={() => toggleAttendance(p.id, p.attended)} />
+                            <button
+                              onClick={() => toggleAttendance(p.id, p.attended)}
+                              className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-200 touch-manipulation ${
+                                p.attended 
+                                  ? 'bg-green-100 text-green-600 hover:bg-green-200' 
+                                  : 'bg-red-100 text-red-600 hover:bg-red-200'
+                              }`}
+                              title={p.attended ? 'Отметить как отсутствующего' : 'Отметить как присутствующего'}
+                            >
+                              {p.attended ? (
+                                <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                              ) : (
+                                <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              )}
+                            </button>
                             {updatingStatus === p.id && (
-                              <svg className="animate-spin h-4 w-4 text-gray-500 inline-block ml-1" viewBox="0 0 24 24">
+                              <svg className="animate-spin h-3 w-3 sm:h-4 sm:w-4 text-gray-500 ml-1 sm:ml-2" viewBox="0 0 24 24">
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z" />
                               </svg>
@@ -315,38 +303,54 @@ export default function EventParticipantsList({ eventId, refreshKey = 0 }) {
                           </div>
                         </td>
 
-                        <td className="px-4 py-4 text-center align-top">
-                          <div className="flex flex-col gap-1.5 items-center w-[130px]">
-                            <span
-                              className={`block w-full h-[28px] px-2.5 py-1 rounded text-xs font-medium border text-center transition-all duration-200 flex items-center justify-center ${
+                        <td className="px-1 sm:px-2 py-2 sm:py-3 text-center align-middle">
+                          <div className="flex flex-col gap-0.5 sm:gap-1 items-center">
+                            <div
+                              className={`w-full px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md text-xs font-medium border transition-all duration-200 ${
                                 p.entry_test_score !== null 
                                   ? 'bg-yellow-50 text-yellow-700 border-yellow-200' 
                                   : 'bg-gray-50 text-gray-500 border-gray-200'
                               }`}
                             >
-                              Входной: {p.entry_test_score !== null ? `${p.entry_test_score}%` : 'нет'}
-                            </span>
-                            <span
-                              className={`block w-full h-[28px] px-2.5 py-1 rounded text-xs font-medium border text-center transition-all duration-200 flex items-center justify-center ${
+                              {p.entry_test_score !== null ? `${p.entry_test_score}%` : '—'}
+                            </div>
+                            <div
+                              className={`w-full px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md text-xs font-medium border transition-all duration-200 ${
                                 p.final_test_score !== null 
                                   ? 'bg-blue-50 text-blue-700 border-blue-200' 
                                   : 'bg-gray-50 text-gray-500 border-gray-200'
                               }`}
                             >
-                              Итоговый: {p.final_test_score !== null ? `${p.final_test_score}%` : 'нет'}
-                            </span>
+                              {p.final_test_score !== null ? `${p.final_test_score}%` : '—'}
+                            </div>
                           </div>
                         </td>
 
-                        <td className="px-4 py-4 text-center align-top">
+                        <td className="px-2 sm:px-3 py-2 sm:py-3 text-center align-middle">
                           <div
-                            className={`inline-block w-[130px] h-[28px] px-2.5 py-1 rounded text-xs font-medium border text-center transition-all duration-200 flex items-center justify-center ${
+                            className={`inline-flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md text-xs font-medium border transition-all duration-200 ${
                               p.feedback_submitted 
                                 ? 'bg-green-50 text-green-700 border-green-200' 
                                 : 'bg-orange-50 text-orange-700 border-orange-200'
                             }`}
                           >
-                            {p.feedback_submitted ? 'Получена' : 'Ожидается'}
+                            {p.feedback_submitted ? (
+                              <>
+                                <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                                <span className="hidden sm:inline">Да</span>
+                                <span className="sm:hidden">✓</span>
+                              </>
+                            ) : (
+                              <>
+                                <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                <span className="hidden sm:inline">Нет</span>
+                                <span className="sm:hidden">✗</span>
+                              </>
+                            )}
                           </div>
                         </td>
                       </>
@@ -358,8 +362,8 @@ export default function EventParticipantsList({ eventId, refreshKey = 0 }) {
           </div>
           
           {participants.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
-              <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+            <div className="text-center py-8 sm:py-12 text-gray-500">
+              <Users className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3 text-gray-300" />
               <p className="text-sm font-medium">Участники не найдены</p>
               <p className="text-xs text-gray-400 mt-1">Добавьте участников в мероприятие</p>
             </div>

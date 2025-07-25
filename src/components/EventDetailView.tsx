@@ -91,22 +91,7 @@ export default function EventDetailView({ eventId, onStartTest, onBack }: EventD
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="p-4 sm:p-6 lg:p-8 lg:pt-0">
-        <div className="space-y-8">
-          {/* Кнопка просмотра результатов тестов (только для администраторов) */}
-          {userProfile?.role && ['administrator', 'moderator', 'trainer', 'expert'].includes(userProfile.role) && (
-            <div className="flex justify-end">
-              <button
-                onClick={() => navigate(`/event-test-results/${eventId}`)}
-                className="group flex items-center gap-2 sm:gap-3 text-blue-600 font-semibold rounded-xl px-3 py-2.5 sm:px-6 sm:py-3 bg-white hover:bg-blue-50 border border-blue-200 hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 text-xs sm:text-sm shadow-sm hover:shadow-md active:scale-95 sm:hover:scale-105 touch-manipulation"
-                aria-label="Просмотр результатов тестов"
-              >
-                <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform duration-200 flex-shrink-0" strokeWidth={2.5} />
-                <span className="hidden sm:inline">Результаты тестов</span>
-                <span className="inline sm:hidden">Тесты</span>
-              </button>
-            </div>
-          )}
+      <div className="space-y-8">
       {loading && (
         <div className="flex flex-col items-center justify-center py-20">
           <div className="w-12 h-12 border-4 border-sns-green border-t-transparent rounded-full animate-spin mb-4"></div>
@@ -140,7 +125,7 @@ export default function EventDetailView({ eventId, onStartTest, onBack }: EventD
           <EventHeader event={event} onBack={onBack} />
           
           {/* Основной контент */}
-          <div className="space-y-8">
+          <div className="space-y-4">
             <EventDetailsCard 
               event={event} 
               isCreator={event.creator_id === userProfile?.id}
@@ -159,7 +144,6 @@ export default function EventDetailView({ eventId, onStartTest, onBack }: EventD
           </div>
         </>
         )}
-        </div>
       </div>
     </div>
   );
