@@ -269,7 +269,7 @@ export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: Ev
     }
 
     return (
-    <div className="space-y-8">
+    <div className="space-y-8 pb-safe-bottom">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex items-center gap-3">

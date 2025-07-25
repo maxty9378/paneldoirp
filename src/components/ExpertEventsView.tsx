@@ -3,7 +3,7 @@ import { Star, Users, BookOpen, Award, Lightbulb, Zap } from 'lucide-react';
 
 export function ExpertEventsView() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-safe-bottom">
       {/* Заголовок */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Экспертные мероприятия</h1>

@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Sidebar } from './Sidebar';
 import { SidebarToggleButton } from './SidebarToggleButton';
 import { Header } from './Header';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   LogOut, 
   Calendar, 
@@ -23,7 +23,36 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
   const toggleSidebar = () => setIsSidebarCollapsed((v) => !v);
   const { user, signOut } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Отслеживание скролла для эффектов
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Закрытие мобильного меню при изменении маршрута
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  // Управление скроллом body при открытии мобильного меню
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.classList.add('mobile-menu-open');
+    } else {
+      document.body.classList.remove('mobile-menu-open');
+    }
+
+    return () => {
+      document.body.classList.remove('mobile-menu-open');
+    };
+  }, [isMobileMenuOpen]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -79,7 +108,7 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
     return (
       <div className="min-h-screen bg-gray-50">
         {/* На мобильных устройствах скрываем шапку и сайдбар */}
-        <div className="lg:hidden px-4 pt-4">
+        <div className="lg:hidden px-4 pt-4 pb-safe-bottom">
           {children}
         </div>
         
@@ -116,18 +145,23 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex">
-      {/* Mobile menu overlay */}
+      {/* Mobile menu overlay с улучшенной анимацией */}
       <div className={clsx(
-        'fixed inset-0 flex z-40 lg:hidden',
+        'fixed inset-0 flex z-50 lg:hidden transition-all duration-300',
         isMobileMenuOpen ? 'pointer-events-auto' : 'pointer-events-none'
       )}>
-        <div className={clsx(
-          'fixed inset-0 bg-gray-600 bg-opacity-75 transition-opacity duration-300',
-          isMobileMenuOpen ? 'opacity-100' : 'opacity-0'
-        )} onClick={() => setIsMobileMenuOpen(false)} />
+        {/* Backdrop */}
+        <div 
+          className={clsx(
+            'fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300',
+            isMobileMenuOpen ? 'opacity-100' : 'opacity-0'
+          )} 
+          onClick={() => setIsMobileMenuOpen(false)} 
+        />
         
+        {/* Sidebar container */}
         <div className={clsx(
-          'relative flex-1 flex flex-col max-w-xs w-full bg-white shadow-xl transform transition-transform duration-300',
+          'relative flex-1 flex flex-col max-w-xs w-full transform transition-transform duration-300 ease-out h-full',
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         )}>
           <Sidebar 
@@ -153,16 +187,21 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
       <div className="flex-1 flex flex-col min-w-0">
         <Header onMobileMenuToggle={() => setIsMobileMenuOpen(true)} />
         <main className={clsx(
-            "flex-1 overflow-auto pt-20 transition-all duration-300",
+            "flex-1 overflow-auto transition-all duration-300",
+            // Отступы для мобильной версии
+            "pt-16 lg:pt-20",
+            // Отступы для десктопной версии
             isSidebarCollapsed ? "lg:ml-20" : "lg:ml-80"
           )}>
-          <div className="py-6">
+          <div className="py-4 sm:py-6 pb-safe-bottom">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               {children}
             </div>
           </div>
         </main>
       </div>
+
+
     </div>
   );
 }

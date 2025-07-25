@@ -3,7 +3,7 @@ import { Users, Building2, MapPin, TrendingUp, Award, Target } from 'lucide-reac
 
 export function RepresentativesView() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-safe-bottom">
       {/* Заголовок */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Торговые представители</h1>

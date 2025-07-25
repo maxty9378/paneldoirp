@@ -127,7 +127,7 @@ export function DashboardView() {
   }
 
   return (
-    <div className="space-y-6 pb-24 md:pb-8">
+    <div className="space-y-6 pb-24 md:pb-8 pb-safe-bottom">
       {/* Welcome Section */}
       <section className="bg-gradient-to-r from-sns-500 to-sns-600 rounded-2xl p-5 sm:p-8 text-white shadow-md relative overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -222,24 +222,7 @@ export function DashboardView() {
       </section>
 
       {/* Bottom Navigation для мобильных */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-md flex justify-around items-center py-2 sm:hidden">
-        <button className="flex flex-col items-center text-sns-500">
-          <BookOpen size={22} />
-          <span className="text-xs mt-0.5">Курсы</span>
-        </button>
-        <button className="flex flex-col items-center text-sns-500">
-          <Calendar size={22} />
-          <span className="text-xs mt-0.5">Календарь</span>
-        </button>
-        <button className="flex flex-col items-center text-sns-500">
-          <Users size={22} />
-          <span className="text-xs mt-0.5">Команда</span>
-        </button>
-        <button className="flex flex-col items-center text-sns-500">
-          <Award size={22} />
-          <span className="text-xs mt-0.5">Достижения</span>
-        </button>
-      </nav>
+
     </div>
   );
 }

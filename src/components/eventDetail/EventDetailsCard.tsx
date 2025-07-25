@@ -197,7 +197,7 @@ export function EventDetailsCard({ event, isCreator = false, onUpdateOrganizerDa
   return (
     <>
       <style>{squircleStyles}</style>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden -mx-4 sm:mx-0">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         {/* Заголовок */}
         <div className="px-2 sm:px-4 lg:px-6 py-3 sm:py-4 border-b border-gray-100">
           <div>

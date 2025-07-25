@@ -39,6 +39,16 @@ export function FeedbackTab({ eventId, adminStatOnly = false }: FeedbackTabProps
 
   const isAdmin = adminStatOnly || (userProfile?.role === 'administrator' || userProfile?.role === 'moderator');
   const isTrainer = adminStatOnly || userProfile?.role === 'trainer' || isAdmin;
+  
+  // Определяем, является ли пользователь участником (employee)
+  const isEmployee = userProfile?.role === 'employee';
+  
+  // Для сотрудников разворачиваем секцию по умолчанию
+  useEffect(() => {
+    if (isEmployee) {
+      setIsFeedbackExpanded(true);
+    }
+  }, [isEmployee]);
 
   useEffect(() => {
     console.log('useEffect triggered:', { eventId, userId: userProfile?.id, userProfile });
@@ -534,7 +544,7 @@ export function FeedbackTab({ eventId, adminStatOnly = false }: FeedbackTabProps
   return (
     <div className="space-y-4 sm:space-y-6">
       
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden -mx-4 sm:mx-0">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         {/* Заголовок с возможностью сворачивания */}
         <div 
           className="px-4 sm:px-6 py-3 sm:py-4 bg-white border-b border-gray-100 cursor-pointer"

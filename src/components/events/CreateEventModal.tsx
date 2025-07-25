@@ -1978,7 +1978,7 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent }: C
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white rounded-2xl max-w-4xl w-full max-h-[95vh] flex flex-col shadow-2xl"
+        className="bg-white rounded-2xl max-w-4xl w-full max-h-[95vh] flex flex-col shadow-2xl pb-safe-bottom"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-8 border-b border-gray-200">

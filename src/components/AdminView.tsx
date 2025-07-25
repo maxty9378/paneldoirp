@@ -295,7 +295,7 @@
     }
 
     return (
-      <div className="space-y-8">
+      <div className="space-y-8 pb-safe-bottom">
         {/* Заголовок */}
         <div className="flex justify-between items-center pb-4 border-b border-gray-200">
           <div>

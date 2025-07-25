@@ -329,7 +329,7 @@ export function EventDetailModal({ isOpen, eventId, onClose }: EventDetailModalP
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-xl">
+      <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-xl pb-safe-bottom">
         {loading ? (
           <div className="p-10 flex flex-col justify-center items-center">
             <div className="w-10 h-10 border-4 border-sns-600 border-t-transparent rounded-full animate-spin mb-4"></div>

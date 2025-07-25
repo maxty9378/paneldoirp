@@ -56,6 +56,13 @@ export default function EventParticipantsList({ eventId, refreshKey = 0 }) {
   // Определяем, является ли пользователь участником (employee)
   const isEmployee = userProfile?.role === 'employee';
   
+  // Для сотрудников разворачиваем секцию по умолчанию
+  useEffect(() => {
+    if (isEmployee) {
+      setIsExpanded(true);
+    }
+  }, [isEmployee]);
+  
   // Если пользователь является участником, не показываем компонент
   if (isEmployee) {
     return null;
@@ -159,7 +166,7 @@ export default function EventParticipantsList({ eventId, refreshKey = 0 }) {
   const testCompletedCount = participants.filter(p => p.entry_test_score !== null || p.final_test_score !== null).length;
 
   if (loading) return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 -mx-4 sm:mx-0">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
       <div className="flex items-center justify-center py-6 sm:py-8">
         <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-600"></div>
         <span className="ml-3 text-gray-600 text-sm sm:text-base">Загрузка участников...</span>
@@ -168,7 +175,7 @@ export default function EventParticipantsList({ eventId, refreshKey = 0 }) {
   );
   
   if (error) return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 -mx-4 sm:mx-0">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
       <div className="text-center py-6 sm:py-8 text-red-500">
         <div className="text-base sm:text-lg font-semibold mb-2">Ошибка загрузки</div>
         <div className="text-xs sm:text-sm">{error}</div>
@@ -177,7 +184,7 @@ export default function EventParticipantsList({ eventId, refreshKey = 0 }) {
   );
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden -mx-4 sm:mx-0">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         {/* Заголовок с возможностью сворачивания */}
         <div 
           className="px-4 sm:px-6 py-3 sm:py-4 bg-white border-b border-gray-100 cursor-pointer"

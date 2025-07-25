@@ -727,7 +727,7 @@ export const TestTakingView: React.FC<TestTakingViewProps> = ({
       </header>
 
       {/* Main content */}
-      <main className="pb-32 font-mabry">
+      <main className="pb-32 font-mabry pb-safe-bottom">
         <div className="max-w-7xl mx-auto px-2">
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden mt-6">
             <div className="p-0">
@@ -985,7 +985,7 @@ export const TestTakingView: React.FC<TestTakingViewProps> = ({
         </div>
 
         {/* Mobile floating navigation - updated */}
-        <div className="fixed bottom-4 left-2 right-2 z-50 sm:hidden">
+        <div className="fixed bottom-4 left-2 right-2 z-50 sm:hidden pb-safe-bottom">
           <div
             className="
               flex items-center justify-between gap-2 px-4 py-3 rounded-2xl shadow-xl

@@ -73,6 +73,127 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Safe area support for mobile devices */
+@supports (padding: max(0px)) {
+  .pt-safe-top {
+    padding-top: max(env(safe-area-inset-top), 0px);
+  }
+  
+  .pb-safe-bottom {
+    padding-bottom: max(env(safe-area-inset-bottom), 0px);
+  }
+  
+  .pl-safe-left {
+    padding-left: max(env(safe-area-inset-left), 0px);
+  }
+  
+  .pr-safe-right {
+    padding-right: max(env(safe-area-inset-right), 0px);
+  }
+  
+  .mt-safe-top {
+    margin-top: max(env(safe-area-inset-top), 0px);
+  }
+  
+  .mb-safe-bottom {
+    margin-bottom: max(env(safe-area-inset-bottom), 0px);
+  }
+}
+
+/* Fallback for devices without safe-area support */
+@supports not (padding: max(0px)) {
+  .pt-safe-top {
+    padding-top: 0px;
+  }
+  
+  .pb-safe-bottom {
+    padding-bottom: 0px;
+  }
+  
+  .pl-safe-left {
+    padding-left: 0px;
+  }
+  
+  .pr-safe-right {
+    padding-right: 0px;
+  }
+  
+  .mt-safe-top {
+    margin-top: 0px;
+  }
+  
+  .mb-safe-bottom {
+    margin-bottom: 0px;
+  }
+}
+
+/* Custom scrollbar for mobile sidebar */
+.overflow-y-auto {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(6, 164, 120, 0.3) transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar {
+  width: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background-color: rgba(6, 164, 120, 0.3);
+  border-radius: 2px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(6, 164, 120, 0.5);
+}
+
+/* Ensure mobile menu takes full height */
+.mobile-menu-full-height {
+  height: 100vh;
+  height: 100dvh; /* Dynamic viewport height for mobile */
+}
+
+/* Prevent body scroll when mobile menu is open */
+body.mobile-menu-open {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+}
+
+/* Glass effect for mobile sidebar */
+.mobile-glass-effect {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.mobile-glass-header {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.mobile-glass-nav {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.mobile-glass-user {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+}
+
 /* CSS переменные для тем */
 :root {
   --color-primary: #06A478;

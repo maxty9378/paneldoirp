@@ -23,6 +23,16 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
   const [isTestsExpanded, setIsTestsExpanded] = useState(false); // состояние сворачивания секции тестирования
   const navigate = useNavigate();
   
+  // Определяем, является ли пользователь участником (employee)
+  const isEmployee = userProfile?.role === 'employee';
+  
+  // Для сотрудников разворачиваем секцию по умолчанию
+  useEffect(() => {
+    if (isEmployee) {
+      setIsTestsExpanded(true);
+    }
+  }, [isEmployee]);
+  
   // Функция для загрузки тестов и попыток
   const fetchTestsAndAttempts = async () => {
     if (!eventId || !userProfile?.id) return;
@@ -317,7 +327,7 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
   return (
     <>
       {loading ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden -mx-4 sm:mx-0">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-4 sm:p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               {[1,2,3].map(i => (
@@ -349,7 +359,7 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
       ) : (
         <>
           {activeView === 'list' && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden -mx-4 sm:mx-0">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               {/* Заголовок с возможностью сворачивания */}
               <div 
                 className="px-4 sm:px-6 py-3 sm:py-4 bg-white border-b border-gray-100 cursor-pointer"

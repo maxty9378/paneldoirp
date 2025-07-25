@@ -690,7 +690,7 @@ export function ParticipantTestsView() {
   console.log('ParticipantTestsView render - completedTests:', completedTests.length, 'activeTests:', activeTests.length, 'futureTests:', futureTests.length, 'activeTab:', activeTab);
   
   return (
-    <div className="space-y-4 md:space-y-6">
+    <div className="space-y-4 md:space-y-6 pb-safe-bottom">
       {/* Заголовок */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">

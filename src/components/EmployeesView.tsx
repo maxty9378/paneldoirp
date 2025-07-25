@@ -363,7 +363,7 @@ export function EmployeesView() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-safe-bottom">
       {/* Заголовок */}
       <div className="flex justify-between items-center">
         <div>

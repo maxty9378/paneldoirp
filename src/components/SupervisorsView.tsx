@@ -3,7 +3,7 @@ import { Shield, Users, TrendingUp, Award, Target, BookOpen } from 'lucide-react
 
 export function SupervisorsView() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-safe-bottom">
       {/* Заголовок */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Супервайзеры</h1>

@@ -3,7 +3,7 @@ import { Calendar, Clock, ArrowRight, Sparkles, Zap } from 'lucide-react';
 
 export function CalendarView() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-safe-bottom">
       {/* Заголовок */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Календарь мероприятий</h1>

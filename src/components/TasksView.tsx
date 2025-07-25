@@ -3,7 +3,7 @@ import { AlertTriangle, Clock, Target, Zap, Bell, CheckCircle } from 'lucide-rea
 
 export function TasksView() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-safe-bottom">
       {/* Заголовок */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Горящие задачи</h1>
