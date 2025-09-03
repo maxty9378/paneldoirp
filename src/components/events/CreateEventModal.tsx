@@ -11,6 +11,7 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/ru';
 import { motion } from 'framer-motion';
 import { uploadEventFile, updateEventFileName, getEventFiles, deleteEventFile } from '../../lib/eventFileStorage';
+import { createEventNotification, createNotificationForRole } from '../../utils/notificationUtils';
 
 interface CreateEventModalProps {
   isOpen: boolean;
@@ -1622,6 +1623,38 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent }: C
           });
 
         await Promise.all(uploadPromises);
+      }
+
+      // Создаем уведомления о новом мероприятии
+      try {
+        console.log('🔔 Создание уведомлений о новом мероприятии');
+        
+        // Уведомляем всех участников мероприятия
+        if (participants.length > 0) {
+          for (const participant of participants) {
+            if (participant.id) {
+              await createEventNotification(
+                participant.id,
+                formData.title,
+                eventId
+              );
+            }
+          }
+        }
+        
+        // Уведомляем всех тренеров о новом мероприятии
+        await createNotificationForRole(
+          'trainer',
+          'Новое мероприятие',
+          `Создано новое мероприятие "${formData.title}"`,
+          'event',
+          'medium'
+        );
+        
+        console.log('✅ Уведомления о мероприятии созданы');
+      } catch (notificationError) {
+        console.error('⚠️ Ошибка создания уведомлений:', notificationError);
+        // Не прерываем процесс, если уведомления не создались
       }
 
       onSuccess();

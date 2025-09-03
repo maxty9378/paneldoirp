@@ -5,6 +5,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ['Mabry', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sns: ['SNS', 'Mabry', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
       colors: {
         sns: {

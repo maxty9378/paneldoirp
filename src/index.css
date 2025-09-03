@@ -1,4 +1,12 @@
 @font-face {
+  font-family: 'SNS';
+  src: url('./assets/fonts/SNS.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
   font-family: 'Mabry';
   src: url('./assets/fonts/MABRYPRO-REGULAR.TTF') format('truetype');
   font-weight: 400;
@@ -417,37 +425,22 @@ button, input, select, textarea {
   }
 }
 
-/* Кнопки */
+/* Унифицированные кнопки */
+.btn {
+  @apply inline-flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200;
+  @apply shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2;
+}
+
 .btn-primary {
-  background: var(--color-primary);
-  color: #fff;
-  border-radius: 0.5rem;
-  font-weight: 600;
-  padding: 0.625rem 1.5rem;
-  transition: background 0.2s, box-shadow 0.2s;
-  box-shadow: 0 2px 8px 0 rgba(6,164,120,0.08);
+  @apply bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-500;
 }
-.btn-primary:hover, .btn-primary:focus {
-  background: var(--color-primary-hover);
-  box-shadow: 0 4px 16px 0 rgba(6,164,120,0.12);
-}
-.btn-primary:active {
-  background: var(--color-primary-dark);
+
+.btn-ghost {
+  @apply border border-gray-200 text-gray-700 hover:bg-gray-50 focus:ring-gray-500;
 }
 
 .btn-outline {
-  background: #fff;
-  color: var(--color-primary);
-  border: 1.5px solid var(--color-primary);
-  border-radius: 0.5rem;
-  font-weight: 600;
-  padding: 0.625rem 1.5rem;
-  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
-}
-.btn-outline:hover, .btn-outline:focus {
-  background: var(--color-primary-light);
-  color: var(--color-primary-dark);
-  box-shadow: 0 2px 8px 0 rgba(6,164,120,0.08);
+  @apply border border-emerald-600 text-emerald-600 hover:bg-emerald-50 focus:ring-emerald-500;
 }
 
 /* Ссылки */
@@ -490,6 +483,22 @@ a:hover, a:focus {
   /* box-shadow: 0 0 0 2px #2196f3;  // Добавлять только если нужна обводка */
 }
 
+.squircle12 {
+  --squircle-radius: 12px;
+  --squircle-smooth: 1;
+  mask-image: paint(squircle);
+  -webkit-mask-image: paint(squircle);
+  border-radius: 12px;
+}
+
+.squircle8 {
+  --squircle-radius: 8px;
+  --squircle-smooth: 1;
+  mask-image: paint(squircle);
+  -webkit-mask-image: paint(squircle);
+  border-radius: 8px;
+}
+
 .squirclesbs24 div {
   --squircle-radius: 24px;
   --squircle-smooth: 1;
@@ -511,5 +520,89 @@ a:hover, a:focus {
   -webkit-mask-image: paint(squircle);
 }
 
+/* Анимации для карточек тестов */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out forwards;
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 0.5s ease-out forwards;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.5s ease-out forwards;
+}
+
+/* Задержки для последовательного появления карточек */
+.animate-fade-in-up:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.animate-fade-in-up:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.animate-fade-in-up:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+/* Улучшенная анимация пульсации для скелетонов */
+@keyframes pulse-smooth {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse-smooth {
+  animation: pulse-smooth 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
 

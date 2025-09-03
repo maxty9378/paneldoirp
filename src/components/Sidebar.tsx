@@ -7,6 +7,7 @@ import {
   Sparkles, FileText, X, Home, LogOut, Camera, ChevronRight
 } from 'lucide-react';
 import { clsx } from 'clsx';
+import { USER_ROLE_LABELS } from '../types';
 
 interface NavItem {
   id: string;
@@ -16,6 +17,8 @@ interface NavItem {
   badge?: number;
   roles?: string[];
   description?: string;
+  disabled?: boolean;
+  disabledReason?: string;
 }
 
 const navigationItems: NavItem[] = [
@@ -57,7 +60,9 @@ const navigationItems: NavItem[] = [
     icon: <Building2 />, 
     href: '/representatives', 
     description: 'Работа с представителями',
-    roles: ['supervisor', 'trainer', 'moderator', 'administrator'] 
+    roles: ['supervisor', 'trainer', 'moderator', 'administrator'],
+    disabled: true,
+    disabledReason: 'В разработке'
   },
   { 
     id: 'supervisors', 
@@ -65,7 +70,9 @@ const navigationItems: NavItem[] = [
     icon: <GraduationCap />, 
     href: '/supervisors', 
     description: 'Управление супервайзерами',
-    roles: ['trainer', 'moderator', 'administrator'] 
+    roles: ['trainer', 'moderator', 'administrator'],
+    disabled: true,
+    disabledReason: 'В разработке'
   },
   { 
     id: 'expert-events', 
@@ -73,7 +80,9 @@ const navigationItems: NavItem[] = [
     icon: <Star />, 
     href: '/expert-events', 
     description: 'Специальные события',
-    roles: ['expert', 'trainer', 'moderator', 'administrator'] 
+    roles: ['expert', 'trainer', 'moderator', 'administrator'],
+    disabled: true,
+    disabledReason: 'В разработке'
   },
   { 
     id: 'analytics', 
@@ -81,7 +90,9 @@ const navigationItems: NavItem[] = [
     icon: <BarChart3 />, 
     href: '/analytics', 
     description: 'Отчеты и метрики',
-    roles: ['supervisor', 'trainer', 'moderator', 'administrator'] 
+    roles: ['supervisor', 'trainer', 'moderator', 'administrator'],
+    disabled: true,
+    disabledReason: 'В разработке'
   },
   { 
     id: 'tasks', 
@@ -90,7 +101,9 @@ const navigationItems: NavItem[] = [
     href: '/tasks', 
     badge: 3, 
     description: 'Срочные поручения',
-    roles: ['supervisor', 'trainer', 'moderator', 'administrator'] 
+    roles: ['supervisor', 'trainer', 'moderator', 'administrator'],
+    disabled: true,
+    disabledReason: 'В разработке'
   },
   { 
     id: 'testing', 
@@ -192,33 +205,46 @@ export function Sidebar({ activeItem, onItemClick, isCollapsed = false, onToggle
               const isActive = activeItem === item.id;
               return (
                 <div key={item.id} className="relative">
-                                                       <button
-                    onClick={() => onItemClick(item.id)}
+                  <button
+                    onClick={() => !item.disabled && onItemClick(item.id)}
+                    disabled={item.disabled}
                     className={clsx(
-                      "group relative w-full transition-all duration-200 font-medium text-sm rounded-xl",
+                      "group relative w-full transition-all duration-300 font-medium text-sm rounded-2xl",
                       isMobile 
                         ? "flex items-center px-4 py-4 h-16"
                         : isCollapsed
                           ? "h-12 flex items-center justify-center"
                           : "flex items-center px-4 py-3 h-14",
-                      isActive 
-                        ? "bg-gradient-to-r from-[#06A478] to-[#059669] text-white shadow-lg shadow-[#06A478]/25" 
-                        : isMobile
-                          ? "hover:bg-white/60 text-gray-700 hover:text-gray-900 hover:shadow-sm"
-                          : "hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                      item.disabled
+                        ? "opacity-50 cursor-not-allowed bg-gray-50/50 text-gray-400"
+                        : isActive 
+                          ? "bg-gradient-to-r from-[#06A478] to-[#059669] text-white shadow-xl shadow-[#06A478]/30 backdrop-blur-sm" 
+                          : isMobile
+                            ? "hover:bg-white/70 text-gray-700 hover:text-gray-900 hover:shadow-md hover:backdrop-blur-sm"
+                            : "hover:bg-gray-50/80 text-gray-700 hover:text-gray-900 hover:shadow-sm hover:backdrop-blur-sm"
                     )}
-                    title={item.label}
+                    title={item.disabled ? item.disabledReason : item.label}
                   >
                     {/* Icon */}
-                    <div className={clsx("flex items-center justify-center", isMobile ? "w-8 h-8" : "w-7 h-7")}>
+                    <div className={clsx(
+                      "flex items-center justify-center rounded-xl transition-all duration-300",
+                      isMobile ? "w-10 h-10" : "w-9 h-9",
+                      item.disabled
+                        ? "bg-gray-100/50"
+                        : isActive
+                          ? "bg-white/20 backdrop-blur-sm"
+                          : "bg-transparent group-hover:bg-[#06A478]/10 group-hover:backdrop-blur-sm"
+                    )}>
                       {React.cloneElement(item.icon as React.ReactElement, {
                         size: isMobile ? 22 : 20,
-                        strokeWidth: 1.5,
+                        strokeWidth: 2,
                         className: clsx(
-                          'transition-all duration-200',
-                          isActive
-                            ? 'text-white'
-                            : 'text-gray-500 group-hover:text-[#06A478]'
+                          'transition-all duration-300',
+                          item.disabled
+                            ? 'text-gray-400'
+                            : isActive
+                              ? 'text-white drop-shadow-sm'
+                              : 'text-gray-600 group-hover:text-[#06A478] group-hover:scale-110'
                         )
                       })}
                     </div>
@@ -227,25 +253,38 @@ export function Sidebar({ activeItem, onItemClick, isCollapsed = false, onToggle
                     {(isMobile || !isCollapsed) && (
                       <div className="flex-1 min-w-0 ml-3 text-left">
                         <div className="flex items-center justify-between">
-                          <span className={clsx(
-                            "font-medium truncate",
-                            isMobile ? "text-base" : "text-sm",
-                            isActive ? "text-white font-semibold" : "text-gray-700"
-                          )}>
-                            {item.label}
-                          </span>
+                          <div className="flex flex-col">
+                            <span className={clsx(
+                              "font-medium truncate",
+                              isMobile ? "text-base" : "text-sm",
+                              item.disabled 
+                                ? "text-gray-400" 
+                                : isActive 
+                                  ? "text-white font-semibold" 
+                                  : "text-gray-700"
+                            )}>
+                              {item.label}
+                            </span>
+                            {item.disabled && (
+                              <span className="text-xs text-gray-500 font-normal mt-0.5">
+                                В разработке
+                              </span>
+                            )}
+                          </div>
                           {/* Badge */}
                           {item.badge && (
-                            <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5 font-semibold min-w-[20px] text-center">
+                            <span className="ml-2 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs rounded-full px-2.5 py-1 font-semibold min-w-[24px] text-center shadow-sm border border-red-400/20">
                               {item.badge}
                             </span>
                           )}
                         </div>
                         {/* Описание (только на мобильных) */}
-                        {isMobile && item.description && (
+                        {isMobile && item.description && !item.disabled && (
                           <p className={clsx(
                             "text-xs truncate mt-0.5",
-                            isActive ? "text-white/80" : "text-gray-500"
+                            isActive 
+                              ? "text-white/80" 
+                              : "text-gray-500"
                           )}>
                             {item.description}
                           </p>
@@ -255,30 +294,43 @@ export function Sidebar({ activeItem, onItemClick, isCollapsed = false, onToggle
                     
                     {/* Стрелка для мобильной версии */}
                     {isMobile && (
-                      <ChevronRight size={16} className={clsx(
-                        "text-gray-400 transition-transform duration-200",
-                        isActive ? "text-white/60" : "text-gray-400"
-                      )} />
+                      <div className="p-1 rounded-lg bg-gray-100/50">
+                        <ChevronRight size={16} className={clsx(
+                          "transition-all duration-300",
+                          item.disabled 
+                            ? "text-gray-300" 
+                            : isActive 
+                              ? "text-white/80" 
+                              : "text-gray-500 group-hover:text-[#06A478] group-hover:scale-110"
+                        )} />
+                      </div>
                     )}
                   </button>
                   
                   {/* Badge для свернутой версии */}
                   {item.badge && !isMobile && isCollapsed && (
-                    <span className="absolute top-2 right-2 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center shadow-sm font-medium">
+                    <span className="absolute top-1 right-1 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center shadow-md font-semibold border border-red-400/20">
                       {item.badge}
                     </span>
                   )}
                   
                   {/* Tooltip для свернутой версии */}
                   {!isMobile && isCollapsed && (
-                    <div className="absolute left-full ml-3 px-3 py-2 bg-gray-900 text-white text-sm rounded-xl shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none whitespace-nowrap">
-                      {item.label}
-                      {item.badge && (
-                        <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
+                    <div className="absolute left-full ml-3 px-4 py-3 bg-gray-900/95 backdrop-blur-md text-white text-sm rounded-2xl shadow-2xl border border-gray-700/50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 pointer-events-none whitespace-nowrap">
+                      <div className="flex flex-col">
+                        <span className="font-medium">{item.label}</span>
+                        {item.disabled && (
+                          <span className="text-xs text-gray-400 font-normal mt-1">
+                            В разработке
+                          </span>
+                        )}
+                      </div>
+                      {item.badge && !item.disabled && (
+                        <span className="ml-2 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs rounded-full px-2.5 py-1 shadow-sm border border-red-400/20">
                           {item.badge}
                         </span>
                       )}
-                      <div className="absolute top-1/2 left-0 -translate-y-1/2 -translate-x-1 w-2 h-2 bg-gray-900 rotate-45"></div>
+                      <div className="absolute top-1/2 left-0 -translate-y-1/2 -translate-x-1 w-2 h-2 bg-gray-900/95 rotate-45 border-l border-t border-gray-700/50"></div>
                     </div>
                   )}
                 </div>
@@ -317,7 +369,7 @@ export function Sidebar({ activeItem, onItemClick, isCollapsed = false, onToggle
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-base font-semibold text-gray-900 truncate">{fullName}</p>
-                <p className="text-sm text-gray-500 truncate">{userProfile?.position || 'Должность не указана'}</p>
+                <p className="text-sm text-gray-500 truncate">{userProfile?.role ? USER_ROLE_LABELS[userProfile.role] : 'Роль не определена'}</p>
               </div>
             </div>
             
@@ -361,7 +413,7 @@ export function Sidebar({ activeItem, onItemClick, isCollapsed = false, onToggle
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-gray-900 truncate">{fullName}</p>
-                  <p className="text-xs text-gray-500 truncate">{userProfile?.position || 'Должность не указана'}</p>
+                  <p className="text-xs text-gray-500 truncate">{userProfile?.role ? USER_ROLE_LABELS[userProfile.role] : 'Роль не определена'}</p>
                 </div>
                 {/* Кнопка свернуть/развернуть — только для десктопа */}
                 {!isMobile && onToggle && (

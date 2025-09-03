@@ -368,26 +368,28 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900">Тестирование</h3>
-                    <p className="text-xs sm:text-sm text-gray-600">Контролируйте результаты тестирования и анализируйте эффективность обучения</p>
+                    <p className="text-xs sm:text-sm text-gray-400">Контролируйте результаты тестирования и анализируйте эффективность обучения</p>
                   </div>
                   
                   <div className="flex items-center gap-2 sm:gap-3">
                     <span className="text-xs text-gray-400 hidden sm:inline">
                       {isTestsExpanded ? 'Скрыть тесты' : 'Раскрыть тесты'}
                     </span>
-                    <div 
-                      className="w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-200"
-                      style={{ backgroundColor: '#06A478' }}
+                    <button 
+                      className="w-8 h-8 rounded-full bg-gradient-to-r from-[#06A478] to-[#059669] hover:from-[#059669] hover:to-[#048A5A] flex items-center justify-center transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
+                      onClick={() => setIsTestsExpanded(!isTestsExpanded)}
                     >
                       <svg 
-                        className={`w-3.5 h-3.5 sm:w-5 sm:h-5 transition-transform duration-200 ${isTestsExpanded ? 'rotate-45 text-white' : 'text-white'}`}
+                        className={`w-4 h-4 text-white transition-transform duration-200 ${
+                          isTestsExpanded ? 'rotate-45' : 'rotate-0'
+                        }`} 
                         fill="none" 
                         stroke="currentColor" 
                         viewBox="0 0 24 24"
                       >
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                       </svg>
-                    </div>
+                    </button>
                   </div>
                 </div>
               </div>

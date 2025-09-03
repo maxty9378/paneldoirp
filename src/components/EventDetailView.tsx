@@ -9,6 +9,7 @@ import EventParticipantsList from './eventDetail/EventParticipantsList.jsx';
 // @ts-ignore
 import EventTestsContainer from './eventDetail/EventTestsContainer.jsx';
 import { FeedbackTab } from './feedback/FeedbackTab';
+import { TrainerActionNotifications } from './notifications/TrainerActionNotifications';
 import { useNavigate } from 'react-router-dom';
 
 
@@ -27,6 +28,7 @@ export default function EventDetailView({ eventId, onStartTest, onBack }: EventD
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [participants, setParticipants] = useState<any[]>([]);
 
   useEffect(() => {
     async function fetchEvent() {
@@ -73,7 +75,148 @@ export default function EventDetailView({ eventId, onStartTest, onBack }: EventD
 
   // Функция для принудительного обновления данных
   const handleRefreshData = () => {
-    setRefreshKey(prev => prev + 1);
+    try {
+      console.log('🔄 Обновление данных мероприятия');
+      setRefreshKey(prev => prev + 1);
+    } catch (error) {
+      console.error('❌ Ошибка при обновлении данных:', error);
+    }
+  };
+
+  // Загрузка участников мероприятия
+  useEffect(() => {
+    async function fetchParticipants() {
+      if (!eventId) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('event_participants')
+          .select(`
+            *,
+            user:user_id(
+              id,
+              full_name,
+              email,
+              position:position_id(name),
+              territory:territory_id(name)
+            )
+          `)
+          .eq('event_id', eventId);
+
+        if (error) throw error;
+        setParticipants(data || []);
+      } catch (err) {
+        console.error('Ошибка загрузки участников:', err);
+      }
+    }
+
+    fetchParticipants();
+  }, [eventId, refreshKey]);
+
+  // Обработчики действий для уведомлений
+  const handleMarkAttendance = () => {
+    // Прокручиваем к секции участников
+    const participantsSection = document.querySelector('[data-section="participants"]');
+    if (participantsSection) {
+      participantsSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleCompleteEvent = async () => {
+    if (!event || !userProfile) {
+      console.error('❌ Нет данных о мероприятии или пользователе');
+      return;
+    }
+    
+    // Подтверждение действия
+    const confirmMessage = event.status === 'completed' 
+      ? 'Вы уверены, что хотите отменить завершение мероприятия?'
+      : 'Вы уверены, что хотите завершить мероприятие?';
+    
+    if (!confirm(confirmMessage)) return;
+    
+    try {
+      const newStatus = event.status === 'completed' ? 'published' : 'completed';
+      
+      console.log(`🔄 Обновление статуса мероприятия с "${event.status}" на "${newStatus}"`);
+      
+      // Обновляем статус мероприятия
+      const { error } = await supabase
+        .from('events')
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', event.id);
+
+      if (error) {
+        console.error('❌ Ошибка Supabase:', error);
+        throw error;
+      }
+
+      console.log('✅ Статус обновлен в базе данных');
+
+      // Обновляем локальное состояние - ИСПРАВЛЕНО: не устанавливаем null
+      setEvent(prev => {
+        if (!prev) {
+          console.error('❌ Предыдущее состояние мероприятия отсутствует');
+          return prev;
+        }
+        return { ...prev, status: newStatus };
+      });
+      
+      console.log('✅ Локальное состояние обновлено');
+      
+      // Обновляем данные (временно отключено для отладки)
+      // handleRefreshData();
+      
+      const successMessage = newStatus === 'completed' 
+        ? '✅ Мероприятие успешно завершено'
+        : '✅ Завершение мероприятия отменено';
+      
+      console.log(successMessage);
+      
+      // Показываем уведомление пользователю
+      alert(successMessage);
+      
+    } catch (error) {
+      console.error('❌ Ошибка изменения статуса мероприятия:', error);
+      alert('❌ Произошла ошибка при изменении статуса мероприятия. Попробуйте еще раз.');
+    }
+  };
+
+  const handleViewParticipants = () => {
+    // Прокручиваем к секции участников
+    const participantsSection = document.querySelector('[data-section="participants"]');
+    if (participantsSection) {
+      participantsSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleStartEvent = () => {
+    // Здесь можно добавить логику начала мероприятия
+    console.log('Начало мероприятия');
+  };
+
+  const handleViewTests = () => {
+    // Прокручиваем к секции тестов
+    const testsSection = document.querySelector('[data-section="tests"]');
+    if (testsSection) {
+      testsSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleViewFeedback = () => {
+    // Прокручиваем к секции обратной связи
+    const feedbackSection = document.querySelector('[data-section="feedback"]');
+    if (feedbackSection) {
+      feedbackSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleViewStats = () => {
+    // Здесь можно добавить логику просмотра статистики
+    console.log('Просмотр статистики мероприятия');
   };
 
   // Функция для обновления данных организатора
@@ -120,28 +263,49 @@ export default function EventDetailView({ eventId, onStartTest, onBack }: EventD
           <p className="text-gray-600 text-center max-w-md">Запрашиваемое мероприятие не существует или было удалено</p>
         </div>
       )}
-      {event && !loading && !error && (
+      {event && !loading && !error && event.id && (
         <>
           <EventHeader event={event} onBack={onBack} />
           
           {/* Основной контент */}
-          <div className="space-y-4">
+          <div className="space-y-4 mt-8 sm:mt-4">
             <EventDetailsCard 
               event={event} 
               isCreator={event.creator_id === userProfile?.id}
               onUpdateOrganizerData={handleUpdateOrganizerData}
+              onCompleteEvent={handleCompleteEvent}
             />
-            <EventParticipantsList eventId={eventId} refreshKey={refreshKey} />
-            <EventTestsContainer 
-              eventId={eventId} 
-              userProfile={userProfile} 
-              isAdmin={false} 
-              onStartTest={onStartTest}
-              refreshKey={refreshKey}
-              onRefreshData={handleRefreshData}
-            />
-            <FeedbackTab eventId={eventId} />
+            <div data-section="participants">
+              <EventParticipantsList eventId={eventId} refreshKey={refreshKey} />
+            </div>
+            <div data-section="tests">
+              <EventTestsContainer 
+                eventId={eventId} 
+                userProfile={userProfile} 
+                isAdmin={false} 
+                onStartTest={onStartTest}
+                refreshKey={refreshKey}
+                onRefreshData={handleRefreshData}
+              />
+            </div>
+            <div data-section="feedback">
+              <FeedbackTab eventId={eventId} />
+            </div>
           </div>
+
+          {/* Уведомления для тренеров */}
+          <TrainerActionNotifications
+            event={event}
+            userProfile={userProfile}
+            participants={participants}
+            onMarkAttendance={handleMarkAttendance}
+            onViewParticipants={handleViewParticipants}
+            onStartEvent={handleStartEvent}
+            onCompleteEvent={handleCompleteEvent}
+            onViewTests={handleViewTests}
+            onViewFeedback={handleViewFeedback}
+            onViewStats={handleViewStats}
+          />
         </>
         )}
       </div>

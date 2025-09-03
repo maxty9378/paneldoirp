@@ -98,3 +98,35 @@ export const EVENT_TYPE_LABELS: Record<string, string> = {
   active_seminar: 'Активный семинар',
   team_tracking: 'Командный трекинг'
 };
+
+// Типы для уведомлений
+export interface NotificationTask {
+  id: string;
+  user_id: string;
+  assigned_to: string;
+  title: string;
+  description?: string;
+  type: 'general' | 'event' | 'test' | 'task' | 'system';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  due_date?: string;
+  completed_at?: string;
+  metadata: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export const NOTIFICATION_TYPE_LABELS: Record<string, string> = {
+  general: 'Общее',
+  event: 'Мероприятие',
+  test: 'Тест',
+  task: 'Задача',
+  system: 'Система'
+};
+
+export const NOTIFICATION_PRIORITY_LABELS: Record<string, string> = {
+  low: 'Низкий',
+  medium: 'Средний',
+  high: 'Высокий',
+  urgent: 'Срочный'
+};

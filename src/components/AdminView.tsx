@@ -28,6 +28,7 @@
   import { useAuth } from '../hooks/useAuth';
   import { User, UserRole, USER_ROLE_LABELS } from '../types';
   import { useAdmin } from '../hooks/useAdmin';
+  import { NotificationTestPanel } from './admin/NotificationTestPanel';
   import { useAdminActions } from '../hooks/useAdminActions';
   import CreateUserModal from './admin/CreateUserModal';
   import CreateUserNewModal from './admin/CreateUserNewModal';
@@ -440,6 +441,9 @@
             </div>
           </div>
         </div>
+
+        {/* Панель тестирования уведомлений */}
+        <NotificationTestPanel />
 
         {/* Поиск и фильтры */}
         <div className="bg-white/80 backdrop-blur rounded-2xl shadow-lg p-6 border border-gray-100">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import EventTestPrompts from './EventTestPrompts';
@@ -48,7 +48,7 @@ export default function EventParticipantsList({ eventId, refreshKey = 0 }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [updatingStatus, setUpdatingStatus] = useState(null);
-  const [isExpanded, setIsExpanded] = useState(false); // По умолчанию свёрнуто
+  const [isExpanded, setIsExpanded] = useState(false); // По умолчанию свёрнуто, разворачивается для тренеров/админов
   
   // Определяем, является ли пользователь администратором
   const isAdmin = userProfile?.role && ['administrator', 'moderator', 'trainer', 'expert'].includes(userProfile.role);
@@ -56,49 +56,53 @@ export default function EventParticipantsList({ eventId, refreshKey = 0 }) {
   // Определяем, является ли пользователь участником (employee)
   const isEmployee = userProfile?.role === 'employee';
   
-  // Для сотрудников разворачиваем секцию по умолчанию
+  // Для тренеров, администраторов и сотрудников разворачиваем секцию по умолчанию
   useEffect(() => {
-    if (isEmployee) {
+    if (isAdmin || isEmployee) {
       setIsExpanded(true);
     }
-  }, [isEmployee]);
+  }, [isAdmin, isEmployee]);
+
+  // Для администраторов секция всегда развернута
+  const isAlwaysExpanded = isAdmin;
   
   // Если пользователь является участником, не показываем компонент
   if (isEmployee) {
     return null;
   }
 
-  useEffect(() => {
-    const fetchParticipants = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        // Выбираем представление в зависимости от роли пользователя
-        const { data, error } = await supabase
-          .from('event_participants_view')
-          .select('*')
-          .eq('event_id', eventId);
+  // Функция для загрузки участников
+  const fetchParticipants = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Выбираем представление в зависимости от роли пользователя
+      const { data, error } = await supabase
+        .from('event_participants_view')
+        .select('*')
+        .eq('event_id', eventId);
 
-        if (error) throw error;
+      if (error) throw error;
 
-        setParticipants(data || []);
-      } catch (err) {
-        console.error('Ошибка при загрузке данных:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (eventId) fetchParticipants();
+      setParticipants(data || []);
+    } catch (err) {
+      console.error('Ошибка при загрузке данных:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }, [eventId]);
+
+  useEffect(() => {
+    if (eventId) fetchParticipants();
+  }, [eventId, fetchParticipants]);
 
   // Обновление данных при изменении refreshKey
   useEffect(() => {
     if (refreshKey > 0 && eventId) {
       fetchParticipants();
     }
-  }, [refreshKey, eventId]);
+  }, [refreshKey, eventId, fetchParticipants]);
 
   const toggleAttendance = async (participantId, currentStatus) => {
     if (!isAdmin || updatingStatus === participantId) return;
@@ -185,38 +189,58 @@ export default function EventParticipantsList({ eventId, refreshKey = 0 }) {
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        {/* Заголовок с возможностью сворачивания */}
-        <div 
-          className="px-4 sm:px-6 py-3 sm:py-4 bg-white border-b border-gray-100 cursor-pointer"
-          onClick={() => setIsExpanded(!isExpanded)}
+        {/* Заголовок */}
+        <div className={`px-4 sm:px-6 py-3 sm:py-4 bg-white border-b border-gray-100 ${
+          isAlwaysExpanded ? '' : 'cursor-pointer'
+        }`}
+        onClick={isAlwaysExpanded ? undefined : () => setIsExpanded(!isExpanded)}
         >
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900">Участники мероприятия</h3>
             {/* Подзаголовок для администраторов */}
             {isAdmin && (
-              <p className="text-xs sm:text-sm text-gray-600">Отслеживайте участников тренинга и отмечайте присутствие сотрудников</p>
+              <p className="text-xs sm:text-sm text-gray-400">Отслеживайте участников тренинга и отмечайте присутствие сотрудников</p>
             )}
           </div>
           
-          <div className="flex items-center gap-2 sm:gap-3">
-            <span className="text-xs text-gray-400 hidden sm:inline">
-              {isExpanded ? 'Скрыть список' : 'Раскрыть список'}
-            </span>
-            <div 
-              className="w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-200"
-              style={{ backgroundColor: isExpanded ? '#06A478' : '#06A478' }}
-            >
-              <Plus 
-                className={`w-3.5 h-3.5 sm:w-5 sm:h-5 transition-transform duration-200 ${isExpanded ? 'rotate-45 text-white' : 'text-white'}`}
-              />
+          {/* Кнопка скрытия/раскрытия только для не-администраторов */}
+          {!isAlwaysExpanded && (
+            <div className="flex items-center gap-2 sm:gap-3">
+              <span className="text-xs text-gray-400 hidden sm:inline">
+                {isExpanded ? 'Скрыть список' : 'Раскрыть список'}
+              </span>
+              <div className="relative">
+                <button 
+                  className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 flex items-center justify-center transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsExpanded(!isExpanded);
+                  }}
+                >
+                  <svg 
+                    className={`w-4 h-4 text-white transition-transform duration-200 ${
+                      isExpanded ? 'rotate-45' : 'rotate-0'
+                    }`} 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                </button>
+                {/* Индикатор состояния */}
+                <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full transition-all duration-200 ${
+                  isExpanded ? 'bg-green-400' : 'bg-gray-300'
+                }`}></div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
       {/* Содержимое таблицы */}
-      {isExpanded && (
+      {(isExpanded || isAlwaysExpanded) && (
         <div className="p-3 sm:p-4 lg:p-6">
           <div className="overflow-x-auto">
             <table className="min-w-full">

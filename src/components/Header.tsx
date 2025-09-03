@@ -6,6 +6,7 @@ import { AvatarModal } from './profile/AvatarModal';
 import { supabase } from '../lib/supabase';
 import { NotificationBell } from './notifications/NotificationBell';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { USER_ROLE_LABELS } from '../types';
 
 interface HeaderProps {
   onMobileMenuToggle?: () => void;
@@ -55,7 +56,7 @@ export function Header({ onMobileMenuToggle }: HeaderProps) {
 
   const displayPosition = useMemo(() => {
     if (loading) return '...';
-    return userProfile?.position || 'Должность не указана';
+    return userProfile?.role ? USER_ROLE_LABELS[userProfile.role] : 'Роль не определена';
   }, [userProfile, loading]);
 
   // Получение текущего заголовка страницы

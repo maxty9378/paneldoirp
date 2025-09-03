@@ -63,6 +63,76 @@ const ICONS = {
   annual: { color: 'amber', label: 'Годовой тест' },
 };
 
+// Компонент скелетона для карточки теста
+function TestCardSkeleton({ type }) {
+  const icon = ICONS[type];
+  const getCardStyles = (type) => {
+    const baseStyles = {
+      entry: {
+        bg: 'bg-blue-50',
+        border: 'border-blue-200',
+        icon: 'text-blue-600',
+        title: 'text-blue-700',
+        accent: 'bg-blue-600'
+      },
+      final: {
+        bg: 'bg-purple-50',
+        border: 'border-purple-200',
+        icon: 'text-purple-600',
+        title: 'text-purple-700',
+        accent: 'bg-purple-600'
+      },
+      annual: {
+        bg: 'bg-[#06A478]/10',
+        border: 'border-[#06A478]/30',
+        icon: 'text-[#06A478]',
+        title: 'text-[#06A478]',
+        accent: 'bg-[#06A478]'
+      }
+    };
+    return baseStyles[type] || baseStyles.entry;
+  };
+
+  const styles = getCardStyles(type);
+
+  return (
+    <div className={`${styles.bg} ${styles.border} rounded-xl p-5 flex flex-col justify-between h-full animate-pulse-smooth`}>
+      <div>
+        {/* Заголовок с иконкой */}
+        <div className="flex items-center mb-3">
+          <div className={`p-2 rounded-lg ${styles.accent} bg-opacity-20 mr-3`}>
+            <FileTextIcon className={`h-5 w-5 ${styles.icon}`} />
+          </div>
+          <div>
+            <div className={`h-4 w-24 bg-gray-300 rounded mb-1`}></div>
+            <div className="flex items-center space-x-2">
+              <div className={`w-1.5 h-1.5 ${styles.accent} rounded-full`}></div>
+              <div className="h-3 w-20 bg-gray-300 rounded"></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Название и описание теста */}
+        <div className="mb-4">
+          <div className="h-5 w-full bg-gray-300 rounded mb-2"></div>
+          <div className="h-4 w-3/4 bg-gray-300 rounded"></div>
+        </div>
+
+        {/* Информация о тесте */}
+        <div className="flex items-center space-x-4 mb-4">
+          <div className="h-3 w-20 bg-gray-300 rounded"></div>
+          <div className="h-3 w-24 bg-gray-300 rounded"></div>
+        </div>
+      </div>
+
+      {/* Статус/действие */}
+      <div className="flex flex-col items-center">
+        <div className="h-10 w-full bg-gray-300 rounded-lg"></div>
+      </div>
+    </div>
+  );
+}
+
 function StatusBadge({ score, passingScore }) {
   const isZero = score === 0;
   const isPassed = passingScore && passingScore > 0 ? score >= passingScore : score > 0; // Если проходной балл не указан или равен 0, считаем пройденным любой положительный результат
@@ -378,7 +448,7 @@ function TestCard({ type, testData, onStart, eventEndDate }) {
   const styles = getCardStyles(type);
 
     return (
-    <div className={`${styles.bg} ${styles.bgHover} ${styles.border} rounded-xl p-5 flex flex-col justify-between h-full transition-all duration-300 hover:shadow-md hover:-translate-y-1 group`}>
+    <div className={`${styles.bg} ${styles.bgHover} ${styles.border} rounded-xl p-5 flex flex-col justify-between h-full transition-all duration-500 hover:shadow-lg hover:-translate-y-2 group animate-fade-in-up`}>
       <div>
         {/* Заголовок с иконкой */}
         <div className="flex items-center mb-3">
@@ -386,7 +456,7 @@ function TestCard({ type, testData, onStart, eventEndDate }) {
             <FileTextIcon className={`h-5 w-5 ${styles.icon}`} />
           </div>
           <div>
-            <h3 className={`font-semibold text-base ${styles.title}`}>{icon.label}</h3>
+            <h3 className={`font-semibold text-sm sm:text-base ${styles.title}`}>{icon.label}</h3>
             <div className="flex items-center space-x-2">
               <div className={`w-1.5 h-1.5 ${styles.accent} rounded-full`}></div>
               <span className="text-xs text-gray-500">Тест мероприятия</span>
@@ -396,8 +466,8 @@ function TestCard({ type, testData, onStart, eventEndDate }) {
 
         {/* Название и описание теста */}
         <div className="mb-4">
-          <h4 className="font-semibold text-gray-900 text-base mb-2">{test?.title || icon.label}</h4>
-          <p className="text-sm text-gray-600">{test?.description || 'Описание теста'}</p>
+          <h4 className="font-semibold text-gray-900 text-sm sm:text-base mb-2">{test?.title || icon.label}</h4>
+          <p className="text-xs sm:text-sm text-gray-600">{test?.description || 'Описание теста'}</p>
         </div>
 
         {/* Информация о тесте */}
@@ -418,15 +488,15 @@ function TestCard({ type, testData, onStart, eventEndDate }) {
         {available ? (
           completed ? (
             <div className="text-center w-full">
-              <div className={`text-2xl font-bold ${styles.title} mb-2`}>{score}%</div>
-              <div className={`${styles.accent} bg-opacity-20 h-10 flex items-center justify-center rounded-lg text-sm font-medium ${styles.title} w-full`}>
+              <div className={`text-xl sm:text-2xl font-bold ${styles.title} mb-2`}>{score}%</div>
+              <div className={`${styles.accent} bg-opacity-20 h-10 flex items-center justify-center rounded-lg text-xs sm:text-sm font-medium ${styles.title} w-full`}>
                 {passingScore && passingScore > 0 ? (score >= passingScore ? 'Тест пройден' : 'Тест не пройден') : 'Тест завершен'}
               </div>
             </div>
           ) : (
             <button
               onClick={() => onStart(type)}
-              className={`w-full ${styles.accent} text-white h-10 rounded-lg transition-all duration-300 font-medium flex items-center justify-center hover:shadow-md transform hover:scale-[1.02] group-hover:animate-pulse`}
+              className={`w-full ${styles.accent} text-white h-10 rounded-lg transition-all duration-300 text-xs sm:text-sm font-medium flex items-center justify-center hover:shadow-md transform hover:scale-[1.02] group-hover:animate-pulse`}
             >
               <PlayIcon className="h-4 w-4 mr-2" />
               <span>Пройти тест</span>
@@ -435,11 +505,11 @@ function TestCard({ type, testData, onStart, eventEndDate }) {
         ) : (
           <div className="text-center w-full">
             {type === 'annual' ? (
-              <div className={`${styles.accent} bg-opacity-20 h-10 flex items-center justify-center rounded-lg text-sm ${styles.title} w-full`}>
+              <div className={`${styles.accent} bg-opacity-20 h-10 flex items-center justify-center rounded-lg text-xs sm:text-sm ${styles.title} w-full`}>
                 {formatTimeUntilAvailable(eventEndDate)}
               </div>
             ) : (
-              <div className="bg-gray-100 text-gray-500 h-10 flex items-center justify-center rounded-lg text-sm w-full">
+              <div className="bg-gray-100 text-gray-500 h-10 flex items-center justify-center rounded-lg text-xs sm:text-sm w-full">
                 {type === 'final'
                   ? 'Сначала пройдите входной тест'
                   : 'Тест недоступен'}
@@ -583,7 +653,7 @@ export default function EventTestPrompts({ eventId, onStartTest, testStatus, ref
     return (
       <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 text-center">
         <AlertCircleIcon className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-yellow-800 mb-2">Требуется авторизация</h3>
+        <h3 className="text-base sm:text-lg font-medium text-yellow-800 mb-2">Требуется авторизация</h3>
         <p className="text-yellow-700">Пожалуйста, войдите в систему, чтобы получить доступ к тестам.</p>
       </div>
     );
@@ -596,7 +666,7 @@ export default function EventTestPrompts({ eventId, onStartTest, testStatus, ref
     return (
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center">
         <AlertCircleIcon className="h-12 w-12 text-blue-500 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-blue-800 mb-2">Вы не являетесь участником</h3>
+        <h3 className="text-base sm:text-lg font-medium text-blue-800 mb-2">Вы не являетесь участником</h3>
         <p className="text-blue-700">Чтобы получить доступ к тестам, необходимо зарегистрироваться на мероприятие.</p>
       </div>
     );
@@ -613,7 +683,7 @@ export default function EventTestPrompts({ eventId, onStartTest, testStatus, ref
       return (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center">
           <AlertCircleIcon className="h-12 w-12 text-blue-500 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-blue-800 mb-2">Тесты не найдены</h3>
+          <h3 className="text-base sm:text-lg font-medium text-blue-800 mb-2">Тесты не найдены</h3>
           <p className="text-blue-700">Для этого мероприятия не настроены тесты.</p>
         </div>
       );
@@ -637,13 +707,13 @@ export default function EventTestPrompts({ eventId, onStartTest, testStatus, ref
                 </svg>
               </div>
               <div>
-                <h3 className="font-semibold text-base text-gray-800">Детальная статистика</h3>
-                <p className="text-sm text-gray-500">Каждый ответ участника, время прохождения, правильность решений</p>
+                <h3 className="font-semibold text-sm sm:text-base text-gray-800">Детальная статистика</h3>
+                <p className="text-xs sm:text-sm text-gray-400">Каждый ответ участника, время прохождения, правильность решений</p>
               </div>
             </div>
             <button
               onClick={() => navigate(`/event-test-results/${eventId}`)}
-              className="px-6 py-2 bg-[#06A478] text-white rounded-lg font-medium hover:bg-[#059669]"
+              className="px-6 py-2 bg-[#06A478] text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-[#059669]"
             >
               Открыть
             </button>
@@ -657,7 +727,7 @@ export default function EventTestPrompts({ eventId, onStartTest, testStatus, ref
     return (
       <div className="bg-orange-50 border border-orange-200 rounded-xl p-6 text-center">
         <AlertCircleIcon className="h-12 w-12 text-orange-500 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-orange-800 mb-2">Отметка о присутствии отсутствует</h3>
+        <h3 className="text-base sm:text-lg font-medium text-orange-800 mb-2">Отметка о присутствии отсутствует</h3>
         <p className="text-orange-700">Доступ к тестам открывается после подтверждения вашего присутствия на мероприятии.</p>
       </div>
     );
@@ -665,9 +735,21 @@ export default function EventTestPrompts({ eventId, onStartTest, testStatus, ref
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl shadow-sm p-6 text-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto"></div>
-        <p className="mt-4 text-gray-600">Загрузка тестов...</p>
+      <div className="space-y-6">
+        {/* Заголовок секции */}
+        <div className="mb-6 animate-fade-in">
+          <div>
+            <h2 className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900">Тестирование</h2>
+            <p className="text-xs sm:text-sm text-gray-400">Контролируйте результаты тестирования и анализируйте эффективность обучения</p>
+          </div>
+        </div>
+
+        {/* Сетка скелетонов карточек тестов */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <TestCardSkeleton type="entry" />
+          <TestCardSkeleton type="final" />
+          <TestCardSkeleton type="annual" />
+        </div>
       </div>
     );
   }
@@ -676,7 +758,7 @@ export default function EventTestPrompts({ eventId, onStartTest, testStatus, ref
     return (
       <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
         <AlertCircleIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-red-800 mb-2">Ошибка загрузки</h3>
+        <h3 className="text-base sm:text-lg font-medium text-red-800 mb-2">Ошибка загрузки</h3>
         <p className="text-red-700">{error}</p>
       </div>
     );
@@ -689,7 +771,7 @@ export default function EventTestPrompts({ eventId, onStartTest, testStatus, ref
     return (
       <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center">
         <AlertCircleIcon className="h-12 w-12 text-gray-500 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-800 mb-2">Тесты не найдены</h3>
+        <h3 className="text-base sm:text-lg font-medium text-gray-800 mb-2">Тесты не найдены</h3>
         <p className="text-gray-700">Для этого мероприятия не настроены тесты.</p>
       </div>
     );
@@ -698,10 +780,10 @@ export default function EventTestPrompts({ eventId, onStartTest, testStatus, ref
       return (
     <div className="space-y-6">
       {/* Заголовок секции */}
-      <div className="mb-6">
+      <div className="mb-6 animate-fade-in">
         <div>
-          <h2 className="text-xl md:text-2xl font-bold text-gray-900">Тесты мероприятия</h2>
-          <p className="text-sm text-gray-600">Проверьте свои знания и получите сертификат</p>
+          <h2 className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900">Тестирование</h2>
+          <p className="text-xs sm:text-sm text-gray-400">Контролируйте результаты тестирования и анализируйте эффективность обучения</p>
         </div>
       </div>
 
@@ -723,13 +805,13 @@ export default function EventTestPrompts({ eventId, onStartTest, testStatus, ref
                   </svg>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-base text-gray-800">Детальная статистика</h3>
-                  <p className="text-sm text-gray-500">Каждый ответ участника, время прохождения, правильность решений</p>
+                  <h3 className="font-semibold text-sm sm:text-base text-gray-800">Детальная статистика</h3>
+                  <p className="text-xs sm:text-sm text-gray-400">Каждый ответ участника, время прохождения, правильность решений</p>
                 </div>
               </div>
               <button
                 onClick={() => navigate(`/event-test-results/${eventId}`)}
-                className="px-6 py-2 bg-[#06A478] text-white rounded-lg font-medium hover:bg-[#059669]"
+                className="px-6 py-2 bg-[#06A478] text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-[#059669]"
               >
                 Открыть
               </button>

@@ -50,6 +50,29 @@ export function EventHeader({ event, className = '', onBack }: EventHeaderProps)
     });
   };
 
+  // Форматирование времени
+  const formatTime = (dateString?: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('ru-RU', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Форматирование даты и времени
+  const formatDateTime = (dateString?: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleString('ru-RU', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   // Получение цвета для уровня сложности
   const getDifficultyColor = (level?: string) => {
     switch (level) {
@@ -108,28 +131,29 @@ export function EventHeader({ event, className = '', onBack }: EventHeaderProps)
 
         {/* Основной контент */}
         <div className="relative z-10 w-full p-4 sm:p-6 md:p-8">
-          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3 sm:gap-4">
-            {/* Текстовая информация */}
-            <div className="flex-1 max-w-3xl">
-              <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-white mb-2 sm:mb-3 leading-tight drop-shadow-lg">
-                {event.title}
+          <div className="flex flex-col gap-3 sm:gap-4">
+            {/* Заголовок и описание по левой стороне */}
+            <div>
+              <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-white mb-2 sm:mb-3 leading-tight drop-shadow-lg uppercase font-sns whitespace-pre-line">
+                {event.title.replace('Технология эффективных продаж', 'Технология\nэффективных продаж')}
               </h1>
               {description && (
                 <p className="text-white/90 text-xs sm:text-sm md:text-base leading-relaxed max-w-2xl drop-shadow mb-2 sm:mb-3 line-clamp-2 sm:line-clamp-none">
                   {description}
                 </p>
               )}
-              
-              {/* Дата и место проведения */}
-              <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-2 sm:gap-4 md:gap-6 text-xs sm:text-sm text-white/90 drop-shadow">
-                {/* Дата */}
+            </div>
+            
+            {/* Дата и место проведения по левой стороне */}
+            <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-2 sm:gap-4 md:gap-6 text-xs sm:text-sm text-white/90 drop-shadow">
+                {/* Дата и время */}
                 {event.start_date && (
                   <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                     <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white/80 flex-shrink-0" />
                     <span className="font-medium truncate">
-                      {formatDate(event.start_date)}
+                      {formatDateTime(event.start_date)}
                       {event.end_date && event.end_date !== event.start_date && 
-                        ` - ${formatDate(event.end_date)}`
+                        ` - ${formatTime(event.end_date)}`
                       }
                     </span>
                   </div>
@@ -153,11 +177,10 @@ export function EventHeader({ event, className = '', onBack }: EventHeaderProps)
                   </div>
                 )}
               </div>
-            </div>
 
-            {/* Бейджи и метрики */}
-            <div className="flex flex-col items-start lg:items-end gap-2 sm:gap-3 lg:min-w-[200px] mt-3 sm:mt-0">
-              <div className="flex flex-wrap gap-1.5 sm:gap-2 lg:justify-end">
+            {/* Бейджи и метрики по левой стороне */}
+            <div className="flex flex-col items-start gap-2 sm:gap-3 mt-3 sm:mt-0">
+              <div className="flex flex-wrap gap-1.5 sm:gap-2">
                 {/* Тип мероприятия */}
                 {typeLabel && (
                   <div className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-blue-500/90 text-white font-medium text-xs sm:text-sm shadow-lg backdrop-blur-sm border border-blue-400/30">

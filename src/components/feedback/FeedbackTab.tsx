@@ -553,7 +553,7 @@ export function FeedbackTab({ eventId, adminStatOnly = false }: FeedbackTabProps
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900">Обратная связь</h3>
-              <p className="text-xs sm:text-sm text-gray-600">
+              <p className="text-xs sm:text-sm text-gray-400">
                 {isTrainer
                   ? "Отзывы участников о качестве проведенного мероприятия"
                   : "Поделитесь вашим мнением о прошедшем мероприятии"}
@@ -564,19 +564,21 @@ export function FeedbackTab({ eventId, adminStatOnly = false }: FeedbackTabProps
               <span className="text-xs text-gray-400 hidden sm:inline">
                 {isFeedbackExpanded ? 'Скрыть отзывы' : 'Раскрыть отзывы'}
               </span>
-              <div 
-                className="w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-200"
-                style={{ backgroundColor: '#06A478' }}
+              <button 
+                className="w-8 h-8 rounded-full bg-gradient-to-r from-[#06A478] to-[#059669] hover:from-[#059669] hover:to-[#048A5A] flex items-center justify-center transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
+                onClick={() => setIsFeedbackExpanded(!isFeedbackExpanded)}
               >
                 <svg 
-                  className={`w-3.5 h-3.5 sm:w-5 sm:h-5 transition-transform duration-200 ${isFeedbackExpanded ? 'rotate-45 text-white' : 'text-white'}`}
+                  className={`w-4 h-4 text-white transition-transform duration-200 ${
+                    isFeedbackExpanded ? 'rotate-45' : 'rotate-0'
+                  }`} 
                   fill="none" 
                   stroke="currentColor" 
                   viewBox="0 0 24 24"
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-              </div>
+              </button>
             </div>
           </div>
         </div>
@@ -665,7 +667,7 @@ export function FeedbackTab({ eventId, adminStatOnly = false }: FeedbackTabProps
       )}
 
         {/* Статистика обратной связи для тренеров и администраторов */}
-        {isTrainer && feedbackStats.length > 0 && (
+        {isTrainer && feedbackStats.length > 0 && totalSubmissions > 0 && (
           <div className="space-y-3 sm:space-y-4">
             {/* Общая статистика */}
             <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-4 sm:p-6 border border-gray-200 shadow-sm">
@@ -725,7 +727,7 @@ export function FeedbackTab({ eventId, adminStatOnly = false }: FeedbackTabProps
 
             {/* Детальная статистика по вопросам */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-3">
-              {feedbackStats.filter(q => q.question_type !== 'text').map((q, idx) => (
+              {feedbackStats.filter(q => q.question_type !== 'text' && q.response_count > 0).map((q, idx) => (
                 <div key={q.question_id || idx} className="bg-white rounded-lg border border-gray-200 p-2.5 sm:p-3">
                   <div className="flex items-start justify-between mb-1.5 sm:mb-2">
                     <h4 className="text-gray-900 font-medium text-sm sm:text-base leading-tight pr-2 flex-1">{q.question}</h4>
@@ -772,6 +774,23 @@ export function FeedbackTab({ eventId, adminStatOnly = false }: FeedbackTabProps
               </div>
             )}
 
+          </div>
+        )}
+
+        {/* Сообщение о том, что нет данных обратной связи для тренеров */}
+        {isTrainer && (feedbackStats.length === 0 || totalSubmissions === 0) && (
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 sm:p-8 border border-blue-200 shadow-sm">
+            <div className="text-center">
+              <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 bg-blue-100 rounded-full flex items-center justify-center mb-4 sm:mb-6">
+                <MessageSquare className="w-8 h-8 sm:w-10 sm:h-10 text-blue-600" />
+              </div>
+              <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-2 sm:mb-3">
+                Обратная связь пока не получена
+              </h3>
+              <p className="text-xs sm:text-sm text-gray-600 max-w-md mx-auto">
+                Участники еще не оставили отзывы о мероприятии. После получения обратной связи здесь появится детальная статистика с оценками и комментариями.
+              </p>
+            </div>
           </div>
         )}
           </div>
