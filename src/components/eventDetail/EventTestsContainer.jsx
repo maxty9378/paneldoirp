@@ -32,6 +32,17 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
       setIsTestsExpanded(true);
     }
   }, [isEmployee]);
+
+  // Функция для получения описания в зависимости от роли пользователя
+  const getTestDescription = () => {
+    const hasAdminAccess = userProfile?.role === 'administrator' || userProfile?.role === 'moderator' || userProfile?.role === 'trainer' || userProfile?.role === 'expert';
+    
+    if (hasAdminAccess) {
+      return 'Контролируйте результаты тестирования и анализируйте эффективность обучения';
+    } else {
+      return 'Проверьте свои знания и получите сертификат о прохождении обучения';
+    }
+  };
   
   // Функция для загрузки тестов и попыток
   const fetchTestsAndAttempts = async () => {
@@ -88,6 +99,14 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
           console.warn(`Неизвестный тип теста: ${test.type}`);
           continue;
         }
+        
+        // Пропускаем, если уже есть данные для этого типа теста
+        if (statusObj[test.type].testId) {
+          console.log(`Skipping duplicate ${test.type} test:`, test.id);
+          continue;
+        }
+        
+        // Ищем все попытки для текущего мероприятия
         const { data: attempts, error: attemptError } = await supabase
           .from('user_test_attempts')
           .select('id, status, score, created_at')
@@ -98,13 +117,26 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
         if (attemptError) {
           console.error(`Ошибка при получении попытки для теста ${test.type}:`, attemptError);
         }
+        
         let completedAttempt = null;
         let lastAttempt = null;
+        
         if (attempts && attempts.length > 0) {
+          // Ищем завершенную попытку среди попыток для данного мероприятия
           completedAttempt = attempts.find(a => a.status === 'completed');
+          // Последняя попытка (самая свежая)
           lastAttempt = attempts[0];
         }
+        console.log(`Test ${test.type}:`, {
+          testId: test.id,
+          attemptsCount: attempts?.length || 0,
+          completedAttempt: completedAttempt?.id,
+          lastAttempt: lastAttempt?.id,
+          lastAttemptStatus: lastAttempt?.status
+        });
+
         if (completedAttempt) {
+          // Если есть завершенная попытка для данного мероприятия, показываем результат
           statusObj[test.type] = {
             available: true,
             completed: true,
@@ -114,15 +146,17 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
             test: test
           };
         } else if (lastAttempt) {
+          // Если есть попытка для текущего мероприятия, показываем её статус
           statusObj[test.type] = {
             available: true,
-            completed: false,
+            completed: lastAttempt.status === 'completed',
             score: lastAttempt.score,
             attemptId: lastAttempt.id,
             testId: test.id,
             test: test
           };
         } else {
+          // Если нет попыток для данного мероприятия, тест недоступен
           statusObj[test.type] = {
             ...statusObj[test.type],
             available: false,
@@ -138,6 +172,7 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
       // Теперь создаем попытки, если необходимо
       // Для входного теста
       const entryTest = testsData?.find(t => t.type === 'entry');
+      console.log('Creating entry test attempt:', { entryTest: entryTest?.id, hasAttemptId: !!statusObj.entry.attemptId });
       if (entryTest && !statusObj.entry.attemptId) {
         const { data: newAttempt, error: createError } = await supabase
           .from('user_test_attempts')
@@ -155,8 +190,12 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
           console.error('Ошибка при создании попытки для входного теста:', createError);
         } else if (newAttempt) {
           statusObj.entry = {
-            ...statusObj.entry,
-            attemptId: newAttempt.id
+            available: true,
+            completed: false,
+            score: null,
+            attemptId: newAttempt.id,
+            testId: entryTest.id,
+            test: entryTest
           };
         }
       }
@@ -181,12 +220,17 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
           console.error('Ошибка при создании попытки для финального теста:', createError);
         } else if (newAttempt) {
           statusObj.final = {
-            ...statusObj.final,
-            attemptId: newAttempt.id
+            available: true,
+            completed: false,
+            score: null,
+            attemptId: newAttempt.id,
+            testId: finalTest.id,
+            test: finalTest
           };
         }
       }
       
+      console.log('Final statusObj:', statusObj);
       setTestStatus(statusObj);
       
     } catch (err) {
@@ -368,7 +412,7 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900">Тестирование</h3>
-                    <p className="text-xs sm:text-sm text-gray-400">Контролируйте результаты тестирования и анализируйте эффективность обучения</p>
+                    <p className="text-xs sm:text-sm text-gray-400">{getTestDescription()}</p>
                   </div>
                   
                   <div className="flex items-center gap-2 sm:gap-3">
@@ -376,11 +420,11 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
                       {isTestsExpanded ? 'Скрыть тесты' : 'Раскрыть тесты'}
                     </span>
                     <button 
-                      className="w-8 h-8 rounded-full bg-gradient-to-r from-[#06A478] to-[#059669] hover:from-[#059669] hover:to-[#048A5A] flex items-center justify-center transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
+                      className="!w-5 !h-5 sm:!w-8 sm:!h-8 rounded-full bg-gradient-to-r from-[#06A478] to-[#059669] hover:from-[#059669] hover:to-[#048A5A] flex items-center justify-center transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
                       onClick={() => setIsTestsExpanded(!isTestsExpanded)}
                     >
                       <svg 
-                        className={`w-4 h-4 text-white transition-transform duration-200 ${
+                        className={`!w-3 !h-3 sm:!w-4 sm:!h-4 text-white transition-transform duration-200 ${
                           isTestsExpanded ? 'rotate-45' : 'rotate-0'
                         }`} 
                         fill="none" 

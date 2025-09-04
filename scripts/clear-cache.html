@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Очистка кэша</title>
+</head>
+<body>
+    <h1>Очистка кэша для тестирования</h1>
+    <button onclick="clearCache()">Очистить кэш</button>
+    <div id="result"></div>
+
+    <script>
+        function clearCache() {
+            // Очищаем localStorage
+            localStorage.clear();
+            
+            // Очищаем sessionStorage
+            sessionStorage.clear();
+            
+            // Очищаем IndexedDB (если используется)
+            if ('indexedDB' in window) {
+                indexedDB.databases().then(databases => {
+                    databases.forEach(db => {
+                        indexedDB.deleteDatabase(db.name);
+                    });
+                });
+            }
+            
+            // Очищаем кэш Service Worker
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(registrations => {
+                    registrations.forEach(registration => {
+                        registration.unregister();
+                    });
+                });
+            }
+            
+            // Очищаем кэш Cache API
+            if ('caches' in window) {
+                caches.keys().then(cacheNames => {
+                    cacheNames.forEach(cacheName => {
+                        caches.delete(cacheName);
+                    });
+                });
+            }
+            
+            document.getElementById('result').innerHTML = 
+                '<p style="color: green;">Кэш очищен! Теперь обновите страницу (Ctrl+F5) для принудительного обновления.</p>';
+        }
+    </script>
+</body>
+</html>

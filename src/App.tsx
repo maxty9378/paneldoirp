@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './hooks/useAuth';
 import { supabase } from './lib/supabase';
 import { Layout } from './components/Layout';
 import { TestTakingView } from './components/admin/TestTakingView';
+import { EnhancedMobileTestTakingView } from './components/admin/EnhancedMobileTestTakingView';
 import { LoginForm } from './components/LoginForm';
 import { CreateEventModal } from './components/events/CreateEventModal';
 import { DashboardView } from './components/DashboardView';

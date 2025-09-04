@@ -31,7 +31,7 @@ export function FeedbackTab({ eventId, adminStatOnly = false }: FeedbackTabProps
   const [averageRating, setAverageRating] = useState<number>(0);
   const [totalSubmissions, setTotalSubmissions] = useState<number>(0);
   const [feedbackStats, setFeedbackStats] = useState<any[]>([]);
-  const [isFeedbackExpanded, setIsFeedbackExpanded] = useState(false); // состояние сворачивания секции обратной связи
+  const [isFeedbackExpanded, setIsFeedbackExpanded] = useState(userProfile?.role === 'employee'); // состояние сворачивания секции обратной связи
   const [showParticipantsModal, setShowParticipantsModal] = useState(false);
   const [selectedRating, setSelectedRating] = useState<{rating: number, participants: any[], question: string} | null>(null);
   const [completionRate, setCompletionRate] = useState<number>(0);
@@ -564,12 +564,12 @@ export function FeedbackTab({ eventId, adminStatOnly = false }: FeedbackTabProps
               <span className="text-xs text-gray-400 hidden sm:inline">
                 {isFeedbackExpanded ? 'Скрыть отзывы' : 'Раскрыть отзывы'}
               </span>
-              <button 
-                className="w-8 h-8 rounded-full bg-gradient-to-r from-[#06A478] to-[#059669] hover:from-[#059669] hover:to-[#048A5A] flex items-center justify-center transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
-                onClick={() => setIsFeedbackExpanded(!isFeedbackExpanded)}
-              >
+                              <button 
+                  className="!w-5 !h-5 sm:!w-8 sm:!h-8 rounded-full bg-gradient-to-r from-[#06A478] to-[#059669] hover:from-[#059669] hover:to-[#048A5A] flex items-center justify-center transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
+                  onClick={() => setIsFeedbackExpanded(!isFeedbackExpanded)}
+                >
                 <svg 
-                  className={`w-4 h-4 text-white transition-transform duration-200 ${
+                  className={`!w-3 !h-3 sm:!w-4 sm:!h-4 text-white transition-transform duration-200 ${
                     isFeedbackExpanded ? 'rotate-45' : 'rotate-0'
                   }`} 
                   fill="none" 
@@ -586,30 +586,6 @@ export function FeedbackTab({ eventId, adminStatOnly = false }: FeedbackTabProps
         {/* Содержимое секции */}
         {isFeedbackExpanded && (
           <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-            {/* Кнопка "Оставить отзыв" для обычных пользователей */}
-            {!feedbackStatus.hasSubmittedFeedback && !isTrainer && (
-              <div className="flex justify-end">
-                <button
-                  onClick={() => {
-                    console.log('Feedback button clicked');
-                    console.log('Current status:', feedbackStatus);
-                    console.log('isTrainer:', isTrainer);
-                    setShowFeedbackForm(true);
-                  }}
-                  disabled={!feedbackStatus.canSubmitFeedback}
-                  className={clsx(
-                    "inline-flex items-center px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base font-semibold transition-all duration-200",
-                    feedbackStatus.canSubmitFeedback
-                      ? "text-white shadow-md hover:shadow-lg"
-                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  )}
-                  style={feedbackStatus.canSubmitFeedback ? { backgroundColor: '#06A478' } : {}}
-                >
-                  <PlusCircle className="h-4 w-4 sm:h-5 sm:w-5 mr-1.5 sm:mr-2" />
-                  <span>Оставить отзыв</span>
-                </button>
-              </div>
-            )}
         {/* Информация о статусе обратной связи для обычных пользователей */}
         {!isTrainer && (
         <div className={clsx(
@@ -635,17 +611,40 @@ export function FeedbackTab({ eventId, adminStatOnly = false }: FeedbackTabProps
               </div>
             </div>
           ) : feedbackStatus.canSubmitFeedback ? (
-            <div className="flex items-center">
-              <div className="p-1.5 sm:p-2 rounded-full mr-3 sm:mr-4" style={{ backgroundColor: '#06A478' }}>
-                <Star className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center">
+                <div className="p-1.5 sm:p-2 rounded-full mr-3 sm:mr-4" style={{ backgroundColor: '#06A478' }}>
+                  <Star className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-gray-900 font-semibold text-base sm:text-lg">
+                    Готовы поделиться мнением?
+                  </p>
+                  <p className="text-gray-600 text-xs sm:text-sm mt-1">
+                    Вы можете оставить обратную связь по этому мероприятию. Пожалуйста, поделитесь своим мнением.
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-gray-900 font-semibold text-base sm:text-lg">
-                  Готовы поделиться мнением?
-                </p>
-                <p className="text-gray-600 text-xs sm:text-sm mt-1">
-                  Вы можете оставить обратную связь по этому мероприятию. Пожалуйста, поделитесь своим мнением.
-                </p>
+              {/* Кнопка "Оставить отзыв" на одном уровне с текстом */}
+              <div className="flex justify-end sm:justify-start">
+                <button
+                  onClick={() => {
+                    console.log('Feedback button clicked');
+                    console.log('Current status:', feedbackStatus);
+                    console.log('isTrainer:', isTrainer);
+                    setShowFeedbackForm(true);
+                  }}
+                  disabled={!feedbackStatus.canSubmitFeedback}
+                  className={clsx(
+                    "flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-all duration-200 touch-manipulation min-h-[48px] rounded-lg shadow-sm w-full sm:w-auto",
+                    feedbackStatus.canSubmitFeedback
+                      ? "bg-[#06A478] hover:bg-[#059669] active:bg-[#047857] text-white hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
+                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  )}
+                >
+                  <PlusCircle className="h-4 w-4" />
+                  <span>Оставить отзыв</span>
+                </button>
               </div>
             </div>
           ) : (

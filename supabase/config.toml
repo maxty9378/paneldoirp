@@ -125,24 +125,9 @@ template = "Your confirmation code is {{ .Code }}"
 # # or any other third-party OIDC providers.
 # url = ""
 
-[edge_functions]
-enabled = true
-# Configure one of the supported request policies: `oneshot`, `per_worker`.
-# `oneshot` is recommended for development, `per_worker` is recommended for production.
-request_policy = "oneshot"
-
 [analytics]
 enabled = false
 # Configure one of the supported backends: `postgres`, `bigquery`.
 # backend = "postgres"
 # Configure one of the supported request policies: `oneshot`, `per_worker`.
-# request_policy = "oneshot"
-
-[experimental]
-# Enable realtime to listen to database changes. (default: false)
-realtime = false
-
-[local]
-# Configure one of the supported request policies: `oneshot`, `per_worker`.
-# `oneshot` is recommended for development, `per_worker` is recommended for production.
-request_policy = "oneshot" 
+# request_policy = "oneshot" 

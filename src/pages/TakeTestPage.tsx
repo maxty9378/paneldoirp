@@ -3,6 +3,8 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { TestTakingView } from '../components/admin/TestTakingView';
+import { EnhancedMobileTestTakingView } from '../components/admin/EnhancedMobileTestTakingView';
+import { useMobile } from '../hooks/use-mobile';
 
 function Loader() {
   return <div style={{ textAlign: 'center', marginTop: 40 }}>Загрузка...</div>;
@@ -43,6 +45,7 @@ export default function TakeTestPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { userProfile } = useAuth();
+  const isMobile = useMobile();
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -72,12 +75,21 @@ export default function TakeTestPage() {
 
   if (loading || !eventId || !testId || !attemptId) return <Loader />;
 
+  const TestComponent = isMobile ? EnhancedMobileTestTakingView : TestTakingView;
+
   return (
-    <TestTakingView
+    <TestComponent
       eventId={eventId}
       testId={testId}
       attemptId={attemptId}
-      onComplete={() => navigate(`/event/${eventId}`)}
+      onComplete={() => {
+        // Переходим на страницу мероприятия
+        navigate(`/event/${eventId}`);
+        // Обновляем данные после перехода
+        setTimeout(() => {
+          window.location.reload();
+        }, 100);
+      }}
       onCancel={() => navigate(`/event/${eventId}`)}
     />
   );

@@ -16,9 +16,10 @@ function useHoudiniSquircleOnce() {
           try { await import('css-paint-polyfill'); } catch {}
         }
         // @ts-expect-error paintWorklet может не быть в типах
-        if (!cancelled && CSS?.paintWorklet) {
+        if (!cancelled && CSS?.paintWorklet && !(window as any).__squircleLoaded) {
           // @ts-expect-error addModule типы
           await CSS.paintWorklet.addModule('https://www.unpkg.com/css-houdini-squircle/squircle.min.js');
+          (window as any).__squircleLoaded = true;
         }
       } catch {}
     })();
@@ -463,21 +464,25 @@ export function EventDetailsCard({ event, isCreator = false, participants = [], 
       <style>{squircleStyles}</style>
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         {/* Заголовок */}
-        <div className="px-3 sm:px-4 lg:px-6 py-4 sm:py-5 border-b border-gray-100">
-          <div className="flex flex-col gap-6 sm:gap-4">
+        <div className="px-3 sm:px-4 lg:px-6 py-4 sm:py-5 border-b border-gray-100 bg-white">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 sm:gap-4">
             <div className="w-full">
-              <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Информация о мероприятии</h3>
-              <p className="text-sm sm:text-base text-gray-400">Детальная информация о мероприятии</p>
+              <h3 className="text-xl sm:text-xl lg:text-2xl font-bold text-gray-900">
+                Информация о мероприятии
+              </h3>
+              <p className="text-sm sm:text-sm text-gray-400">
+                Детальная информация о мероприятии
+              </p>
             </div>
             
             {/* Кнопка завершения мероприятия для тренеров */}
             {userProfile?.role === 'trainer' && onCompleteEvent && (
-              <div className="flex items-center justify-center sm:justify-start gap-2">
+              <div className="flex items-center justify-center sm:justify-end gap-2">
                 {event.status === 'completed' ? (
                   <button
                     type="button"
                     onClick={onCompleteEvent}
-                    className="flex items-center justify-center gap-2 px-4 py-3 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white rounded-lg text-sm font-medium transition-colors touch-manipulation min-h-[44px] w-full sm:w-auto"
+                    className="flex items-center justify-center gap-2 px-3 py-2 sm:px-4 sm:py-3 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white rounded-lg text-sm font-medium transition-colors touch-manipulation min-h-[44px] w-full sm:w-auto sm:whitespace-nowrap"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -489,7 +494,7 @@ export function EventDetailsCard({ event, isCreator = false, participants = [], 
                   <button
                     type="button"
                     onClick={onCompleteEvent}
-                    className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors touch-manipulation min-h-[44px] w-full sm:w-auto"
+                    className="flex items-center justify-center gap-2 px-3 py-2 sm:px-4 sm:py-3 bg-[#06A478] hover:bg-[#059669] active:bg-[#047857] text-white rounded-lg text-sm font-medium transition-colors touch-manipulation min-h-[44px] w-full sm:w-auto sm:whitespace-nowrap"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -746,6 +751,7 @@ export function EventDetailsCard({ event, isCreator = false, participants = [], 
           )}
         </div>
       </div>
+      
     </>
   );
 } 

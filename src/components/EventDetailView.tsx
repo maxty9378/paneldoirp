@@ -8,6 +8,7 @@ import { EventDetailsCard } from './eventDetail/EventDetailsCard';
 import EventParticipantsList from './eventDetail/EventParticipantsList.jsx';
 // @ts-ignore
 import EventTestsContainer from './eventDetail/EventTestsContainer.jsx';
+import { TPEvaluationSection } from './eventDetail/TPEvaluationSection';
 import { FeedbackTab } from './feedback/FeedbackTab';
 import { TrainerActionNotifications } from './notifications/TrainerActionNotifications';
 import { useNavigate } from 'react-router-dom';
@@ -286,6 +287,12 @@ export default function EventDetailView({ eventId, onStartTest, onBack }: EventD
                 onStartTest={onStartTest}
                 refreshKey={refreshKey}
                 onRefreshData={handleRefreshData}
+              />
+            </div>
+            <div data-section="tp-evaluation">
+              <TPEvaluationSection 
+                eventId={eventId} 
+                userProfile={userProfile} 
               />
             </div>
             <div data-section="feedback">

@@ -48,7 +48,7 @@ export default function EventParticipantsList({ eventId, refreshKey = 0 }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [updatingStatus, setUpdatingStatus] = useState(null);
-  const [isExpanded, setIsExpanded] = useState(false); // По умолчанию свёрнуто, разворачивается для тренеров/админов
+  const [isExpanded, setIsExpanded] = useState(userProfile?.role === 'employee'); // По умолчанию свёрнуто, разворачивается для сотрудников
   
   // Определяем, является ли пользователь администратором
   const isAdmin = userProfile?.role && ['administrator', 'moderator', 'trainer', 'expert'].includes(userProfile.role);
@@ -212,14 +212,14 @@ export default function EventParticipantsList({ eventId, refreshKey = 0 }) {
               </span>
               <div className="relative">
                 <button 
-                  className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 flex items-center justify-center transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
+                  className="!w-5 !h-5 sm:!w-8 sm:!h-8 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 flex items-center justify-center transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
                   onClick={(e) => {
                     e.stopPropagation();
                     setIsExpanded(!isExpanded);
                   }}
                 >
                   <svg 
-                    className={`w-4 h-4 text-white transition-transform duration-200 ${
+                    className={`!w-3 !h-3 sm:!w-4 sm:!h-4 text-white transition-transform duration-200 ${
                       isExpanded ? 'rotate-45' : 'rotate-0'
                     }`} 
                     fill="none" 
