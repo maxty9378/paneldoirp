@@ -103,19 +103,33 @@ export function EventHeader({ event, className = '', onBack }: EventHeaderProps)
         {/* Градиентное затемнение для лучшей читаемости */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
         
-        {/* Кнопка "Назад к мероприятиям" - слева вверху */}
+        {/* Кнопка "Назад к мероприятиям" - мобильная версия во всю ширину сверху, десктопная в углу */}
         {onBack && (
-          <div className="absolute top-4 sm:top-6 left-4 sm:left-6 z-20">
-            <button
-              onClick={onBack}
-              className="group flex items-center gap-1.5 sm:gap-2 text-white font-normal rounded-xl px-2.5 sm:px-3 py-1.5 sm:py-2 bg-black/30 hover:bg-black/50 backdrop-blur-sm border border-white/20 hover:border-white/30 focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 transition-all duration-200 text-xs sm:text-sm shadow-lg hover:shadow-xl active:scale-95 touch-manipulation"
-              aria-label="Назад к мероприятиям"
-            >
-              <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 group-hover:-translate-x-1 transition-transform duration-200 flex-shrink-0" strokeWidth={2.5} />
-              <span className="hidden sm:inline">Назад к мероприятиям</span>
-              <span className="inline sm:hidden">Назад</span>
-            </button>
-          </div>
+          <>
+            {/* Мобильная версия - во всю ширину сверху */}
+            <div className="absolute top-0 left-0 right-0 z-20 sm:hidden">
+              <button
+                onClick={onBack}
+                className="w-full group flex items-center justify-center gap-2 text-white font-medium rounded-none px-4 py-3 bg-black/60 hover:bg-black/80 backdrop-blur-sm border-b border-white/20 hover:border-white/30 focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 transition-all duration-200 text-sm shadow-lg hover:shadow-xl active:scale-95 touch-manipulation"
+                aria-label="Назад к мероприятиям"
+              >
+                <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform duration-200 flex-shrink-0" strokeWidth={2.5} />
+                <span>Назад к мероприятиям</span>
+              </button>
+            </div>
+            
+            {/* Десктопная версия - в левом верхнем углу */}
+            <div className="absolute top-4 sm:top-6 left-4 sm:left-6 z-20 hidden sm:block">
+              <button
+                onClick={onBack}
+                className="group flex items-center gap-2 text-white font-normal rounded-xl px-3 py-2 bg-black/30 hover:bg-black/50 backdrop-blur-sm border border-white/20 hover:border-white/30 focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 transition-all duration-200 text-sm shadow-lg hover:shadow-xl active:scale-95 touch-manipulation"
+                aria-label="Назад к мероприятиям"
+              >
+                <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform duration-200 flex-shrink-0" strokeWidth={2.5} />
+                <span>Назад к мероприятиям</span>
+              </button>
+            </div>
+          </>
         )}
         
         {/* Featured badge */}
@@ -130,7 +144,7 @@ export function EventHeader({ event, className = '', onBack }: EventHeaderProps)
         )}
 
         {/* Основной контент */}
-        <div className="relative z-10 w-full p-4 sm:p-6 md:p-8">
+        <div className="relative z-10 w-full p-4 pt-16 sm:pt-6 md:pt-8 sm:p-6 md:p-8">
           <div className="flex flex-col gap-3 sm:gap-4">
             {/* Заголовок и описание по левой стороне */}
             <div>

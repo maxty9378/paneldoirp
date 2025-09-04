@@ -65,7 +65,7 @@ export function TestingView() {
   const isEmployee = userProfile?.role === 'employee';
   
   // Состояние для переключения между режимами просмотра
-  const [viewMode, setViewMode] = useState<'tests' | 'results'>('results');
+  const [viewMode, setViewMode] = useState<'tests' | 'results'>('tests');
   
   console.log('TestingView render state:', {
     viewMode,
@@ -342,7 +342,7 @@ export function TestingView() {
 
   // Если выбран режим просмотра результатов, показываем обзор результатов
   if (viewMode === 'results') {
-    return <TestResultsOverview />;
+    return <TestResultsOverview onBack={() => setViewMode('tests')} />;
   }
 
   return (

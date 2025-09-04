@@ -22,6 +22,7 @@ import { Loader2, RefreshCw, AlertOctagon, Users } from 'lucide-react';
 import TakeTestPage from './pages/TakeTestPage';
 import TestResultsPage from './pages/TestResultsPage';
 import EventTestResultsPage from './pages/EventTestResultsPage';
+import AuthCallback from './pages/AuthCallback';
 
 function EventDetailPage({ onStartTest }: { onStartTest: (testType: 'entry' | 'final' | 'annual', testId: string, eventId: string, attemptId: string) => void }) {
   const { eventId } = useParams();
@@ -93,6 +94,12 @@ function AppContent() {
         .select(`
           *,
           event_types (*),
+          creator:creator_id(
+            id,
+            full_name,
+            email,
+            avatar_url
+          ),
           event_participants (
             user_id,
             users (
@@ -223,6 +230,7 @@ function AppContent() {
         <Route path="/take-test" element={<TakeTestPage />} />
         <Route path="/test-results/:attemptId" element={<TestResultsPage />} />
         <Route path="/event-test-results/:eventId" element={<EventTestResultsPage />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
       </Routes>
       <CreateEventModal 
         isOpen={showCreateEventModal}

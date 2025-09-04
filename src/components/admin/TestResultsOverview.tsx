@@ -8,6 +8,7 @@ import {
   CheckCircle, 
   XCircle, 
   Clock,
+  ArrowLeft,
   Award,
   BarChart3,
   ChevronDown,
@@ -123,9 +124,10 @@ interface DetailedTestResult {
 
 interface TestResultsOverviewProps {
   eventId?: string; // Если не указан, показываем все мероприятия
+  onBack?: () => void; // Функция для возврата назад
 }
 
-export function TestResultsOverview({ eventId }: TestResultsOverviewProps) {
+export function TestResultsOverview({ eventId, onBack }: TestResultsOverviewProps) {
   const { userProfile } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -1154,6 +1156,17 @@ export function TestResultsOverview({ eventId }: TestResultsOverviewProps) {
       {/* Заголовок и фильтры */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
         <div>
+          {onBack && (
+            <div className="mb-4">
+              <button
+                onClick={onBack}
+                className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                <ArrowLeft size={20} />
+                <span>Назад к управлению тестами</span>
+              </button>
+            </div>
+          )}
           <h1 className="text-2xl font-bold text-gray-900">Результаты тестов</h1>
           <p className="text-gray-600">Просмотр результатов тестирования по мероприятиям</p>
         </div>

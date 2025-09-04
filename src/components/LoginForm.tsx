@@ -5,11 +5,21 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { clsx } from 'clsx';
 
 export function LoginForm() {
-  const [identifier, setIdentifier] = useState('doirp@sns.ru');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
   const { signIn, user, loading, authError } = useAuth();
+
+  // Функция для добавления домена @sns.ru при отправке формы
+  const prepareIdentifier = (value: string): string => {
+    // Если введенное значение не содержит @, добавляем @sns.ru
+    // Логика соответствует useAuth: есть @ = email, нет @ = SAP номер
+    if (!value.includes('@')) {
+      return value + '@sns.ru';
+    }
+    return value;
+  };
 
 
   
@@ -17,7 +27,8 @@ export function LoginForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const result = await signIn(identifier, password);
+    const preparedIdentifier = prepareIdentifier(identifier);
+    const result = await signIn(preparedIdentifier, password);
     
     // The error state is now handled in the useAuth hook,
     // so we don't need to do anything else here
@@ -78,7 +89,7 @@ export function LoginForm() {
             <div className="space-y-4">
               <div>
                 <label htmlFor="identifier" className="block text-sm font-medium text-gray-700 mb-2">
-                  Email или SAP номер
+                  Имя пользователя или SAP номер
                 </label>
                 <div className="relative">
                   <input
@@ -87,7 +98,7 @@ export function LoginForm() {
                     type="text"
                     required
                     className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#06A478] focus:border-[#06A478] focus:z-10 transition-all duration-200 sm:text-sm"
-                    placeholder="Корпоративный email или SAP номер"
+                    placeholder="Имя пользователя или SAP номер"
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
                     autoComplete="username"

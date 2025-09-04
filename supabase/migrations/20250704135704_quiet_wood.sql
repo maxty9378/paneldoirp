@@ -31,14 +31,13 @@ DECLARE
   v_entry_test_passed boolean := true;
   v_final_test_passed boolean := true;
 BEGIN
-  -- Проверяем, что пользователь участвует в мероприятии
+  -- Проверяем, что пользователь участвует в мероприятии (убрана проверка attended)
   SELECT ep.attended, e.event_type_id
   INTO v_is_participant, v_event_type_id
   FROM event_participants ep
   JOIN events e ON e.id = ep.event_id
   WHERE ep.user_id = p_user_id 
-    AND ep.event_id = p_event_id
-    AND ep.attended = true;
+    AND ep.event_id = p_event_id;
   
   -- Если пользователь не участвует в мероприятии, возвращаем false
   IF NOT FOUND OR NOT v_is_participant THEN

@@ -45,6 +45,7 @@ export default function EventDetailView({ eventId, onStartTest, onBack }: EventD
               full_name,
               email,
               phone,
+              avatar_url,
               position:position_id(name),
               territory:territory_id(name),
               branch:branch_id(name)

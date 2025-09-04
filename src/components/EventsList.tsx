@@ -83,11 +83,32 @@ export function EventsList({ onCreateEvent }: EventsListProps) {
       
       console.log('Fetching events for user:', user?.id, 'role:', userProfile?.role);
       
-      // Получаем все мероприятия
-      const { data, error } = await supabase
-        .from('events')
-        .select('*')
-        .order('start_date', { ascending: false });
+      // Проверяем роль пользователя
+      const isAdmin = userProfile?.role && ['administrator', 'moderator', 'trainer'].includes(userProfile.role);
+      
+      let data, error;
+      
+      if (isAdmin) {
+        // Администраторы видят все мероприятия
+        const result = await supabase
+          .from('events')
+          .select('*')
+          .order('start_date', { ascending: false });
+        data = result.data;
+        error = result.error;
+      } else {
+        // Обычные пользователи видят только мероприятия, в которых они участвуют
+        const result = await supabase
+          .from('events')
+          .select(`
+            *,
+            event_participants!inner(user_id)
+          `)
+          .eq('event_participants.user_id', user?.id)
+          .order('start_date', { ascending: false });
+        data = result.data;
+        error = result.error;
+      }
 
       if (error) {
         console.error('Supabase error:', error);

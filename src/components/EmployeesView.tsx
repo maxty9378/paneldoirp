@@ -26,10 +26,12 @@ import {
   Eye,
   Edit,
   Trash2,
-  User
+  User,
+  QrCode
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
+import { UserQRLogin } from './admin/UserQRLogin';
 
 interface Employee {
   id: string;
@@ -104,6 +106,8 @@ export function EmployeesView() {
   const [showFilters, setShowFilters] = useState(false);
   const [expandedEmployeeId, setExpandedEmployeeId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [showQRLogin, setShowQRLogin] = useState(false);
+  const [selectedEmployeeForQR, setSelectedEmployeeForQR] = useState<Employee | null>(null);
 
   // Определяем права пользователя
   const isManager = userProfile?.role === 'manager';
@@ -332,6 +336,11 @@ export function EmployeesView() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleGenerateQR = (employee: Employee) => {
+    setSelectedEmployeeForQR(employee);
+    setShowQRLogin(true);
   };
 
   // Статистика по сотрудникам
@@ -783,6 +792,16 @@ export function EmployeesView() {
                             )}
                           </button>
                         )}
+                        
+                        {employee.email && (
+                          <button
+                            onClick={() => handleGenerateQR(employee)}
+                            className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-xs font-medium bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                          >
+                            <QrCode size={14} />
+                            <span>QR-код для входа</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -792,6 +811,18 @@ export function EmployeesView() {
           </div>
         )}
       </div>
+
+      {/* QR Login Modal */}
+      {showQRLogin && selectedEmployeeForQR && (
+        <UserQRLogin
+          userEmail={selectedEmployeeForQR.email}
+          userName={selectedEmployeeForQR.full_name}
+          onClose={() => {
+            setShowQRLogin(false);
+            setSelectedEmployeeForQR(null);
+          }}
+        />
+      )}
     </div>
   );
 }

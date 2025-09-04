@@ -732,15 +732,7 @@ export default function EventTestPrompts({ eventId, onStartTest, testStatus, ref
     );
   }
 
-  if (!loading && isParticipant && !hasAttended && !hasAdminAccess) {
-    return (
-      <div className="bg-orange-50 border border-orange-200 rounded-xl p-6 text-center">
-        <AlertCircleIcon className="h-12 w-12 text-orange-500 mx-auto mb-4" />
-        <h3 className="text-base sm:text-lg font-medium text-orange-800 mb-2">Отметка о присутствии отсутствует</h3>
-        <p className="text-orange-700">Доступ к тестам открывается после подтверждения вашего присутствия на мероприятии.</p>
-      </div>
-    );
-  }
+  // Убрана проверка присутствия - теперь тесты доступны сразу для участников
 
   if (loading) {
     return (

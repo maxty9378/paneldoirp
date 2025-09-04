@@ -69,6 +69,7 @@ export function EventDetailModal({ isOpen, eventId, onClose }: EventDetailModalP
             full_name,
             email,
             phone,
+            avatar_url,
             position:position_id(name),
             territory:territory_id(name)
           )
@@ -94,8 +95,8 @@ export function EventDetailModal({ isOpen, eventId, onClose }: EventDetailModalP
         const isParticipant = !!participantData;
         const hasAttended = participantData?.attended || false;
 
-        // Если пользователь участник и присутствовал, проверяем тесты
-        if (isParticipant && hasAttended) {
+        // Если пользователь участник, проверяем тесты (убрана проверка присутствия)
+        if (isParticipant) {
           // Поиск тестов по типу мероприятия
           if (eventData.event_type?.has_entry_test) {
             const { data: entryTestData } = await supabase
@@ -574,8 +575,16 @@ export function EventDetailModal({ isOpen, eventId, onClose }: EventDetailModalP
 
                         <div className="space-y-4">
                           <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                              <User className="w-5 h-5 text-purple-600" />
+                            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center overflow-hidden">
+                              {event.creator?.avatar_url ? (
+                                <img
+                                  src={event.creator.avatar_url}
+                                  alt={event.creator.full_name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <User className="w-5 h-5 text-purple-600" />
+                              )}
                             </div>
                             <div>
                               <p className="text-sm text-gray-500">Организатор</p>
