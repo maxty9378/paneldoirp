@@ -100,8 +100,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } as User;
   };
 
-  // Function to get session with timeout (увеличенный таймаут)
-  const getSessionWithTimeout = async (timeoutMs: number = 45000) => {
+  // Function to get session with timeout (быстрый таймаут)
+  const getSessionWithTimeout = async (timeoutMs: number = 10000) => {
     console.log(`🔄 Getting session with ${timeoutMs}ms timeout`);
     try {
       const res = await Promise.race([
@@ -208,7 +208,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setAuthError(null);
         }
 
-        // 1) кэш
+        // 1) кэш - показываем сразу и не ждем
         const cached = getUserFromCache();
         let usedCache = false;
         let cachedUser: User | null = null;
@@ -216,20 +216,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log('✅ Using cached user profile:', cached.id);
           usedCache = true;
           cachedUser = { ...cached, position: cached.position || 'Должность не указана' };
-          // не включаем аварийный таймер, просто отрисовываем и в фоне обновляем
+          // показываем кеш сразу и завершаем функцию
           setUser(cachedUser);
           setUserProfile(cachedUser);
           if (foreground) {
             setLoading(false);
             setLoadingPhase('complete');
           }
-          // и продолжаем в фоне рефреш без смены фаз
+          // запускаем фоновое обновление асинхронно
+          setTimeout(() => {
+            console.log('🔄 Background profile refresh started');
+            fetchUserProfile(userId, { foreground: false }).catch(e => 
+              console.warn('Background refresh failed:', e.message)
+            );
+          }, 100);
+          return cachedUser;
         }
 
-        // 2) сет с ретраями
-        for (let attempt = 1; attempt <= 3; attempt++) {
+        // 2) сет с ретраями (быстрые таймауты)
+        for (let attempt = 1; attempt <= 2; attempt++) {
           try {
-            const row = await withTimeout(() => tryFetchProfileRow(userId), 12000);
+            const row = await withTimeout(() => tryFetchProfileRow(userId), 5000);
             if (row) {
               const u = { ...row, position: row.position || 'Должность не указана' } as User;
               setUser(u);
@@ -242,7 +249,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               return u;
             }
             // строки нет — создаём
-            const created = await withTimeout(() => ensureProfile(userId), 12000);
+            const created = await withTimeout(() => ensureProfile(userId), 5000);
             const u = { ...created, position: created.position || 'Должность не указана' } as User;
             setUser(u);
             setUserProfile(u);
@@ -254,19 +261,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return u;
           } catch (e: any) {
             console.warn(`🔁 Profile attempt ${attempt} failed:`, e.message || e);
-            await delay(300 * attempt); // лёгкий backoff
+            await delay(200 * attempt); // быстрый backoff
           }
         }
 
-        // 3) окончательный мягкий фолбэк, но только если не использовали кэш
-        if (usedCache && cachedUser) {
-          console.log('⚠️ Background profile update failed, but cache is already displayed - keeping cached profile');
-          // не затираем хороший кешированный профиль
-          return cachedUser;
-        }
+        // 3) окончательный мягкий фолбэк
         
         console.warn('🚨 Using auth-based fallback after retries');
         const { data: authData } = await supabase.auth.getUser();
+        const isAdmin = authData?.user?.email === 'doirp@sns.ru';
         const fb = createFallbackUser(userId, authData?.user?.email, authData?.user?.user_metadata?.full_name, 'auth-based');
         setUser(fb);
         setUserProfile(fb);
@@ -487,7 +490,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       try {
         // Get initial session with timeout
-        const sessionResult = await getSessionWithTimeout(45000);
+        const sessionResult = await getSessionWithTimeout(10000);
         if (!isMounted) return;
         
         if (sessionResult.error) {
