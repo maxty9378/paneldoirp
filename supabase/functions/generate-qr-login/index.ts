@@ -64,20 +64,24 @@ serve(async (req) => {
 
     console.log('Using redirect URL:', finalRedirectUrl);
 
-    // Проверяем существует ли пользователь в auth.users
-    const { data: existingUser, error: userCheckError } = await supabaseAdmin.auth.admin.getUserByEmail(email)
+    // Проверяем существует ли пользователь в auth.users через listUsers
+    console.log('Checking if user exists:', email);
     
-    if (userCheckError) {
-      console.error('Error checking user:', userCheckError)
-      throw new Error(`User lookup error: ${userCheckError.message}`)
+    const { data: usersList, error: usersError } = await supabaseAdmin.auth.admin.listUsers();
+    
+    if (usersError) {
+      console.error('Error listing users:', usersError);
+      throw new Error(`User lookup error: ${usersError.message}`);
     }
     
-    if (!existingUser.user) {
-      console.error('User not found in auth.users:', email)
-      throw new Error(`User ${email} not found in authentication system`)
+    const existingUser = usersList.users.find(user => user.email === email);
+    
+    if (!existingUser) {
+      console.error('User not found in auth.users:', email);
+      throw new Error(`User ${email} not found in authentication system. Please ensure the user is registered first.`);
     }
     
-    console.log('Found existing user:', existingUser.user.id, email)
+    console.log('Found existing user:', existingUser.id, email);
 
     // Generate magic link для существующего пользователя
     const { data, error } = await supabaseAdmin.auth.admin.generateLink({
