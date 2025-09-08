@@ -62,13 +62,13 @@ export default function AuthCallback() {
           }
         }
 
-        // Также проверяем verification токен (альтернативный способ)
+        // Проверяем verification токен (основной способ для magic link с URL параметрами)
         const token = urlParams.get('token') || hashParams.get('token');
 
         if (token && type === 'magiclink') {
-          console.log('✅ Magic link token found, verifying...');
+          console.log('✅ Magic link token found in URL params, verifying...');
           
-          // Используем verifyOtp для magic link
+          // Используем verifyOtp для magic link из URL параметров
           const { data, error } = await supabase.auth.verifyOtp({
             token_hash: token,
             type: 'magiclink'
@@ -81,6 +81,26 @@ export default function AuthCallback() {
 
           if (data.user) {
             console.log('✅ Magic link verified successfully:', data.user.email);
+            setStatus('success');
+            setMessage('Авторизация успешна! Перенаправление...');
+            setTimeout(() => navigate('/'), 2000);
+            return;
+          }
+        }
+
+        // Если нет type, но есть token - тоже пробуем как magic link
+        if (token && !type) {
+          console.log('✅ Token found without type, trying as magic link...');
+          
+          const { data, error } = await supabase.auth.verifyOtp({
+            token_hash: token,
+            type: 'magiclink'
+          });
+
+          if (error) {
+            console.error('❌ Error verifying token as magic link:', error);
+          } else if (data.user) {
+            console.log('✅ Token verified successfully as magic link:', data.user.email);
             setStatus('success');
             setMessage('Авторизация успешна! Перенаправление...');
             setTimeout(() => navigate('/'), 2000);

@@ -66,9 +66,15 @@ function AppContent() {
     console.log('App: Found token:', !!token, 'access_token:', !!accessToken, 'refresh_token:', !!refreshToken, 'type:', type);
     
     // Если это magic link и мы НЕ на странице callback - перенаправляем
-    if ((token || (accessToken && refreshToken)) && type === 'magiclink' && window.location.pathname !== '/auth/callback') {
+    const isMagicLink = (token || (accessToken && refreshToken)) && type === 'magiclink';
+    const hasTokenOnly = token && !type; // Случай когда есть только token без type
+    
+    if ((isMagicLink || hasTokenOnly) && window.location.pathname !== '/auth/callback') {
       console.log('🔄 Magic link detected, redirecting to auth callback...');
-      navigate(`/auth/callback${window.location.hash}`);
+      // Передаем и hash и search параметры
+      const searchParams = window.location.search;
+      const hashParams = window.location.hash;
+      navigate(`/auth/callback${searchParams}${hashParams}`);
     }
   }, [navigate]);
   
