@@ -51,21 +51,11 @@ export default function QRAuthPage() {
           throw new Error(data?.error || 'Неожиданный ответ от сервера');
         }
 
-        // 2) Обрабатываем токены или magic link
+        // 2) Активируем magic link
         setStep('auth');
         setMessage('Выполняю авторизацию…');
 
-        if (data.accessToken && data.refreshToken) {
-          // Прямые токены - устанавливаем сессию
-          const { error: sessionError } = await supabase.auth.setSession({
-            access_token: data.accessToken,
-            refresh_token: data.refreshToken
-          });
-
-          if (sessionError) {
-            throw new Error(`Ошибка установки сессии: ${sessionError.message}`);
-          }
-        } else if (data.redirectUrl && data.needsActivation) {
+        if (data.redirectUrl && data.needsActivation) {
           // Magic link - активируем через редирект
           console.log('🔗 Redirecting to magic link:', data.redirectUrl);
           window.location.replace(data.redirectUrl);

@@ -80,58 +80,30 @@ serve(async (req) => {
 
     console.log('✅ User found:', user.email)
 
-    // Создаем сессию напрямую для пользователя
-    const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
+    // Генерируем magic link
+    const finalRedirectUrl = 'https://paneldoirp.vercel.app/auth/qr/success'
+    
+    const { data, error } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email: user.email!,
       options: {
-        redirectTo: 'https://paneldoirp.vercel.app/auth/qr/success'
+        redirectTo: finalRedirectUrl
       }
     })
 
-    if (sessionError) {
-      console.error('❌ Error generating session:', sessionError)
-      throw new Error(`Failed to generate session: ${sessionError.message}`)
+    if (error) {
+      console.error('❌ Error generating magic link:', error)
+      throw new Error(`Failed to generate magic link: ${error.message}`)
     }
 
-    console.log('✅ Session generated for:', user.email)
+    console.log('✅ Magic link generated for:', user.email)
+    console.log('🔗 Action link:', data.properties?.action_link?.substring(0, 50) + '...')
 
-    // Извлекаем токены из magic link
-    const magicLinkUrl = sessionData.properties?.action_link
-    if (!magicLinkUrl) {
-      throw new Error('No magic link generated')
-    }
-
-    // Парсим URL для извлечения токенов
-    const url = new URL(magicLinkUrl)
-    const accessToken = url.searchParams.get('access_token') || url.hash.match(/access_token=([^&]+)/)?.[1]
-    const refreshToken = url.searchParams.get('refresh_token') || url.hash.match(/refresh_token=([^&]+)/)?.[1]
-
-    if (!accessToken || !refreshToken) {
-      // Если токенов нет в URL, возвращаем magic link для активации
-      return new Response(JSON.stringify({
-        success: true,
-        redirectUrl: magicLinkUrl,
-        needsActivation: true
-      }), {
-        status: 200,
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json'
-        }
-      })
-    }
-
-    // Возвращаем токены напрямую
+    // Возвращаем magic link в JSON
     return new Response(JSON.stringify({
       success: true,
-      accessToken,
-      refreshToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        user_metadata: user.user_metadata
-      }
+      redirectUrl: data.properties?.action_link || finalRedirectUrl,
+      needsActivation: true
     }), {
       status: 200,
       headers: {
