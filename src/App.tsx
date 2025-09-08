@@ -55,12 +55,27 @@ function AppContent() {
   useEffect(() => {
     // Простая проверка: если есть токены в hash и мы НЕ на /auth/callback, перенаправляем
     const hash = window.location.hash;
+    const search = window.location.search;
     const pathname = window.location.pathname;
     
-    if ((hash.includes('access_token') || hash.includes('refresh_token') || hash.includes('token=')) && pathname !== '/auth/callback') {
+    console.log('🔍 App: Current URL:', window.location.href);
+    console.log('🔍 App: Hash:', hash);
+    console.log('🔍 App: Search:', search);
+    console.log('🔍 App: Pathname:', pathname);
+    
+    // Проверяем наличие magic link токенов в hash ИЛИ search параметрах
+    const hasHashTokens = hash.includes('access_token') || hash.includes('refresh_token') || hash.includes('token=');
+    const hasSearchTokens = search.includes('token=') && search.includes('type=magiclink');
+    
+    if ((hasHashTokens || hasSearchTokens) && pathname !== '/auth/callback') {
       console.log('🔄 Magic link tokens detected, redirecting to auth callback...');
-      // Просто перенаправляем с тем же hash — БЕЗ setSession
-      window.location.replace('/auth/callback' + hash);
+      const fullParams = hash || search; 
+      console.log('🔄 Redirecting with params:', fullParams);
+      window.location.replace('/auth/callback' + fullParams);
+    } else if (hasHashTokens || hasSearchTokens) {
+      console.log('✅ Already on auth callback page with tokens');
+    } else {
+      console.log('ℹ️ No magic link tokens found');
     }
   }, []);
   

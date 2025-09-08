@@ -92,7 +92,7 @@ export default function AuthCallback() {
         // Проверяем verification токен (основной способ для magic link с URL параметрами)
         const token = urlParams.get('token') || hashParams.get('token');
 
-        if (token && type === 'magiclink') {
+        if (token && (type === 'magiclink' || urlParams.get('type') === 'magiclink')) {
           console.log('✅ Magic link token found in URL params, verifying...');
           
           // Используем verifyOtp для magic link из URL параметров
