@@ -78,13 +78,18 @@ export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: Ev
         setLoading(true);
         setError(null);
         
+        console.log('🔍 fetchEvents: userProfile:', userProfile);
+        console.log('🔍 fetchEvents: user ID:', user?.id);
+        
         // Проверяем роль пользователя
         const isAdmin = userProfile?.role && ['administrator', 'moderator', 'trainer'].includes(userProfile.role);
+        console.log('🔍 fetchEvents: isAdmin:', isAdmin, 'role:', userProfile?.role);
         
         let data, error;
         
         if (isAdmin) {
           // Администраторы видят все мероприятия
+          console.log('🔍 fetchEvents: Making admin query');
           const result = await supabase
             .from('events')
             .select(`
@@ -98,8 +103,10 @@ export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: Ev
             .order('start_date', { ascending: false });
           data = result.data;
           error = result.error;
+          console.log('🔍 fetchEvents: Admin query result:', { data: data?.length, error });
         } else {
           // Обычные пользователи видят только мероприятия, в которых они участвуют
+          console.log('🔍 fetchEvents: Making user query for ID:', user?.id);
           const result = await supabase
             .from('events')
             .select(`
@@ -115,6 +122,7 @@ export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: Ev
             .order('start_date', { ascending: false });
           data = result.data;
           error = result.error;
+          console.log('🔍 fetchEvents: User query result:', { data: data?.length, error });
         }
       
         if (error) {
