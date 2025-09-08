@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { getUserFromCache, cacheUserProfile, clearUserCache } from '../lib/userCache';
 import { Session } from '@supabase/supabase-js';
@@ -56,7 +56,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null); 
+  const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null); 
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true); 
@@ -64,6 +64,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>('initializing');
   const [retryCount, setRetryCount] = useState(0);
   const [sessionLoaded, setSessionLoaded] = useState(false);
+
+  // single-flight
+  const inFlightProfile = useRef<Promise<User | null> | null>(null);
+
+  // безопасный sleep
+  const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
   // Utility function to create fallback user
   const createFallbackUser = (
@@ -95,229 +101,178 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } as User;
   };
 
-  // Function to get session with timeout
-  const getSessionWithTimeout = async (timeoutMs: number = 15000) => {
+  // Function to get session with timeout (увеличенный таймаут)
+  const getSessionWithTimeout = async (timeoutMs: number = 45000) => {
     console.log(`🔄 Getting session with ${timeoutMs}ms timeout`);
-    
     try {
-      return await Promise.race([
-      supabase.auth.getSession(),
-      new Promise<never>((_, reject) => {
-        setTimeout(() => {
-          reject(new Error('Session fetch timeout exceeded'));
-        }, timeoutMs);
-      })
+      const res = await Promise.race([
+        supabase.auth.getSession(),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Session fetch timeout exceeded')), timeoutMs))
       ]);
+      return res;
     } catch (error) {
       console.error('Session fetch error:', error);
       throw error;
     }
   };
 
-  // Safe profile fetch with auto-creation
-  const fetchUserProfileSafe = async (userId: string) => {
-    console.log(`🔍 Safe fetch for userId: ${userId}`);
-    
-    // 1) Пробуем прочитать профиль
-    const { data, error, status } = await supabase
+  // Универсальная обёртка с ручным timeout
+  async function withTimeout<T>(fn: () => Promise<T>, timeoutMs: number) {
+    return Promise.race([
+      fn(),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), timeoutMs))
+    ]);
+  }
+
+  async function tryFetchProfileRow(userId: string) {
+    const { data, error } = await supabase
       .from('users')
       .select('*')
       .eq('id', userId)
-      .maybeSingle();              // важно: не .single()
+      .limit(1)
+      .maybeSingle();
 
-    if (!error && data) {
-      console.log('✅ Profile found in database');
-      return { data, error: null };
+    if (error) throw error;
+    // важный момент: если строки нет — data === null без error
+    return data as User | null;
+  }
+
+  // Аккуратное авто-создание с мягким fallback
+  async function ensureProfile(userId: string): Promise<User> {
+    const { data: auth } = await supabase.auth.getUser();
+    const meta = auth?.user?.user_metadata || {};
+    const base: User = {
+      id: userId,
+      email: auth?.user?.email || `user-${userId}@sns.local`,
+      full_name: meta.full_name || `Пользователь ${userId.slice(0, 8)}`,
+      role: (auth?.user?.email === 'doirp@sns.ru') ? 'administrator' : 'employee',
+      subdivision: 'management_company',
+      status: 'active',
+      work_experience_days: 0,
+      is_active: true,
+      department: meta.department || 'management_company',
+      phone: meta.phone || '',
+      sap_number: meta.sap_number || null,
+      position_id: meta.position_id || null,
+      branch_id: meta.branch_id || null,
+      territory_id: meta.territory_id || null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    } as User;
+
+    // пробуем сохранить; при RLS просто вернём base
+    const { data: saved, error } = await supabase
+      .from('users')
+      .upsert(base, { onConflict: 'id' })
+      .select('*')
+      .maybeSingle();
+
+    if (error) {
+      console.warn('⚠️ RLS/insert blocked, using fallback profile in-memory:', error.message);
+      return base;
     }
-
-    // 2) Если строки нет (406) — создаём
-    if (status === 406 /* No rows */) {
-      console.log('📝 No profile found, attempting auto-creation');
-      
-      try {
-        // Получаем данные из auth для создания профиля
-        const { data: authData } = await supabase.auth.getUser();
-        const userMetadata = authData?.user?.user_metadata || {};
-        
-        const newProfile = {
-          id: userId,
-          email: authData?.user?.email || `user-${userId}@sns.local`,
-          full_name: userMetadata.full_name || `Пользователь ${userId.slice(0, 8)}`,
-          role: 'employee',
-          subdivision: 'management_company',
-          status: 'active',
-          work_experience_days: 0,
-          is_active: true,
-          department: userMetadata.department || 'management_company',
-          phone: userMetadata.phone || '',
-          sap_number: userMetadata.sap_number || null,
-          position_id: userMetadata.position_id || null,
-          branch_id: userMetadata.branch_id || null,
-          territory_id: userMetadata.territory_id || null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-
-        const { data: inserted, error: insertErr } = await supabase
-          .from('users')
-          .insert(newProfile)
-          .select()
-          .single();
-
-        if (insertErr) {
-          console.error('❌ Error creating profile:', insertErr);
-          console.log('📋 Profile creation failed, likely due to RLS policy. Creating fallback profile...');
-          
-          // Создаем fallback профиль немедленно
-          const fallbackUser = {
-            id: userId,
-            email: authData?.user?.email || `user-${userId}@sns.local`,
-            full_name: userMetadata.full_name || `Пользователь ${userId.slice(0, 8)}`,
-            role: 'employee' as const,
-            subdivision: 'management_company' as const,
-            status: 'active' as const,
-            work_experience_days: 0,
-            is_active: true,
-            department: userMetadata.department || 'management_company',
-            phone: userMetadata.phone || '',
-            sap_number: userMetadata.sap_number || null,
-            position_id: userMetadata.position_id || null,
-            branch_id: userMetadata.branch_id || null,
-            territory_id: userMetadata.territory_id || null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          };
-          
-          return { data: fallbackUser, error: null };
-        }
-        
-        console.log('✅ Profile created successfully');
-        return { data: inserted, error: null };
-      } catch (createError) {
-        console.error('❌ Failed to create profile:', createError);
-        throw createError;
-      }
-    }
-
-    // 3) Любая другая ошибка — наружу
-    console.error('❌ Profile fetch error:', error);
-    throw error ?? new Error('Unknown profile fetch error');
-  };
-
-  // Fetch with timeout
-  const fetchProfileWithTimeout = async (userId: string, timeoutMs: number = 8000) => {
-    console.log(`🔍 Fetching profile for userId: ${userId} with ${timeoutMs}ms timeout`);
-    
-    return await Promise.race([
-      fetchUserProfileSafe(userId),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Profile fetch timeout')), timeoutMs)
-      )
-    ]) as Promise<{ data: any; error: any }>;
-  };
+    return (saved || base) as User;
+  }
 
 
-  // Main profile fetching function
-  const fetchUserProfile = async (userId: string) => {
+
+  // Главная функция профиля — single-flight + backoff + длинный timeout
+  const fetchUserProfile = async (userId: string, {foreground = true}: {foreground?: boolean} = {}) => {
     if (!userId) {
-      console.error('❌ No userId provided to fetchUserProfile');
+      setAuthError('Не удалось получить ID пользователя');
       setLoading(false);
       setLoadingPhase('error');
-      setAuthError('Не удалось получить ID пользователя');
       return;
     }
 
-    const startTime = Date.now();
-    console.log('🔍 Starting fetchUserProfile for userId:', userId);
-    setLoadingPhase('profile-fetch');
-    setAuthError(null); // Clear previous errors
-    
-    // Try to get user from cache first
-    const cachedUser = getUserFromCache();
-    if (cachedUser && cachedUser.id === userId) {
-      console.log('✅ Using cached user profile:', cachedUser.id);
-      // Ensure position has a default value in cached user
-      const userWithDefaultPosition = {
-        ...cachedUser,
-        position: cachedUser.position || 'Должность не указана'
-      };
-      setUser(userWithDefaultPosition);
-      setUserProfile(userWithDefaultPosition);
-      setLoadingPhase('complete');
-      setLoading(false);
-      setRetryCount(0);
+    // если уже идёт один запрос — ждём его
+    if (inFlightProfile.current) {
+      console.log('⏳ Awaiting in-flight profile request');
+      const u = await inFlightProfile.current;
+      if (u) {
+        setUser(u);
+        setUserProfile(u);
+        cacheUserProfile(u);
+        setLoading(false);
+        setLoadingPhase('complete');
+      }
       return;
     }
-    
-    try {
-      // Attempt to fetch profile with timeout and auto-creation
-      console.log('🔍 Starting profile fetch with auto-creation...');
-      const { data: userData } = await fetchProfileWithTimeout(userId, 3000);
-      
-      setLoadingPhase('profile-processing');
-      
-      if (userData) {
-        console.log('✅ Profile loaded successfully');
-        const userWithPosition = {
-          ...userData,
-          position: userData.position || 'Должность не указана'
-        } as User;
-        
-        setUser(userWithPosition);
-        setUserProfile(userWithPosition);
-        cacheUserProfile(userWithPosition);
-        
-        // Reset retry count on success
-        setRetryCount(0);
-      } else {
-        console.warn('⚠️ No profile data returned, using fallback');
-        throw new Error('No profile data returned after fetch/creation attempt');
-      }
-      
-    } catch (error: any) {
-      console.error('❌ Error in fetchUserProfile:', error.message);
-      
-      // Определяем тип ошибки для более точного сообщения
-      let errorMessage = 'Ошибка загрузки профиля';
-      
-      if (error.message?.includes('permission denied') || error.message?.includes('RLS')) {
-        errorMessage = 'Нет прав для чтения профиля. Проверьте RLS политики в Supabase.';
-      } else if (error.message?.includes('timeout') || error.message?.includes('aborted')) {
-        errorMessage = 'Превышено время ожидания ответа от базы данных.';
-      } else {
-        errorMessage = `Ошибка загрузки профиля: ${error.message}`;
-      }
-      
-      setAuthError(errorMessage);
-      
-      // Create emergency fallback user IMMEDIATELY 
+
+    const runner = (async (): Promise<User | null> => {
       try {
-        console.log('🚨 Creating emergency fallback user due to error');
+        if (foreground) {
+          setLoadingPhase('profile-fetch');
+          setLoading(true);
+          setAuthError(null);
+        }
+
+        // 1) кэш
+        const cached = getUserFromCache();
+        if (cached && cached.id === userId) {
+          console.log('✅ Using cached user profile:', cached.id);
+          // не включаем аварийный таймер, просто отрисовываем и в фоне обновляем
+          setUser({ ...cached, position: cached.position || 'Должность не указана' });
+          setUserProfile({ ...cached, position: cached.position || 'Должность не указана' });
+          if (foreground) {
+            setLoading(false);
+            setLoadingPhase('complete');
+          }
+          // и продолжаем в фоне рефреш без смены фаз
+        }
+
+        // 2) сет с ретраями
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            const row = await withTimeout(() => tryFetchProfileRow(userId), 12000);
+            if (row) {
+              const u = { ...row, position: row.position || 'Должность не указана' } as User;
+              setUser(u);
+              setUserProfile(u);
+              cacheUserProfile(u);
+              if (foreground) {
+                setLoading(false);
+                setLoadingPhase('complete');
+              }
+              return u;
+            }
+            // строки нет — создаём
+            const created = await withTimeout(() => ensureProfile(userId), 12000);
+            const u = { ...created, position: created.position || 'Должность не указана' } as User;
+            setUser(u);
+            setUserProfile(u);
+            cacheUserProfile(u);
+            if (foreground) {
+              setLoading(false);
+              setLoadingPhase('complete');
+            }
+            return u;
+          } catch (e: any) {
+            console.warn(`🔁 Profile attempt ${attempt} failed:`, e.message || e);
+            await delay(300 * attempt); // лёгкий backoff
+          }
+        }
+
+        // 3) окончательный мягкий фолбэк, но без «ломания» UI
+        console.warn('🚨 Using auth-based fallback after retries');
         const { data: authData } = await supabase.auth.getUser();
-        const fallbackUser = createFallbackUser(
-          userId,
-          authData?.user?.email,
-          authData?.user?.user_metadata?.full_name,
-          'auth-based'
-        );
-        
-        console.log('⚠️ Using auth-based fallback user');
-        setUser(fallbackUser);
-        setUserProfile(fallbackUser);
-        cacheUserProfile(fallbackUser);
-      } catch (authError) {
-        console.error('❌ Could not get auth data, using emergency profile');
-        const emergencyUser = createFallbackUser(userId);
-        setUser(emergencyUser);
-        setUserProfile(emergencyUser);
-        cacheUserProfile(emergencyUser);
+        const fb = createFallbackUser(userId, authData?.user?.email, authData?.user?.user_metadata?.full_name, 'auth-based');
+        setUser(fb);
+        setUserProfile(fb);
+        cacheUserProfile(fb);
+        if (foreground) {
+          setAuthError('Не удалось получить профиль из БД. Используется временный профиль.');
+          setLoading(false);
+          setLoadingPhase('complete'); // не 'error', чтобы UI не прилипал
+        }
+        return fb;
+      } finally {
+        inFlightProfile.current = null;
       }
-      
-    } finally {
-      console.log(`⏱️ Profile fetch completed in ${Date.now() - startTime}ms`);
-      setLoadingPhase('complete');
-      setLoading(false);
-    }
+    })();
+
+    inFlightProfile.current = runner;
+    await runner;
   };
 
   // Retry mechanism
@@ -331,22 +286,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (session?.user?.id) {
       setRetryCount(prev => prev + 1);
       console.log(`🔄 Retrying profile fetch (attempt ${retryCount + 1}/3)`);
-      await fetchUserProfile(session.user.id);
+      await fetchUserProfile(session.user.id, { foreground: true });
     }
   };
 
+  // Ручной refresh — без «ломания» фаз и без очистки кэша до успешного ответа
   const refreshProfile = async () => {
-    if (session?.user) {
-      console.log('🔄 Refreshing user profile...');
-      setRetryCount(0); // Reset retry count for manual refresh
-      
-      // Очищаем кэш перед обновлением
-      clearUserCache();
-      
-      // Принудительно обновляем профиль
-      await fetchUserProfile(session.user.id);
-      
+    if (!session?.user) return;
+    console.log('🔄 Refreshing user profile...');
+    try {
+      await fetchUserProfile(session.user.id, { foreground: true });
       console.log('✅ Profile refresh completed');
+    } catch (e) {
+      console.warn('⚠️ Refresh failed:', (e as any)?.message);
     }
   };
 
@@ -520,7 +472,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       try {
         // Get initial session with timeout
-        const sessionResult = await getSessionWithTimeout(30000);
+        const sessionResult = await getSessionWithTimeout(45000);
         setSessionLoaded(true);
         if (!isMounted) return;
         
@@ -545,10 +497,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setLoading(false);
             
             // Still fetch profile in background for latest data
-            fetchUserProfile(session.user.id).catch(console.error);
+            fetchUserProfile(session.user.id, { foreground: false }).catch(console.error);
           } else {
             // No valid cached profile, fetch from server
-            await fetchUserProfile(session.user.id);
+            await fetchUserProfile(session.user.id, { foreground: true });
           }
         } else {
           console.log('ℹ️ No initial session found');
@@ -604,7 +556,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // есть юзер в initial session — грузим профиль
         console.log('✅ Initial session found, loading profile');
         setLoadingPhase('profile-fetch');
-        await fetchUserProfile(session.user.id);
+        await fetchUserProfile(session.user.id, { foreground: true });
         return;
       }
       
@@ -619,7 +571,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setLoadingPhase('complete');
           setLoading(false);
         } else {
-          await fetchUserProfile(session.user.id);
+          await fetchUserProfile(session.user.id, { foreground: true });
         }
       } else {
         console.log('ℹ️ No session after auth change');
@@ -638,36 +590,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Предохранитель от вечного loading
-  useEffect(() => {
-    if (!loading) return;
-    
-    const emergencyTimeout = setTimeout(() => {
-      if (loadingPhase === 'profile-fetch') {
-        console.warn('⏰ Emergency timeout — profile fetch took too long, forcing fallback');
-        setAuthError('Не удалось получить профиль. Используется аварийный профиль.');
-        
-        // Создаём экстренный профиль
-        const currentSession = session;
-        if (currentSession?.user) {
-          const emergencyUser = createFallbackUser(
-            currentSession.user.id,
-            currentSession.user.email,
-            currentSession.user.user_metadata?.full_name,
-            'emergency'
-          );
-          setUser(emergencyUser);
-          setUserProfile(emergencyUser);
-          cacheUserProfile(emergencyUser);
-        }
-        
-        setLoading(false);
-        setLoadingPhase('error');
-      }
-    }, 5000); // 5 секунд максимум
-    
-    return () => clearTimeout(emergencyTimeout);
-  }, [loading, loadingPhase, session]);
+  // УДАЛЕН аварийный таймер - он был причиной проблем
 
   const value: AuthContextType = {
     user,

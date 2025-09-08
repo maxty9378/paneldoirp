@@ -1,226 +1,156 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 
+type Status = 'loading' | 'success' | 'error';
+
 export default function AuthCallback() {
   const navigate = useNavigate();
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [status, setStatus] = useState<Status>('loading');
   const [message, setMessage] = useState('Обработка авторизации...');
   const executedRef = useRef(false);
 
+  // ждём подтверждённую сессию: событие SIGNED_IN или успешный getSession с ретраем
+  const waitForSignedIn = () =>
+    new Promise<void>((resolve, reject) => {
+      let resolved = false;
+      const timeout = setTimeout(() => {
+        if (!resolved) reject(new Error('Превышено время ожидания авторизации'));
+      }, 10000);
+
+      const unsub = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          resolved = true;
+          clearTimeout(timeout);
+          unsub.data.subscription.unsubscribe();
+          resolve();
+        }
+      });
+
+      // параллельно пробуем getSession() с ретраями
+      (async () => {
+        for (let i = 0; i < 5 && !resolved; i++) {
+          const { data } = await supabase.auth.getSession();
+          if (data.session?.user) {
+            resolved = true;
+            clearTimeout(timeout);
+            unsub.data.subscription.unsubscribe();
+            resolve();
+            return;
+          }
+          await new Promise(r => setTimeout(r, 300));
+        }
+      })().catch(() => {});
+    });
+
   useEffect(() => {
-    console.log('🚀 AuthCallback component mounted!');
-    
-    if (executedRef.current) {
-      console.log('⚠️ Already executed, skipping...');
-      return;
-    }
-    
-    const handleAuthCallback = async () => {
+    if (executedRef.current) return;
+    executedRef.current = true;
+
+    (async () => {
       try {
-        executedRef.current = true;
-        console.log('🔄 Processing auth callback...');
-        console.log('Current URL:', window.location.href);
-        console.log('Search params:', window.location.search);
-        console.log('Hash params:', window.location.hash);
-        
-        // Проверяем параметры в URL для ошибок
-        const urlParams = new URLSearchParams(window.location.search);
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        
-        // Проверяем наличие ошибок в URL
-        const error = urlParams.get('error') || hashParams.get('error');
-        const errorCode = urlParams.get('error_code') || hashParams.get('error_code');
-        const errorDescription = urlParams.get('error_description') || hashParams.get('error_description');
-        
-        if (error) {
-          console.error('❌ Auth error from URL:', { error, errorCode, errorDescription });
-          
-          if (error === 'server_error' && errorCode === 'unexpected_failure') {
-            throw new Error(`Ошибка подтверждения пользователя: ${decodeURIComponent(errorDescription || 'Unknown error')}`);
-          }
-          
-          throw new Error(`Ошибка авторизации: ${error} - ${errorDescription || 'Unknown error'}`);
+        console.log('🚀 AuthCallback mounted');
+        const href = window.location.href;
+        const search = new URLSearchParams(window.location.search);
+        const hash = new URLSearchParams(window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash);
+
+        // 0) Ошибки из URL
+        const err = search.get('error') || hash.get('error');
+        const errCode = search.get('error_code') || hash.get('error_code');
+        const errDesc = search.get('error_description') || hash.get('error_description');
+        if (err) {
+          throw new Error(`Ошибка авторизации: ${err}${errCode ? ` (${errCode})` : ''}${errDesc ? ` — ${decodeURIComponent(errDesc)}` : ''}`);
         }
 
-        // Сначала проверяем access_token и refresh_token (основной способ для magic link)
-        const accessToken = urlParams.get('access_token') || hashParams.get('access_token');
-        const refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
-        const type = urlParams.get('type') || hashParams.get('type');
-        
-        console.log('Access token present:', !!accessToken);
-        console.log('Refresh token present:', !!refreshToken);
-        console.log('Token type:', type);
+        // 1) Happy path: токены в хэше (email magic link / recovery)
+        const accessToken = search.get('access_token') || hash.get('access_token');
+        const refreshToken = search.get('refresh_token') || hash.get('refresh_token');
+        const type = search.get('type') || hash.get('type');
 
-        if (accessToken && refreshToken && type === 'magiclink') {
-          console.log('✅ Magic link tokens found, setting session...');
-          
-          const { data, error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken
-          });
-
-          if (error) {
-            console.error('❌ Error setting session:', error);
-            throw error;
-          }
-
-          console.log('🔍 setSession result:', { user: !!data.user, session: !!data.session });
-          
-          if (data.user) {
-            console.log('✅ Magic link session set successfully:', data.user.email);
-            
-            // Проверяем сохранение сессии
-            const saved = !!localStorage.getItem('sns-session-v1');
-            console.log('🧩 saved in LS:', saved);
-            const { data: { session: s } } = await supabase.auth.getSession();
-            console.log('🧩 getSession says:', !!s?.user);
-            
-            setStatus('success');
-            setMessage('Авторизация успешна! Перенаправление...');
-            
-            // Очищаем URL и делаем жёсткий переход
-            window.history.replaceState({}, '', '/'); // убираем #params
-            console.log('🚀 Redirecting to home...');
-            window.location.replace('/');             // полный ребилд, чтоб корень поднял сессию
-            return;
-          } else {
-            console.log('⚠️ setSession successful but no user in response, checking session...');
-            
-            // Даже если data.user пустой, проверим сессию
-            const { data: { session: currentSession } } = await supabase.auth.getSession();
-            if (currentSession?.user) {
-              console.log('✅ User found in current session:', currentSession.user.email);
-              setStatus('success');
-              setMessage('Авторизация успешна! Перенаправление...');
-              window.history.replaceState({}, '', '/');
-              console.log('🚀 Redirecting to home...');
-              window.location.replace('/');
-              return;
-            }
-          }
-        }
-
-        // Проверяем verification токен (основной способ для magic link с URL параметрами)
-        const token = urlParams.get('token') || hashParams.get('token');
-
-        if (token && (type === 'magiclink' || urlParams.get('type') === 'magiclink')) {
-          console.log('✅ Magic link token found in URL params, verifying...');
-          
-          // Используем verifyOtp для magic link из URL параметров
-          const { data, error } = await supabase.auth.verifyOtp({
-            token_hash: token,
-            type: 'magiclink'
-          });
-
-          if (error) {
-            console.error('❌ Error verifying magic link:', error);
-            throw error;
-          }
-
-          if (data.user) {
-            console.log('✅ Magic link verified successfully:', data.user.email);
-            setStatus('success');
-            setMessage('Авторизация успешна! Перенаправление...');
-            
-            // Очищаем URL и делаем жёсткий переход
-            window.history.replaceState({}, '', '/');
-            window.location.replace('/');
-            return;
-          }
-        }
-
-        // Если нет type, но есть token - тоже пробуем как magic link
-        if (token && !type) {
-          console.log('✅ Token found without type, trying as magic link...');
-          
-          const { data, error } = await supabase.auth.verifyOtp({
-            token_hash: token,
-            type: 'magiclink'
-          });
-
-          if (error) {
-            console.error('❌ Error verifying token as magic link:', error);
-          } else if (data.user) {
-            console.log('✅ Token verified successfully as magic link:', data.user.email);
-            setStatus('success');
-            setMessage('Авторизация успешна! Перенаправление...');
-            
-            // Очищаем URL и делаем жёсткий переход
-            window.history.replaceState({}, '', '/');
-            window.location.replace('/');
-            return;
-          }
-        }
-
-        // Если ничего не сработало, проверяем обычные токены без type
         if (accessToken && refreshToken) {
-          console.log('✅ Direct tokens found, setting session...');
-          const { data, error } = await supabase.auth.setSession({
+          console.log('🔑 setSession via tokens, type:', type);
+          const { error } = await supabase.auth.setSession({
             access_token: accessToken,
-            refresh_token: refreshToken
+            refresh_token: refreshToken,
           });
+          if (error) throw error;
 
-          if (error) {
-            console.error('❌ Error setting session:', error);
-            throw error;
-          }
+          await waitForSignedIn();
 
-          if (data.user) {
-            console.log('✅ Session set successfully:', data.user.email);
-            setStatus('success');
-            setMessage('Авторизация успешна! Перенаправление...');
-            
-            // Очищаем URL от токенов
-            const cleanUrl = window.location.origin + window.location.pathname;
-            window.history.replaceState({}, document.title, cleanUrl);
-            
-            window.location.replace('/');
-            return;
-          }
-        }
-
-        // Проверяем текущую сессию
-        console.log('🔍 Checking current session...');
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        console.log('Current session:', session?.user?.email || 'No session');
-        
-        if (sessionError) {
-          console.error('❌ Session error:', sessionError);
-          throw sessionError;
-        }
-
-        if (session?.user) {
-          console.log('✅ User already authenticated:', session.user.email);
-          setStatus('success');
-          setMessage('Авторизация успешна! Перенаправление...');
-          
-          // Очищаем URL от токенов
+          // чистим URL
           const cleanUrl = window.location.origin + window.location.pathname;
           window.history.replaceState({}, document.title, cleanUrl);
-          
-          window.location.replace('/');
+
+          setStatus('success');
+          setMessage('Авторизация успешна! Перенаправление...');
+          // мягкий редирект (SPA)
+          navigate('/', { replace: true });
+          // если хочешь «жёсткий» ребилд:
+          // window.location.replace('/');
           return;
         }
 
-        // Если дошли до сюда и ничего не сработало
-        console.log('❌ No suitable authentication method found');
-        setStatus('error');
-        setMessage('Не удалось обработать токены авторизации');
-        setTimeout(() => {
-          window.location.replace('/');
-        }, 3000);
+        // 2) Magic link через token_hash (когда приходит ?token=...&type=magiclink или в #)
+        const token = search.get('token') || hash.get('token');
+        const t = (type || '').toLowerCase();
+        if (token && (t === 'magiclink' || !type)) {
+          console.log('🔑 verifyOtp(magiclink) via token_hash');
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: token,
+            type: 'magiclink',
+          });
+          if (error) throw error;
 
-      } catch (error: any) {
-        console.error('❌ Auth callback error:', error);
+          await waitForSignedIn();
+          const cleanUrl = window.location.origin + window.location.pathname;
+          window.history.replaceState({}, document.title, cleanUrl);
+
+          setStatus('success');
+          setMessage('Авторизация успешна! Перенаправление...');
+          navigate('/', { replace: true });
+          return;
+        }
+
+        // 3) OAuth/PKCE: ?code=...
+        const code = search.get('code');
+        if (code) {
+          console.log('🔑 exchangeCodeForSession');
+          const { error } = await supabase.auth.exchangeCodeForSession(href);
+          if (error) throw error;
+
+          await waitForSignedIn();
+          const cleanUrl = window.location.origin + window.location.pathname;
+          window.history.replaceState({}, document.title, cleanUrl);
+
+          setStatus('success');
+          setMessage('Авторизация успешна! Перенаправление...');
+          navigate('/', { replace: true });
+          return;
+        }
+
+        // 4) Может, сессия уже есть
+        const { data, error: sErr } = await supabase.auth.getSession();
+        if (sErr) throw sErr;
+        if (data.session?.user) {
+          setStatus('success');
+          setMessage('Авторизация уже выполнена. Перенаправление...');
+          const cleanUrl = window.location.origin + window.location.pathname;
+          window.history.replaceState({}, document.title, cleanUrl);
+          navigate('/', { replace: true });
+          return;
+        }
+
+        // 5) Ничего не подошло
+        throw new Error('Не удалось обработать параметры авторизации');
+      } catch (e: any) {
+        console.error('❌ Auth callback error:', e);
         setStatus('error');
-        setMessage(error.message || 'Произошла ошибка при авторизации');
+        setMessage(e?.message || 'Произошла ошибка при авторизации');
+        // мягкий камбэк на главную через 3 сек
+        setTimeout(() => navigate('/', { replace: true }), 3000);
       }
-    };
-
-    handleAuthCallback();
+    })();
   }, [navigate]);
 
   return (
@@ -229,9 +159,9 @@ export default function AuthCallback() {
         {status === 'loading' && (
           <>
             <div className="w-16 h-16 bg-blue-100 rounded-full mx-auto flex items-center justify-center mb-4">
-              <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+              <Loader2 className="w-8 h-8 animate-spin" />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Обработка авторизации</h2>
+            <h2 className="text-xl font-semibold mb-2">Обработка авторизации</h2>
             <p className="text-gray-600">{message}</p>
           </>
         )}
@@ -239,12 +169,12 @@ export default function AuthCallback() {
         {status === 'success' && (
           <>
             <div className="w-16 h-16 bg-green-100 rounded-full mx-auto flex items-center justify-center mb-4">
-              <CheckCircle className="w-8 h-8 text-green-600" />
+              <CheckCircle className="w-8 h-8" />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Авторизация успешна!</h2>
+            <h2 className="text-xl font-semibold mb-2">Авторизация успешна!</h2>
             <p className="text-gray-600 mb-4">{message}</p>
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/', { replace: true })}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               Перейти в систему
@@ -255,19 +185,19 @@ export default function AuthCallback() {
         {status === 'error' && (
           <>
             <div className="w-16 h-16 bg-red-100 rounded-full mx-auto flex items-center justify-center mb-4">
-              <AlertCircle className="w-8 h-8 text-red-600" />
+              <AlertCircle className="w-8 h-8" />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Ошибка авторизации</h2>
+            <h2 className="text-xl font-semibold mb-2">Ошибка авторизации</h2>
             <p className="text-gray-600 mb-4">{message}</p>
             <div className="space-y-2">
               <button
-                onClick={() => navigate('/login')}
+                onClick={() => navigate('/login', { replace: true })}
                 className="w-full px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Попробовать снова
               </button>
               <button
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/', { replace: true })}
                 className="w-full px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
               >
                 На главную
@@ -279,4 +209,3 @@ export default function AuthCallback() {
     </div>
   );
 }
-
