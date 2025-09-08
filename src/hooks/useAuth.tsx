@@ -115,7 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Safe profile fetch with auto-creation
-  const fetchUserProfileSafe = async (userId: string, signal?: AbortSignal) => {
+  const fetchUserProfileSafe = async (userId: string) => {
     console.log(`🔍 Safe fetch for userId: ${userId}`);
     
     // 1) Пробуем прочитать профиль
@@ -204,78 +204,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     throw error ?? new Error('Unknown profile fetch error');
   };
 
-  // Fetch with timeout using AbortController
+  // Fetch with timeout
   const fetchProfileWithTimeout = async (userId: string, timeoutMs: number = 8000) => {
     console.log(`🔍 Fetching profile for userId: ${userId} with ${timeoutMs}ms timeout`);
     
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
-    try {
-      const result = await fetchUserProfileSafe(userId, controller.signal);
-      return result;
-    } finally {
-      clearTimeout(timeout);
-    }
+    return await Promise.race([
+      fetchUserProfileSafe(userId),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Profile fetch timeout')), timeoutMs)
+      )
+    ]) as Promise<{ data: any; error: any }>;
   };
 
-  // Handle missing profile creation
-  const handleMissingProfile = async (userId: string): Promise<User> => {
-    console.log('📝 Handling missing profile for user:', userId);
-    
-    try {
-      const { data: authUserData, error: authUserError } = await supabase.auth.getUser();
-      
-      if (authUserError) {
-        console.error('❌ Error getting auth data:', authUserError.message);
-        throw new Error(`Auth error: ${authUserError.message}`);
-      }
-      
-      if (!authUserData?.user) {
-        console.error('❌ No auth user data found');
-        throw new Error('No auth user data available');
-      }
-
-      const userEmail = authUserData.user.email || '';
-      const userName = authUserData.user.user_metadata?.full_name || 
-                      userEmail.split('@')[0] || 'Пользователь';
-      const isAdmin = userEmail === 'doirp@sns.ru';
-      
-      const userData = {
-        id: authUserData.user.id,
-        email: userEmail,
-        full_name: isAdmin ? 'Администратор портала' : userName,
-        role: isAdmin ? 'administrator' : 'employee',
-        subdivision: 'management_company',
-        status: 'active',
-        work_experience_days: 0,
-        is_active: true,
-        department: 'management_company',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      } as User;
-
-      // Try to create profile in database
-      const { data: insertedUser, error: insertError } = await supabase
-        .from('users')
-        .upsert(userData, { onConflict: 'id' })
-        .select('*')
-        .single();
-
-      if (insertError) {
-        console.warn('⚠️ Could not save to database, using fallback:', insertError.message);
-        return userData;
-      }
-
-      console.log('✅ Successfully created/updated profile in database');
-      return insertedUser as User;
-      
-    } catch (error) {
-      console.error('❌ Error in handleMissingProfile:', error);
-      // Return fallback user as last resort
-      return createFallbackUser(userId, undefined, undefined, 'emergency');
-    }
-  };
 
   // Main profile fetching function
   const fetchUserProfile = async (userId: string) => {
@@ -312,7 +252,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Attempt to fetch profile with timeout and auto-creation
       console.log('🔍 Starting profile fetch with auto-creation...');
-      const { data: userData, error: userError } = await fetchProfileWithTimeout(userId, 3000);
+      const { data: userData } = await fetchProfileWithTimeout(userId, 3000);
       
       setLoadingPhase('profile-processing');
       
@@ -480,9 +420,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return { data: result.data, error: { message: errorMessage } };
         }
         
-        console.log('📝 Sign in result:', result.error ? 
-          `❌ Error: ${result.error.message}` : 
-          `✅ Success: ${result.data?.session ? 'Session obtained' : 'No session'}`);
+        console.log('✅ Sign in success:', result.data?.session ? 'Session obtained' : 'No session');
           
         // Clear any previous errors on successful sign in
         setAuthError(null);
