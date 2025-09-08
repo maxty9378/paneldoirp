@@ -47,6 +47,8 @@ export default function QRAuthPage() {
         }
 
         const data = await res.json();
+        console.log('📝 Edge Function response:', data);
+        
         if (!data?.success) {
           throw new Error(data?.error || 'Неожиданный ответ от сервера');
         }
@@ -55,12 +57,40 @@ export default function QRAuthPage() {
         setStep('auth');
         setMessage('Выполняю авторизацию…');
 
-        if (data.redirectUrl && data.needsActivation) {
+        // Обрабатываем разные форматы ответа
+        if (data.redirectUrl) {
           // Magic link - активируем через редирект
           console.log('🔗 Redirecting to magic link:', data.redirectUrl);
           window.location.replace(data.redirectUrl);
           return;
+        } else if (data.accessToken && data.refreshToken) {
+          // Прямые токены (если Edge Function обновлен)
+          console.log('🔑 Direct tokens received, setting session...');
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: data.accessToken,
+            refresh_token: data.refreshToken
+          });
+
+          if (sessionError) {
+            throw new Error(`Ошибка установки сессии: ${sessionError.message}`);
+          }
+
+          // Успешная авторизация
+          setStatus('success');
+          setMessage('Авторизация успешна! Перенаправление...');
+          
+          // Очищаем URL и перенаправляем
+          try {
+            window.history.replaceState({}, '', '/');
+          } catch {}
+          
+          console.log('🚀 Redirecting to home...');
+          setTimeout(() => {
+            navigate('/');
+          }, 1000);
+          return;
         } else {
+          console.error('❌ Unexpected response format:', data);
           throw new Error('Неожиданный формат ответа от сервера');
         }
 
