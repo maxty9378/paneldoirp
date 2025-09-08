@@ -7,12 +7,19 @@ export default function AuthCallback() {
   const navigate = useNavigate();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('Обработка авторизации...');
+  const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
     console.log('🚀 AuthCallback component mounted!');
     
+    if (processing) {
+      console.log('⚠️ Already processing, skipping...');
+      return;
+    }
+    
     const handleAuthCallback = async () => {
       try {
+        setProcessing(true);
         console.log('🔄 Processing auth callback...');
         console.log('Current URL:', window.location.href);
         console.log('Search params:', window.location.search);
@@ -43,23 +50,36 @@ export default function AuthCallback() {
 
         if (accessToken && refreshToken && type === 'magiclink') {
           console.log('✅ Magic link tokens found, setting session...');
-          const { data, error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken
-          });
+          
+          try {
+            const { data, error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken
+            });
 
-          if (error) {
-            console.error('❌ Error setting session:', error);
-            throw error;
-          }
+            console.log('🔍 setSession result:', { data: !!data.user, error: !!error });
 
-          if (data.user) {
-            console.log('✅ Magic link session set successfully:', data.user.email);
-            setStatus('success');
-            setMessage('Авторизация успешна! Перенаправление...');
-            // Очищаем URL от токенов и перенаправляем
-            window.location.replace('/');
-            return;
+            if (error) {
+              console.error('❌ Error setting session:', error);
+              throw error;
+            }
+
+            if (data.user) {
+              console.log('✅ Magic link session set successfully:', data.user.email);
+              console.log('🔄 Redirecting to home page...');
+              setStatus('success');
+              setMessage('Авторизация успешна! Перенаправление...');
+              
+              // Принудительная задержка для завершения всех процессов
+              setTimeout(() => {
+                console.log('🚀 Executing redirect...');
+                window.location.replace('/');
+              }, 100);
+              return;
+            }
+          } catch (err) {
+            console.error('❌ Exception in setSession:', err);
+            throw err;
           }
         }
 
