@@ -58,10 +58,17 @@ export default function AuthCallback() {
         if (accessToken && refreshToken && type === 'magiclink') {
           console.log('✅ Magic link tokens found, setting session...');
           
-          // Сначала проверим, не авторизован ли пользователь уже
+          // Сначала проверим, не авторизован ли пользователь уже (с коротким timeout)
           try {
             console.log('🔍 Quick check if user is already signed in...');
-            const { data: { session: currentSession } } = await supabase.auth.getSession();
+            
+            const quickSessionPromise = supabase.auth.getSession();
+            const quickTimeout = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Quick session check timeout')), 1000)
+            );
+            
+            const { data: { session: currentSession } } = await Promise.race([quickSessionPromise, quickTimeout]) as any;
+            
             if (currentSession?.user) {
               console.log('✅ User already has active session:', currentSession.user.email);
               setStatus('success');
@@ -74,20 +81,32 @@ export default function AuthCallback() {
             }
             console.log('🔄 No current session, proceeding with setSession...');
           } catch (preCheckErr) {
-            console.log('⚠️ Pre-check failed, proceeding with setSession:', preCheckErr);
+            console.log('⚠️ Pre-check failed or timeout, proceeding with emergency redirect:', preCheckErr);
+            
+            // Если даже быстрая проверка зависает - просто перенаправляем
+            if (preCheckErr.message?.includes('timeout')) {
+              console.log('🚨 Emergency redirect due to session check timeout');
+              setStatus('success');
+              setMessage('Обработка авторизации... Перенаправление...');
+              setTimeout(() => {
+                console.log('🚀 Emergency redirect executing...');
+                window.location.replace('/');
+              }, 500);
+              return;
+            }
           }
           
           try {
             console.log('🔄 Calling setSession...');
             
-            // Добавляем timeout для setSession
+            // Добавляем КОРОТКИЙ timeout для setSession (2 секунды)
             const setSessionPromise = supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken
             });
             
             const timeoutPromise = new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('setSession timeout after 5 seconds')), 5000)
+              setTimeout(() => reject(new Error('setSession timeout after 2 seconds')), 2000)
             );
             
             const { data, error } = await Promise.race([setSessionPromise, timeoutPromise]) as any;
@@ -115,9 +134,9 @@ export default function AuthCallback() {
           } catch (err) {
             console.error('❌ Exception in setSession:', err);
             
-            // Если setSession завис, пробуем принудительно перенаправить на основе уже авторизованного пользователя
+            // Если setSession завис, пробуем принудительно перенаправить на основе уже авторизованного пользователя  
             if (err.message?.includes('setSession timeout')) {
-              console.log('⚠️ setSession timeout, checking if user is already signed in...');
+              console.log('⚠️ setSession timeout after 2 seconds, checking if user is already signed in...');
               
               try {
                 // Проверяем текущую сессию с небольшим timeout
