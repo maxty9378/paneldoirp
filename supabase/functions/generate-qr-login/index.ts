@@ -57,12 +57,26 @@ serve(async (req) => {
       throw new Error('Email is required')
     }
 
+    console.log('Generating magic link for:', email)
+
+    // Determine redirect URL based on the request origin
+    const requestOrigin = req.headers.get('origin') || req.headers.get('referer') || '';
+    const isLocalhost = requestOrigin.includes('localhost') || redirectTo?.includes('localhost');
+    
+    const finalRedirectUrl = isLocalhost 
+      ? 'http://localhost:5174/auth/callback'
+      : 'https://paneldoirp.vercel.app/auth/callback';
+
+    console.log('Request origin:', requestOrigin);
+    console.log('Is localhost:', isLocalhost);
+    console.log('Using redirect URL:', finalRedirectUrl);
+
     // Generate magic link
     const { data, error } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email,
       options: { 
-        emailRedirectTo: redirectTo || `${Deno.env.get('PUBLIC_APP_URL') || 'http://localhost:5173'}/auth/callback`
+        emailRedirectTo: finalRedirectUrl
       }
     })
 
@@ -72,8 +86,12 @@ serve(async (req) => {
 
     const actionLink = data?.properties?.action_link
     if (!actionLink) {
+      console.error('No action_link in response:', data)
       throw new Error('No action_link returned')
     }
+
+    console.log('Generated magic link for:', email)
+    console.log('Action link:', actionLink)
 
     return new Response(
       JSON.stringify({ 

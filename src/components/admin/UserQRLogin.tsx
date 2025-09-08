@@ -48,11 +48,14 @@ export function UserQRLogin({ userEmail, userName, onClose }: UserQRLoginProps) 
       }
 
       const data = await response.json();
+      console.log('QR generation response:', data);
+      
       setActionLink(data.actionLink);
       setExpiresAt(new Date(data.expiresAt));
       
       // Generate QR code on client side
       if (data.actionLink) {
+        console.log('Generating QR code for:', data.actionLink);
         const qrDataUrl = await QRCode.toDataURL(data.actionLink, {
           errorCorrectionLevel: 'M',
           margin: 1,
@@ -63,6 +66,10 @@ export function UserQRLogin({ userEmail, userName, onClose }: UserQRLoginProps) 
           }
         });
         setQrDataUrl(qrDataUrl);
+        console.log('QR code generated successfully');
+      } else {
+        console.error('No actionLink in response:', data);
+        setError('Не удалось получить ссылку для авторизации');
       }
     } catch (err: any) {
       setError(err.message);

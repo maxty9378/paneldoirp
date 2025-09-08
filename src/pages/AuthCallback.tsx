@@ -8,56 +8,118 @@ export default function AuthCallback() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('Обработка авторизации...');
 
+  // Если пользователь уже авторизован, сразу перенаправляем
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        console.log('✅ User already authenticated on callback page, redirecting...');
+        navigate('/');
+      }
+    };
+    checkAuth();
+  }, [navigate]);
+
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        // Получаем URL параметры
+        console.log('🔄 Processing auth callback...');
+        
+        // Получаем URL параметры для проверки ошибок
         const urlParams = new URLSearchParams(window.location.search);
-        const accessToken = urlParams.get('access_token');
-        const refreshToken = urlParams.get('refresh_token');
         const error = urlParams.get('error');
         const errorDescription = urlParams.get('error_description');
 
         if (error) {
+          console.error('❌ Auth error in URL:', error, errorDescription);
           setStatus('error');
           setMessage(errorDescription || 'Ошибка авторизации');
           return;
         }
 
-        if (accessToken && refreshToken) {
-          // Устанавливаем сессию
-          const { data, error: sessionError } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken
-          });
+        // Проверяем, есть ли уже активная сессия
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        console.log('Current session:', session?.user?.email || 'No session');
+        
+        // Если пользователь уже авторизован, сразу перенаправляем
+        if (session?.user) {
+          console.log('✅ User already authenticated, redirecting...');
+          setStatus('success');
+          setMessage('Авторизация успешна! Перенаправление...');
+          setTimeout(() => navigate('/'), 1000);
+          return;
+        }
+        
+        if (sessionError) {
+          console.error('❌ Session error:', sessionError);
+          throw sessionError;
+        }
 
-          if (sessionError) {
-            throw sessionError;
-          }
-
-          if (data.user) {
+        if (session?.user) {
+          console.log('✅ User authenticated:', session.user.email);
+          console.log('User confirmed:', session.user.email_confirmed_at);
+          setStatus('success');
+          setMessage('Авторизация успешна! Перенаправление...');
+          
+          // Перенаправляем на главную страницу через 2 секунды
+          setTimeout(() => {
+            navigate('/');
+          }, 2000);
+        } else {
+          console.log('ℹ️ No active session found, waiting for auth state change...');
+          
+          // Даем время Supabase обработать magic link
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Проверяем сессию еще раз после задержки
+          const { data: { session: delayedSession } } = await supabase.auth.getSession();
+          if (delayedSession?.user) {
+            console.log('✅ User authenticated after delay:', delayedSession.user.email);
             setStatus('success');
             setMessage('Авторизация успешна! Перенаправление...');
-            
-            // Перенаправляем на главную страницу через 2 секунды
-            setTimeout(() => {
-              navigate('/');
-            }, 2000);
-          } else {
-            throw new Error('Пользователь не найден');
+            setTimeout(() => navigate('/'), 2000);
+            return;
           }
-        } else {
-          throw new Error('Отсутствуют токены авторизации');
+          
+          // Если все еще нет сессии, ждем изменения состояния авторизации
+          const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log('🔄 Auth state change in callback:', event, session?.user?.email);
+            
+            if ((event === 'SIGNED_IN' || event === 'SIGNED_UP') && session?.user) {
+              console.log('✅ User signed in/up via magic link:', event);
+              setStatus('success');
+              setMessage('Авторизация успешна! Перенаправление...');
+              
+              // Перенаправляем на главную страницу через 2 секунды
+              setTimeout(() => {
+                navigate('/');
+              }, 2000);
+            } else if (event === 'SIGNED_OUT') {
+              console.log('❌ User signed out');
+              setStatus('error');
+              setMessage('Сессия завершена');
+            }
+          });
+
+          // Очищаем подписку через 10 секунд, если ничего не произошло
+          setTimeout(() => {
+            subscription.unsubscribe();
+            if (status === 'loading') {
+              setStatus('error');
+              setMessage('Время ожидания авторизации истекло');
+            }
+          }, 10000);
         }
       } catch (error: any) {
-        console.error('Auth callback error:', error);
+        console.error('❌ Auth callback error:', error);
         setStatus('error');
         setMessage(error.message || 'Произошла ошибка при авторизации');
       }
     };
 
     handleAuthCallback();
-  }, [navigate]);
+  }, [navigate, status]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#e5f3ff] via-[#eafaf1] to-[#b6e0fe] px-4">
