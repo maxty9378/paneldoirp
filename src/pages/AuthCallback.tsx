@@ -29,14 +29,19 @@ export default function AuthCallback() {
         const urlParams = new URLSearchParams(window.location.search);
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         
+        // Проверяем наличие ошибок в URL
         const error = urlParams.get('error') || hashParams.get('error');
+        const errorCode = urlParams.get('error_code') || hashParams.get('error_code');
         const errorDescription = urlParams.get('error_description') || hashParams.get('error_description');
-
+        
         if (error) {
-          console.error('❌ Auth error in URL:', error, errorDescription);
-          setStatus('error');
-          setMessage(errorDescription || 'Ошибка авторизации');
-          return;
+          console.error('❌ Auth error from URL:', { error, errorCode, errorDescription });
+          
+          if (error === 'server_error' && errorCode === 'unexpected_failure') {
+            throw new Error(`Ошибка подтверждения пользователя: ${decodeURIComponent(errorDescription || 'Unknown error')}`);
+          }
+          
+          throw new Error(`Ошибка авторизации: ${error} - ${errorDescription || 'Unknown error'}`);
         }
 
         // Сначала проверяем access_token и refresh_token (основной способ для magic link)
