@@ -8,18 +8,20 @@ export default function AuthCallback() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('Обработка авторизации...');
   const [processing, setProcessing] = useState(false);
+  const [hasExecuted, setHasExecuted] = useState(false);
 
   useEffect(() => {
     console.log('🚀 AuthCallback component mounted!');
     
-    if (processing) {
-      console.log('⚠️ Already processing, skipping...');
+    if (processing || hasExecuted) {
+      console.log('⚠️ Already processing or executed, skipping...');
       return;
     }
     
     const handleAuthCallback = async () => {
       try {
         setProcessing(true);
+        setHasExecuted(true);
         console.log('🔄 Processing auth callback...');
         console.log('Current URL:', window.location.href);
         console.log('Search params:', window.location.search);
@@ -57,12 +59,21 @@ export default function AuthCallback() {
           console.log('✅ Magic link tokens found, setting session...');
           
           try {
-            const { data, error } = await supabase.auth.setSession({
+            console.log('🔄 Calling setSession...');
+            
+            // Добавляем timeout для setSession
+            const setSessionPromise = supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken
             });
+            
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('setSession timeout after 5 seconds')), 5000)
+            );
+            
+            const { data, error } = await Promise.race([setSessionPromise, timeoutPromise]) as any;
 
-            console.log('🔍 setSession result:', { data: !!data.user, error: !!error });
+            console.log('🔍 setSession result:', { data: !!data?.user, error: !!error });
 
             if (error) {
               console.error('❌ Error setting session:', error);
@@ -84,6 +95,25 @@ export default function AuthCallback() {
             }
           } catch (err) {
             console.error('❌ Exception in setSession:', err);
+            
+            // Если setSession завис, пробуем принудительно перенаправить на основе уже авторизованного пользователя
+            if (err.message?.includes('setSession timeout')) {
+              console.log('⚠️ setSession timeout, checking if user is already signed in...');
+              
+              try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session?.user) {
+                  console.log('✅ User is already signed in despite timeout:', session.user.email);
+                  setStatus('success');
+                  setMessage('Авторизация успешна! Перенаправление...');
+                  window.location.replace('/');
+                  return;
+                }
+              } catch (sessionErr) {
+                console.error('❌ Error checking session after timeout:', sessionErr);
+              }
+            }
+            
             throw err;
           }
         }
