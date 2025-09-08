@@ -63,7 +63,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authError, setAuthError] = useState<string | null>(null);
   const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>('initializing');
   const [retryCount, setRetryCount] = useState(0);
-  const [sessionLoaded, setSessionLoaded] = useState(false);
 
   // single-flight
   const inFlightProfile = useRef<Promise<User | null> | null>(null);
@@ -193,8 +192,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(u);
         setUserProfile(u);
         cacheUserProfile(u);
-        setLoading(false);
-        setLoadingPhase('complete');
+        if (foreground) {           // ← добавил условие
+          setLoading(false);
+          setLoadingPhase('complete');
+        }
       }
       return;
     }
@@ -305,7 +306,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const resetAuth = () => {
     console.log('🔄 Resetting authentication state and clearing cache');
     setLoading(false);
-    setSessionLoaded(false);
     setUser(null);
     setAuthError(null);
     setUserProfile(null);
@@ -333,7 +333,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (identifier: string, password: string): Promise<{ data: any; error: any }> => {
     try {
-      console.log(`🔑 Attempting to sign in with identifier: ${identifier} and password: ${password}`);
+      console.log(`🔑 Attempting to sign in with identifier: ${identifier}`);
       
       if (identifier === 'doirp@sns.ru' && password === '123456') {
         console.log('Using admin credentials - special handling');
@@ -442,26 +442,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     console.log('🚪 Signing out user');
-    // Clear state immediately
+
+    // 1) Сначала разлогиниваем на сервере
+    const result = await supabase.auth.signOut();
+
+    // 2) После успешного ответа — чистим состояние и кэш
     setUser(null);
     setUserProfile(null);
     setSession(null);
-    setSessionLoaded(false);
     setAuthError(null);
     setRetryCount(0);
     setLoadingPhase('logged-out');
     clearUserCache();
-    
-    // Actually sign out
-    const result = await supabase.auth.signOut();
-    
+
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch (e) {
+      console.warn('⚠️ Could not clear storage:', e);
+    }
     return result;
   };
 
   // Main effect for authentication state management
   useEffect(() => {
     let isMounted = true;
-    let timeoutId: NodeJS.Timeout;
     
     console.log('🔐 Auth provider initialized');
     
@@ -473,7 +478,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         // Get initial session with timeout
         const sessionResult = await getSessionWithTimeout(45000);
-        setSessionLoaded(true);
         if (!isMounted) return;
         
         if (sessionResult.error) {
@@ -521,16 +525,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
     
-    // Set a maximum timeout for initialization - safety measure
-    timeoutId = setTimeout(() => {
-      if (loading && !sessionLoaded && isMounted) {
-        console.warn('⚠️ Auth initialization timeout reached');
-        // Don't show error, just complete loading so user can try to login
-        setLoadingPhase('ready');
-        setLoading(false);
-      }
-    }, 30000);
-
     // Start initialization
     initializeAuth();
 
@@ -585,8 +579,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Return cleanup function
     return () => {
       isMounted = false;
-      clearTimeout(timeoutId);
-      authSubscription.data.subscription.unsubscribe();
+      authSubscription?.data?.subscription?.unsubscribe?.();
     };
   }, []);
 
