@@ -85,6 +85,7 @@ serve(async (req) => {
 
     console.log('Generated magic link for:', email)
     console.log('Action link:', actionLink)
+    console.log('Full data object:', JSON.stringify(data, null, 2))
 
     return new Response(
       JSON.stringify({ 

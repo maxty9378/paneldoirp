@@ -53,9 +53,14 @@ function AppContent() {
 
   // Проверяем magic link параметры на главной странице
   useEffect(() => {
+    console.log('🔍 App: Checking for magic link params on:', window.location.href);
     const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    const type = urlParams.get('type');
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    
+    const token = urlParams.get('token') || hashParams.get('token');
+    const type = urlParams.get('type') || hashParams.get('type');
+    
+    console.log('App: Found token:', !!token, 'type:', type);
     
     if (token && type === 'magiclink') {
       console.log('🔄 Magic link detected on main page, redirecting to auth callback...');

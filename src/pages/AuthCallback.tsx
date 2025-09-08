@@ -9,6 +9,8 @@ export default function AuthCallback() {
   const [message, setMessage] = useState('Обработка авторизации...');
 
   useEffect(() => {
+    console.log('🚀 AuthCallback component mounted!');
+    
     const handleAuthCallback = async () => {
       try {
         console.log('🔄 Processing auth callback...');
