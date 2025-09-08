@@ -629,6 +629,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('🔄 Auth state changed:', event, session?.user?.id?.substring(0, 8));
       setSession(session);
       
+      // Специальная обработка INITIAL_SESSION
+      if (event === 'INITIAL_SESSION') {
+        if (!session?.user) {
+          // нет сессии — сразу выходим из загрузки
+          console.log('ℹ️ No initial session found');
+          setUser(null);
+          setUserProfile(null);
+          setAuthError(null);
+          setLoadingPhase('ready');
+          setLoading(false);
+          return;
+        }
+        // есть юзер в initial session — грузим профиль
+        console.log('✅ Initial session found, loading profile');
+        setLoadingPhase('profile-fetch');
+        await fetchUserProfile(session.user.id);
+        return;
+      }
+      
+      // Обработка других событий (SIGNED_IN, SIGNED_OUT, etc.)
       if (session?.user) {
         console.log('✅ New session after auth change');
         setLoadingPhase('auth-change');
