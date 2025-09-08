@@ -21,14 +21,17 @@ export default function QRAuthPage() {
     const processQRToken = async () => {
       try {
         console.log('🔍 Processing QR token:', token.substring(0, 8) + '...');
-        console.log('🌐 Calling Edge Function URL:', `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-by-qr-token/${token}`);
+        console.log('🌐 Calling Edge Function URL:', `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-by-qr-token`);
         
         // Вызываем Edge Function для обработки токена
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-by-qr-token/${token}`, {
-          method: 'GET',
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-by-qr-token`, {
+          method: 'POST',
           headers: {
             'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-          }
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({ token })
         });
 
         if (response.redirected) {

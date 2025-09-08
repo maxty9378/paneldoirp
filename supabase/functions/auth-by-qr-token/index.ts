@@ -12,8 +12,17 @@ serve(async (req) => {
   }
 
   try {
+    console.log('🚀 auth-by-qr-token Edge Function called')
+    console.log('📋 Request method:', req.method)
+    console.log('📋 Request URL:', req.url)
+    
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('❌ Missing environment variables')
+      throw new Error('Missing Supabase configuration')
+    }
     
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
@@ -22,10 +31,21 @@ serve(async (req) => {
       }
     })
 
-    const url = new URL(req.url)
-    const token = url.pathname.split('/').pop()
+    // Получаем токен из body (POST) или URL path (GET)
+    let token: string;
     
-    if (!token) {
+    if (req.method === 'POST') {
+      const body = await req.json()
+      token = body.token
+    } else {
+      // GET запрос - токен из URL path
+      const url = new URL(req.url)
+      const pathParts = url.pathname.split('/')
+      token = pathParts[pathParts.length - 1] // последняя часть пути
+    }
+    
+    if (!token || token === 'auth-by-qr-token') {
+      console.error('❌ No token provided. URL:', req.url)
       throw new Error('Token is required')
     }
 
