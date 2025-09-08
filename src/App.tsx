@@ -267,7 +267,6 @@ function AppContent() {
         <Route path="/take-test" element={<TakeTestPage />} />
         <Route path="/test-results/:attemptId" element={<TestResultsPage />} />
         <Route path="/event-test-results/:eventId" element={<EventTestResultsPage />} />
-        <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/test-qr" element={<TestQRLogin />} />
       </Routes>
       <CreateEventModal 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
@@ -7,19 +7,19 @@ export default function AuthCallback() {
   const navigate = useNavigate();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('Обработка авторизации...');
-  const [hasExecuted, setHasExecuted] = useState(false);
+  const executedRef = useRef(false);
 
   useEffect(() => {
     console.log('🚀 AuthCallback component mounted!');
     
-    if (hasExecuted) {
+    if (executedRef.current) {
       console.log('⚠️ Already executed, skipping...');
       return;
     }
     
     const handleAuthCallback = async () => {
       try {
-        setHasExecuted(true);
+        executedRef.current = true;
         console.log('🔄 Processing auth callback...');
         console.log('Current URL:', window.location.href);
         console.log('Search params:', window.location.search);
@@ -69,26 +69,18 @@ export default function AuthCallback() {
           if (data.user) {
             console.log('✅ Magic link session set successfully:', data.user.email);
             
-            // Двойная проверка сессии
-            const raw = localStorage.getItem('sns-session-v1');
-            console.log('🧩 localStorage session exists:', !!raw);
-            
-            const { data: { session: currentSession } } = await supabase.auth.getSession();
-            console.log('🧩 getSession after setSession:', !!currentSession?.user);
+            // Проверяем сохранение сессии
+            const saved = !!localStorage.getItem('sns-session-v1');
+            console.log('🧩 saved in LS:', saved);
+            const { data: { session: s } } = await supabase.auth.getSession();
+            console.log('🧩 getSession says:', !!s?.user);
             
             setStatus('success');
             setMessage('Авторизация успешна! Перенаправление...');
             
-            // Очищаем URL от токенов
-            const cleanUrl = window.location.origin + window.location.pathname;
-            window.history.replaceState({}, document.title, cleanUrl);
-            console.log('🧹 URL cleaned to:', cleanUrl);
-            
-            // Перенаправляем на главную
-            setTimeout(() => {
-              console.log('🚀 Redirecting to home page...');
-              window.location.replace('/');
-            }, 100);
+            // Очищаем URL и делаем жёсткий переход
+            window.history.replaceState({}, '', '/'); // убираем #params
+            window.location.replace('/');             // полный ребилд, чтоб корень поднял сессию
             return;
           }
         }
@@ -115,10 +107,8 @@ export default function AuthCallback() {
             setStatus('success');
             setMessage('Авторизация успешна! Перенаправление...');
             
-            // Очищаем URL от токенов
-            const cleanUrl = window.location.origin + window.location.pathname;
-            window.history.replaceState({}, document.title, cleanUrl);
-            
+            // Очищаем URL и делаем жёсткий переход
+            window.history.replaceState({}, '', '/');
             window.location.replace('/');
             return;
           }
@@ -140,10 +130,8 @@ export default function AuthCallback() {
             setStatus('success');
             setMessage('Авторизация успешна! Перенаправление...');
             
-            // Очищаем URL от токенов
-            const cleanUrl = window.location.origin + window.location.pathname;
-            window.history.replaceState({}, document.title, cleanUrl);
-            
+            // Очищаем URL и делаем жёсткий переход
+            window.history.replaceState({}, '', '/');
             window.location.replace('/');
             return;
           }
@@ -200,37 +188,13 @@ export default function AuthCallback() {
           return;
         }
 
-        // Ждем события авторизации
-        console.log('⏳ Waiting for auth state change...');
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-          console.log('🔄 Auth state change:', event, session?.user?.email);
-          
-          if ((event === 'SIGNED_IN' || event === 'SIGNED_UP') && session?.user) {
-            console.log('✅ User signed in via magic link:', event);
-            setStatus('success');
-            setMessage('Авторизация успешна! Перенаправление...');
-            
-            // Очищаем URL от токенов
-            const cleanUrl = window.location.origin + window.location.pathname;
-            window.history.replaceState({}, document.title, cleanUrl);
-            
-            window.location.replace('/');
-          } else if (event === 'SIGNED_OUT') {
-            console.log('❌ User signed out');
-            setStatus('error');
-            setMessage('Сессия завершена');
-          }
-        });
-
-        // Таймаут через 15 секунд
+        // Если дошли до сюда и ничего не сработало
+        console.log('❌ No suitable authentication method found');
+        setStatus('error');
+        setMessage('Не удалось обработать токены авторизации');
         setTimeout(() => {
-          subscription.unsubscribe();
-          if (status === 'loading') {
-            console.log('⏰ Timeout reached');
-            setStatus('error');
-            setMessage('Время ожидания авторизации истекло. Попробуйте еще раз.');
-          }
-        }, 15000);
+          window.location.replace('/');
+        }, 3000);
 
       } catch (error: any) {
         console.error('❌ Auth callback error:', error);
