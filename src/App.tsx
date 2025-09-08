@@ -175,7 +175,8 @@ function AppContent() {
   // Навигация для запуска теста
   // Удаляем handleStartTest, handleTestComplete, handleCancelTest
 
-  if (loading) {
+  // Для /auth/callback не показываем loading - нужно обработать токены
+  if (loading && window.location.pathname !== '/auth/callback') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
