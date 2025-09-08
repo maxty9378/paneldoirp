@@ -327,7 +327,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const resetAuth = () => {
-    console.log('🔄 Resetting authentication state');
+    console.log('🔄 Resetting authentication state and clearing cache');
     setLoading(false);
     setSessionLoaded(false);
     setUser(null);
@@ -337,7 +337,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setRetryCount(0);
     setLoadingPhase('reset');
     clearUserCache();
+    
+    // Очищаем весь localStorage и sessionStorage
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+      console.log('🧹 Cleared localStorage and sessionStorage');
+    } catch (error) {
+      console.warn('⚠️ Could not clear storage:', error);
+    }
+    
     supabase.auth.signOut();
+    
+    // Принудительно перезагружаем страницу для полной очистки
+    setTimeout(() => {
+      window.location.reload();
+    }, 100);
   };
 
   const signIn = async (identifier: string, password: string): Promise<{ data: any; error: any }> => {

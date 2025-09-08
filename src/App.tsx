@@ -212,7 +212,7 @@ function AppContent() {
               onClick={resetAuth}
               className="inline-flex items-center justify-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
             >
-              Сбросить
+              🧹 Очистить кэш и сбросить
             </button>
           </div>
         </div>
