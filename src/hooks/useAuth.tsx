@@ -107,18 +107,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } as User;
   };
 
-  // Function to get session with timeout (быстрый таймаут)
-  const getSessionWithTimeout = async (timeoutMs: number = 10000) => {
-    console.log(`🔄 Getting session with ${timeoutMs}ms timeout`);
+  // 1) мягкий таймаут: не кидаем ошибку, просто логируем и продолжаем без сессии
+  const getSessionSoft = async (timeoutMs = 45000) => {
+    let timedOut = false;
+    const timer = setTimeout(() => { timedOut = true; }, timeoutMs);
+
     try {
-      const res = await Promise.race([
-      supabase.auth.getSession(),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Session fetch timeout exceeded')), timeoutMs))
-      ]);
+      const res = await supabase.auth.getSession(); // пусть доедет столько, сколько надо
       return res;
-    } catch (error) {
-      console.error('Session fetch error:', error);
-      throw error;
+    } catch (e) {
+      console.warn('[Auth] getSession error:', (e as any)?.message || e);
+      return { data: { session: null }, error: e as any };
+    } finally {
+      clearTimeout(timer);
+      if (timedOut) console.warn('[Auth] getSession soft-timeout (UI не блокируем)');
     }
   };
 
@@ -231,7 +233,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             (async () => {
               try {
                 console.log('🔄 Background profile refresh (single shot)');
-                const row = await withTimeout(() => tryFetchProfileRow(userId), 6000);
+                const row = await withTimeout(() => tryFetchProfileRow(userId), 15000);
                 if (row) {
                   const fresh = { ...row, position: row.position || 'Должность не указана' } as User;
                   setUser(fresh);
@@ -253,7 +255,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // 2) сет с ретраями (быстрые таймауты)
         for (let attempt = 1; attempt <= 1; attempt++) {
           try {
-            const row = await withTimeout(() => tryFetchProfileRow(userId), 6000);
+            const row = await withTimeout(() => tryFetchProfileRow(userId), 15000);
             if (row) {
               const u = { ...row, position: row.position || 'Должность не указана' } as User;
               setUser(u);
@@ -266,7 +268,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               return u;
             }
             // строки нет — создаём
-            const created = await withTimeout(() => ensureProfile(userId), 6000);
+            const created = await withTimeout(() => ensureProfile(userId), 15000);
             const u = { ...created, position: created.position || 'Должность не указана' } as User;
             setUser(u);
             setUserProfile(u);
@@ -529,13 +531,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('📥 Starting session fetch');
       
       try {
-        // Get initial session with timeout
-        const sessionResult = await getSessionWithTimeout(10000);
+        // Get initial session with soft timeout
+        const sessionResult = await getSessionSoft(45000);
         if (!isMounted) return;
         
-        if (sessionResult.error) {
-          throw sessionResult.error;
-        }
+        // Soft timeout doesn't throw errors, just returns null session
         
         const session = sessionResult.data.session;
         setSession(session);
