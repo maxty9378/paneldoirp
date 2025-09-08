@@ -32,6 +32,13 @@ export default function AuthCallback() {
         console.log('Search params:', window.location.search);
         console.log('Hash params:', window.location.hash);
         
+        // Добавляем общий таймаут для всего процесса
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Auth callback timeout after 15 seconds')), 15000)
+        );
+        
+        const authPromise = (async () => {
+        
         // Проверяем параметры в URL для ошибок
         const urlParams = new URLSearchParams(window.location.search);
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
@@ -66,37 +73,43 @@ export default function AuthCallback() {
         if (accessToken && refreshToken && type === 'magiclink') {
           console.log('✅ Magic link tokens found, setting session...');
           
-          const { data, error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken
-          });
+          try {
+            const { data, error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken
+            });
 
-          if (error) {
-            console.error('❌ Error setting session:', error);
-            throw error;
-          }
+            if (error) {
+              console.error('❌ Error setting session:', error);
+              throw error;
+            }
 
-          console.log('🔍 setSession result:', { user: !!data.user, session: !!data.session });
-          
-          if (data.user) {
-            console.log('✅ Magic link session set successfully:', data.user.email);
+            console.log('🔍 setSession result:', { user: !!data.user, session: !!data.session });
             
-            // Проверяем сохранение сессии
-            const saved = !!localStorage.getItem('sns-session-v1');
-            console.log('🧩 saved in LS:', saved);
-            const { data: { session: s } } = await supabase.auth.getSession();
-            console.log('🧩 getSession says:', !!s?.user);
-            
-            setStatus('success');
-            setMessage('Авторизация успешна! Перенаправление...');
-            
-            // Очищаем URL и делаем жёсткий переход
-            window.history.replaceState({}, '', '/'); // убираем #params
-            console.log('🚀 Redirecting to home...');
-            window.location.replace('/');             // полный ребилд, чтоб корень поднял сессию
-            return;
-          } else {
-            console.log('⚠️ setSession successful but no user in response, checking session...');
+            if (data.user) {
+              console.log('✅ Magic link session set successfully:', data.user.email);
+              
+              // Ждем немного чтобы сессия сохранилась
+              await new Promise(resolve => setTimeout(resolve, 500));
+              
+              // Проверяем сохранение сессии
+              const { data: { session: s } } = await supabase.auth.getSession();
+              console.log('🧩 getSession says:', !!s?.user);
+              
+              if (s?.user) {
+                setStatus('success');
+                setMessage('Авторизация успешна! Перенаправление...');
+                
+                // Очищаем URL и делаем жёсткий переход
+                window.history.replaceState({}, '', '/');
+                console.log('🚀 Redirecting to home...');
+                window.location.replace('/');
+                return;
+              } else {
+                throw new Error('Сессия не была установлена корректно');
+              }
+            } else {
+              console.log('⚠️ setSession successful but no user in response, checking session...');
             
             // Даже если data.user пустой, проверим сессию
             const { data: { session: currentSession } } = await supabase.auth.getSession();
@@ -222,11 +235,19 @@ export default function AuthCallback() {
         setTimeout(() => {
           window.location.replace('/');
         }, 3000);
+        
+        })(); // Закрываем authPromise
+        
+        // Ждем либо завершения авторизации, либо таймаута
+        await Promise.race([authPromise, timeoutPromise]);
 
       } catch (error: any) {
         console.error('❌ Auth callback error:', error);
         setStatus('error');
         setMessage(error.message || 'Произошла ошибка при авторизации');
+        setTimeout(() => {
+          window.location.replace('/');
+        }, 3000);
       } finally {
         // Очищаем флаг обработки
         window.authCallbackProcessing = false;
