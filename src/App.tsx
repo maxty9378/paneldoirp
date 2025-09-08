@@ -54,6 +54,14 @@ function AppContent() {
   // Проверяем magic link параметры на главной странице
   useEffect(() => {
     console.log('🔍 App: Checking for magic link params on:', window.location.href);
+    console.log('Current pathname:', window.location.pathname);
+    
+    // НЕ перехватываем на странице callback - там уже обрабатывается
+    if (window.location.pathname === '/auth/callback') {
+      console.log('📍 Already on auth callback page, skipping intercept');
+      return;
+    }
+    
     const urlParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     
