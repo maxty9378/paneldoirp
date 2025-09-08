@@ -31,7 +31,14 @@ export default function QRAuthPage() {
         setStep('qr');
         setMessage('Проверяем токен…');
 
-        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-by-qr-token`, {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        console.log('🌐 Supabase URL:', supabaseUrl);
+        
+        if (!supabaseUrl) {
+          throw new Error('VITE_SUPABASE_URL не настроен');
+        }
+
+        const res = await fetch(`${supabaseUrl}/functions/v1/auth-by-qr-token`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -42,10 +49,26 @@ export default function QRAuthPage() {
         });
 
         if (!res.ok) {
+          const contentType = res.headers.get('content-type');
+          console.error('❌ Response not OK:', res.status, res.statusText);
+          console.error('❌ Content-Type:', contentType);
+          
           const err = await res.json().catch(() => ({}));
+          console.error('❌ Error response:', err);
           throw new Error(err.error || `HTTP ${res.status} ${res.statusText}`);
         }
 
+        const contentType = res.headers.get('content-type');
+        console.log('✅ Response OK, Content-Type:', contentType);
+        
+        // Проверяем, что получили JSON, а не HTML
+        if (!contentType?.includes('application/json')) {
+          const text = await res.text();
+          console.error('❌ Expected JSON but got:', contentType);
+          console.error('❌ Response body:', text.substring(0, 200) + '...');
+          throw new Error(`Ожидался JSON, получен ${contentType}. Проверьте VITE_SUPABASE_URL`);
+        }
+        
         const data = await res.json();
         console.log('📝 Edge Function response:', data);
         
@@ -89,14 +112,20 @@ export default function QRAuthPage() {
             navigate('/');
           }, 1000);
           return;
+        } else if (data.action_link) {
+          // На случай, если старый код возвращает action_link без redirectUrl
+          console.log('🔗 Fallback: using action_link:', data.action_link);
+          window.location.replace(data.action_link);
+          return;
+        } else if (data.url) {
+          // Альтернативный ключ для URL
+          console.log('🔗 Fallback: using url:', data.url);
+          window.location.replace(data.url);
+          return;
         } else {
+          // Логируем, чтобы понять, что пришло
           console.error('❌ Unexpected response format:', data);
-          // Попробуем обработать как magic link, если есть redirectUrl
-          if (data.redirectUrl) {
-            console.log('🔗 Fallback: using redirectUrl without needsActivation');
-            window.location.replace(data.redirectUrl);
-            return;
-          }
+          console.error('❌ Available keys:', Object.keys(data));
           throw new Error('Неожиданный формат ответа от сервера');
         }
 
