@@ -5,10 +5,11 @@ import { supabase } from '../../lib/supabase';
 
 interface PersistentQRCodeProps {
   email: string;
+  fullName?: string;
   onClose: () => void;
 }
 
-export default function PersistentQRCode({ email, onClose }: PersistentQRCodeProps) {
+export default function PersistentQRCode({ email, fullName, onClose }: PersistentQRCodeProps) {
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [persistentUrl, setPersistentUrl] = useState<string>('');
   const [token, setToken] = useState<string>('');
@@ -117,8 +118,13 @@ export default function PersistentQRCode({ email, onClose }: PersistentQRCodePro
 
           <div className="mb-4">
             <p className="text-sm text-gray-600 mb-2">
-              Для пользователя: <span className="font-medium">{email}</span>
+              Для пользователя: <span className="font-medium">{fullName || email}</span>
             </p>
+            {fullName && (
+              <p className="text-xs text-gray-500 mb-1">
+                Email: <span className="font-mono">{email}</span>
+              </p>
+            )}
             <p className="text-xs text-gray-500">
               Этот QR код можно использовать многократно для входа в систему
             </p>

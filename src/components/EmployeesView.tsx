@@ -31,7 +31,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
-import { UserQRLogin } from './admin/UserQRLogin';
 import PersistentQRCode from './admin/PersistentQRCode';
 
 interface Employee {
@@ -107,8 +106,6 @@ export function EmployeesView() {
   const [showFilters, setShowFilters] = useState(false);
   const [expandedEmployeeId, setExpandedEmployeeId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [showQRLogin, setShowQRLogin] = useState(false);
-  const [selectedEmployeeForQR, setSelectedEmployeeForQR] = useState<Employee | null>(null);
   const [showPersistentQR, setShowPersistentQR] = useState(false);
   const [selectedEmployeeForPersistentQR, setSelectedEmployeeForPersistentQR] = useState<Employee | null>(null);
 
@@ -341,10 +338,6 @@ export function EmployeesView() {
     document.body.removeChild(link);
   };
 
-  const handleGenerateQR = (employee: Employee) => {
-    setSelectedEmployeeForQR(employee);
-    setShowQRLogin(true);
-  };
 
   const handleGeneratePersistentQR = (employee: Employee) => {
     setSelectedEmployeeForPersistentQR(employee);
@@ -802,22 +795,13 @@ export function EmployeesView() {
                         )}
                         
                         {employee.email && (
-                          <>
-                            <button
-                              onClick={() => handleGenerateQR(employee)}
-                              className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-xs font-medium bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
-                            >
-                              <QrCode size={14} />
-                              <span>Одноразовый QR</span>
-                            </button>
-                            <button
-                              onClick={() => handleGeneratePersistentQR(employee)}
-                              className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-xs font-medium bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
-                            >
-                              <QrCode size={14} />
-                              <span>Постоянный QR</span>
-                            </button>
-                          </>
+                          <button
+                            onClick={() => handleGeneratePersistentQR(employee)}
+                            className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-xs font-medium bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
+                          >
+                            <QrCode size={14} />
+                            <span>QR код</span>
+                          </button>
                         )}
                       </div>
                     </div>
@@ -829,22 +813,12 @@ export function EmployeesView() {
         )}
       </div>
 
-      {/* QR Login Modal */}
-      {showQRLogin && selectedEmployeeForQR && (
-        <UserQRLogin
-          userEmail={selectedEmployeeForQR.email}
-          userName={selectedEmployeeForQR.full_name}
-          onClose={() => {
-            setShowQRLogin(false);
-            setSelectedEmployeeForQR(null);
-          }}
-        />
-      )}
 
       {/* Persistent QR Modal */}
       {showPersistentQR && selectedEmployeeForPersistentQR && (
         <PersistentQRCode
           email={selectedEmployeeForPersistentQR.email}
+          fullName={selectedEmployeeForPersistentQR.full_name}
           onClose={() => {
             setShowPersistentQR(false);
             setSelectedEmployeeForPersistentQR(null);
