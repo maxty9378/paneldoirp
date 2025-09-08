@@ -557,7 +557,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             fetchUserProfile(session.user.id, { foreground: false }).catch(console.error);
           } else {
             // No valid cached profile, fetch from server
-            await fetchUserProfile(session.user.id, { foreground: true });
+            try {
+              await Promise.race([
+                fetchUserProfile(session.user.id, { foreground: true }),
+                new Promise((_, reject) => 
+                  setTimeout(() => reject(new Error('Profile fetch timeout')), 20000)
+                )
+              ]);
+            } catch (e: any) {
+              console.warn('⚠️ Profile fetch timed out, using fallback');
+              setLoadingPhase('complete');
+              setLoading(false);
+            }
           }
         } else {
           console.log('ℹ️ No initial session found');
@@ -603,7 +614,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // есть юзер в initial session — грузим профиль
         console.log('✅ Initial session found, loading profile');
         setLoadingPhase('profile-fetch');
-        await fetchUserProfile(session.user.id, { foreground: true });
+        
+        // Добавляем таймаут для fetchUserProfile
+        try {
+          await Promise.race([
+            fetchUserProfile(session.user.id, { foreground: true }),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Profile fetch timeout')), 20000)
+            )
+          ]);
+        } catch (e: any) {
+          console.warn('⚠️ Profile fetch timed out, using fallback');
+          setLoadingPhase('complete');
+          setLoading(false);
+        }
         return;
       }
       
@@ -618,7 +642,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setLoadingPhase('complete');
           setLoading(false);
         } else {
-          await fetchUserProfile(session.user.id, { foreground: true });
+          // Добавляем таймаут для fetchUserProfile
+          try {
+            await Promise.race([
+              fetchUserProfile(session.user.id, { foreground: true }),
+              new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Profile fetch timeout')), 20000)
+              )
+            ]);
+          } catch (e: any) {
+            console.warn('⚠️ Profile fetch timed out, using fallback');
+            setLoadingPhase('complete');
+            setLoading(false);
+          }
         }
       } else {
         console.log('ℹ️ No session after auth change');
