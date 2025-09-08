@@ -57,8 +57,8 @@ export default function AuthCallback() {
             console.log('✅ Magic link session set successfully:', data.user.email);
             setStatus('success');
             setMessage('Авторизация успешна! Перенаправление...');
-            // Немедленное перенаправление для предотвращения циклов
-            navigate('/');
+            // Очищаем URL от токенов и перенаправляем
+            window.location.replace('/');
             return;
           }
         }
@@ -84,7 +84,7 @@ export default function AuthCallback() {
             console.log('✅ Magic link verified successfully:', data.user.email);
             setStatus('success');
             setMessage('Авторизация успешна! Перенаправление...');
-            navigate('/');
+            window.location.replace('/');
             return;
           }
         }
@@ -104,7 +104,7 @@ export default function AuthCallback() {
             console.log('✅ Token verified successfully as magic link:', data.user.email);
             setStatus('success');
             setMessage('Авторизация успешна! Перенаправление...');
-            navigate('/');
+            window.location.replace('/');
             return;
           }
         }
@@ -126,7 +126,7 @@ export default function AuthCallback() {
             console.log('✅ Session set successfully:', data.user.email);
             setStatus('success');
             setMessage('Авторизация успешна! Перенаправление...');
-            navigate('/');
+            window.location.replace('/');
             return;
           }
         }
