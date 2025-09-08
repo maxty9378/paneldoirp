@@ -545,7 +545,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               await Promise.race([
                 fetchUserProfile(session.user.id, { foreground: true }),
                 new Promise((_, reject) => 
-                  setTimeout(() => reject(new Error('Profile fetch timeout')), 20000)
+                  setTimeout(() => reject(new Error('Profile fetch timeout')), 60000)
                 )
               ]);
             } catch (e: any) {
@@ -606,7 +606,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await Promise.race([
             fetchUserProfile(session.user.id, { foreground: true }),
             new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Profile fetch timeout')), 20000)
+              setTimeout(() => reject(new Error('Profile fetch timeout')), 60000)
             )
           ]);
         } catch (e: any) {

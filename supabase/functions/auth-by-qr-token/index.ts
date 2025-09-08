@@ -100,11 +100,15 @@ serve(async (req) => {
     console.log('🔗 Action link:', data.properties?.action_link?.substring(0, 50) + '...')
 
     // Возвращаем magic link в JSON
-    return new Response(JSON.stringify({
+    const response = {
       success: true,
       redirectUrl: data.properties?.action_link || finalRedirectUrl,
       needsActivation: true
-    }), {
+    };
+    
+    console.log('📤 Returning response:', JSON.stringify(response, null, 2));
+    
+    return new Response(JSON.stringify(response), {
       status: 200,
       headers: {
         ...corsHeaders,

@@ -91,6 +91,12 @@ export default function QRAuthPage() {
           return;
         } else {
           console.error('❌ Unexpected response format:', data);
+          // Попробуем обработать как magic link, если есть redirectUrl
+          if (data.redirectUrl) {
+            console.log('🔗 Fallback: using redirectUrl without needsActivation');
+            window.location.replace(data.redirectUrl);
+            return;
+          }
           throw new Error('Неожиданный формат ответа от сервера');
         }
 
