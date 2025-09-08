@@ -1,0 +1,5 @@
+[33md02e6cf[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m feat: remove one-time QR and add full name to persistent QR
+[33mdf3e468[m fix: add timeout and better error handling to AuthCallback
+[33m313d2cf[m fix: prevent auth conflicts during QR callback processing
+[33m82a352e[m fix: revert to fast timeouts and improve cache logic
+[33m0ecfe27[m debug: add detailed logging to diagnose data loading issues
