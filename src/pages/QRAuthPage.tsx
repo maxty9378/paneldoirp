@@ -55,10 +55,84 @@ export default function QRAuthPage() {
         setStep('auth');
         setMessage('Выполнение авторизации...');
         
-        // Переходим по magic link для активации
-        console.log('🔗 Following magic link:', data.redirectUrl);
-        window.location.href = data.redirectUrl;
-        return; // Выходим, так как происходит переход
+        // Извлекаем токены из magic link
+        const url = new URL(data.redirectUrl);
+        const accessToken = url.hash.match(/access_token=([^&]+)/)?.[1];
+        const refreshToken = url.hash.match(/refresh_token=([^&]+)/)?.[1];
+        
+        if (!accessToken || !refreshToken) {
+          // Если токенов нет в URL, пробуем активировать magic link
+          console.log('🔗 Activating magic link...');
+          
+          // Создаем скрытый iframe для активации magic link
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none';
+          iframe.src = data.redirectUrl;
+          document.body.appendChild(iframe);
+          
+          // Ждем активации
+          await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              reject(new Error('Magic link activation timeout'));
+            }, 10000);
+            
+            iframe.onload = () => {
+              clearTimeout(timeout);
+              resolve(true);
+            };
+            
+            iframe.onerror = () => {
+              clearTimeout(timeout);
+              reject(new Error('Magic link activation failed'));
+            };
+          });
+          
+          // Удаляем iframe
+          document.body.removeChild(iframe);
+          
+          // Проверяем сессию
+          const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+          if (sessionError || !sessionData.session) {
+            throw new Error('Не удалось активировать magic link');
+          }
+        } else {
+          // Устанавливаем сессию напрямую
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+
+          if (sessionError) {
+            throw new Error(`Ошибка установки сессии: ${sessionError.message}`);
+          }
+        }
+
+        // Небольшая задержка для стабилизации
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Шаг 3: Загрузка профиля
+        setStep('profile');
+        setMessage('Загрузка профиля пользователя...');
+        
+        // Проверяем, что сессия установлена
+        const { data: sessionData, error: sessionCheckError } = await supabase.auth.getSession();
+        if (sessionCheckError || !sessionData.session?.user) {
+          throw new Error('Не удалось подтвердить авторизацию');
+        }
+
+        // Успешная авторизация
+        setStatus('success');
+        setMessage('Авторизация успешна! Перенаправление...');
+        
+        // Очищаем URL и перенаправляем
+        try {
+          window.history.replaceState({}, '', '/');
+        } catch {}
+        
+        console.log('🚀 Redirecting to home...');
+        setTimeout(() => {
+          navigate('/');
+        }, 1000);
 
       } catch (error: any) {
         console.error('❌ Error processing QR token:', error);
