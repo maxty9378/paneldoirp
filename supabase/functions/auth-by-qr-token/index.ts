@@ -99,24 +99,30 @@ serve(async (req) => {
     console.log('✅ Magic link generated for:', user.email)
     console.log('🔗 Action link:', data.properties?.action_link?.substring(0, 50) + '...')
 
-    // Перенаправляем на magic link
-    return new Response(null, {
-      status: 302,
+    // Возвращаем magic link в JSON вместо редиректа
+    return new Response(JSON.stringify({
+      success: true,
+      redirectUrl: data.properties?.action_link || finalRedirectUrl
+    }), {
+      status: 200,
       headers: {
         ...corsHeaders,
-        'Location': data.properties?.action_link || finalRedirectUrl
+        'Content-Type': 'application/json'
       }
     })
 
   } catch (error) {
     console.error('❌ Error in auth-by-qr-token:', error)
     
-    // Перенаправляем на главную с ошибкой
-    return new Response(null, {
-      status: 302,
+    // Возвращаем ошибку в JSON
+    return new Response(JSON.stringify({
+      success: false,
+      error: error.message || 'Authentication failed'
+    }), {
+      status: 400,
       headers: {
         ...corsHeaders,
-        'Location': 'https://paneldoirp.vercel.app/?error=' + encodeURIComponent(error.message)
+        'Content-Type': 'application/json'
       }
     })
   }

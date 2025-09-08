@@ -6,7 +6,7 @@ export default function QRAuthPage() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-  const [message, setMessage] = useState('Обработка QR токена...');
+  const [message, setMessage] = useState<string>('Обработка QR токена...');
 
   useEffect(() => {
     console.log('🚀 QRAuthPage mounted with token:', token ? token.substring(0, 8) + '...' : 'NO TOKEN');
@@ -34,22 +34,22 @@ export default function QRAuthPage() {
           body: JSON.stringify({ token })
         });
 
-        if (response.redirected) {
-          console.log('✅ Redirecting to:', response.url);
-          window.location.replace(response.url);
-          return;
-        }
-
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
         }
 
-        // Если нет редиректа, проверяем ответ
-        const data = await response.text();
+        // Обрабатываем JSON ответ
+        const data = await response.json();
         console.log('📝 Response:', data);
         
-        setStatus('error');
-        setMessage('Неожиданный ответ от сервера');
+        if (data.success && data.redirectUrl) {
+          console.log('✅ Redirecting to:', data.redirectUrl);
+          window.location.replace(data.redirectUrl);
+          return;
+        }
+        
+        throw new Error(data.error || 'Неожиданный ответ от сервера');
 
       } catch (error: any) {
         console.error('❌ Error processing QR token:', error);
