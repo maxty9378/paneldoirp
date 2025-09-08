@@ -3,6 +3,13 @@ import { supabase } from '../lib/supabase';
 import { getUserFromCache, cacheUserProfile, clearUserCache } from '../lib/userCache';
 import { Session } from '@supabase/supabase-js';
 
+// Расширяем window для флага обработки
+declare global {
+  interface Window {
+    authCallbackProcessing?: boolean;
+  }
+}
+
 interface User {
   id: string;
   email?: string;
@@ -485,6 +492,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     // Initialize authentication
     const initializeAuth = async () => {
+      // Проверяем, не обрабатывается ли уже авторизация в AuthCallback
+      if (window.authCallbackProcessing) {
+        console.log('⏳ AuthCallback is processing, skipping initialization');
+        setLoadingPhase('auth-change');
+        setLoading(true);
+        
+        // Ждем завершения обработки AuthCallback
+        const checkAuthCallback = () => {
+          if (!window.authCallbackProcessing) {
+            console.log('✅ AuthCallback finished, retrying initialization');
+            initializeAuth();
+          } else {
+            setTimeout(checkAuthCallback, 100);
+          }
+        };
+        setTimeout(checkAuthCallback, 100);
+        return;
+      }
+      
       setLoadingPhase('session-fetch');
       console.log('📥 Starting session fetch');
       

@@ -3,6 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 
+// Расширяем window для флага обработки
+declare global {
+  interface Window {
+    authCallbackProcessing?: boolean;
+  }
+}
+
 export default function AuthCallback() {
   const navigate = useNavigate();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -48,6 +55,9 @@ export default function AuthCallback() {
         const accessToken = urlParams.get('access_token') || hashParams.get('access_token');
         const refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
         const type = urlParams.get('type') || hashParams.get('type');
+        
+        // Устанавливаем флаг что авторизация обрабатывается
+        window.authCallbackProcessing = true;
         
         console.log('Access token present:', !!accessToken);
         console.log('Refresh token present:', !!refreshToken);
@@ -217,6 +227,9 @@ export default function AuthCallback() {
         console.error('❌ Auth callback error:', error);
         setStatus('error');
         setMessage(error.message || 'Произошла ошибка при авторизации');
+      } finally {
+        // Очищаем флаг обработки
+        window.authCallbackProcessing = false;
       }
     };
 
