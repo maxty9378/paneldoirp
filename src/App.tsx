@@ -173,12 +173,16 @@ function AppContent() {
   // Навигация для запуска теста
   // Удаляем handleStartTest, handleTestComplete, handleCancelTest
 
-  // Проверяем наличие magic link токенов для исключения из loading
-  const urlParams = new URLSearchParams(window.location.search);
-  const hashParams = new URLSearchParams(window.location.hash.substring(1));
-  const hasMagicLinkTokens = hashParams.get('access_token') && hashParams.get('type') === 'magiclink';
-  
-  if (loading && !hasMagicLinkTokens) {
+  if (loading) {
+    // Проверяем наличие magic link токенов для исключения из loading
+    const urlParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const hasMagicLinkTokens = hashParams.get('access_token') && hashParams.get('type') === 'magiclink';
+    
+    if (hasMagicLinkTokens) {
+      console.log('🎯 Magic link tokens found, skipping loading screen');
+      // Не показываем loading экран, продолжаем выполнение
+    } else {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
@@ -229,6 +233,7 @@ function AppContent() {
         </div>
       </div>
     );
+    }
   }
   
   if (!user) {
