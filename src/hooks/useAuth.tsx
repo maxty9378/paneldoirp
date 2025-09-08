@@ -210,11 +210,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // 1) кэш
         const cached = getUserFromCache();
+        let usedCache = false;
+        let cachedUser: User | null = null;
         if (cached && cached.id === userId) {
           console.log('✅ Using cached user profile:', cached.id);
+          usedCache = true;
+          cachedUser = { ...cached, position: cached.position || 'Должность не указана' };
           // не включаем аварийный таймер, просто отрисовываем и в фоне обновляем
-          setUser({ ...cached, position: cached.position || 'Должность не указана' });
-          setUserProfile({ ...cached, position: cached.position || 'Должность не указана' });
+          setUser(cachedUser);
+          setUserProfile(cachedUser);
           if (foreground) {
             setLoading(false);
             setLoadingPhase('complete');
@@ -254,7 +258,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        // 3) окончательный мягкий фолбэк, но без «ломания» UI
+        // 3) окончательный мягкий фолбэк, но только если не использовали кэш
+        if (usedCache && cachedUser) {
+          console.log('⚠️ Background profile update failed, but cache is already displayed - keeping cached profile');
+          // не затираем хороший кешированный профиль
+          return cachedUser;
+        }
+        
         console.warn('🚨 Using auth-based fallback after retries');
         const { data: authData } = await supabase.auth.getUser();
         const fb = createFallbackUser(userId, authData?.user?.email, authData?.user?.user_metadata?.full_name, 'auth-based');
