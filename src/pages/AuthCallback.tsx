@@ -7,20 +7,18 @@ export default function AuthCallback() {
   const navigate = useNavigate();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('Обработка авторизации...');
-  const [processing, setProcessing] = useState(false);
   const [hasExecuted, setHasExecuted] = useState(false);
 
   useEffect(() => {
     console.log('🚀 AuthCallback component mounted!');
     
-    if (processing || hasExecuted) {
-      console.log('⚠️ Already processing or executed, skipping...');
+    if (hasExecuted) {
+      console.log('⚠️ Already executed, skipping...');
       return;
     }
     
     const handleAuthCallback = async () => {
       try {
-        setProcessing(true);
         setHasExecuted(true);
         console.log('🔄 Processing auth callback...');
         console.log('Current URL:', window.location.href);
@@ -58,122 +56,31 @@ export default function AuthCallback() {
         if (accessToken && refreshToken && type === 'magiclink') {
           console.log('✅ Magic link tokens found, setting session...');
           
-          // Сначала проверим, не авторизован ли пользователь уже (с коротким timeout)
-          try {
-            console.log('🔍 Quick check if user is already signed in...');
-            
-            const quickSessionPromise = supabase.auth.getSession();
-            const quickTimeout = new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Quick session check timeout')), 1000)
-            );
-            
-            const { data: { session: currentSession } } = await Promise.race([quickSessionPromise, quickTimeout]) as any;
-            
-            if (currentSession?.user) {
-              console.log('✅ User already has active session:', currentSession.user.email);
-              setStatus('success');
-              setMessage('Авторизация успешна! Перенаправление...');
-              setTimeout(() => {
-                console.log('🚀 Quick redirect executing...');
-                window.location.replace('/');
-              }, 100);
-              return;
-            }
-            console.log('🔄 No current session, proceeding with setSession...');
-          } catch (preCheckErr) {
-            console.log('⚠️ Pre-check failed or timeout, proceeding with emergency redirect:', preCheckErr);
-            
-            // Если даже быстрая проверка зависает - просто перенаправляем
-            if (preCheckErr.message?.includes('timeout')) {
-              console.log('🚨 Emergency redirect due to session check timeout');
-              setStatus('success');
-              setMessage('Обработка авторизации... Перенаправление...');
-              setTimeout(() => {
-                console.log('🚀 Emergency redirect executing...');
-                window.location.replace('/');
-              }, 500);
-              return;
-            }
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+
+          if (error) {
+            console.error('❌ Error setting session:', error);
+            throw error;
           }
-          
-          try {
-            console.log('🔄 Calling setSession...');
-            
-            // Добавляем КОРОТКИЙ timeout для setSession (2 секунды)
-            const setSessionPromise = supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken
-            });
-            
-            const timeoutPromise = new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('setSession timeout after 2 seconds')), 2000)
-            );
-            
-            const { data, error } = await Promise.race([setSessionPromise, timeoutPromise]) as any;
 
-            console.log('🔍 setSession result:', { data: !!data?.user, error: !!error });
-
-            if (error) {
-              console.error('❌ Error setting session:', error);
-              throw error;
-            }
-
-            if (data.user) {
-              console.log('✅ Magic link session set successfully:', data.user.email);
-              console.log('🔄 Redirecting to home page...');
-              setStatus('success');
-              setMessage('Авторизация успешна! Перенаправление...');
-              
-              // Принудительная задержка для завершения всех процессов
-              setTimeout(() => {
-                console.log('🚀 Executing redirect...');
-                window.location.replace('/');
-              }, 100);
-              return;
-            }
-          } catch (err) {
-            console.error('❌ Exception in setSession:', err);
+          if (data.user) {
+            console.log('✅ Magic link session set successfully:', data.user.email);
+            setStatus('success');
+            setMessage('Авторизация успешна! Перенаправление...');
             
-            // Если setSession завис, пробуем принудительно перенаправить на основе уже авторизованного пользователя  
-            if (err.message?.includes('setSession timeout')) {
-              console.log('⚠️ setSession timeout after 2 seconds, checking if user is already signed in...');
-              
-              try {
-                // Проверяем текущую сессию с небольшим timeout
-                const sessionPromise = supabase.auth.getSession();
-                const sessionTimeout = new Promise((_, reject) => 
-                  setTimeout(() => reject(new Error('getSession timeout')), 2000)
-                );
-                
-                const { data: { session } } = await Promise.race([sessionPromise, sessionTimeout]) as any;
-                
-                if (session?.user) {
-                  console.log('✅ User is already signed in despite setSession timeout:', session.user.email);
-                  setStatus('success');
-                  setMessage('Авторизация успешна! Перенаправление...');
-                  setTimeout(() => {
-                    console.log('🚀 Fallback redirect executing...');
-                    window.location.replace('/');
-                  }, 100);
-                  return;
-                } else {
-                  console.log('⚠️ No session found, will try other methods...');
-                }
-              } catch (sessionErr) {
-                console.error('❌ Error checking session after timeout:', sessionErr);
-                // Если даже getSession не работает, попробуем подождать и перенаправить
-                console.log('🔄 Attempting forced redirect in case user is signed in elsewhere...');
-                setStatus('success');
-                setMessage('Обработка авторизации... Перенаправление...');
-                setTimeout(() => {
-                  console.log('🚀 Emergency redirect executing...');
-                  window.location.replace('/');
-                }, 1000);
-                return;
-              }
-            }
+            // Очищаем URL от токенов
+            const cleanUrl = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
             
-            throw err;
+            // Перенаправляем на главную
+            setTimeout(() => {
+              console.log('🚀 Redirecting to home page...');
+              window.location.replace('/');
+            }, 100);
+            return;
           }
         }
 
@@ -198,6 +105,11 @@ export default function AuthCallback() {
             console.log('✅ Magic link verified successfully:', data.user.email);
             setStatus('success');
             setMessage('Авторизация успешна! Перенаправление...');
+            
+            // Очищаем URL от токенов
+            const cleanUrl = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+            
             window.location.replace('/');
             return;
           }
@@ -218,6 +130,11 @@ export default function AuthCallback() {
             console.log('✅ Token verified successfully as magic link:', data.user.email);
             setStatus('success');
             setMessage('Авторизация успешна! Перенаправление...');
+            
+            // Очищаем URL от токенов
+            const cleanUrl = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+            
             window.location.replace('/');
             return;
           }
@@ -240,6 +157,11 @@ export default function AuthCallback() {
             console.log('✅ Session set successfully:', data.user.email);
             setStatus('success');
             setMessage('Авторизация успешна! Перенаправление...');
+            
+            // Очищаем URL от токенов
+            const cleanUrl = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+            
             window.location.replace('/');
             return;
           }
@@ -260,7 +182,12 @@ export default function AuthCallback() {
           console.log('✅ User already authenticated:', session.user.email);
           setStatus('success');
           setMessage('Авторизация успешна! Перенаправление...');
-          setTimeout(() => navigate('/'), 2000);
+          
+          // Очищаем URL от токенов
+          const cleanUrl = window.location.origin + window.location.pathname;
+          window.history.replaceState({}, document.title, cleanUrl);
+          
+          window.location.replace('/');
           return;
         }
 
@@ -273,7 +200,12 @@ export default function AuthCallback() {
             console.log('✅ User signed in via magic link:', event);
             setStatus('success');
             setMessage('Авторизация успешна! Перенаправление...');
-            setTimeout(() => navigate('/'), 2000);
+            
+            // Очищаем URL от токенов
+            const cleanUrl = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+            
+            window.location.replace('/');
           } else if (event === 'SIGNED_OUT') {
             console.log('❌ User signed out');
             setStatus('error');

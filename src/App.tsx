@@ -53,30 +53,16 @@ function AppContent() {
 
   // Проверяем magic link параметры и перенаправляем на callback
   useEffect(() => {
-    console.log('🔍 App: Checking for magic link params on:', window.location.href);
+    // Простая проверка: если есть токены в hash и мы НЕ на /auth/callback, перенаправляем
+    const hash = window.location.hash;
+    const pathname = window.location.pathname;
     
-    const urlParams = new URLSearchParams(window.location.search);
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    
-    const token = urlParams.get('token') || hashParams.get('token');
-    const accessToken = urlParams.get('access_token') || hashParams.get('access_token');
-    const refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
-    const type = urlParams.get('type') || hashParams.get('type');
-    
-    console.log('App: Found token:', !!token, 'access_token:', !!accessToken, 'refresh_token:', !!refreshToken, 'type:', type);
-    
-    // Если это magic link и мы НЕ на странице callback - перенаправляем
-    const isMagicLink = (token || (accessToken && refreshToken)) && type === 'magiclink';
-    const hasTokenOnly = token && !type; // Случай когда есть только token без type
-    
-    if ((isMagicLink || hasTokenOnly) && window.location.pathname !== '/auth/callback') {
-      console.log('🔄 Magic link detected, redirecting to auth callback...');
-      // Передаем и hash и search параметры
-      const searchParams = window.location.search;
-      const hashParams = window.location.hash;
-      navigate(`/auth/callback${searchParams}${hashParams}`);
+    if ((hash.includes('access_token') || hash.includes('refresh_token') || hash.includes('token=')) && pathname !== '/auth/callback') {
+      console.log('🔄 Magic link tokens detected, redirecting to auth callback...');
+      // Просто перенаправляем с тем же hash — БЕЗ setSession
+      window.location.replace('/auth/callback' + hash);
     }
-  }, [navigate]);
+  }, []);
   
   const [editingEvent, setEditingEvent] = useState<any>(null);
   // Удаляем testAttemptDetails и связанные функции
@@ -174,15 +160,6 @@ function AppContent() {
   // Удаляем handleStartTest, handleTestComplete, handleCancelTest
 
   if (loading) {
-    // Проверяем наличие magic link токенов для исключения из loading
-    const urlParams = new URLSearchParams(window.location.search);
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const hasMagicLinkTokens = hashParams.get('access_token') && hashParams.get('type') === 'magiclink';
-    
-    if (hasMagicLinkTokens) {
-      console.log('🎯 Magic link tokens found, skipping loading screen');
-      // Не показываем loading экран, продолжаем выполнение
-    } else {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
@@ -233,21 +210,10 @@ function AppContent() {
         </div>
       </div>
     );
-    }
   }
   
   if (!user) {
-    // Проверяем наличие magic link токенов для исключения из LoginForm
-    const urlParams = new URLSearchParams(window.location.search);
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const hasMagicLinkTokens = hashParams.get('access_token') && hashParams.get('type') === 'magiclink';
-    
-    if (hasMagicLinkTokens && window.location.pathname === '/auth/callback') {
-      console.log('🎯 Magic link on callback page, skipping LoginForm');
-      // Пропускаем LoginForm, продолжаем к Routes
-    } else {
-      return <LoginForm />;
-    }
+    return <LoginForm />;
   }
   return (
     <Layout currentView={currentView}>

@@ -114,18 +114,87 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Improved profile fetch with timeout
-  const fetchProfileWithTimeout = async (userId: string, timeoutMs: number = 20000) => {
+  // Safe profile fetch with auto-creation
+  const fetchUserProfileSafe = async (userId: string, signal?: AbortSignal) => {
+    console.log(`🔍 Safe fetch for userId: ${userId}`);
+    
+    // 1) Пробуем прочитать профиль
+    const { data, error, status } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();              // важно: не .single()
+
+    if (!error && data) {
+      console.log('✅ Profile found in database');
+      return { data, error: null };
+    }
+
+    // 2) Если строки нет (406) — создаём
+    if (status === 406 /* No rows */) {
+      console.log('📝 No profile found, attempting auto-creation');
+      
+      try {
+        // Получаем данные из auth для создания профиля
+        const { data: authData } = await supabase.auth.getUser();
+        const userMetadata = authData?.user?.user_metadata || {};
+        
+        const newProfile = {
+          id: userId,
+          email: authData?.user?.email || `user-${userId}@sns.local`,
+          full_name: userMetadata.full_name || `Пользователь ${userId.slice(0, 8)}`,
+          role: 'employee',
+          subdivision: 'management_company',
+          status: 'active',
+          work_experience_days: 0,
+          is_active: true,
+          department: userMetadata.department || 'management_company',
+          phone: userMetadata.phone || '',
+          sap_number: userMetadata.sap_number || null,
+          position_id: userMetadata.position_id || null,
+          branch_id: userMetadata.branch_id || null,
+          territory_id: userMetadata.territory_id || null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
+        const { data: inserted, error: insertErr } = await supabase
+          .from('users')
+          .insert(newProfile)
+          .select()
+          .single();
+
+        if (insertErr) {
+          console.error('❌ Error creating profile:', insertErr);
+          throw insertErr;
+        }
+        
+        console.log('✅ Profile created successfully');
+        return { data: inserted, error: null };
+      } catch (createError) {
+        console.error('❌ Failed to create profile:', createError);
+        throw createError;
+      }
+    }
+
+    // 3) Любая другая ошибка — наружу
+    console.error('❌ Profile fetch error:', error);
+    throw error ?? new Error('Unknown profile fetch error');
+  };
+
+  // Fetch with timeout using AbortController
+  const fetchProfileWithTimeout = async (userId: string, timeoutMs: number = 8000) => {
     console.log(`🔍 Fetching profile for userId: ${userId} with ${timeoutMs}ms timeout`);
     
-    return Promise.race([
-      supabase.from('users').select('*').eq('id', userId).maybeSingle(),
-      new Promise<never>((_, reject) => {
-        setTimeout(() => {
-          reject(new Error('Profile fetch timeout exceeded'));
-        }, timeoutMs);
-      })
-    ]);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const result = await fetchUserProfileSafe(userId, controller.signal);
+      return result;
+    } finally {
+      clearTimeout(timeout);
+    }
   };
 
   // Handle missing profile creation
@@ -219,22 +288,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     
     try {
-      // Attempt to fetch profile with timeout
-      const { data: userData, error: userError } = await fetchProfileWithTimeout(userId);
+      // Attempt to fetch profile with timeout and auto-creation
+      console.log('🔍 Starting profile fetch with auto-creation...');
+      const { data: userData, error: userError } = await fetchProfileWithTimeout(userId, 8000);
       
       setLoadingPhase('profile-processing');
       
-      if (userError) {
-        console.warn('⚠️ Profile not found in database, creating from auth data');
-        const fallbackUser = await handleMissingProfile(userId);
-        const userWithPosition = {
-          ...fallbackUser,
-          position: fallbackUser.position || 'Должность не указана'
-        };
-        setUser(userWithPosition);
-        setUserProfile(userWithPosition);
-        cacheUserProfile(userWithPosition);
-      } else if (userData) {
+      if (userData) {
+        console.log('✅ Profile loaded successfully');
         const userWithPosition = {
           ...userData,
           position: userData.position || 'Должность не указана'
@@ -243,32 +304,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(userWithPosition);
         setUserProfile(userWithPosition);
         cacheUserProfile(userWithPosition);
+        
+        // Reset retry count on success
+        setRetryCount(0);
       } else {
-        console.warn('⚠️ No profile data returned, creating fallback');
-        const fallbackUser = await handleMissingProfile(userId);
-        const userWithPosition = {
-          ...fallbackUser,
-          position: fallbackUser.position || 'Должность не указана'
-        };
-        setUser(userWithPosition);
-        setUserProfile(userWithPosition);
-        cacheUserProfile(userWithPosition);
+        console.warn('⚠️ No profile data returned, using fallback');
+        throw new Error('No profile data returned after fetch/creation attempt');
       }
-      
-      // Reset retry count on success
-      setRetryCount(0);
       
     } catch (error: any) {
       console.error('❌ Error in fetchUserProfile:', error.message);
       
-      if (error.message.includes('Timeout exceeded')) {
-        setAuthError('Превышено время ожидания ответа от базы данных. Попробуйте обновить страницу.');
+      // Определяем тип ошибки для более точного сообщения
+      let errorMessage = 'Ошибка загрузки профиля';
+      
+      if (error.message?.includes('permission denied') || error.message?.includes('RLS')) {
+        errorMessage = 'Нет прав для чтения профиля. Проверьте RLS политики в Supabase.';
+      } else if (error.message?.includes('timeout') || error.message?.includes('aborted')) {
+        errorMessage = 'Превышено время ожидания ответа от базы данных.';
       } else {
-        setAuthError(`Ошибка загрузки профиля: ${error.message}`);
+        errorMessage = `Ошибка загрузки профиля: ${error.message}`;
       }
       
-      // Create emergency fallback user
+      setAuthError(errorMessage);
+      
+      // Create emergency fallback user IMMEDIATELY 
       try {
+        console.log('🚨 Creating emergency fallback user due to error');
         const { data: authData } = await supabase.auth.getUser();
         const fallbackUser = createFallbackUser(
           userId,
@@ -595,6 +657,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       authSubscription.data.subscription.unsubscribe();
     };
   }, []);
+
+  // Предохранитель от вечного loading
+  useEffect(() => {
+    if (!loading) return;
+    
+    const emergencyTimeout = setTimeout(() => {
+      if (loadingPhase === 'profile-fetch') {
+        console.warn('⏰ Emergency timeout — profile fetch took too long, forcing fallback');
+        setAuthError('Не удалось получить профиль. Используется аварийный профиль.');
+        
+        // Создаём экстренный профиль
+        const currentSession = session;
+        if (currentSession?.user) {
+          const emergencyUser = createFallbackUser(
+            currentSession.user.id,
+            currentSession.user.email,
+            currentSession.user.user_metadata?.full_name,
+            'emergency'
+          );
+          setUser(emergencyUser);
+          setUserProfile(emergencyUser);
+          cacheUserProfile(emergencyUser);
+        }
+        
+        setLoading(false);
+        setLoadingPhase('error');
+      }
+    }, 12000); // 12 секунд максимум
+    
+    return () => clearTimeout(emergencyTimeout);
+  }, [loading, loadingPhase, session]);
 
   const value: AuthContextType = {
     user,
