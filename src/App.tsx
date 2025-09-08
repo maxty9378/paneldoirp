@@ -228,9 +228,20 @@ function AppContent() {
       </div>
     );
   }
-  // Специальная обработка для /auth/callback - без Layout и проверки пользователя
+  // Специальная обработка для /auth/callback - только если есть токены в URL
   if (window.location.pathname === '/auth/callback') {
-    return <AuthCallback />;
+    const urlParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    
+    const hasTokens = hashParams.get('access_token') || hashParams.get('token') || 
+                     urlParams.get('access_token') || urlParams.get('token');
+    
+    if (hasTokens) {
+      return <AuthCallback />;
+    }
+    // Если нет токенов, перенаправляем на главную
+    navigate('/');
+    return null;
   }
   
   if (!user) {
