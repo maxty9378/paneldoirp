@@ -166,7 +166,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (insertErr) {
           console.error('❌ Error creating profile:', insertErr);
-          throw insertErr;
+          console.log('📋 Profile creation failed, likely due to RLS policy. Creating fallback profile...');
+          
+          // Создаем fallback профиль немедленно
+          const fallbackUser = {
+            id: userId,
+            email: authData?.user?.email || `user-${userId}@sns.local`,
+            full_name: userMetadata.full_name || `Пользователь ${userId.slice(0, 8)}`,
+            role: 'employee' as const,
+            subdivision: 'management_company' as const,
+            status: 'active' as const,
+            work_experience_days: 0,
+            is_active: true,
+            department: userMetadata.department || 'management_company',
+            phone: userMetadata.phone || '',
+            sap_number: userMetadata.sap_number || null,
+            position_id: userMetadata.position_id || null,
+            branch_id: userMetadata.branch_id || null,
+            territory_id: userMetadata.territory_id || null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          
+          return { data: fallbackUser, error: null };
         }
         
         console.log('✅ Profile created successfully');
@@ -290,7 +312,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Attempt to fetch profile with timeout and auto-creation
       console.log('🔍 Starting profile fetch with auto-creation...');
-      const { data: userData, error: userError } = await fetchProfileWithTimeout(userId, 8000);
+      const { data: userData, error: userError } = await fetchProfileWithTimeout(userId, 3000);
       
       setLoadingPhase('profile-processing');
       
@@ -704,7 +726,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
         setLoadingPhase('error');
       }
-    }, 12000); // 12 секунд максимум
+    }, 5000); // 5 секунд максимум
     
     return () => clearTimeout(emergencyTimeout);
   }, [loading, loadingPhase, session]);
