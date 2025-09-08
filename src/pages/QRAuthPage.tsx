@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 export default function QRAuthPage() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState<string>('Обработка QR токена...');
+  const [step, setStep] = useState<'qr' | 'auth' | 'profile'>('qr');
 
   useEffect(() => {
     console.log('🚀 QRAuthPage mounted with token:', token ? token.substring(0, 8) + '...' : 'NO TOKEN');
@@ -23,7 +25,10 @@ export default function QRAuthPage() {
         console.log('🔍 Processing QR token:', token.substring(0, 8) + '...');
         console.log('🌐 Calling Edge Function URL:', `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-by-qr-token`);
         
-        // Вызываем Edge Function для обработки токена
+        // Шаг 1: Обработка QR токена
+        setStep('qr');
+        setMessage('Обработка QR токена...');
+        
         const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-by-qr-token`, {
           method: 'POST',
           headers: {
@@ -39,17 +44,62 @@ export default function QRAuthPage() {
           throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
         }
 
-        // Обрабатываем JSON ответ
         const data = await response.json();
         console.log('📝 Response:', data);
         
-        if (data.success && data.redirectUrl) {
-          console.log('✅ Redirecting to:', data.redirectUrl);
-          window.location.replace(data.redirectUrl);
-          return;
+        if (!data.success || !data.redirectUrl) {
+          throw new Error(data.error || 'Неожиданный ответ от сервера');
         }
+
+        // Шаг 2: Авторизация через Supabase
+        setStep('auth');
+        setMessage('Выполнение авторизации...');
         
-        throw new Error(data.error || 'Неожиданный ответ от сервера');
+        // Извлекаем токены из redirectUrl
+        const url = new URL(data.redirectUrl);
+        const accessToken = url.hash.match(/access_token=([^&]+)/)?.[1];
+        const refreshToken = url.hash.match(/refresh_token=([^&]+)/)?.[1];
+        
+        if (!accessToken || !refreshToken) {
+          throw new Error('Не удалось получить токены авторизации');
+        }
+
+        // Устанавливаем сессию
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken
+        });
+
+        if (sessionError) {
+          throw new Error(`Ошибка установки сессии: ${sessionError.message}`);
+        }
+
+        // Небольшая задержка для стабилизации
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Шаг 3: Загрузка профиля
+        setStep('profile');
+        setMessage('Загрузка профиля пользователя...');
+        
+        // Проверяем, что сессия установлена
+        const { data: sessionData, error: sessionCheckError } = await supabase.auth.getSession();
+        if (sessionCheckError || !sessionData.session?.user) {
+          throw new Error('Не удалось подтвердить авторизацию');
+        }
+
+        // Успешная авторизация
+        setStatus('success');
+        setMessage('Авторизация успешна! Перенаправление...');
+        
+        // Очищаем URL и перенаправляем
+        try {
+          window.history.replaceState({}, '', '/');
+        } catch {}
+        
+        console.log('🚀 Redirecting to home...');
+        setTimeout(() => {
+          navigate('/');
+        }, 1000);
 
       } catch (error: any) {
         console.error('❌ Error processing QR token:', error);
@@ -66,43 +116,57 @@ export default function QRAuthPage() {
     processQRToken();
   }, [token, navigate]);
 
+  const getStepIcon = () => {
+    if (status === 'error') return <AlertCircle className="mx-auto mb-4 text-red-600" size={48} />;
+    if (status === 'success') return <CheckCircle className="mx-auto mb-4 text-green-600" size={48} />;
+    return <Loader2 className="mx-auto mb-4 animate-spin text-blue-600" size={48} />;
+  };
+
+  const getStepTitle = () => {
+    if (status === 'error') return 'Ошибка';
+    if (status === 'success') return 'Успешно!';
+    
+    switch (step) {
+      case 'qr': return 'Обработка QR кода';
+      case 'auth': return 'Выполнение авторизации';
+      case 'profile': return 'Загрузка профиля';
+      default: return 'Обработка QR кода';
+    }
+  };
+
+  const getProgressBar = () => {
+    if (status !== 'loading') return null;
+    
+    const progress = step === 'qr' ? 33 : step === 'auth' ? 66 : 100;
+    
+    return (
+      <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+        <div 
+          className="bg-blue-600 h-2 rounded-full transition-all duration-500 ease-out"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
-        {status === 'loading' && (
-          <>
-            <Loader2 className="mx-auto mb-4 animate-spin text-blue-600" size={48} />
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">
-              Обработка QR кода
-            </h2>
-            <p className="text-gray-600">{message}</p>
-          </>
-        )}
-
-        {status === 'success' && (
-          <>
-            <CheckCircle className="mx-auto mb-4 text-green-600" size={48} />
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">
-              Успешно!
-            </h2>
-            <p className="text-gray-600">{message}</p>
-          </>
-        )}
-
+        {getStepIcon()}
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">
+          {getStepTitle()}
+        </h2>
+        <p className="text-gray-600 mb-4">{message}</p>
+        
+        {getProgressBar()}
+        
         {status === 'error' && (
-          <>
-            <AlertCircle className="mx-auto mb-4 text-red-600" size={48} />
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">
-              Ошибка
-            </h2>
-            <p className="text-gray-600 mb-4">{message}</p>
-            <button
-              onClick={() => navigate('/')}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-            >
-              Вернуться на главную
-            </button>
-          </>
+          <button
+            onClick={() => navigate('/')}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Вернуться на главную
+          </button>
         )}
       </div>
     </div>
