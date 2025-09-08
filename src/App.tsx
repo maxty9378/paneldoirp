@@ -83,6 +83,12 @@ function AppContent() {
   // Удаляем testAttemptDetails и связанные функции
   const [loadingSeconds, setLoadingSeconds] = useState(0);
   const location = useLocation();
+  const isAuthCallback = location.pathname === '/auth/callback';
+
+  // ⚠️ Никаких экранов загрузки/логина для AuthCallback — просто отдаём коллбек
+  if (isAuthCallback) {
+    return <AuthCallback />;
+  }
 
   // Для Layout: определяем текущий view по location.pathname
   const getCurrentView = () => {

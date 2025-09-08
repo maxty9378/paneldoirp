@@ -69,9 +69,12 @@ export default function AuthCallback() {
           if (data.user) {
             console.log('✅ Magic link session set successfully:', data.user.email);
             
-            // Проверяем что сессия сохранена в localStorage
-            const sessionSaved = localStorage.getItem('sns-session-v1');
-            console.log('🔐 Session saved to localStorage:', !!sessionSaved);
+            // Двойная проверка сессии
+            const raw = localStorage.getItem('sns-session-v1');
+            console.log('🧩 localStorage session exists:', !!raw);
+            
+            const { data: { session: currentSession } } = await supabase.auth.getSession();
+            console.log('🧩 getSession after setSession:', !!currentSession?.user);
             
             setStatus('success');
             setMessage('Авторизация успешна! Перенаправление...');
@@ -79,6 +82,7 @@ export default function AuthCallback() {
             // Очищаем URL от токенов
             const cleanUrl = window.location.origin + window.location.pathname;
             window.history.replaceState({}, document.title, cleanUrl);
+            console.log('🧹 URL cleaned to:', cleanUrl);
             
             // Перенаправляем на главную
             setTimeout(() => {
