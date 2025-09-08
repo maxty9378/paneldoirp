@@ -68,6 +68,11 @@ export default function AuthCallback() {
 
           if (data.user) {
             console.log('✅ Magic link session set successfully:', data.user.email);
+            
+            // Проверяем что сессия сохранена в localStorage
+            const sessionSaved = localStorage.getItem('sns-session-v1');
+            console.log('🔐 Session saved to localStorage:', !!sessionSaved);
+            
             setStatus('success');
             setMessage('Авторизация успешна! Перенаправление...');
             

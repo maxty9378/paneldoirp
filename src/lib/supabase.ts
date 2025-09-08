@@ -12,9 +12,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
 // Создаем и экспортируем ЕДИНСТВЕННЫЙ клиент Supabase
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    autoRefreshToken: true,
+    detectSessionInUrl: false,    // мы сами обрабатываем токены в AuthCallback
+    storage: window.localStorage, // явно указываем хранилище
+    storageKey: 'sns-session-v1', // стабильный ключ для сессий
   },
 });
 
