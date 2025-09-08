@@ -237,7 +237,17 @@ function AppContent() {
   }
   
   if (!user) {
-    return <LoginForm />;
+    // Проверяем наличие magic link токенов для исключения из LoginForm
+    const urlParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const hasMagicLinkTokens = hashParams.get('access_token') && hashParams.get('type') === 'magiclink';
+    
+    if (hasMagicLinkTokens && window.location.pathname === '/auth/callback') {
+      console.log('🎯 Magic link on callback page, skipping LoginForm');
+      // Пропускаем LoginForm, продолжаем к Routes
+    } else {
+      return <LoginForm />;
+    }
   }
   return (
     <Layout currentView={currentView}>
