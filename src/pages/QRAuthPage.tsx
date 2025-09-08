@@ -1,198 +1,106 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
+type Status = 'loading' | 'success' | 'error';
+type Step = 'qr' | 'redirecting';
+
 export default function QRAuthPage() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-  const [message, setMessage] = useState<string>('Обработка QR токена...');
-  const [step, setStep] = useState<'qr' | 'auth' | 'profile'>('qr');
+
+  const [status, setStatus] = useState<Status>('loading');
+  const [step, setStep] = useState<Step>('qr');
+  const [message, setMessage] = useState('Обработка QR токена...');
+
+  // флаг, чтобы не дергать setState после unmount
+  const alive = useRef(true);
+  useEffect(() => () => { alive.current = false; }, []);
 
   useEffect(() => {
-    console.log('🚀 QRAuthPage mounted with token:', token ? token.substring(0, 8) + '...' : 'NO TOKEN');
-    
-    if (!token) {
-      console.error('❌ No token provided');
-      setStatus('error');
-      setMessage('Токен не найден');
-      return;
-    }
+    const run = async () => {
+      if (!token) {
+        setStatus('error');
+        setMessage('Токен не найден');
+        return;
+      }
 
-    const processQRToken = async () => {
       try {
-        console.log('🔍 Processing QR token:', token.substring(0, 8) + '...');
-        console.log('🌐 Calling Edge Function URL:', `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-by-qr-token`);
-        
-        // Шаг 1: Обработка QR токена
+        // 1) просим Edge-функцию выдать verify-ссылку
         setStep('qr');
-        setMessage('Обработка QR токена...');
-        
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-by-qr-token`, {
+        setMessage('Проверяем токен…');
+
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-by-qr-token`, {
           method: 'POST',
           headers: {
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY!,
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY!}`,
           },
-          body: JSON.stringify({ token })
+          body: JSON.stringify({ token }),
         });
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || `HTTP ${res.status} ${res.statusText}`);
         }
 
-        const data = await response.json();
-        console.log('📝 Response:', data);
-        
-        if (!data.success || !data.redirectUrl) {
-          throw new Error(data.error || 'Неожиданный ответ от сервера');
+        const data = await res.json();
+        if (!data?.success || !data?.redirectUrl) {
+          throw new Error(data?.error || 'Неожиданный ответ от сервера');
         }
 
-        // Шаг 2: Авторизация через Supabase
-        setStep('auth');
-        setMessage('Выполнение авторизации...');
-        
-        // Извлекаем токены из magic link
-        const url = new URL(data.redirectUrl);
-        const accessToken = url.hash.match(/access_token=([^&]+)/)?.[1];
-        const refreshToken = url.hash.match(/refresh_token=([^&]+)/)?.[1];
-        
-        if (!accessToken || !refreshToken) {
-          // Если токенов нет в URL, пробуем активировать magic link
-          console.log('🔗 Activating magic link...');
-          
-          // Создаем скрытый iframe для активации magic link
-          const iframe = document.createElement('iframe');
-          iframe.style.display = 'none';
-          iframe.src = data.redirectUrl;
-          document.body.appendChild(iframe);
-          
-          // Ждем активации
-          await new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => {
-              reject(new Error('Magic link activation timeout'));
-            }, 10000);
-            
-            iframe.onload = () => {
-              clearTimeout(timeout);
-              resolve(true);
-            };
-            
-            iframe.onerror = () => {
-              clearTimeout(timeout);
-              reject(new Error('Magic link activation failed'));
-            };
-          });
-          
-          // Удаляем iframe
-          document.body.removeChild(iframe);
-          
-          // Проверяем сессию
-          const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-          if (sessionError || !sessionData.session) {
-            throw new Error('Не удалось активировать magic link');
-          }
-        } else {
-          // Устанавливаем сессию напрямую
-          const { error: sessionError } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken
-          });
+        // 2) ДЕЛАЕМ ПРЯМОЙ РЕДИРЕКТ на verify-ссылку.
+        // Supabase после verify вернет на redirect_to с hash: access_token&refresh_token
+        setStep('redirecting');
+        setMessage('Перенаправляю для входа…');
 
-          if (sessionError) {
-            throw new Error(`Ошибка установки сессии: ${sessionError.message}`);
-          }
-        }
-
-        // Небольшая задержка для стабилизации
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Шаг 3: Загрузка профиля
-        setStep('profile');
-        setMessage('Загрузка профиля пользователя...');
-        
-        // Проверяем, что сессия установлена
-        const { data: sessionData, error: sessionCheckError } = await supabase.auth.getSession();
-        if (sessionCheckError || !sessionData.session?.user) {
-          throw new Error('Не удалось подтвердить авторизацию');
-        }
-
-        // Успешная авторизация
-        setStatus('success');
-        setMessage('Авторизация успешна! Перенаправление...');
-        
-        // Очищаем URL и перенаправляем
-        try {
-          window.history.replaceState({}, '', '/');
-        } catch {}
-        
-        console.log('🚀 Redirecting to home...');
-        setTimeout(() => {
-          navigate('/');
-        }, 1000);
-
-      } catch (error: any) {
-        console.error('❌ Error processing QR token:', error);
+        // важно: полный редирект окна, не iframe/попап
+        window.location.replace(data.redirectUrl);
+      } catch (e: any) {
+        console.error('QR auth error:', e);
+        if (!alive.current) return;
         setStatus('error');
-        setMessage(error.message || 'Произошла ошибка при обработке QR токена');
-        
-        // Перенаправляем на главную через 3 секунды
-        setTimeout(() => {
-          navigate('/');
-        }, 3000);
+        setMessage(e?.message || 'Ошибка при обработке QR-токена');
+        // мягкий возврат домой
+        setTimeout(() => navigate('/'), 3000);
       }
     };
 
-    processQRToken();
-  }, [token, navigate]);
+    run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
-  const getStepIcon = () => {
-    if (status === 'error') return <AlertCircle className="mx-auto mb-4 text-red-600" size={48} />;
-    if (status === 'success') return <CheckCircle className="mx-auto mb-4 text-green-600" size={48} />;
-    return <Loader2 className="mx-auto mb-4 animate-spin text-blue-600" size={48} />;
-  };
+  // UI
+  const icon =
+    status === 'error' ? <AlertCircle className="mx-auto mb-4 text-red-600" size={48} /> :
+    status === 'success' ? <CheckCircle className="mx-auto mb-4 text-green-600" size={48} /> :
+    <Loader2 className="mx-auto mb-4 animate-spin text-blue-600" size={48} />;
 
-  const getStepTitle = () => {
-    if (status === 'error') return 'Ошибка';
-    if (status === 'success') return 'Успешно!';
-    
-    switch (step) {
-      case 'qr': return 'Обработка QR кода';
-      case 'auth': return 'Выполнение авторизации';
-      case 'profile': return 'Загрузка профиля';
-      default: return 'Обработка QR кода';
-    }
-  };
+  const title =
+    status === 'error' ? 'Ошибка' :
+    status === 'success' ? 'Успешно!' :
+    step === 'qr' ? 'Обработка QR кода' : 'Перенаправление на вход';
 
-  const getProgressBar = () => {
-    if (status !== 'loading') return null;
-    
-    const progress = step === 'qr' ? 33 : step === 'auth' ? 66 : 100;
-    
-    return (
-      <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
-        <div 
-          className="bg-blue-600 h-2 rounded-full transition-all duration-500 ease-out"
-          style={{ width: `${progress}%` }}
-        />
-      </div>
-    );
-  };
+  const progress = status === 'loading' ? (step === 'qr' ? 50 : 100) : 100;
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
-        {getStepIcon()}
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">
-          {getStepTitle()}
-        </h2>
+        {icon}
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">{title}</h2>
         <p className="text-gray-600 mb-4">{message}</p>
-        
-        {getProgressBar()}
-        
+
+        {status === 'loading' && (
+          <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+            <div
+              className="bg-blue-600 h-2 rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        )}
+
         {status === 'error' && (
           <button
             onClick={() => navigate('/')}
