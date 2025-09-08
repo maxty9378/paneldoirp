@@ -58,6 +58,25 @@ export default function AuthCallback() {
         if (accessToken && refreshToken && type === 'magiclink') {
           console.log('✅ Magic link tokens found, setting session...');
           
+          // Сначала проверим, не авторизован ли пользователь уже
+          try {
+            console.log('🔍 Quick check if user is already signed in...');
+            const { data: { session: currentSession } } = await supabase.auth.getSession();
+            if (currentSession?.user) {
+              console.log('✅ User already has active session:', currentSession.user.email);
+              setStatus('success');
+              setMessage('Авторизация успешна! Перенаправление...');
+              setTimeout(() => {
+                console.log('🚀 Quick redirect executing...');
+                window.location.replace('/');
+              }, 100);
+              return;
+            }
+            console.log('🔄 No current session, proceeding with setSession...');
+          } catch (preCheckErr) {
+            console.log('⚠️ Pre-check failed, proceeding with setSession:', preCheckErr);
+          }
+          
           try {
             console.log('🔄 Calling setSession...');
             
@@ -101,16 +120,37 @@ export default function AuthCallback() {
               console.log('⚠️ setSession timeout, checking if user is already signed in...');
               
               try {
-                const { data: { session } } = await supabase.auth.getSession();
+                // Проверяем текущую сессию с небольшим timeout
+                const sessionPromise = supabase.auth.getSession();
+                const sessionTimeout = new Promise((_, reject) => 
+                  setTimeout(() => reject(new Error('getSession timeout')), 2000)
+                );
+                
+                const { data: { session } } = await Promise.race([sessionPromise, sessionTimeout]) as any;
+                
                 if (session?.user) {
-                  console.log('✅ User is already signed in despite timeout:', session.user.email);
+                  console.log('✅ User is already signed in despite setSession timeout:', session.user.email);
                   setStatus('success');
                   setMessage('Авторизация успешна! Перенаправление...');
-                  window.location.replace('/');
+                  setTimeout(() => {
+                    console.log('🚀 Fallback redirect executing...');
+                    window.location.replace('/');
+                  }, 100);
                   return;
+                } else {
+                  console.log('⚠️ No session found, will try other methods...');
                 }
               } catch (sessionErr) {
                 console.error('❌ Error checking session after timeout:', sessionErr);
+                // Если даже getSession не работает, попробуем подождать и перенаправить
+                console.log('🔄 Attempting forced redirect in case user is signed in elsewhere...');
+                setStatus('success');
+                setMessage('Обработка авторизации... Перенаправление...');
+                setTimeout(() => {
+                  console.log('🚀 Emergency redirect executing...');
+                  window.location.replace('/');
+                }, 1000);
+                return;
               }
             }
             
