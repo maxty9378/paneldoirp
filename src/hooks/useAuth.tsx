@@ -553,8 +553,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setLoadingPhase('complete');
             setLoading(false);
             
-            // Still fetch profile in background for latest data
-            fetchUserProfile(session.user.id, { foreground: false }).catch(console.error);
+            // Background refresh handled by onAuthStateChange
           } else {
             // No valid cached profile, fetch from server
             try {
@@ -599,23 +598,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('🔄 Auth state changed:', event, session?.user?.id?.substring(0, 8));
       setSession(session);
       
-      // Специальная обработка INITIAL_SESSION
+      // INITIAL_SESSION обрабатывается в initializeAuth, пропускаем
       if (event === 'INITIAL_SESSION') {
-        if (!session?.user) {
-          // нет сессии — сразу выходим из загрузки
-          console.log('ℹ️ No initial session found');
-          setUser(null);
-          setUserProfile(null);
-          setAuthError(null);
-          setLoadingPhase('ready');
+        return;
+      }
+      
+      // Обработка других событий (SIGNED_IN, SIGNED_OUT, etc.)
+      if (session?.user) {
+        console.log('✅ New session after auth change');
+        
+        // Check if user is the same as current user
+        if (user?.id === session.user.id) {
+          console.log('✅ User ID matches existing user, keeping current profile');
+          setLoadingPhase('complete');
           setLoading(false);
           return;
         }
-        // есть юзер в initial session — грузим профиль
-        console.log('✅ Initial session found, loading profile');
-        setLoadingPhase('profile-fetch');
         
-        // Добавляем таймаут для fetchUserProfile
+        // Different user, fetch profile
+        setLoadingPhase('auth-change');
         try {
           await Promise.race([
             fetchUserProfile(session.user.id, { foreground: true }),
@@ -627,34 +628,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.warn('⚠️ Profile fetch timed out, using fallback');
           setLoadingPhase('complete');
           setLoading(false);
-        }
-        return;
-      }
-      
-      // Обработка других событий (SIGNED_IN, SIGNED_OUT, etc.)
-      if (session?.user) {
-        console.log('✅ New session after auth change');
-        setLoadingPhase('auth-change');
-        
-        // Check if user is the same as current user
-        if (user?.id === session.user.id) {
-          console.log('✅ User ID matches existing user, keeping current profile');
-          setLoadingPhase('complete');
-          setLoading(false);
-        } else {
-          // Добавляем таймаут для fetchUserProfile
-          try {
-            await Promise.race([
-              fetchUserProfile(session.user.id, { foreground: true }),
-              new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Profile fetch timeout')), 20000)
-              )
-            ]);
-          } catch (e: any) {
-            console.warn('⚠️ Profile fetch timed out, using fallback');
-            setLoadingPhase('complete');
-            setLoading(false);
-          }
         }
       } else {
         console.log('ℹ️ No session after auth change');
