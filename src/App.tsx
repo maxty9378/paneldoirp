@@ -49,10 +49,24 @@ function AppContent() {
     retryFetchProfile 
   } = useAuth();
   const [showCreateEventModal, setShowCreateEventModal] = useState(false);
+  const navigate = useNavigate();
+
+  // Проверяем magic link параметры на главной странице
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const type = urlParams.get('type');
+    
+    if (token && type === 'magiclink') {
+      console.log('🔄 Magic link detected on main page, redirecting to auth callback...');
+      // Перенаправляем на AuthCallback с параметрами
+      navigate(`/auth/callback?token=${token}&type=${type}&redirect_to=${encodeURIComponent(window.location.origin)}`);
+    }
+  }, [navigate]);
+  
   const [editingEvent, setEditingEvent] = useState<any>(null);
   // Удаляем testAttemptDetails и связанные функции
   const [loadingSeconds, setLoadingSeconds] = useState(0);
-  const navigate = useNavigate();
   const location = useLocation();
 
   // Для Layout: определяем текущий view по location.pathname

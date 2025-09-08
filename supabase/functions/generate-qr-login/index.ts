@@ -59,16 +59,9 @@ serve(async (req) => {
 
     console.log('Generating magic link for:', email)
 
-    // Determine redirect URL based on the request origin
-    const requestOrigin = req.headers.get('origin') || req.headers.get('referer') || '';
-    const isLocalhost = requestOrigin.includes('localhost') || redirectTo?.includes('localhost');
-    
-    const finalRedirectUrl = isLocalhost 
-      ? 'http://localhost:5174/auth/callback'
-      : 'https://paneldoirp.vercel.app/auth/callback';
+    // Используем только продакшн URL
+    const finalRedirectUrl = 'https://paneldoirp.vercel.app/auth/callback';
 
-    console.log('Request origin:', requestOrigin);
-    console.log('Is localhost:', isLocalhost);
     console.log('Using redirect URL:', finalRedirectUrl);
 
     // Generate magic link

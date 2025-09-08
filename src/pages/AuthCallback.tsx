@@ -8,27 +8,20 @@ export default function AuthCallback() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('Обработка авторизации...');
 
-  // Если пользователь уже авторизован, сразу перенаправляем
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        console.log('✅ User already authenticated on callback page, redirecting...');
-        navigate('/');
-      }
-    };
-    checkAuth();
-  }, [navigate]);
-
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
         console.log('🔄 Processing auth callback...');
+        console.log('Current URL:', window.location.href);
+        console.log('Search params:', window.location.search);
+        console.log('Hash params:', window.location.hash);
         
-        // Получаем URL параметры для проверки ошибок
+        // Проверяем параметры в URL для ошибок
         const urlParams = new URLSearchParams(window.location.search);
-        const error = urlParams.get('error');
-        const errorDescription = urlParams.get('error_description');
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        
+        const error = urlParams.get('error') || hashParams.get('error');
+        const errorDescription = urlParams.get('error_description') || hashParams.get('error_description');
 
         if (error) {
           console.error('❌ Auth error in URL:', error, errorDescription);
@@ -37,19 +30,69 @@ export default function AuthCallback() {
           return;
         }
 
-        // Проверяем, есть ли уже активная сессия
+        // Проверяем наличие verification токена
+        const token = urlParams.get('token') || hashParams.get('token');
+        const type = urlParams.get('type') || hashParams.get('type');
+        
+        console.log('Verification token present:', !!token);
+        console.log('Token type:', type);
+
+        if (token && type === 'magiclink') {
+          console.log('✅ Magic link token found, verifying...');
+          
+          // Используем verifyOtp для magic link
+          const { data, error } = await supabase.auth.verifyOtp({
+            token_hash: token,
+            type: 'magiclink'
+          });
+
+          if (error) {
+            console.error('❌ Error verifying magic link:', error);
+            throw error;
+          }
+
+          if (data.user) {
+            console.log('✅ Magic link verified successfully:', data.user.email);
+            setStatus('success');
+            setMessage('Авторизация успешна! Перенаправление...');
+            setTimeout(() => navigate('/'), 2000);
+            return;
+          }
+        }
+
+        // Также проверяем обычные токены (на случай, если они есть)
+        const accessToken = urlParams.get('access_token') || hashParams.get('access_token');
+        const refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
+        
+        console.log('Access token present:', !!accessToken);
+        console.log('Refresh token present:', !!refreshToken);
+
+        if (accessToken && refreshToken) {
+          console.log('✅ Direct tokens found, setting session...');
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+
+          if (error) {
+            console.error('❌ Error setting session:', error);
+            throw error;
+          }
+
+          if (data.user) {
+            console.log('✅ Session set successfully:', data.user.email);
+            setStatus('success');
+            setMessage('Авторизация успешна! Перенаправление...');
+            setTimeout(() => navigate('/'), 2000);
+            return;
+          }
+        }
+
+        // Проверяем текущую сессию
+        console.log('🔍 Checking current session...');
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         console.log('Current session:', session?.user?.email || 'No session');
-        
-        // Если пользователь уже авторизован, сразу перенаправляем
-        if (session?.user) {
-          console.log('✅ User already authenticated, redirecting...');
-          setStatus('success');
-          setMessage('Авторизация успешна! Перенаправление...');
-          setTimeout(() => navigate('/'), 1000);
-          return;
-        }
         
         if (sessionError) {
           console.error('❌ Session error:', sessionError);
@@ -57,60 +100,40 @@ export default function AuthCallback() {
         }
 
         if (session?.user) {
-          console.log('✅ User authenticated:', session.user.email);
-          console.log('User confirmed:', session.user.email_confirmed_at);
+          console.log('✅ User already authenticated:', session.user.email);
           setStatus('success');
           setMessage('Авторизация успешна! Перенаправление...');
+          setTimeout(() => navigate('/'), 2000);
+          return;
+        }
+
+        // Ждем события авторизации
+        console.log('⏳ Waiting for auth state change...');
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+          console.log('🔄 Auth state change:', event, session?.user?.email);
           
-          // Перенаправляем на главную страницу через 2 секунды
-          setTimeout(() => {
-            navigate('/');
-          }, 2000);
-        } else {
-          console.log('ℹ️ No active session found, waiting for auth state change...');
-          
-          // Даем время Supabase обработать magic link
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          // Проверяем сессию еще раз после задержки
-          const { data: { session: delayedSession } } = await supabase.auth.getSession();
-          if (delayedSession?.user) {
-            console.log('✅ User authenticated after delay:', delayedSession.user.email);
+          if ((event === 'SIGNED_IN' || event === 'SIGNED_UP') && session?.user) {
+            console.log('✅ User signed in via magic link:', event);
             setStatus('success');
             setMessage('Авторизация успешна! Перенаправление...');
             setTimeout(() => navigate('/'), 2000);
-            return;
+          } else if (event === 'SIGNED_OUT') {
+            console.log('❌ User signed out');
+            setStatus('error');
+            setMessage('Сессия завершена');
           }
-          
-          // Если все еще нет сессии, ждем изменения состояния авторизации
-          const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            console.log('🔄 Auth state change in callback:', event, session?.user?.email);
-            
-            if ((event === 'SIGNED_IN' || event === 'SIGNED_UP') && session?.user) {
-              console.log('✅ User signed in/up via magic link:', event);
-              setStatus('success');
-              setMessage('Авторизация успешна! Перенаправление...');
-              
-              // Перенаправляем на главную страницу через 2 секунды
-              setTimeout(() => {
-                navigate('/');
-              }, 2000);
-            } else if (event === 'SIGNED_OUT') {
-              console.log('❌ User signed out');
-              setStatus('error');
-              setMessage('Сессия завершена');
-            }
-          });
+        });
 
-          // Очищаем подписку через 10 секунд, если ничего не произошло
-          setTimeout(() => {
-            subscription.unsubscribe();
-            if (status === 'loading') {
-              setStatus('error');
-              setMessage('Время ожидания авторизации истекло');
-            }
-          }, 10000);
-        }
+        // Таймаут через 15 секунд
+        setTimeout(() => {
+          subscription.unsubscribe();
+          if (status === 'loading') {
+            console.log('⏰ Timeout reached');
+            setStatus('error');
+            setMessage('Время ожидания авторизации истекло. Попробуйте еще раз.');
+          }
+        }, 15000);
+
       } catch (error: any) {
         console.error('❌ Auth callback error:', error);
         setStatus('error');
@@ -119,7 +142,7 @@ export default function AuthCallback() {
     };
 
     handleAuthCallback();
-  }, [navigate, status]);
+  }, [navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#e5f3ff] via-[#eafaf1] to-[#b6e0fe] px-4">
