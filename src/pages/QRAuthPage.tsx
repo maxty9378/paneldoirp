@@ -4,7 +4,7 @@ import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 type Status = 'loading' | 'success' | 'error';
-type Step = 'qr' | 'redirecting';
+type Step = 'qr' | 'auth' | 'profile';
 
 export default function QRAuthPage() {
   const { token } = useParams<{ token: string }>();
@@ -51,13 +51,95 @@ export default function QRAuthPage() {
           throw new Error(data?.error || 'Неожиданный ответ от сервера');
         }
 
-        // 2) ДЕЛАЕМ ПРЯМОЙ РЕДИРЕКТ на verify-ссылку.
-        // Supabase после verify вернет на redirect_to с hash: access_token&refresh_token
-        setStep('redirecting');
-        setMessage('Перенаправляю для входа…');
+        // 2) Активируем magic link и обрабатываем токены
+        setStep('auth');
+        setMessage('Выполняю авторизацию…');
 
-        // важно: полный редирект окна, не iframe/попап
-        window.location.replace(data.redirectUrl);
+        // Создаем скрытый iframe для активации magic link
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = data.redirectUrl;
+        document.body.appendChild(iframe);
+
+        // Ждем загрузки iframe и извлекаем токены из URL
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error('Magic link activation timeout'));
+          }, 10000);
+
+          iframe.onload = () => {
+            try {
+              // Получаем URL из iframe
+              const iframeUrl = iframe.contentWindow?.location.href;
+              if (!iframeUrl) {
+                clearTimeout(timeout);
+                reject(new Error('Cannot access iframe URL'));
+                return;
+              }
+
+              // Извлекаем токены из URL
+              const url = new URL(iframeUrl);
+              const accessToken = url.searchParams.get('access_token') || url.hash.match(/access_token=([^&]+)/)?.[1];
+              const refreshToken = url.searchParams.get('refresh_token') || url.hash.match(/refresh_token=([^&]+)/)?.[1];
+
+              if (!accessToken || !refreshToken) {
+                clearTimeout(timeout);
+                reject(new Error('No tokens found in magic link response'));
+                return;
+              }
+
+              // Устанавливаем сессию
+              supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken
+              }).then(({ data: sessionData, error: sessionError }) => {
+                clearTimeout(timeout);
+                if (sessionError) {
+                  reject(sessionError);
+                } else if (sessionData.session) {
+                  resolve();
+                } else {
+                  reject(new Error('Session not created'));
+                }
+              });
+            } catch (e) {
+              clearTimeout(timeout);
+              reject(e);
+            }
+          };
+
+          iframe.onerror = () => {
+            clearTimeout(timeout);
+            reject(new Error('Magic link activation failed'));
+          };
+        });
+
+        // Удаляем iframe
+        document.body.removeChild(iframe);
+
+        // Шаг 3: Загрузка профиля
+        setStep('profile');
+        setMessage('Загрузка профиля пользователя…');
+        
+        // Проверяем, что сессия установлена
+        const { data: sessionData, error: sessionCheckError } = await supabase.auth.getSession();
+        if (sessionCheckError || !sessionData.session?.user) {
+          throw new Error('Не удалось подтвердить авторизацию');
+        }
+
+        // Успешная авторизация
+        setStatus('success');
+        setMessage('Авторизация успешна! Перенаправление...');
+        
+        // Очищаем URL и перенаправляем
+        try {
+          window.history.replaceState({}, '', '/');
+        } catch {}
+        
+        console.log('🚀 Redirecting to home...');
+        setTimeout(() => {
+          navigate('/');
+        }, 1000);
       } catch (e: any) {
         console.error('QR auth error:', e);
         if (!alive.current) return;
@@ -81,9 +163,12 @@ export default function QRAuthPage() {
   const title =
     status === 'error' ? 'Ошибка' :
     status === 'success' ? 'Успешно!' :
-    step === 'qr' ? 'Обработка QR кода' : 'Перенаправление на вход';
+    step === 'qr' ? 'Обработка QR кода' :
+    step === 'auth' ? 'Выполнение авторизации' :
+    'Загрузка профиля';
 
-  const progress = status === 'loading' ? (step === 'qr' ? 50 : 100) : 100;
+  const progress = status === 'loading' ? 
+    (step === 'qr' ? 33 : step === 'auth' ? 66 : 100) : 100;
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
