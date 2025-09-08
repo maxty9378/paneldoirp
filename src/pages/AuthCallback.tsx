@@ -66,6 +66,8 @@ export default function AuthCallback() {
             throw error;
           }
 
+          console.log('🔍 setSession result:', { user: !!data.user, session: !!data.session });
+          
           if (data.user) {
             console.log('✅ Magic link session set successfully:', data.user.email);
             
@@ -80,8 +82,23 @@ export default function AuthCallback() {
             
             // Очищаем URL и делаем жёсткий переход
             window.history.replaceState({}, '', '/'); // убираем #params
+            console.log('🚀 Redirecting to home...');
             window.location.replace('/');             // полный ребилд, чтоб корень поднял сессию
             return;
+          } else {
+            console.log('⚠️ setSession successful but no user in response, checking session...');
+            
+            // Даже если data.user пустой, проверим сессию
+            const { data: { session: currentSession } } = await supabase.auth.getSession();
+            if (currentSession?.user) {
+              console.log('✅ User found in current session:', currentSession.user.email);
+              setStatus('success');
+              setMessage('Авторизация успешна! Перенаправление...');
+              window.history.replaceState({}, '', '/');
+              console.log('🚀 Redirecting to home...');
+              window.location.replace('/');
+              return;
+            }
           }
         }
 

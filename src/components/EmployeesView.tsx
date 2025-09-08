@@ -32,6 +32,7 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { UserQRLogin } from './admin/UserQRLogin';
+import PersistentQRCode from './admin/PersistentQRCode';
 
 interface Employee {
   id: string;
@@ -108,6 +109,8 @@ export function EmployeesView() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showQRLogin, setShowQRLogin] = useState(false);
   const [selectedEmployeeForQR, setSelectedEmployeeForQR] = useState<Employee | null>(null);
+  const [showPersistentQR, setShowPersistentQR] = useState(false);
+  const [selectedEmployeeForPersistentQR, setSelectedEmployeeForPersistentQR] = useState<Employee | null>(null);
 
   // Определяем права пользователя
   const isManager = userProfile?.role === 'manager';
@@ -341,6 +344,11 @@ export function EmployeesView() {
   const handleGenerateQR = (employee: Employee) => {
     setSelectedEmployeeForQR(employee);
     setShowQRLogin(true);
+  };
+
+  const handleGeneratePersistentQR = (employee: Employee) => {
+    setSelectedEmployeeForPersistentQR(employee);
+    setShowPersistentQR(true);
   };
 
   // Статистика по сотрудникам
@@ -794,13 +802,22 @@ export function EmployeesView() {
                         )}
                         
                         {employee.email && (
-                          <button
-                            onClick={() => handleGenerateQR(employee)}
-                            className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-xs font-medium bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
-                          >
-                            <QrCode size={14} />
-                            <span>QR-код для входа</span>
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleGenerateQR(employee)}
+                              className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-xs font-medium bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                            >
+                              <QrCode size={14} />
+                              <span>Одноразовый QR</span>
+                            </button>
+                            <button
+                              onClick={() => handleGeneratePersistentQR(employee)}
+                              className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-xs font-medium bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
+                            >
+                              <QrCode size={14} />
+                              <span>Постоянный QR</span>
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>
@@ -820,6 +837,17 @@ export function EmployeesView() {
           onClose={() => {
             setShowQRLogin(false);
             setSelectedEmployeeForQR(null);
+          }}
+        />
+      )}
+
+      {/* Persistent QR Modal */}
+      {showPersistentQR && selectedEmployeeForPersistentQR && (
+        <PersistentQRCode
+          email={selectedEmployeeForPersistentQR.email}
+          onClose={() => {
+            setShowPersistentQR(false);
+            setSelectedEmployeeForPersistentQR(null);
           }}
         />
       )}
