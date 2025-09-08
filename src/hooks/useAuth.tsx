@@ -515,12 +515,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const checkAuthCallback = () => {
           if (!window.authCallbackProcessing) {
             console.log('✅ AuthCallback finished, retrying initialization');
-            initializeAuth();
+            // Не вызываем initializeAuth рекурсивно, просто продолжаем
+            return;
           } else if (guard++ < 60) {
             setTimeout(checkAuthCallback, 100);
           } else {
             console.warn('⏳ AuthCallback still processing, continuing anyway');
-            initializeAuth();
+            // Не вызываем initializeAuth рекурсивно
+            return;
           }
         };
         setTimeout(checkAuthCallback, 100);

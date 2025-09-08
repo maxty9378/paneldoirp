@@ -24,6 +24,7 @@ import TestResultsPage from './pages/TestResultsPage';
 import EventTestResultsPage from './pages/EventTestResultsPage';
 import AuthCallback from './pages/AuthCallback';
 import QRAuthPage from './pages/QRAuthPage';
+import QRAuthSuccessPage from './pages/QRAuthSuccessPage';
 
 function EventDetailPage({ onStartTest }: { onStartTest: (testType: 'entry' | 'final' | 'annual', testId: string, eventId: string, attemptId: string) => void }) {
   const { eventId } = useParams();
@@ -96,6 +97,7 @@ function AppContent() {
     return (
       <Routes>
         <Route path="/auth/qr/:token" element={<QRAuthPage />} />
+        <Route path="/auth/qr/success" element={<QRAuthSuccessPage />} />
       </Routes>
     );
   }

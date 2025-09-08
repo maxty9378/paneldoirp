@@ -47,75 +47,32 @@ export default function QRAuthPage() {
         }
 
         const data = await res.json();
-        if (!data?.success || !data?.redirectUrl) {
+        if (!data?.success) {
           throw new Error(data?.error || 'Неожиданный ответ от сервера');
         }
 
-        // 2) Активируем magic link и обрабатываем токены
+        // 2) Обрабатываем токены или magic link
         setStep('auth');
         setMessage('Выполняю авторизацию…');
 
-        // Создаем скрытый iframe для активации magic link
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = data.redirectUrl;
-        document.body.appendChild(iframe);
+        if (data.accessToken && data.refreshToken) {
+          // Прямые токены - устанавливаем сессию
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: data.accessToken,
+            refresh_token: data.refreshToken
+          });
 
-        // Ждем загрузки iframe и извлекаем токены из URL
-        await new Promise<void>((resolve, reject) => {
-          const timeout = setTimeout(() => {
-            reject(new Error('Magic link activation timeout'));
-          }, 10000);
-
-          iframe.onload = () => {
-            try {
-              // Получаем URL из iframe
-              const iframeUrl = iframe.contentWindow?.location.href;
-              if (!iframeUrl) {
-                clearTimeout(timeout);
-                reject(new Error('Cannot access iframe URL'));
-                return;
-              }
-
-              // Извлекаем токены из URL
-              const url = new URL(iframeUrl);
-              const accessToken = url.searchParams.get('access_token') || url.hash.match(/access_token=([^&]+)/)?.[1];
-              const refreshToken = url.searchParams.get('refresh_token') || url.hash.match(/refresh_token=([^&]+)/)?.[1];
-
-              if (!accessToken || !refreshToken) {
-                clearTimeout(timeout);
-                reject(new Error('No tokens found in magic link response'));
-                return;
-              }
-
-              // Устанавливаем сессию
-              supabase.auth.setSession({
-                access_token: accessToken,
-                refresh_token: refreshToken
-              }).then(({ data: sessionData, error: sessionError }) => {
-                clearTimeout(timeout);
-                if (sessionError) {
-                  reject(sessionError);
-                } else if (sessionData.session) {
-                  resolve();
-                } else {
-                  reject(new Error('Session not created'));
-                }
-              });
-            } catch (e) {
-              clearTimeout(timeout);
-              reject(e);
-            }
-          };
-
-          iframe.onerror = () => {
-            clearTimeout(timeout);
-            reject(new Error('Magic link activation failed'));
-          };
-        });
-
-        // Удаляем iframe
-        document.body.removeChild(iframe);
+          if (sessionError) {
+            throw new Error(`Ошибка установки сессии: ${sessionError.message}`);
+          }
+        } else if (data.redirectUrl && data.needsActivation) {
+          // Magic link - активируем через редирект
+          console.log('🔗 Redirecting to magic link:', data.redirectUrl);
+          window.location.replace(data.redirectUrl);
+          return;
+        } else {
+          throw new Error('Неожиданный формат ответа от сервера');
+        }
 
         // Шаг 3: Загрузка профиля
         setStep('profile');
