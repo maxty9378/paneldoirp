@@ -63,7 +63,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(null); 
   const [userProfile, setUserProfile] = useState<User | null>(null); 
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true); 
@@ -112,7 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log(`🔄 Getting session with ${timeoutMs}ms timeout`);
     try {
       const res = await Promise.race([
-        supabase.auth.getSession(),
+      supabase.auth.getSession(),
         new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Session fetch timeout exceeded')), timeoutMs))
       ]);
       return res;
@@ -148,27 +148,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: auth } = await supabase.auth.getUser();
     const meta = auth?.user?.user_metadata || {};
     const base: User = {
-      id: userId,
+          id: userId,
       email: auth?.user?.email || `user-${userId}@sns.local`,
       full_name: meta.full_name || `Пользователь ${userId.slice(0, 8)}`,
       role: (auth?.user?.email === 'doirp@sns.ru') ? 'administrator' : 'employee',
-      subdivision: 'management_company',
-      status: 'active',
-      work_experience_days: 0,
-      is_active: true,
+          subdivision: 'management_company',
+          status: 'active',
+          work_experience_days: 0,
+          is_active: true,
       department: meta.department || 'management_company',
       phone: meta.phone || '',
       sap_number: meta.sap_number || null,
       position_id: meta.position_id || null,
       branch_id: meta.branch_id || null,
       territory_id: meta.territory_id || null,
-      created_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     } as User;
 
     // пробуем сохранить; при RLS просто вернём base
     const { data: saved, error } = await supabase
-      .from('users')
+          .from('users')
       .upsert(base, { onConflict: 'id' })
       .select('*')
       .maybeSingle();
@@ -201,12 +201,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         cacheUserProfile(u);
         if (foreground) {           // ← добавил условие
           setLoading(false);
-          setLoadingPhase('complete');
+      setLoadingPhase('complete');
         }
       }
       return;
     }
-
+    
     const runner = (async (): Promise<User | null> => {
       try {
         if (foreground) {
@@ -217,33 +217,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // 1) кэш - показываем сразу и не ждем
         const cached = getUserFromCache();
-        let usedCache = false;
-        let cachedUser: User | null = null;
         if (cached && cached.id === userId) {
           console.log('✅ Using cached user profile:', cached.id);
-          usedCache = true;
-          cachedUser = { ...cached, position: cached.position || 'Должность не указана' };
-          // показываем кеш сразу и завершаем функцию
+          const cachedUser = { ...cached, position: cached.position || 'Должность не указана' };
           setUser(cachedUser);
           setUserProfile(cachedUser);
+
           if (foreground) {
+            // Показали кэш и ОДИН раз обновим из сети без рекурсии
             setLoading(false);
             setLoadingPhase('complete');
+
+            (async () => {
+              try {
+                console.log('🔄 Background profile refresh (single shot)');
+                const row = await withTimeout(() => tryFetchProfileRow(userId), 6000);
+                if (row) {
+                  const fresh = { ...row, position: row.position || 'Должность не указана' } as User;
+                  setUser(fresh);
+                  setUserProfile(fresh);
+                  cacheUserProfile(fresh);
+                }
+              } catch (e: any) {
+                console.warn('Background refresh failed:', e.message || e);
+              }
+            })();
+
+            return cachedUser;
           }
-          // запускаем фоновое обновление асинхронно
-          setTimeout(() => {
-            console.log('🔄 Background profile refresh started');
-            fetchUserProfile(userId, { foreground: false }).catch(e => 
-              console.warn('Background refresh failed:', e.message)
-            );
-          }, 100);
-          return cachedUser;
+
+          // Если это background-вызов — НЕ выходим здесь.
+          // Продолжим ниже и попробуем сетевой запрос (без нового таймера).
         }
 
         // 2) сет с ретраями (быстрые таймауты)
-        for (let attempt = 1; attempt <= 2; attempt++) {
+        for (let attempt = 1; attempt <= 1; attempt++) {
           try {
-            const row = await withTimeout(() => tryFetchProfileRow(userId), 5000);
+            const row = await withTimeout(() => tryFetchProfileRow(userId), 6000);
             if (row) {
               const u = { ...row, position: row.position || 'Должность не указана' } as User;
               setUser(u);
@@ -256,7 +266,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               return u;
             }
             // строки нет — создаём
-            const created = await withTimeout(() => ensureProfile(userId), 5000);
+            const created = await withTimeout(() => ensureProfile(userId), 6000);
             const u = { ...created, position: created.position || 'Должность не указана' } as User;
             setUser(u);
             setUserProfile(u);
@@ -268,7 +278,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return u;
           } catch (e: any) {
             console.warn(`🔁 Profile attempt ${attempt} failed:`, e.message || e);
-            await delay(200 * attempt); // быстрый backoff
+            await delay(250); // быстрый backoff
           }
         }
 
@@ -314,7 +324,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Ручной refresh — без «ломания» фаз и без очистки кэша до успешного ответа
   const refreshProfile = async () => {
     if (!session?.user) return;
-    console.log('🔄 Refreshing user profile...');
+      console.log('🔄 Refreshing user profile...');
     try {
       await fetchUserProfile(session.user.id, { foreground: true });
       console.log('✅ Profile refresh completed');
@@ -474,7 +484,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setRetryCount(0);
     setLoadingPhase('logged-out');
     clearUserCache();
-
+    
     try {
       localStorage.clear();
       sessionStorage.clear();
@@ -499,12 +509,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(true);
         
         // Ждем завершения обработки AuthCallback
+        let guard = 0;
         const checkAuthCallback = () => {
           if (!window.authCallbackProcessing) {
             console.log('✅ AuthCallback finished, retrying initialization');
             initializeAuth();
-          } else {
+          } else if (guard++ < 60) {
             setTimeout(checkAuthCallback, 100);
+          } else {
+            console.warn('⏳ AuthCallback still processing, continuing anyway');
+            initializeAuth();
           }
         };
         setTimeout(checkAuthCallback, 100);
@@ -563,7 +577,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       }
     };
-    
+
     // Start initialization
     initializeAuth();
 

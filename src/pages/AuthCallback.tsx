@@ -21,12 +21,12 @@ export default function AuthCallback() {
     
     if (executedRef.current) {
       console.log('⚠️ Already executed, skipping...');
-      return;
-    }
-    
+            return;
+          }
+
     const handleAuthCallback = async () => {
       try {
-        executedRef.current = true;
+    executedRef.current = true;
         console.log('🔄 Processing auth callback...');
         console.log('Current URL:', window.location.href);
         console.log('Search params:', window.location.search);
@@ -74,7 +74,7 @@ export default function AuthCallback() {
             
             try {
               const { data, error } = await supabase.auth.setSession({
-                access_token: accessToken,
+            access_token: accessToken,
                 refresh_token: refreshToken
               });
 
@@ -99,8 +99,12 @@ export default function AuthCallback() {
                   setStatus('success');
                   setMessage('Авторизация успешна! Перенаправление...');
                   
-                  // Очищаем URL и делаем жёсткий переход
-                  window.history.replaceState({}, '', '/');
+                  try {
+                    window.history.replaceState({}, '', '/');
+                  } catch {}
+                  
+                  window.authCallbackProcessing = false; // сбросить флаг до ухода
+                  
                   console.log('🚀 Redirecting to home...');
                   window.location.replace('/');
                   return;
@@ -114,15 +118,19 @@ export default function AuthCallback() {
                 const { data: { session: currentSession } } = await supabase.auth.getSession();
                 if (currentSession?.user) {
                   console.log('✅ User found in current session:', currentSession.user.email);
+
+          setStatus('success');
+          setMessage('Авторизация успешна! Перенаправление...');
                   
-                  setStatus('success');
-                  setMessage('Авторизация успешна! Перенаправление...');
+                  try {
+                    window.history.replaceState({}, '', '/');
+                  } catch {}
                   
-                  // Очищаем URL и делаем жёсткий переход
-                  window.history.replaceState({}, '', '/');
+                  window.authCallbackProcessing = false; // сбросить флаг до ухода
+                  
                   console.log('🚀 Redirecting to home...');
                   window.location.replace('/');
-                  return;
+          return;
                 } else {
                   throw new Error('Не удалось установить сессию пользователя');
                 }
@@ -141,7 +149,7 @@ export default function AuthCallback() {
             
             // Используем verifyOtp для magic link из URL параметров
             const { data, error } = await supabase.auth.verifyOtp({
-              token_hash: token,
+            token_hash: token,
               type: 'magiclink'
             });
 
@@ -152,16 +160,20 @@ export default function AuthCallback() {
 
             if (data.user) {
               console.log('✅ Magic link token verified successfully:', data.user.email);
+
+          setStatus('success');
+          setMessage('Авторизация успешна! Перенаправление...');
               
-              setStatus('success');
-              setMessage('Авторизация успешна! Перенаправление...');
+              try {
+                window.history.replaceState({}, '', '/');
+              } catch {}
               
-              // Очищаем URL и делаем жёсткий переход
-              window.history.replaceState({}, '', '/');
+              window.authCallbackProcessing = false; // сбросить флаг до ухода
+              
               console.log('🚀 Redirecting to home...');
               window.location.replace('/');
-              return;
-            }
+          return;
+        }
           }
 
           // Проверяем hash токены (для OAuth и других методов)
@@ -188,8 +200,12 @@ export default function AuthCallback() {
               setStatus('success');
               setMessage('Авторизация успешна! Перенаправление...');
               
-              // Очищаем URL и делаем жёсткий переход
-              window.history.replaceState({}, '', '/');
+              try {
+                window.history.replaceState({}, '', '/');
+              } catch {}
+              
+              window.authCallbackProcessing = false; // сбросить флаг до ухода
+              
               console.log('🚀 Redirecting to home...');
               window.location.replace('/');
               return;
@@ -260,12 +276,12 @@ export default function AuthCallback() {
             </div>
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Ошибка авторизации</h2>
             <p className="text-gray-600 mb-4">{message}</p>
-            <button
+              <button
               onClick={() => window.location.replace('/')}
               className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
             >
               Вернуться на главную
-            </button>
+              </button>
           </>
         )}
       </div>
