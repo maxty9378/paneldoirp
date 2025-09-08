@@ -26,7 +26,7 @@ CREATE POLICY "Admins can manage all QR tokens" ON public.user_qr_tokens
     EXISTS (
       SELECT 1 FROM public.users 
       WHERE id = auth.uid() 
-      AND role IN ('admin', 'superadmin')
+      AND role IN ('administrator', 'moderator')
     )
   );
 

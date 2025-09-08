@@ -91,6 +91,16 @@ function AppContent() {
     return <AuthCallback />;
   }
 
+  // ⚠️ Разрешаем QR авторизацию без проверки loading/user
+  const isQRAuth = location.pathname.startsWith('/auth/qr/');
+  if (isQRAuth) {
+    return (
+      <Routes>
+        <Route path="/auth/qr/:token" element={<QRAuthPage />} />
+      </Routes>
+    );
+  }
+
   // Для Layout: определяем текущий view по location.pathname
   const getCurrentView = () => {
     if (location.pathname.startsWith('/take-test')) return 'take-test';

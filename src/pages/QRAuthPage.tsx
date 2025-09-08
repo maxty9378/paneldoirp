@@ -9,7 +9,10 @@ export default function QRAuthPage() {
   const [message, setMessage] = useState('Обработка QR токена...');
 
   useEffect(() => {
+    console.log('🚀 QRAuthPage mounted with token:', token ? token.substring(0, 8) + '...' : 'NO TOKEN');
+    
     if (!token) {
+      console.error('❌ No token provided');
       setStatus('error');
       setMessage('Токен не найден');
       return;
@@ -18,6 +21,7 @@ export default function QRAuthPage() {
     const processQRToken = async () => {
       try {
         console.log('🔍 Processing QR token:', token.substring(0, 8) + '...');
+        console.log('🌐 Calling Edge Function URL:', `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-by-qr-token/${token}`);
         
         // Вызываем Edge Function для обработки токена
         const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-by-qr-token/${token}`, {
