@@ -38,204 +38,171 @@ export default function AuthCallback() {
         );
         
         const authPromise = (async () => {
-        
-        // Проверяем параметры в URL для ошибок
-        const urlParams = new URLSearchParams(window.location.search);
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        
-        // Проверяем наличие ошибок в URL
-        const error = urlParams.get('error') || hashParams.get('error');
-        const errorCode = urlParams.get('error_code') || hashParams.get('error_code');
-        const errorDescription = urlParams.get('error_description') || hashParams.get('error_description');
-        
-        if (error) {
-          console.error('❌ Auth error from URL:', { error, errorCode, errorDescription });
+          // Проверяем параметры в URL для ошибок
+          const urlParams = new URLSearchParams(window.location.search);
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
           
-          if (error === 'server_error' && errorCode === 'unexpected_failure') {
-            throw new Error(`Ошибка подтверждения пользователя: ${decodeURIComponent(errorDescription || 'Unknown error')}`);
+          // Проверяем наличие ошибок в URL
+          const error = urlParams.get('error') || hashParams.get('error');
+          const errorCode = urlParams.get('error_code') || hashParams.get('error_code');
+          const errorDescription = urlParams.get('error_description') || hashParams.get('error_description');
+          
+          if (error) {
+            console.error('❌ Auth error from URL:', { error, errorCode, errorDescription });
+            
+            if (error === 'server_error' && errorCode === 'unexpected_failure') {
+              throw new Error(`Ошибка подтверждения пользователя: ${decodeURIComponent(errorDescription || 'Unknown error')}`);
+            }
+            
+            throw new Error(`Ошибка авторизации: ${error} - ${errorDescription || 'Unknown error'}`);
           }
-          
-          throw new Error(`Ошибка авторизации: ${error} - ${errorDescription || 'Unknown error'}`);
-        }
 
-        // Сначала проверяем access_token и refresh_token (основной способ для magic link)
-        const accessToken = urlParams.get('access_token') || hashParams.get('access_token');
-        const refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
-        const type = urlParams.get('type') || hashParams.get('type');
-        
-        // Устанавливаем флаг что авторизация обрабатывается
-        window.authCallbackProcessing = true;
-        
-        console.log('Access token present:', !!accessToken);
-        console.log('Refresh token present:', !!refreshToken);
-        console.log('Token type:', type);
-
-        if (accessToken && refreshToken && type === 'magiclink') {
-          console.log('✅ Magic link tokens found, setting session...');
+          // Сначала проверяем access_token и refresh_token (основной способ для magic link)
+          const accessToken = urlParams.get('access_token') || hashParams.get('access_token');
+          const refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
+          const type = urlParams.get('type') || hashParams.get('type');
           
-          try {
-            const { data, error } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken
+          // Устанавливаем флаг что авторизация обрабатывается
+          window.authCallbackProcessing = true;
+          
+          console.log('Access token present:', !!accessToken);
+          console.log('Refresh token present:', !!refreshToken);
+          console.log('Token type:', type);
+
+          if (accessToken && refreshToken && type === 'magiclink') {
+            console.log('✅ Magic link tokens found, setting session...');
+            
+            try {
+              const { data, error } = await supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken
+              });
+
+              if (error) {
+                console.error('❌ Error setting session:', error);
+                throw error;
+              }
+
+              console.log('🔍 setSession result:', { user: !!data.user, session: !!data.session });
+              
+              if (data.user) {
+                console.log('✅ Magic link session set successfully:', data.user.email);
+                
+                // Ждем немного чтобы сессия сохранилась
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Проверяем сохранение сессии
+                const { data: { session: s } } = await supabase.auth.getSession();
+                console.log('🧩 getSession says:', !!s?.user);
+                
+                if (s?.user) {
+                  setStatus('success');
+                  setMessage('Авторизация успешна! Перенаправление...');
+                  
+                  // Очищаем URL и делаем жёсткий переход
+                  window.history.replaceState({}, '', '/');
+                  console.log('🚀 Redirecting to home...');
+                  window.location.replace('/');
+                  return;
+                } else {
+                  throw new Error('Сессия не была установлена корректно');
+                }
+              } else {
+                console.log('⚠️ setSession successful but no user in response, checking session...');
+              
+                // Даже если data.user пустой, проверим сессию
+                const { data: { session: currentSession } } = await supabase.auth.getSession();
+                if (currentSession?.user) {
+                  console.log('✅ User found in current session:', currentSession.user.email);
+                  
+                  setStatus('success');
+                  setMessage('Авторизация успешна! Перенаправление...');
+                  
+                  // Очищаем URL и делаем жёсткий переход
+                  window.history.replaceState({}, '', '/');
+                  console.log('🚀 Redirecting to home...');
+                  window.location.replace('/');
+                  return;
+                } else {
+                  throw new Error('Не удалось установить сессию пользователя');
+                }
+              }
+            } catch (sessionError) {
+              console.error('❌ Session setup failed:', sessionError);
+              throw sessionError;
+            }
+          }
+
+          // Проверяем verification токен (основной способ для magic link с URL параметрами)
+          const token = urlParams.get('token') || hashParams.get('token');
+
+          if (token && (type === 'magiclink' || urlParams.get('type') === 'magiclink')) {
+            console.log('✅ Magic link token found in URL params, verifying...');
+            
+            // Используем verifyOtp для magic link из URL параметров
+            const { data, error } = await supabase.auth.verifyOtp({
+              token_hash: token,
+              type: 'magiclink'
             });
 
             if (error) {
-              console.error('❌ Error setting session:', error);
+              console.error('❌ Error verifying magic link token:', error);
               throw error;
             }
 
-            console.log('🔍 setSession result:', { user: !!data.user, session: !!data.session });
-            
             if (data.user) {
-              console.log('✅ Magic link session set successfully:', data.user.email);
+              console.log('✅ Magic link token verified successfully:', data.user.email);
               
-              // Ждем немного чтобы сессия сохранилась
-              await new Promise(resolve => setTimeout(resolve, 500));
-              
-              // Проверяем сохранение сессии
-              const { data: { session: s } } = await supabase.auth.getSession();
-              console.log('🧩 getSession says:', !!s?.user);
-              
-              if (s?.user) {
-                setStatus('success');
-                setMessage('Авторизация успешна! Перенаправление...');
-                
-                // Очищаем URL и делаем жёсткий переход
-                window.history.replaceState({}, '', '/');
-                console.log('🚀 Redirecting to home...');
-                window.location.replace('/');
-                return;
-              } else {
-                throw new Error('Сессия не была установлена корректно');
-              }
-            } else {
-              console.log('⚠️ setSession successful but no user in response, checking session...');
-            
-            // Даже если data.user пустой, проверим сессию
-            const { data: { session: currentSession } } = await supabase.auth.getSession();
-            if (currentSession?.user) {
-              console.log('✅ User found in current session:', currentSession.user.email);
               setStatus('success');
               setMessage('Авторизация успешна! Перенаправление...');
+              
+              // Очищаем URL и делаем жёсткий переход
               window.history.replaceState({}, '', '/');
               console.log('🚀 Redirecting to home...');
               window.location.replace('/');
               return;
             }
           }
-        }
 
-        // Проверяем verification токен (основной способ для magic link с URL параметрами)
-        const token = urlParams.get('token') || hashParams.get('token');
-
-        if (token && (type === 'magiclink' || urlParams.get('type') === 'magiclink')) {
-          console.log('✅ Magic link token found in URL params, verifying...');
+          // Проверяем hash токены (для OAuth и других методов)
+          const hashToken = hashParams.get('access_token');
+          const hashType = hashParams.get('type');
           
-          // Используем verifyOtp для magic link из URL параметров
-          const { data, error } = await supabase.auth.verifyOtp({
-            token_hash: token,
-            type: 'magiclink'
-          });
+          if (hashToken && hashType) {
+            console.log('✅ Hash tokens found, processing...');
+            
+            // Устанавливаем сессию из hash токенов
+            const { data, error } = await supabase.auth.setSession({
+              access_token: hashToken,
+              refresh_token: hashParams.get('refresh_token') || ''
+            });
 
-          if (error) {
-            console.error('❌ Error verifying magic link:', error);
-            throw error;
+            if (error) {
+              console.error('❌ Error setting session from hash:', error);
+              throw error;
+            }
+
+            if (data.user) {
+              console.log('✅ Hash session set successfully:', data.user.email);
+              
+              setStatus('success');
+              setMessage('Авторизация успешна! Перенаправление...');
+              
+              // Очищаем URL и делаем жёсткий переход
+              window.history.replaceState({}, '', '/');
+              console.log('🚀 Redirecting to home...');
+              window.location.replace('/');
+              return;
+            }
           }
 
-          if (data.user) {
-            console.log('✅ Magic link verified successfully:', data.user.email);
-            setStatus('success');
-            setMessage('Авторизация успешна! Перенаправление...');
-            
-            // Очищаем URL и делаем жёсткий переход
-            window.history.replaceState({}, '', '/');
+          // Если дошли до сюда и ничего не сработало
+          console.log('❌ No suitable authentication method found');
+          setStatus('error');
+          setMessage('Не удалось обработать токены авторизации');
+          setTimeout(() => {
             window.location.replace('/');
-            return;
-          }
-        }
-
-        // Если нет type, но есть token - тоже пробуем как magic link
-        if (token && !type) {
-          console.log('✅ Token found without type, trying as magic link...');
-          
-          const { data, error } = await supabase.auth.verifyOtp({
-            token_hash: token,
-            type: 'magiclink'
-          });
-
-          if (error) {
-            console.error('❌ Error verifying token as magic link:', error);
-          } else if (data.user) {
-            console.log('✅ Token verified successfully as magic link:', data.user.email);
-            setStatus('success');
-            setMessage('Авторизация успешна! Перенаправление...');
-            
-            // Очищаем URL и делаем жёсткий переход
-            window.history.replaceState({}, '', '/');
-            window.location.replace('/');
-            return;
-          }
-        }
-
-        // Если ничего не сработало, проверяем обычные токены без type
-        if (accessToken && refreshToken) {
-          console.log('✅ Direct tokens found, setting session...');
-          const { data, error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken
-          });
-
-          if (error) {
-            console.error('❌ Error setting session:', error);
-            throw error;
-          }
-
-          if (data.user) {
-            console.log('✅ Session set successfully:', data.user.email);
-            setStatus('success');
-            setMessage('Авторизация успешна! Перенаправление...');
-            
-            // Очищаем URL от токенов
-            const cleanUrl = window.location.origin + window.location.pathname;
-            window.history.replaceState({}, document.title, cleanUrl);
-            
-            window.location.replace('/');
-            return;
-          }
-        }
-
-        // Проверяем текущую сессию
-        console.log('🔍 Checking current session...');
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        console.log('Current session:', session?.user?.email || 'No session');
-        
-        if (sessionError) {
-          console.error('❌ Session error:', sessionError);
-          throw sessionError;
-        }
-
-        if (session?.user) {
-          console.log('✅ User already authenticated:', session.user.email);
-          setStatus('success');
-          setMessage('Авторизация успешна! Перенаправление...');
-          
-          // Очищаем URL от токенов
-          const cleanUrl = window.location.origin + window.location.pathname;
-          window.history.replaceState({}, document.title, cleanUrl);
-          
-          window.location.replace('/');
-          return;
-        }
-
-        // Если дошли до сюда и ничего не сработало
-        console.log('❌ No suitable authentication method found');
-        setStatus('error');
-        setMessage('Не удалось обработать токены авторизации');
-        setTimeout(() => {
-          window.location.replace('/');
-        }, 3000);
-        
+          }, 3000);
         })(); // Закрываем authPromise
         
         // Ждем либо завершения авторизации, либо таймаута
@@ -278,10 +245,10 @@ export default function AuthCallback() {
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Авторизация успешна!</h2>
             <p className="text-gray-600 mb-4">{message}</p>
             <button
-              onClick={() => navigate('/')}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              onClick={() => window.location.replace('/')}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
             >
-              Перейти в систему
+              Перейти в приложение
             </button>
           </>
         )}
@@ -293,24 +260,15 @@ export default function AuthCallback() {
             </div>
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Ошибка авторизации</h2>
             <p className="text-gray-600 mb-4">{message}</p>
-            <div className="space-y-2">
-              <button
-                onClick={() => navigate('/login')}
-                className="w-full px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Попробовать снова
-              </button>
-              <button
-                onClick={() => navigate('/')}
-                className="w-full px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                На главную
-              </button>
-            </div>
+            <button
+              onClick={() => window.location.replace('/')}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Вернуться на главную
+            </button>
           </>
         )}
       </div>
     </div>
   );
 }
-
