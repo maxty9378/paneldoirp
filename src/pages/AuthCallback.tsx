@@ -32,12 +32,38 @@ export default function AuthCallback() {
           return;
         }
 
-        // Проверяем наличие verification токена
-        const token = urlParams.get('token') || hashParams.get('token');
+        // Сначала проверяем access_token и refresh_token (основной способ для magic link)
+        const accessToken = urlParams.get('access_token') || hashParams.get('access_token');
+        const refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
         const type = urlParams.get('type') || hashParams.get('type');
         
-        console.log('Verification token present:', !!token);
+        console.log('Access token present:', !!accessToken);
+        console.log('Refresh token present:', !!refreshToken);
         console.log('Token type:', type);
+
+        if (accessToken && refreshToken && type === 'magiclink') {
+          console.log('✅ Magic link tokens found, setting session...');
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+
+          if (error) {
+            console.error('❌ Error setting session:', error);
+            throw error;
+          }
+
+          if (data.user) {
+            console.log('✅ Magic link session set successfully:', data.user.email);
+            setStatus('success');
+            setMessage('Авторизация успешна! Перенаправление...');
+            setTimeout(() => navigate('/'), 2000);
+            return;
+          }
+        }
+
+        // Также проверяем verification токен (альтернативный способ)
+        const token = urlParams.get('token') || hashParams.get('token');
 
         if (token && type === 'magiclink') {
           console.log('✅ Magic link token found, verifying...');
@@ -62,13 +88,7 @@ export default function AuthCallback() {
           }
         }
 
-        // Также проверяем обычные токены (на случай, если они есть)
-        const accessToken = urlParams.get('access_token') || hashParams.get('access_token');
-        const refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
-        
-        console.log('Access token present:', !!accessToken);
-        console.log('Refresh token present:', !!refreshToken);
-
+        // Если ничего не сработало, проверяем обычные токены без type
         if (accessToken && refreshToken) {
           console.log('✅ Direct tokens found, setting session...');
           const { data, error } = await supabase.auth.setSession({

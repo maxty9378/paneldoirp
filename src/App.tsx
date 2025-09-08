@@ -58,14 +58,17 @@ function AppContent() {
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     
     const token = urlParams.get('token') || hashParams.get('token');
+    const accessToken = urlParams.get('access_token') || hashParams.get('access_token');
+    const refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
     const type = urlParams.get('type') || hashParams.get('type');
     
-    console.log('App: Found token:', !!token, 'type:', type);
+    console.log('App: Found token:', !!token, 'access_token:', !!accessToken, 'refresh_token:', !!refreshToken, 'type:', type);
     
-    if (token && type === 'magiclink') {
+    // Проверяем magic link (может быть с token или с access_token)
+    if ((token || (accessToken && refreshToken)) && type === 'magiclink') {
       console.log('🔄 Magic link detected on main page, redirecting to auth callback...');
-      // Перенаправляем на AuthCallback с параметрами
-      navigate(`/auth/callback?token=${token}&type=${type}&redirect_to=${encodeURIComponent(window.location.origin)}`);
+      // Перенаправляем на AuthCallback со всеми параметрами из hash
+      navigate(`/auth/callback${window.location.hash}`);
     }
   }, [navigate]);
   
