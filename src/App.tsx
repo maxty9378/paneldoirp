@@ -228,7 +228,7 @@ function AppContent() {
       </div>
     );
   }
-  // Специальная обработка для /auth/callback - только если есть токены в URL
+  // Специальная обработка для /auth/callback с токенами - без Layout
   if (window.location.pathname === '/auth/callback') {
     const urlParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
@@ -239,9 +239,6 @@ function AppContent() {
     if (hasTokens) {
       return <AuthCallback />;
     }
-    // Если нет токенов, перенаправляем на главную
-    navigate('/');
-    return null;
   }
   
   if (!user) {
@@ -278,6 +275,7 @@ function AppContent() {
         <Route path="/take-test" element={<TakeTestPage />} />
         <Route path="/test-results/:attemptId" element={<TestResultsPage />} />
         <Route path="/event-test-results/:eventId" element={<EventTestResultsPage />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/test-qr" element={<TestQRLogin />} />
       </Routes>
       <CreateEventModal 
