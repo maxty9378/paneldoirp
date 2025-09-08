@@ -51,16 +51,9 @@ function AppContent() {
   const [showCreateEventModal, setShowCreateEventModal] = useState(false);
   const navigate = useNavigate();
 
-  // Проверяем magic link параметры на главной странице
+  // Проверяем magic link параметры и перенаправляем на callback
   useEffect(() => {
     console.log('🔍 App: Checking for magic link params on:', window.location.href);
-    console.log('Current pathname:', window.location.pathname);
-    
-    // НЕ перехватываем на странице callback - там уже обрабатывается
-    if (window.location.pathname === '/auth/callback') {
-      console.log('📍 Already on auth callback page, skipping intercept');
-      return;
-    }
     
     const urlParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
@@ -72,10 +65,9 @@ function AppContent() {
     
     console.log('App: Found token:', !!token, 'access_token:', !!accessToken, 'refresh_token:', !!refreshToken, 'type:', type);
     
-    // Проверяем magic link (может быть с token или с access_token)
-    if ((token || (accessToken && refreshToken)) && type === 'magiclink') {
-      console.log('🔄 Magic link detected on main page, redirecting to auth callback...');
-      // Перенаправляем на AuthCallback со всеми параметрами из hash
+    // Если это magic link и мы НЕ на странице callback - перенаправляем
+    if ((token || (accessToken && refreshToken)) && type === 'magiclink' && window.location.pathname !== '/auth/callback') {
+      console.log('🔄 Magic link detected, redirecting to auth callback...');
       navigate(`/auth/callback${window.location.hash}`);
     }
   }, [navigate]);
@@ -175,8 +167,7 @@ function AppContent() {
   // Навигация для запуска теста
   // Удаляем handleStartTest, handleTestComplete, handleCancelTest
 
-  // Для /auth/callback не показываем loading - нужно обработать токены
-  if (loading && window.location.pathname !== '/auth/callback') {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
@@ -227,18 +218,6 @@ function AppContent() {
         </div>
       </div>
     );
-  }
-  // Специальная обработка для /auth/callback с токенами - без Layout
-  if (window.location.pathname === '/auth/callback') {
-    const urlParams = new URLSearchParams(window.location.search);
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    
-    const hasTokens = hashParams.get('access_token') || hashParams.get('token') || 
-                     urlParams.get('access_token') || urlParams.get('token');
-    
-    if (hasTokens) {
-      return <AuthCallback />;
-    }
   }
   
   if (!user) {
