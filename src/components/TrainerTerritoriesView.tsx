@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useAdmin } from '../hooks/useAdmin';
 import { supabase } from '../lib/supabase';
@@ -10,7 +10,9 @@ import {
   AlertCircle,
   CheckCircle,
   GripVertical,
-  X,
+  Plus,
+  Search,
+  Edit3,
 } from 'lucide-react';
 
 interface TrainerTerritory {
@@ -38,10 +40,15 @@ interface TrainerTerritory {
   is_active: boolean;
 }
 
+type Territory = {
+  id: string;
+  name: string;
+  region?: string;
+};
 
 export function TrainerTerritoriesView() {
   const { userProfile } = useAuth();
-  const { territories } = useAdmin();
+  const { territories } = useAdmin(); // список филиалов
 
   const [trainerTerritories, setTrainerTerritories] = useState<TrainerTerritory[]>([]);
   const [trainers, setTrainers] = useState<any[]>([]);
@@ -51,10 +58,23 @@ export function TrainerTerritoriesView() {
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [selectedTrainerForAssign, setSelectedTrainerForAssign] = useState<any>(null);
+
   const [draggedTerritory, setDraggedTerritory] = useState<string | null>(null);
+  const [dragOverTrainer, setDragOverTrainer] = useState<string | null>(null);
+
+  const [search, setSearch] = useState('');
+  const [onlyActive, setOnlyActive] = useState(false);
 
   const isAdmin = userProfile?.role === 'administrator';
 
+  // дебаунс для поиска
+  const debounceRef = useRef<number | null>(null);
+  const [debounced, setDebounced] = useState('');
+  useEffect(() => {
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(() => setDebounced(search.trim().toLowerCase()), 250);
+    return () => { if (debounceRef.current) window.clearTimeout(debounceRef.current); };
+  }, [search]);
 
   useEffect(() => {
     if (isAdmin) fetchData();
@@ -90,22 +110,17 @@ export function TrainerTerritoriesView() {
 
       if (trainersError) throw trainersError;
 
-      // Преобразуем данные в правильный формат
-      const formattedAssignments = (assignments || []).map(assignment => {
-        const trainer = Array.isArray(assignment.trainer) ? assignment.trainer[0] : assignment.trainer;
-        return {
-          ...assignment,
-          trainer: {
-            ...trainer,
-            branch: Array.isArray(trainer?.branch) ? trainer.branch[0] : trainer?.branch,
-          },
-          territory: Array.isArray(assignment.territory) ? assignment.territory[0] : assignment.territory,
-        };
+      // выправляем возможные массивы из связей
+      const formattedAssignments: TrainerTerritory[] = (assignments || []).map((a: any) => {
+        const trainer = Array.isArray(a.trainer) ? a.trainer[0] : a.trainer;
+        const branch = Array.isArray(trainer?.branch) ? trainer.branch[0] : trainer?.branch;
+        const territory = Array.isArray(a.territory) ? a.territory[0] : a.territory;
+        return { ...a, trainer: { ...trainer, branch }, territory };
       });
-      
-      const formattedTrainers = (trainersData || []).map(trainer => ({
-        ...trainer,
-        branch: Array.isArray(trainer.branch) ? trainer.branch[0] : trainer.branch,
+
+      const formattedTrainers = (trainersData || []).map((t: any) => ({
+        ...t,
+        branch: Array.isArray(t.branch) ? t.branch[0] : t.branch,
       }));
 
       setTrainerTerritories(formattedAssignments);
@@ -118,8 +133,43 @@ export function TrainerTerritoriesView() {
     }
   }
 
+  function getTrainerTerritories(trainerId: string) {
+    return trainerTerritories.filter(tt => tt.trainer_id === trainerId && (!onlyActive || tt.is_active));
+  }
 
-  async function handleDragAssign(trainerId: string, territoryId: string) {
+  function isTerritoryAssigned(trainerId: string, territoryId: string) {
+    return trainerTerritories.some(tt => tt.trainer_id === trainerId && tt.territory_id === territoryId);
+  }
+
+  /* ---------- DnD ---------- */
+
+  function handleDragStart(territoryId: string) {
+    setDraggedTerritory(territoryId);
+  }
+  function handleDragEnd() {
+    setDraggedTerritory(null);
+    setDragOverTrainer(null);
+  }
+  function handleDragOverTrainerCard(e: React.DragEvent, trainerId: string) {
+    e.preventDefault();
+    setDragOverTrainer(trainerId);
+  }
+  async function handleDrop(trainerId: string) {
+    if (draggedTerritory) {
+      if (isTerritoryAssigned(trainerId, draggedTerritory)) {
+        setDraggedTerritory(null);
+        setDragOverTrainer(null);
+        return;
+      }
+      await handleAssign(trainerId, draggedTerritory);
+    }
+    setDraggedTerritory(null);
+    setDragOverTrainer(null);
+  }
+
+  /* ---------- CRUD ---------- */
+
+  async function handleAssign(trainerId: string, territoryId: string) {
     setSaving(true);
     setError(null);
     try {
@@ -136,38 +186,6 @@ export function TrainerTerritoriesView() {
     }
   }
 
-  function handleDragStart(territoryId: string) {
-    setDraggedTerritory(territoryId);
-  }
-
-  function handleDragEnd() {
-    setDraggedTerritory(null);
-  }
-
-  function handleDrop(trainerId: string) {
-    if (draggedTerritory) {
-      handleDragAssign(trainerId, draggedTerritory);
-    }
-    setDraggedTerritory(null);
-  }
-
-  async function handleToggleActive(row: TrainerTerritory) {
-    setSaving(true);
-    setError(null);
-    try {
-      const { error } = await supabase
-        .from('trainer_territories')
-        .update({ is_active: !row.is_active })
-        .eq('id', row.id);
-      if (error) throw error;
-      await fetchData();
-    } catch (e: any) {
-      console.error(e);
-      setError('Не удалось изменить статус.');
-    } finally {
-      setSaving(false);
-    }
-  }
 
   async function handleDelete(id: string) {
     setSaving(true);
@@ -185,14 +203,16 @@ export function TrainerTerritoriesView() {
     }
   }
 
-
-  function getTrainerTerritories(trainerId: string) {
-    return trainerTerritories.filter(tt => tt.trainer_id === trainerId);
-  }
-
-  function isTerritoryAssigned(trainerId: string, territoryId: string) {
-    return trainerTerritories.some(tt => tt.trainer_id === trainerId && tt.territory_id === territoryId);
-  }
+  /* ---------- фильтр по тренерам ---------- */
+  const filteredTrainers = useMemo(() => {
+    if (!debounced) return trainers;
+    return trainers.filter((t: any) => {
+      const f = (t.full_name || '').toLowerCase();
+      const e = (t.email || '').toLowerCase();
+      const b = (t.branch?.name || '').toLowerCase();
+      return f.includes(debounced) || e.includes(debounced) || b.includes(debounced);
+    });
+  }, [trainers, debounced]);
 
   if (!isAdmin) {
     return (
@@ -218,7 +238,9 @@ export function TrainerTerritoriesView() {
             </span>
             <div>
               <h1 className="text-2xl font-bold tracking-tight">Филиалы тренеров</h1>
-              <p className="text-sm text-gray-600">Управление филиалами работы тренеров (у каждого есть филиал базирования и может быть несколько филиалов работы)</p>
+              <p className="text-sm text-gray-600">
+                Базирование тренера и филиалы работы. Перетащи филиал на карточку тренера, чтобы назначить.
+              </p>
             </div>
           </div>
         </div>
@@ -244,7 +266,7 @@ export function TrainerTerritoriesView() {
         <KpiCard
           icon={<MapPin className="h-6 w-6 text-sky-600" />}
           label="Филиалов"
-          value={territories.length}
+          value={(territories as Territory[]).length}
         />
         <KpiCard
           icon={<CheckCircle className="h-6 w-6 text-green-600" />}
@@ -258,97 +280,139 @@ export function TrainerTerritoriesView() {
         />
       </div>
 
+      {/* Toolbar */}
+      <div className="sticky top-0 z-10 mb-4 rounded-2xl border border-gray-200 bg-white/70 p-3 backdrop-blur supports-[backdrop-filter]:bg-white/50">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-1 items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-xl border border-gray-300 bg-white pl-9 pr-3 py-2 text-sm outline-none ring-0 focus:border-emerald-500"
+                placeholder="Поиск по тренеру, email, базированию…"
+              />
+            </div>
+            <label className="inline-flex select-none items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm hover:bg-gray-50">
+              <input
+                type="checkbox"
+                checked={onlyActive}
+                onChange={(e) => setOnlyActive(e.target.checked)}
+                className="h-4 w-4 accent-emerald-600"
+              />
+              Только активные
+            </label>
+          </div>
 
-      {/* Drag & Drop Interface */}
+          <button
+            onClick={() => setSelectedTrainerForAssign({ bulk: true })}
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-emerald-700"
+          >
+            <Plus className="h-4 w-4" />
+            Массовое назначение
+          </button>
+        </div>
+      </div>
+
+      {/* Content */}
       <div className="flex flex-col gap-6 lg:flex-row">
         {loading ? (
-          <SkeletonTable />
+          <SkeletonList />
         ) : (
           <>
-            {/* Trainers with their assigned territories - Main content */}
+            {/* Trainers list */}
             <div className="flex-1 space-y-4">
               <h3 className="text-lg font-semibold text-gray-900">Тренеры и их филиалы</h3>
-              {trainers.map((trainer) => {
+
+              {filteredTrainers.length === 0 && (
+                <EmptyState
+                  title="Тренеры не найдены"
+                  subtitle="Измени запрос поиска, чтобы увидеть список"
+                />
+              )}
+
+              {filteredTrainers.map((trainer: any) => {
                 const assignedTerritories = getTrainerTerritories(trainer.id);
+                const isDropTarget = dragOverTrainer === trainer.id;
+
                 return (
                   <div
                     key={trainer.id}
                     onDrop={() => handleDrop(trainer.id)}
-                    onDragOver={(e) => e.preventDefault()}
-                    className="rounded-2xl border border-gray-200 bg-white p-4"
+                    onDragOver={(e) => handleDragOverTrainerCard(e, trainer.id)}
+                    onDragLeave={() => setDragOverTrainer(null)}
+                    className={`rounded-2xl border bg-white p-4 transition-colors ${
+                      isDropTarget ? 'border-emerald-400 ring-2 ring-emerald-200' : 'border-gray-200'
+                    }`}
                   >
-                    <div className="mb-3 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
-                          <Users className="h-5 w-5 text-emerald-600" />
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-900">{trainer.full_name}</div>
-                          <div className="text-sm text-gray-500">{trainer.email}</div>
-                          {trainer.branch && (
-                            <div className="mt-1">
-                              <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-blue-200">
-                                <Building2 className="h-3 w-3" />
-                                Базирование: {trainer.branch.name}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => setSelectedTrainerForAssign(trainer)}
-                        className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"
-                      >
-                        Назначить филиалы
-                      </button>
-                    </div>
+                     <div className="mb-3 flex items-center justify-between gap-3">
+                       <div className="flex items-center gap-3">
+                         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100">
+                           <Users className="h-4 w-4 text-emerald-600" />
+                         </div>
+                         <div className="min-w-0 flex-1">
+                           <div className="truncate font-medium text-gray-900">{trainer.full_name}</div>
+                           <div className="truncate text-sm text-gray-500">{trainer.email}</div>
+                           {trainer.branch && (
+                             <div className="mt-1">
+                               <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                                 <Building2 className="h-3 w-3" />
+                                 {trainer.branch.name}
+                               </span>
+                             </div>
+                           )}
+                         </div>
+                       </div>
 
-                    {/* Assigned territories */}
-                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
+                       <button
+                         onClick={() => setSelectedTrainerForAssign(trainer)}
+                         className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600 hover:bg-emerald-100 hover:text-emerald-600"
+                         title="Редактировать филиалы"
+                       >
+                         <Edit3 className="h-4 w-4" />
+                       </button>
+                     </div>
+
+                    {/* Assigned territories - Compact list */}
+                    <div className="space-y-1">
                       {assignedTerritories.map((assignment) => (
                         <div
                           key={assignment.id}
-                          className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 p-3"
+                          className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2"
                         >
-                          <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4 text-emerald-600" />
-                            <div>
-                              <div className="font-medium text-emerald-900">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <MapPin className="h-3.5 w-3.5 text-emerald-600 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <div className="truncate text-sm font-medium text-emerald-900">
                                 {assignment.territory.name}
                               </div>
                               {assignment.territory.region && (
-                                <div className="text-xs text-emerald-600">
+                                <div className="truncate text-xs text-emerald-600">
                                   {assignment.territory.region}
                                 </div>
                               )}
                             </div>
                           </div>
-                          <div className="flex items-center gap-1">
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+                              assignment.is_active
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-red-100 text-red-700'
+                            }`}
+                          >
                             <span
-                              className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${
-                                assignment.is_active
-                                  ? 'bg-green-100 text-green-700'
-                                  : 'bg-red-100 text-red-700'
-                              }`}
-                            >
-                              <span className={`h-1.5 w-1.5 rounded-full ${
+                              className={`h-1.5 w-1.5 rounded-full ${
                                 assignment.is_active ? 'bg-green-500' : 'bg-red-500'
-                              }`} />
-                              {assignment.is_active ? 'Активно' : 'Неактивно'}
-                            </span>
-                            <button
-                              onClick={() => handleToggleActive(assignment)}
-                              disabled={saving}
-                              className="rounded p-1 text-gray-400 hover:bg-white hover:text-gray-600"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </div>
+                              }`}
+                            />
+                            {assignment.is_active ? 'Активно' : 'Неактивно'}
+                          </span>
                         </div>
                       ))}
+
                       {assignedTerritories.length === 0 && (
-                        <div className="col-span-full rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-4 text-center text-gray-500">
-                          Перетащите филиалы сюда
+                        <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-3 text-center text-sm text-gray-500">
+                          Перетащи филиал сюда или нажми кнопку редактирования
                         </div>
                       )}
                     </div>
@@ -357,12 +421,12 @@ export function TrainerTerritoriesView() {
               })}
             </div>
 
-            {/* Available Territories - Compact sidebar */}
+            {/* Territories sidebar */}
             <div className="w-full flex-shrink-0 lg:w-80">
               <div className="sticky top-4 rounded-2xl border border-gray-200 bg-white p-4">
                 <h3 className="mb-4 text-lg font-semibold text-gray-900">Доступные филиалы</h3>
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {territories.map((territory) => (
+                <div className="max-h-96 space-y-2 overflow-y-auto">
+                  {(territories as Territory[]).map((territory) => (
                     <div
                       key={territory.id}
                       draggable
@@ -371,30 +435,30 @@ export function TrainerTerritoriesView() {
                       className={`cursor-move rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-3 transition-all hover:border-emerald-400 hover:bg-emerald-50 ${
                         draggedTerritory === territory.id ? 'opacity-50' : ''
                       }`}
+                      title="Перетащите на карточку тренера"
                     >
                       <div className="flex items-center gap-2">
-                        <GripVertical className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                        <GripVertical className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
                         <div className="min-w-0 flex-1">
-                          <div className="truncate font-medium text-gray-900 text-sm">
+                          <div className="truncate text-sm font-medium text-gray-900">
                             {territory.name}
                           </div>
                           {territory.region && (
-                            <div className="truncate text-xs text-gray-500">
-                              {territory.region}
-                            </div>
+                            <div className="truncate text-xs text-gray-500">{territory.region}</div>
                           )}
                         </div>
                       </div>
                     </div>
                   ))}
-                  {territories.length === 0 && (
-                    <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-4 text-center text-gray-500 text-sm">
+
+                  {(territories as Territory[]).length === 0 && (
+                    <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-4 text-center text-sm text-gray-500">
                       Нет доступных филиалов
                     </div>
                   )}
                 </div>
                 <div className="mt-4 text-xs text-gray-500">
-                  💡 Перетащите филиал к тренеру для назначения
+                  💡 Перетащи карточку филиала на тренера для назначения
                 </div>
               </div>
             </div>
@@ -415,78 +479,7 @@ export function TrainerTerritoriesView() {
         </div>
       )}
 
-      {/* Assign modal */}
-      {selectedTrainerForAssign && (
-        <Modal onClose={() => setSelectedTrainerForAssign(null)} title={`Назначить филиалы для ${selectedTrainerForAssign.full_name}`}>
-          <div className="space-y-4">
-            <div className="rounded-lg bg-blue-50 p-3">
-              <div className="flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-blue-600" />
-                <span className="text-sm font-medium text-blue-900">
-                  Филиал базирования: {selectedTrainerForAssign.branch?.name || 'Не указан'}
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Выберите филиалы работы:</label>
-              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                {territories.map((territory) => {
-                  const isAssigned = isTerritoryAssigned(selectedTrainerForAssign.id, territory.id);
-                  return (
-                    <label
-                      key={territory.id}
-                      className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
-                        isAssigned
-                          ? 'border-emerald-300 bg-emerald-50'
-                          : 'border-gray-200 bg-white hover:border-emerald-300 hover:bg-emerald-50'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isAssigned}
-                        onChange={async (e) => {
-                          if (e.target.checked) {
-                            await handleDragAssign(selectedTrainerForAssign.id, territory.id);
-                          } else {
-                            const assignment = trainerTerritories.find(
-                              tt => tt.trainer_id === selectedTrainerForAssign.id && tt.territory_id === territory.id
-                            );
-                            if (assignment) {
-                              await handleDelete(assignment.id);
-                            }
-                          }
-                        }}
-                        className="h-4 w-4 text-emerald-600 focus:ring-emerald-500"
-                      />
-                      <div className="flex-1">
-                        <div className="font-medium text-gray-900">{territory.name}</div>
-                        {territory.region && (
-                          <div className="text-sm text-gray-500">{territory.region}</div>
-                        )}
-                      </div>
-                      {isAssigned && (
-                        <CheckCircle className="h-4 w-4 text-emerald-600" />
-                      )}
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-6 flex justify-end gap-3">
-            <button
-              onClick={() => setSelectedTrainerForAssign(null)}
-              className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm hover:bg-gray-50"
-            >
-              Закрыть
-            </button>
-          </div>
-        </Modal>
-      )}
-
-      {/* Delete confirm */}
+      {/* Confirm delete */}
       {confirmDeleteId && (
         <Modal onClose={() => setConfirmDeleteId(null)} title="Удалить назначение?">
           <p className="text-sm text-gray-600">
@@ -506,6 +499,92 @@ export function TrainerTerritoriesView() {
               className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-rose-700"
             >
               Удалить
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal assign (checkbox list) */}
+      {selectedTrainerForAssign && !selectedTrainerForAssign.bulk && (
+        <Modal onClose={() => setSelectedTrainerForAssign(null)} title={`Назначить филиалы для ${selectedTrainerForAssign.full_name}`}>
+          <div className="space-y-4">
+            <div className="rounded-lg bg-blue-50 p-3">
+              <div className="flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-blue-600" />
+                <span className="text-sm font-medium text-blue-900">
+                  Филиал базирования: {selectedTrainerForAssign.branch?.name || 'Не указан'}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Выберите филиалы работы:</label>
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                {(territories as Territory[]).map((territory) => {
+                  const assigned = isTerritoryAssigned(selectedTrainerForAssign.id, territory.id);
+                  return (
+                    <label
+                      key={territory.id}
+                      className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
+                        assigned
+                          ? 'border-emerald-300 bg-emerald-50'
+                          : 'border-gray-200 bg-white hover:border-emerald-300 hover:bg-emerald-50'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={assigned}
+                        onChange={async (e) => {
+                          if (e.target.checked) {
+                            await handleAssign(selectedTrainerForAssign.id, territory.id);
+                          } else {
+                            const assignment = trainerTerritories.find(
+                              tt => tt.trainer_id === selectedTrainerForAssign.id && tt.territory_id === territory.id
+                            );
+                            if (assignment) {
+                              await handleDelete(assignment.id);
+                            }
+                          }
+                        }}
+                        className="h-4 w-4 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">{territory.name}</div>
+                        {territory.region && (
+                          <div className="text-sm text-gray-500">{territory.region}</div>
+                        )}
+                      </div>
+                      {assigned && <CheckCircle className="h-4 w-4 text-emerald-600" />}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 flex justify-end">
+            <button
+              onClick={() => setSelectedTrainerForAssign(null)}
+              className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm hover:bg-gray-50"
+            >
+              Закрыть
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal bulk assign (info only) */}
+      {selectedTrainerForAssign?.bulk && (
+        <Modal onClose={() => setSelectedTrainerForAssign(null)} title="Массовое назначение">
+          <p className="text-sm text-gray-600">
+            Пока массовое назначение в этом интерфейсе не реализовано. Перетаскивайте филиалы на тренеров или назначайте через чекбоксы.
+          </p>
+          <div className="mt-6 flex justify-end">
+            <button
+              onClick={() => setSelectedTrainerForAssign(null)}
+              className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm hover:bg-gray-50"
+            >
+              Ок
             </button>
           </div>
         </Modal>
@@ -530,18 +609,32 @@ function KpiCard({ icon, label, value }: { icon: React.ReactNode; label: string;
   );
 }
 
-function SkeletonTable() {
+function SkeletonList() {
   return (
-    <div className="divide-y divide-gray-100">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="grid grid-cols-12 gap-4 p-4">
-          <div className="col-span-3 h-5 animate-pulse rounded bg-gray-100" />
-          <div className="col-span-3 h-5 animate-pulse rounded bg-gray-100" />
-          <div className="col-span-2 h-5 animate-pulse rounded bg-gray-100" />
-          <div className="col-span-2 h-5 animate-pulse rounded bg-gray-100" />
-          <div className="col-span-2 h-5 animate-pulse rounded bg-gray-100" />
+    <div className="flex-1 space-y-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="rounded-2xl border border-gray-200 bg-white p-4">
+          <div className="mb-3 flex items-center gap-3">
+            <div className="h-10 w-10 animate-pulse rounded-full bg-gray-100" />
+            <div className="h-5 w-48 animate-pulse rounded bg-gray-100" />
+          </div>
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 3 }).map((__, j) => (
+              <div key={j} className="h-12 animate-pulse rounded-lg bg-gray-100" />
+            ))}
+          </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center">
+      <div className="mx-auto mb-3 h-10 w-10 rounded-2xl bg-gray-100" />
+      <h3 className="text-lg font-medium text-gray-900">{title}</h3>
+      <p className="text-sm text-gray-500">{subtitle}</p>
     </div>
   );
 }
@@ -555,13 +648,16 @@ function Modal({ title, children, onClose }: React.PropsWithChildren<{ title: st
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-[min(96vw,560px)] rounded-2xl border border-gray-200 bg-white p-5 shadow-xl">
+      <div className="w-[min(96vw,720px)] rounded-2xl border border-gray-200 bg-white p-5 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold">{title}</h3>
-          <button onClick={onClose} className="rounded-md px-2 py-1 text-sm text-gray-500 hover:bg-gray-100">Закрыть</button>
+          <button onClick={onClose} className="rounded-md px-2 py-1 text-sm text-gray-500 hover:bg-gray-100">
+            Закрыть
+          </button>
         </div>
         {children}
       </div>
     </div>
   );
 }
+
