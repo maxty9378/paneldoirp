@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useAdmin } from '../hooks/useAdmin';
 import { supabase } from '../lib/supabase';
@@ -6,13 +6,11 @@ import {
   Building2,
   Users,
   MapPin,
-  Plus,
-  Trash2,
-  Search,
   RefreshCw,
   AlertCircle,
   CheckCircle,
-  ChevronDown,
+  GripVertical,
+  X,
 } from 'lucide-react';
 
 interface TrainerTerritory {
@@ -40,8 +38,6 @@ interface TrainerTerritory {
   is_active: boolean;
 }
 
-type SortKey = 'trainer' | 'territory' | 'date' | 'status';
-type SortDir = 'asc' | 'desc';
 
 export function TrainerTerritoriesView() {
   const { userProfile } = useAuth();
@@ -53,27 +49,12 @@ export function TrainerTerritoriesView() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTerritory, setSelectedTerritory] = useState<string>('');
-  const [selectedTrainer, setSelectedTrainer] = useState<string>('');
-  const [filterActive, setFilterActive] = useState<'all' | 'active' | 'inactive'>('all');
-
-  const [showAssignModal, setShowAssignModal] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-
-  const [sortKey, setSortKey] = useState<SortKey>('date');
-  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [selectedTrainerForAssign, setSelectedTrainerForAssign] = useState<any>(null);
+  const [draggedTerritory, setDraggedTerritory] = useState<string | null>(null);
 
   const isAdmin = userProfile?.role === 'administrator';
 
-  // debounced search
-  const searchRef = useRef<number | null>(null);
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  useEffect(() => {
-    if (searchRef.current) window.clearTimeout(searchRef.current);
-    searchRef.current = window.setTimeout(() => setDebouncedSearch(searchTerm.trim().toLowerCase()), 250);
-    return () => { if (searchRef.current) window.clearTimeout(searchRef.current); };
-  }, [searchTerm]);
 
   useEffect(() => {
     if (isAdmin) fetchData();
@@ -137,18 +118,15 @@ export function TrainerTerritoriesView() {
     }
   }
 
-  async function handleAssign() {
-    if (!selectedTrainer || !selectedTerritory) return;
+
+  async function handleDragAssign(trainerId: string, territoryId: string) {
     setSaving(true);
     setError(null);
     try {
       const { error } = await supabase
         .from('trainer_territories')
-        .insert({ trainer_id: selectedTrainer, territory_id: selectedTerritory, is_active: true });
+        .insert({ trainer_id: trainerId, territory_id: territoryId, is_active: true });
       if (error) throw error;
-      setSelectedTrainer('');
-      setSelectedTerritory('');
-      setShowAssignModal(false);
       await fetchData();
     } catch (e: any) {
       console.error(e);
@@ -156,6 +134,21 @@ export function TrainerTerritoriesView() {
     } finally {
       setSaving(false);
     }
+  }
+
+  function handleDragStart(territoryId: string) {
+    setDraggedTerritory(territoryId);
+  }
+
+  function handleDragEnd() {
+    setDraggedTerritory(null);
+  }
+
+  function handleDrop(trainerId: string) {
+    if (draggedTerritory) {
+      handleDragAssign(trainerId, draggedTerritory);
+    }
+    setDraggedTerritory(null);
   }
 
   async function handleToggleActive(row: TrainerTerritory) {
@@ -192,46 +185,13 @@ export function TrainerTerritoriesView() {
     }
   }
 
-  const sortedFiltered = useMemo(() => {
-    let list = [...trainerTerritories];
 
-    // filter by active
-    if (filterActive !== 'all') {
-      list = list.filter(x => filterActive === 'active' ? x.is_active : !x.is_active);
-    }
+  function getTrainerTerritories(trainerId: string) {
+    return trainerTerritories.filter(tt => tt.trainer_id === trainerId);
+  }
 
-    // search
-    if (debouncedSearch) {
-      list = list.filter((x) => {
-        const t = x.trainer?.full_name?.toLowerCase() || '';
-        const e = x.trainer?.email?.toLowerCase() || '';
-        const terr = x.territory?.name?.toLowerCase() || '';
-        const reg = x.territory?.region?.toLowerCase() || '';
-        return t.includes(debouncedSearch) || e.includes(debouncedSearch) || terr.includes(debouncedSearch) || reg.includes(debouncedSearch);
-      });
-    }
-
-    // sort
-    list.sort((a, b) => {
-      let A = '', B = '';
-      if (sortKey === 'trainer') { A = a.trainer.full_name; B = b.trainer.full_name; }
-      if (sortKey === 'territory') { A = a.territory.name; B = b.territory.name; }
-      if (sortKey === 'status') { A = a.is_active ? '1' : '0'; B = b.is_active ? '1' : '0'; }
-      if (sortKey === 'date') { A = a.assigned_at; B = b.assigned_at; }
-      const cmp = A.localeCompare(B, 'ru', { numeric: true, sensitivity: 'base' });
-      return sortDir === 'asc' ? cmp : -cmp;
-    });
-
-    return list;
-  }, [trainerTerritories, debouncedSearch, filterActive, sortKey, sortDir]);
-
-  function switchSort(key: SortKey) {
-    if (sortKey === key) {
-      setSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortKey(key);
-      setSortDir('asc');
-    }
+  function isTerritoryAssigned(trainerId: string, territoryId: string) {
+    return trainerTerritories.some(tt => tt.trainer_id === trainerId && tt.territory_id === territoryId);
   }
 
   if (!isAdmin) {
@@ -271,13 +231,6 @@ export function TrainerTerritoriesView() {
             <RefreshCw className="h-4 w-4" />
             Обновить
           </button>
-          <button
-            onClick={() => setShowAssignModal(true)}
-            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-emerald-700"
-          >
-            <Plus className="h-4 w-4" />
-            Назначить тренера
-          </button>
         </div>
       </div>
 
@@ -305,144 +258,133 @@ export function TrainerTerritoriesView() {
         />
       </div>
 
-      {/* Toolbar */}
-      <div className="sticky top-0 z-10 mb-3 rounded-2xl border border-gray-200 bg-white/70 p-3 backdrop-blur supports-[backdrop-filter]:bg-white/50">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="flex flex-1 items-center gap-3">
-            <div className="relative flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full rounded-xl border border-gray-300 bg-white pl-9 pr-3 py-2 text-sm outline-none ring-0 focus:border-emerald-500"
-                placeholder="Поиск по тренеру, email, филиалу…"
-              />
-            </div>
 
-            <div className="hidden h-6 w-px bg-gray-200 md:block" />
-
-            <div className="flex items-center gap-1">
-              <FilterChip
-                active={filterActive === 'all'}
-                onClick={() => setFilterActive('all')}
-                label="Все"
-              />
-              <FilterChip
-                active={filterActive === 'active'}
-                onClick={() => setFilterActive('active')}
-                label="Активные"
-              />
-              <FilterChip
-                active={filterActive === 'inactive'}
-                onClick={() => setFilterActive('inactive')}
-                label="Неактивные"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <SortButton active={sortKey === 'date'} dir={sortKey === 'date' ? sortDir : undefined} onClick={() => switchSort('date')} label="По дате" />
-            <SortButton active={sortKey === 'trainer'} dir={sortKey === 'trainer' ? sortDir : undefined} onClick={() => switchSort('trainer')} label="По тренеру" />
-            <SortButton active={sortKey === 'territory'} dir={sortKey === 'territory' ? sortDir : undefined} onClick={() => switchSort('territory')} label="По филиалу" />
-            <SortButton active={sortKey === 'status'} dir={sortKey === 'status' ? sortDir : undefined} onClick={() => switchSort('status')} label="По статусу" />
-          </div>
-        </div>
-      </div>
-
-      {/* Table / Skeleton / Empty */}
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
+      {/* Drag & Drop Interface */}
+      <div className="space-y-6">
         {loading ? (
           <SkeletonTable />
-        ) : sortedFiltered.length === 0 ? (
-          <EmptyState
-            title={debouncedSearch || filterActive !== 'all' ? 'Ничего не найдено' : 'Назначений пока нет'}
-            subtitle={debouncedSearch || filterActive !== 'all'
-              ? 'Попробуйте изменить фильтры или запрос'
-              : 'Назначьте первого тренера на филиал работы'}
-            actionLabel="Назначить тренера"
-            onAction={() => setShowAssignModal(true)}
-          />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-50 text-gray-600">
-                <tr className="text-left">
-                  <Th>Тренер</Th>
-                  <Th>Филиал работы</Th>
-                  <Th>Назначение</Th>
-                  <Th>Статус</Th>
-                  <Th className="text-right">Действия</Th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {sortedFiltered.map((x) => (
-                  <tr key={x.id} className="hover:bg-gray-50/70">
-                    <Td>
-                      <div className="flex flex-col">
-                        <span className="font-medium text-gray-900">{x.trainer.full_name}</span>
-                        <span className="text-gray-500">{x.trainer.email}</span>
-                        {x.trainer.phone && <span className="text-gray-400">{x.trainer.phone}</span>}
-                        {x.trainer.branch && (
-                          <div className="mt-1">
-                            <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-blue-200">
-                              <Building2 className="h-3 w-3" />
-                              Базирование: {x.trainer.branch.name}
-                            </span>
-                          </div>
+          <>
+            {/* Available Territories */}
+            <div className="rounded-2xl border border-gray-200 bg-white p-4">
+              <h3 className="mb-4 text-lg font-semibold text-gray-900">Доступные филиалы</h3>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                {territories.map((territory) => (
+                  <div
+                    key={territory.id}
+                    draggable
+                    onDragStart={() => handleDragStart(territory.id)}
+                    onDragEnd={handleDragEnd}
+                    className={`cursor-move rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-4 transition-all hover:border-emerald-400 hover:bg-emerald-50 ${
+                      draggedTerritory === territory.id ? 'opacity-50' : ''
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <GripVertical className="h-4 w-4 text-gray-400" />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">{territory.name}</div>
+                        {territory.region && (
+                          <div className="text-sm text-gray-500">{territory.region}</div>
                         )}
                       </div>
-                    </Td>
-                    <Td>
-                      <div className="flex flex-col">
-                        <span className="font-medium text-gray-900">{x.territory.name}</span>
-                        {x.territory.region && <span className="text-gray-500">{x.territory.region}</span>}
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200 mt-1">
-                          <MapPin className="h-3 w-3" />
-                          Филиал работы
-                        </span>
-                      </div>
-                    </Td>
-                    <Td>
-                      {new Date(x.assigned_at).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' })}
-                    </Td>
-                    <Td>
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                          x.is_active ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-rose-50 text-rose-700 ring-1 ring-rose-200'
-                        }`}
-                      >
-                        <span className={`h-1.5 w-1.5 rounded-full ${x.is_active ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                        {x.is_active ? 'Активно' : 'Неактивно'}
-                      </span>
-                    </Td>
-                    <Td className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() => handleToggleActive(x)}
-                          disabled={saving}
-                          className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                            x.is_active
-                              ? 'bg-amber-50 text-amber-700 hover:bg-amber-100'
-                              : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                          }`}
-                        >
-                          {x.is_active ? 'Деактивировать' : 'Активировать'}
-                        </button>
-                        <button
-                          onClick={() => setConfirmDeleteId(x.id)}
-                          disabled={saving}
-                          className="rounded-lg bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100"
-                          aria-label="Удалить назначение"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </Td>
-                  </tr>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </div>
+            </div>
+
+            {/* Trainers with their assigned territories */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900">Тренеры и их филиалы</h3>
+              {trainers.map((trainer) => {
+                const assignedTerritories = getTrainerTerritories(trainer.id);
+                return (
+                  <div
+                    key={trainer.id}
+                    onDrop={() => handleDrop(trainer.id)}
+                    onDragOver={(e) => e.preventDefault()}
+                    className="rounded-2xl border border-gray-200 bg-white p-4"
+                  >
+                    <div className="mb-3 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
+                          <Users className="h-5 w-5 text-emerald-600" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">{trainer.full_name}</div>
+                          <div className="text-sm text-gray-500">{trainer.email}</div>
+                          {trainer.branch && (
+                            <div className="mt-1">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-blue-200">
+                                <Building2 className="h-3 w-3" />
+                                Базирование: {trainer.branch.name}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setSelectedTrainerForAssign(trainer)}
+                        className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"
+                      >
+                        Назначить филиалы
+                      </button>
+                    </div>
+
+                    {/* Assigned territories */}
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
+                      {assignedTerritories.map((assignment) => (
+                        <div
+                          key={assignment.id}
+                          className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 p-3"
+                        >
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4 text-emerald-600" />
+                            <div>
+                              <div className="font-medium text-emerald-900">
+                                {assignment.territory.name}
+                              </div>
+                              {assignment.territory.region && (
+                                <div className="text-xs text-emerald-600">
+                                  {assignment.territory.region}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${
+                                assignment.is_active
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-red-100 text-red-700'
+                              }`}
+                            >
+                              <span className={`h-1.5 w-1.5 rounded-full ${
+                                assignment.is_active ? 'bg-green-500' : 'bg-red-500'
+                              }`} />
+                              {assignment.is_active ? 'Активно' : 'Неактивно'}
+                            </span>
+                            <button
+                              onClick={() => handleToggleActive(assignment)}
+                              disabled={saving}
+                              className="rounded p-1 text-gray-400 hover:bg-white hover:text-gray-600"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      {assignedTerritories.length === 0 && (
+                        <div className="col-span-full rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-4 text-center text-gray-500">
+                          Перетащите филиалы сюда
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
 
@@ -460,53 +402,71 @@ export function TrainerTerritoriesView() {
       )}
 
       {/* Assign modal */}
-      {showAssignModal && (
-        <Modal onClose={() => setShowAssignModal(false)} title="Назначить тренера к филиалу работы">
+      {selectedTrainerForAssign && (
+        <Modal onClose={() => setSelectedTrainerForAssign(null)} title={`Назначить филиалы для ${selectedTrainerForAssign.full_name}`}>
           <div className="space-y-4">
-            <Field label="Тренер">
-              <select
-                value={selectedTrainer}
-                onChange={(e) => setSelectedTrainer(e.target.value)}
-                className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm outline-none focus:border-emerald-500"
-              >
-                <option value="">Выберите тренера</option>
-                {trainers.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.full_name} ({t.email}) {t.branch ? `- ${t.branch.name}` : ''}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Филиал работы">
-              <select
-                value={selectedTerritory}
-                onChange={(e) => setSelectedTerritory(e.target.value)}
-                className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm outline-none focus:border-emerald-500"
-              >
-                <option value="">Выберите филиал работы</option>
-                {territories.map((tt: any) => (
-                  <option key={tt.id} value={tt.id}>
-                    {tt.name} {tt.region ? `(${tt.region})` : ''}
-                  </option>
-                ))}
-              </select>
-            </Field>
+            <div className="rounded-lg bg-blue-50 p-3">
+              <div className="flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-blue-600" />
+                <span className="text-sm font-medium text-blue-900">
+                  Филиал базирования: {selectedTrainerForAssign.branch?.name || 'Не указан'}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Выберите филиалы работы:</label>
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                {territories.map((territory) => {
+                  const isAssigned = isTerritoryAssigned(selectedTrainerForAssign.id, territory.id);
+                  return (
+                    <label
+                      key={territory.id}
+                      className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
+                        isAssigned
+                          ? 'border-emerald-300 bg-emerald-50'
+                          : 'border-gray-200 bg-white hover:border-emerald-300 hover:bg-emerald-50'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isAssigned}
+                        onChange={async (e) => {
+                          if (e.target.checked) {
+                            await handleDragAssign(selectedTrainerForAssign.id, territory.id);
+                          } else {
+                            const assignment = trainerTerritories.find(
+                              tt => tt.trainer_id === selectedTrainerForAssign.id && tt.territory_id === territory.id
+                            );
+                            if (assignment) {
+                              await handleDelete(assignment.id);
+                            }
+                          }
+                        }}
+                        className="h-4 w-4 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">{territory.name}</div>
+                        {territory.region && (
+                          <div className="text-sm text-gray-500">{territory.region}</div>
+                        )}
+                      </div>
+                      {isAssigned && (
+                        <CheckCircle className="h-4 w-4 text-emerald-600" />
+                      )}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
           <div className="mt-6 flex justify-end gap-3">
             <button
-              onClick={() => setShowAssignModal(false)}
+              onClick={() => setSelectedTrainerForAssign(null)}
               className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm hover:bg-gray-50"
-              disabled={saving}
             >
-              Отмена
-            </button>
-            <button
-              onClick={handleAssign}
-              disabled={!selectedTrainer || !selectedTerritory || saving}
-              className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-emerald-700 disabled:opacity-50"
-            >
-              {saving ? 'Сохранение…' : 'Назначить'}
+              Закрыть
             </button>
           </div>
         </Modal>
@@ -556,51 +516,6 @@ function KpiCard({ icon, label, value }: { icon: React.ReactNode; label: string;
   );
 }
 
-function FilterChip({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-        active ? 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-      }`}
-    >
-      {label}
-    </button>
-  );
-}
-
-function SortButton({
-  active,
-  dir,
-  onClick,
-  label,
-}: {
-  active?: boolean;
-  dir?: SortDir;
-  onClick: () => void;
-  label: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`inline-flex items-center gap-1 rounded-xl border px-3 py-1.5 text-xs font-medium transition-colors ${
-        active ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-      }`}
-      title={active ? (dir === 'asc' ? 'По возрастанию' : 'По убыванию') : 'Сортировать'}
-    >
-      {label}
-      <ChevronDown className={`h-3.5 w-3.5 transition ${active && dir === 'desc' ? 'rotate-180' : ''}`} />
-    </button>
-  );
-}
-
-function Th({ children, className = '' }: React.PropsWithChildren<{ className?: string }>) {
-  return <th className={`px-5 py-3 text-xs font-semibold uppercase tracking-wide ${className}`}>{children}</th>;
-}
-function Td({ children, className = '' }: React.PropsWithChildren<{ className?: string }>) {
-  return <td className={`px-5 py-3 align-middle ${className}`}>{children}</td>;
-}
-
 function SkeletonTable() {
   return (
     <div className="divide-y divide-gray-100">
@@ -613,36 +528,6 @@ function SkeletonTable() {
           <div className="col-span-2 h-5 animate-pulse rounded bg-gray-100" />
         </div>
       ))}
-    </div>
-  );
-}
-
-function EmptyState({
-  title,
-  subtitle,
-  actionLabel,
-  onAction,
-}: {
-  title: string;
-  subtitle: string;
-  actionLabel?: string;
-  onAction?: () => void;
-}) {
-  return (
-    <div className="flex flex-col items-center justify-center gap-2 py-16">
-      <div className="mb-2 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100">
-        <MapPin className="h-6 w-6 text-gray-500" />
-      </div>
-      <h3 className="text-lg font-medium text-gray-900">{title}</h3>
-      <p className="text-sm text-gray-500">{subtitle}</p>
-      {actionLabel && onAction && (
-        <button
-          onClick={onAction}
-          className="mt-4 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-emerald-700"
-        >
-          {actionLabel}
-        </button>
-      )}
     </div>
   );
 }
@@ -664,14 +549,5 @@ function Modal({ title, children, onClose }: React.PropsWithChildren<{ title: st
         {children}
       </div>
     </div>
-  );
-}
-
-function Field({ label, children }: React.PropsWithChildren<{ label: string }>) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-sm font-medium text-gray-700">{label}</span>
-      {children}
-    </label>
   );
 }
