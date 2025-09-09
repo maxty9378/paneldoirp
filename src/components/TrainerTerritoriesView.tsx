@@ -85,7 +85,6 @@ export function TrainerTerritoriesView() {
   const [dragOverTrainer, setDragOverTrainer] = useState<string | null>(null);
 
   const [search, setSearch] = useState('');
-  const [onlyActive, setOnlyActive] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
 
   const isAdmin = userProfile?.role === 'administrator';
@@ -181,7 +180,7 @@ export function TrainerTerritoriesView() {
   }
 
   function getTrainerTerritories(trainerId: string) {
-    return trainerTerritories.filter(tt => tt.trainer_id === trainerId && (!onlyActive || tt.is_active));
+    return trainerTerritories.filter(tt => tt.trainer_id === trainerId);
   }
 
   function isTerritoryAssigned(trainerId: string, territoryId: string) {
@@ -320,7 +319,7 @@ export function TrainerTerritoriesView() {
       </div>
 
       {/* KPIs */}
-      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
+      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
         <KpiCard
           icon={<Users className="h-6 w-6 text-emerald-600" />}
           label="Всего тренеров"
@@ -333,13 +332,8 @@ export function TrainerTerritoriesView() {
         />
         <KpiCard
           icon={<CheckCircle className="h-6 w-6 text-green-600" />}
-          label="Активных назначений"
-          value={trainerTerritories.filter(a => a.is_active).length}
-        />
-        <KpiCard
-          icon={<AlertCircle className="h-6 w-6 text-orange-500" />}
-          label="Неактивных"
-          value={trainerTerritories.filter(a => !a.is_active).length}
+          label="Назначений"
+          value={trainerTerritories.length}
         />
       </div>
 
@@ -347,24 +341,15 @@ export function TrainerTerritoriesView() {
       <div className="sticky top-0 z-10 mb-4 rounded-2xl border border-gray-200 bg-white/70 p-3 backdrop-blur supports-[backdrop-filter]:bg-white/50">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-1 items-center gap-3">
-            <div className="relative flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded-xl border border-gray-300 bg-white pl-9 pr-3 py-2 text-sm outline-none ring-0 focus:border-emerald-500"
-                placeholder="Поиск по тренеру, email, базированию…"
-              />
-            </div>
-            <label className="inline-flex select-none items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm hover:bg-gray-50">
-              <input
-                type="checkbox"
-                checked={onlyActive}
-                onChange={(e) => setOnlyActive(e.target.checked)}
-                className="h-4 w-4 accent-emerald-600"
-              />
-              Только активные
-            </label>
+             <div className="relative flex-1">
+               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+               <input
+                 value={search}
+                 onChange={(e) => setSearch(e.target.value)}
+                 className="w-full rounded-xl border border-gray-300 bg-white pl-9 pr-3 py-2 text-sm outline-none ring-0 focus:border-emerald-500"
+                 placeholder="Поиск по тренеру, email, базированию…"
+               />
+             </div>
           </div>
 
            <div className="flex items-center gap-2">
@@ -445,8 +430,8 @@ export function TrainerTerritoriesView() {
                        </button>
                      </div>
 
-                    {/* Assigned territories - Two columns */}
-                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                    {/* Assigned territories - Compact list */}
+                    <div className="space-y-1">
                       {assignedTerritories.map((assignment) => (
                         <div
                           key={assignment.id}
@@ -465,25 +450,18 @@ export function TrainerTerritoriesView() {
                               )}
                             </div>
                           </div>
-                          <span
-                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-                              assignment.is_active
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-red-100 text-red-700'
-                            }`}
+                          <button
+                            onClick={() => handleDelete(assignment.id)}
+                            className="rounded p-1 text-red-500 hover:bg-white hover:text-red-600"
+                            title="Удалить филиал"
                           >
-                            <span
-                              className={`h-1.5 w-1.5 rounded-full ${
-                                assignment.is_active ? 'bg-green-500' : 'bg-red-500'
-                              }`}
-                            />
-                            {assignment.is_active ? 'Активно' : 'Неактивно'}
-                          </span>
+                            <X className="h-3.5 w-3.5" />
+                          </button>
                         </div>
                       ))}
 
                       {assignedTerritories.length === 0 && (
-                        <div className="col-span-full rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-3 text-center text-sm text-gray-500">
+                        <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-3 text-center text-sm text-gray-500">
                           Перетащи филиал сюда или нажми кнопку редактирования
                         </div>
                       )}
@@ -674,48 +652,32 @@ export function TrainerTerritoriesView() {
              {/* Current assignments */}
              <div className="space-y-3">
                <label className="text-sm font-medium text-gray-700">Текущие назначения:</label>
-               <div className="space-y-2">
+               <div className="space-y-1">
                  {getTrainerTerritories(selectedTrainerForAssign.id).map((assignment) => (
                    <div
                      key={assignment.id}
-                     className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 p-3"
+                     className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2"
                    >
-                     <div className="flex items-center gap-3">
-                       <MapPin className="h-4 w-4 text-emerald-600" />
+                     <div className="flex items-center gap-2">
+                       <MapPin className="h-3.5 w-3.5 text-emerald-600" />
                        <div>
-                         <div className="font-medium text-emerald-900">{assignment.territory.name}</div>
+                         <div className="text-sm font-medium text-emerald-900">{assignment.territory.name}</div>
                          {assignment.territory.region && (
-                           <div className="text-sm text-emerald-600">{assignment.territory.region}</div>
+                           <div className="text-xs text-emerald-600">{assignment.territory.region}</div>
                          )}
                        </div>
                      </div>
-                     <div className="flex items-center gap-2">
-                       <span
-                         className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${
-                           assignment.is_active
-                             ? 'bg-green-100 text-green-700'
-                             : 'bg-red-100 text-red-700'
-                         }`}
-                       >
-                         <span
-                           className={`h-1.5 w-1.5 rounded-full ${
-                             assignment.is_active ? 'bg-green-500' : 'bg-red-500'
-                           }`}
-                         />
-                         {assignment.is_active ? 'Активно' : 'Неактивно'}
-                       </span>
-                       <button
-                         onClick={() => handleDelete(assignment.id)}
-                         className="rounded p-1 text-red-500 hover:bg-white hover:text-red-600"
-                         title="Удалить назначение"
-                       >
-                         <X className="h-4 w-4" />
-                       </button>
-                     </div>
+                     <button
+                       onClick={() => handleDelete(assignment.id)}
+                       className="rounded p-1 text-red-500 hover:bg-white hover:text-red-600"
+                       title="Удалить филиал"
+                     >
+                       <X className="h-3.5 w-3.5" />
+                     </button>
                    </div>
                  ))}
                  {getTrainerTerritories(selectedTrainerForAssign.id).length === 0 && (
-                   <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-4 text-center text-sm text-gray-500">
+                   <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-3 text-center text-sm text-gray-500">
                      Нет назначенных филиалов
                    </div>
                  )}
