@@ -131,6 +131,8 @@ function AppContent() {
 
   // Новый обработчик запуска теста
   const handleStartTest = (testId: string, eventId: string, attemptId?: string) => {
+    console.log('🚀 App handleStartTest вызвана с параметрами:', { testId, eventId, attemptId });
+    
     const params = new URLSearchParams({
       eventId: eventId,
       testId: testId
@@ -138,7 +140,10 @@ function AppContent() {
     if (attemptId) {
       params.append('attemptId', attemptId);
     }
-    navigate(`/take-test?${params.toString()}`);
+    
+    const url = `/take-test?${params.toString()}`;
+    console.log('🧭 Перенаправляем на:', url);
+    navigate(url);
   };
 
   const handleEditEvent = async (eventId: string) => {

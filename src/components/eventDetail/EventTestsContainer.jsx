@@ -169,34 +169,38 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
         }
       }
       
-      // Теперь создаем попытки, если необходимо
-      // Для входного теста
-      const entryTest = testsData?.find(t => t.type === 'entry');
-      console.log('Creating entry test attempt:', { entryTest: entryTest?.id, hasAttemptId: !!statusObj.entry.attemptId });
-      if (entryTest && !statusObj.entry.attemptId) {
-        const { data: newAttempt, error: createError } = await supabase
-          .from('user_test_attempts')
-          .insert({
-            user_id: userProfile.id,
-            test_id: entryTest.id,
-            event_id: eventId,
-            status: 'in_progress',
-            start_time: new Date().toISOString()
-          })
-          .select()
-          .single();
+      // Создаем попытки для всех тестов, если их нет
+      for (const test of testsData || []) {
+        if (!['entry', 'final', 'annual'].includes(test.type)) continue;
+        
+        const currentStatus = statusObj[test.type];
+        if (!currentStatus.attemptId) {
+          console.log(`Creating ${test.type} test attempt:`, { testId: test.id });
           
-        if (createError) {
-          console.error('Ошибка при создании попытки для входного теста:', createError);
-        } else if (newAttempt) {
-          statusObj.entry = {
-            available: true,
-            completed: false,
-            score: null,
-            attemptId: newAttempt.id,
-            testId: entryTest.id,
-            test: entryTest
-          };
+          const { data: newAttempt, error: createError } = await supabase
+            .from('user_test_attempts')
+            .insert({
+              user_id: userProfile.id,
+              test_id: test.id,
+              event_id: eventId,
+              status: 'in_progress',
+              start_time: new Date().toISOString()
+            })
+            .select()
+            .single();
+            
+          if (createError) {
+            console.error(`Ошибка при создании попытки для ${test.type} теста:`, createError);
+          } else if (newAttempt) {
+            statusObj[test.type] = {
+              available: true,
+              completed: false,
+              score: null,
+              attemptId: newAttempt.id,
+              testId: test.id,
+              test: test
+            };
+          }
         }
       }
       
@@ -257,12 +261,20 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
   
   // Запуск теста (создаёт attempt если нужно)
   const handleStartTest = async (testType) => {
+    console.log('🎯 EventTestsContainer handleStartTest вызвана с testType:', testType);
+    console.log('📚 Доступные тесты:', tests);
+    console.log('📊 Текущий testStatus:', testStatus);
+    
     const test = tests.find(t => t.type === testType);
     if (!test) {
+      console.log('❌ Тест не найден для типа:', testType);
       alert('Тест не найден');
       return;
     }
+    console.log('✅ Найден тест:', test);
+    
     let attemptId = testStatus[testType]?.attemptId;
+    console.log('🆔 Существующий attemptId:', attemptId);
     if (!attemptId) {
       try {
         // Сначала проверяем, есть ли уже попытка
@@ -281,7 +293,7 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
         }
 
         if (existingAttempt) {
-          console.log('Найдена существующая попытка:', existingAttempt.id, 'статус:', existingAttempt.status);
+          console.log('✅ Найдена существующая попытка:', existingAttempt.id, 'статус:', existingAttempt.status);
           attemptId = existingAttempt.id;
           setTestStatus(prev => ({
             ...prev,
@@ -292,6 +304,7 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
           }));
         } else {
           // Создаём новую попытку только если её нет
+          console.log('🆕 Создаем новую попытку для теста:', test.id);
           const { data: newAttempt, error } = await supabase
             .from('user_test_attempts')
             .insert({
@@ -304,14 +317,16 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
             .select()
             .single();
           if (error) {
-            console.error('Ошибка при создании попытки теста:', error);
+            console.error('❌ Ошибка при создании попытки теста:', error);
             alert('Ошибка создания попытки теста');
             return;
           }
           if (!newAttempt) {
+            console.error('❌ Не удалось создать попытку теста');
             alert('Не удалось создать попытку теста');
             return;
           }
+          console.log('✅ Создана новая попытка:', newAttempt);
           attemptId = newAttempt.id;
           setTestStatus(prev => ({
             ...prev,
@@ -328,6 +343,7 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
       }
     }
     // Устанавливаем активные параметры теста
+    console.log('🎬 Устанавливаем активные параметры теста:', { testType, testId: test.id, attemptId });
     setActiveTestType(testType);
     setActiveTestId(test.id);
     setActiveAttemptId(attemptId);
@@ -335,7 +351,10 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
     
     // Вызываем внешний обработчик, если он предоставлен
     if (onStartTest) {
-      onStartTest(testType, test.id, eventId, attemptId);
+      console.log('📞 Вызываем внешний onStartTest с параметрами:', { testId: test.id, eventId, attemptId });
+      onStartTest(test.id, eventId, attemptId);
+    } else {
+      console.log('⚠️ onStartTest не предоставлен');
     }
   };
   
@@ -444,7 +463,17 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
                   <EventTestPrompts 
                     eventId={eventId} 
                     userProfile={userProfile} 
-                    onStartTest={handleStartTest}
+                    onStartTest={(testId, eventId, attemptId) => {
+                      console.log('🔄 EventTestPrompts вызывает onStartTest с:', { testId, eventId, attemptId });
+                      // Находим тип теста по ID
+                      const test = tests.find(t => t.id === testId);
+                      if (test) {
+                        console.log('🎯 Найден тест для запуска:', test);
+                        handleStartTest(test.type);
+                      } else {
+                        console.error('❌ Тест не найден по ID:', testId);
+                      }
+                    }}
                     testStatus={testStatus}
                     refreshKey={refreshKey}
                   />
@@ -453,7 +482,17 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
                     <AdminTestSection 
                       eventId={eventId} 
                       userProfile={userProfile} 
-                      onStartTest={handleStartTest}
+                      onStartTest={(testId, eventId, attemptId) => {
+                        console.log('🔄 AdminTestSection вызывает onStartTest с:', { testId, eventId, attemptId });
+                        // Находим тип теста по ID
+                        const test = tests.find(t => t.id === testId);
+                        if (test) {
+                          console.log('🎯 Найден тест для запуска:', test);
+                          handleStartTest(test.type);
+                        } else {
+                          console.error('❌ Тест не найден по ID:', testId);
+                        }
+                      }}
                       testStatus={testStatus}
                     />
                   )}

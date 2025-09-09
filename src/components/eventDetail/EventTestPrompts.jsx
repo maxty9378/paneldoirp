@@ -604,33 +604,45 @@ export default function EventTestPrompts({ eventId, onStartTest, testStatus, ref
   }, [eventEndDate]);
 
   const handleStartTest = async (testType) => {
+    console.log('🚀 handleStartTest вызвана с testType:', testType);
+    console.log('📊 testStatus:', testStatus);
+    console.log('👤 userProfile:', userProfile);
+    console.log('🎯 isParticipant:', isParticipant);
+    
     // Проверяем, имеет ли пользователь административные права
     const hasAdminAccess = userProfile?.role === 'administrator' || userProfile?.role === 'moderator' || userProfile?.role === 'trainer' || userProfile?.role === 'expert';
     
     // Если администратор не является участником, не позволяем проходить тесты
     if (hasAdminAccess && !isParticipant) {
+      console.log('❌ Администратор не является участником');
       alert('Для прохождения тестов необходимо зарегистрироваться на мероприятие как участник.');
       return;
     }
 
     const testInfo = testStatus[testType];
+    console.log('📋 testInfo для', testType, ':', testInfo);
+    
     if (!testInfo || !testInfo.test) {
+      console.log('❌ Тест не найден для типа:', testType);
       alert('Тест не найден');
       return;
     }
     
     if (testInfo.completed) {
+      console.log('✅ Тест уже завершен, результат:', testInfo.score);
       alert(`Вы уже прошли этот тест. Ваш результат: ${testInfo.score}%`);
       return;
     }
     
     if (testInfo.attemptId) {
-      onStartTest(testType, testInfo.attemptId);
+      console.log('🔄 Используем существующую попытку:', testInfo.attemptId);
+      onStartTest(testInfo.test.id, eventId, testInfo.attemptId);
       return;
     }
 
     // Если нет attemptId, создаем новую попытку
     try {
+      console.log('🆕 Создаем новую попытку для теста:', testInfo.test.id);
       const { data: newAttempt, error } = await supabase
         .from('user_test_attempts')
         .insert({
@@ -643,11 +655,15 @@ export default function EventTestPrompts({ eventId, onStartTest, testStatus, ref
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Ошибка при создании попытки:', error);
+        throw error;
+      }
 
-      onStartTest(testType, newAttempt.id);
+      console.log('✅ Создана новая попытка:', newAttempt);
+      onStartTest(testInfo.test.id, eventId, newAttempt.id);
     } catch (err) {
-      console.error('Ошибка при создании попытки теста:', err);
+      console.error('❌ Ошибка при создании попытки теста:', err);
       
       // Проверяем, является ли это ошибкой от триггера о дублировании
       if (err.message && err.message.includes('Тест уже пройден')) {

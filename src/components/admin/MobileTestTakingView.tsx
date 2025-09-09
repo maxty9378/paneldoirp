@@ -143,7 +143,7 @@ export const MobileTestTakingView: React.FC<MobileTestTakingViewProps> = ({
   }, [timeRemaining]);
 
   const currentQuestion = questions[currentQuestionIndex];
-  const currentAnswer = getCurrentAnswer(currentQuestion?.id);
+  const currentAnswer = currentQuestion?.id ? getCurrentAnswer(currentQuestion.id) : undefined;
   
   // Отладка для sequence вопросов
   if (currentQuestion?.question_type === 'sequence') {

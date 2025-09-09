@@ -17,7 +17,7 @@ import { useNavigate } from 'react-router-dom';
 
 interface EventDetailViewProps {
   eventId: string;
-  onStartTest?: (testType: 'entry' | 'final' | 'annual', testId: string, eventId: string, attemptId: string) => void;
+  onStartTest?: (testId: string, eventId: string, attemptId: string) => void;
   onBack?: () => void;
 }
 

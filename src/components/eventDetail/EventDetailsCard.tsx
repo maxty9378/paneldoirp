@@ -17,9 +17,16 @@ function useHoudiniSquircleOnce() {
         }
         // @ts-expect-error paintWorklet может не быть в типах
         if (!cancelled && CSS?.paintWorklet && !(window as any).__squircleLoaded) {
-          // @ts-expect-error addModule типы
-          await CSS.paintWorklet.addModule('https://www.unpkg.com/css-houdini-squircle/squircle.min.js');
-          (window as any).__squircleLoaded = true;
+          try {
+            // @ts-expect-error addModule типы
+            await CSS.paintWorklet.addModule('https://www.unpkg.com/css-houdini-squircle/squircle.min.js');
+            (window as any).__squircleLoaded = true;
+          } catch (error) {
+            // Игнорируем ошибки регистрации, если уже зарегистрировано
+            if (!error.message?.includes('already registered')) {
+              console.warn('Squircle paint worklet error:', error);
+            }
+          }
         }
       } catch {}
     })();
@@ -222,6 +229,11 @@ export const Avatar = React.memo(function Avatar({
           loading="lazy"
           referrerPolicy="no-referrer"
           style={{ borderRadius: 24 }} // мягкий фолбек, меньше перерисовок
+          onError={(e) => {
+            console.error('Ошибка загрузки аватара:', visibleSrc);
+            e.currentTarget.style.display = 'none';
+            e.currentTarget.nextElementSibling?.classList.remove('hidden');
+          }}
         />
       ) : (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-300">

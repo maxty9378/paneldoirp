@@ -389,6 +389,10 @@ export const useMobileTest = (testId: string, eventId: string, attemptId: string
 
   // Get current answer
   const getCurrentAnswer = useCallback((questionId: string) => {
+    if (!questionId) {
+      console.log('No questionId provided to getCurrentAnswer');
+      return undefined;
+    }
     const answer = userAnswers.find(a => a.questionId === questionId);
     if (!answer) {
       console.log('No answer found for question:', questionId, 'Total answers:', userAnswers.length);
