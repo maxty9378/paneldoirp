@@ -80,6 +80,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // single-flight
   const inFlightProfile = useRef<Promise<User | null> | null>(null);
+  
+  // ref для актуального пользователя в onAuthStateChange
+  const userRef = useRef<User | null>(null);
+  useEffect(() => { userRef.current = user; }, [user]);
+
+  // Резюмирование после коллбэка - дотянуть профиль после /auth/*
+  useEffect(() => {
+    if (!isAuthFlowPath() && session?.user && !userProfile) {
+      console.log('🔄 Post-auth: fetching profile after callback');
+      fetchUserProfile(session.user.id, { foreground: false })
+        .catch(e => console.warn('post-auth bg fetch failed', e));
+    }
+  }, [session?.user, userProfile]);
 
   // безопасный sleep
   const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
@@ -221,10 +234,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(u);
         setUserProfile(u);
         cacheUserProfile(u);
-        if (foreground) {           // ← добавил условие
+        if (foreground) {
           setLoading(false);
-      setLoadingPhase('complete');
+          setLoadingPhase('complete');
         }
+      } else if (foreground) {
+        setLoading(false);
+        setLoadingPhase('complete');
       }
       return;
     }
@@ -614,7 +630,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('✅ New session after auth change');
         
         // Check if user is the same as current user
-        if (user?.id === session.user.id) {
+        if (userRef.current?.id === session.user.id) {
           console.log('✅ User ID matches existing user, keeping current profile');
           setLoadingPhase('complete');
           setLoading(false);

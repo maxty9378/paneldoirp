@@ -19,12 +19,15 @@ export default function AuthCallback() {
     
     if (executedRef.current) {
       console.log('⚠️ Already executed, skipping...');
-            return;
-          }
+      return;
+    }
+
+    // Устанавливаем флаг обработки
+    window.authCallbackProcessing = true;
 
     const handleAuthCallback = async () => {
       try {
-    executedRef.current = true;
+        executedRef.current = true;
         console.log('🔄 Processing auth callback...');
         console.log('Current URL:', window.location.href);
         console.log('Search params:', window.location.search);
