@@ -36,7 +36,7 @@ export interface EventWithStats {
 }
 
 const TYPE_LABELS: Record<string, { label: string; icon: React.ComponentType<any> }> = {
-  training: { label: 'Онлайн тренинг', icon: Play },
+  training: { label: 'Онлайн тренинг', icon: Video },
   webinar: { label: 'Вебинар', icon: CalendarDays },
   workshop: { label: 'Мастер-класс', icon: Users2 },
   exam: { label: 'Экзамен', icon: CheckCircle2 },
@@ -104,7 +104,7 @@ function ruWeekday(d: Date) {
 function DateAccent({
   date,
   tone = 'slate',
-}: { date: Date | null; tone?: 'ocean'|'mint'|'lavender'|'sunset'|'sand'|'slate' }) {
+}: { date: Date | null; tone?: ToneKey }) {
   if (!date) {
     return (
       <div className="rounded-xl bg-slate-50 px-4 py-3 text-center ring-1 ring-slate-200">
@@ -128,6 +128,12 @@ function DateAccent({
     : tone === 'lavender' ? 'from-indigo-50 to-fuchsia-100 ring-indigo-200'
     : tone === 'sunset' ? 'from-amber-50 to-rose-100 ring-amber-200'
     : tone === 'sand' ? 'from-amber-50 to-yellow-100 ring-amber-200'
+    : tone === 'emerald' ? 'from-emerald-50 to-emerald-100 ring-emerald-200'
+    : tone === 'rose' ? 'from-rose-50 to-rose-100 ring-rose-200'
+    : tone === 'amber' ? 'from-amber-50 to-amber-100 ring-amber-200'
+    : tone === 'indigo' ? 'from-indigo-50 to-indigo-100 ring-indigo-200'
+    : tone === 'teal' ? 'from-teal-50 to-teal-100 ring-teal-200'
+    : tone === 'purple' ? 'from-purple-50 to-purple-100 ring-purple-200'
     : 'from-slate-50 to-slate-100 ring-slate-200';
 
   const timePill = tone === 'mint' ? 'bg-emerald-600'
@@ -135,6 +141,12 @@ function DateAccent({
     : tone === 'lavender' ? 'bg-indigo-600'
     : tone === 'sunset' ? 'bg-rose-600'
     : tone === 'sand' ? 'bg-amber-600'
+    : tone === 'emerald' ? 'bg-emerald-600'
+    : tone === 'rose' ? 'bg-rose-600'
+    : tone === 'amber' ? 'bg-amber-600'
+    : tone === 'indigo' ? 'bg-indigo-600'
+    : tone === 'teal' ? 'bg-teal-600'
+    : tone === 'purple' ? 'bg-purple-600'
     : 'bg-slate-700';
 
   return (
@@ -159,13 +171,13 @@ function DateAccent({
 }
 
 // Тоны карточек (перелив)
-type ToneKey = 'ocean' | 'mint' | 'lavender' | 'sunset' | 'sand' | 'slate';
+type ToneKey = 'ocean' | 'mint' | 'lavender' | 'sunset' | 'sand' | 'slate' | 'emerald' | 'rose' | 'amber' | 'indigo' | 'teal' | 'purple';
 const TYPE_TONE: Record<string, ToneKey> = {
-  training: 'mint',
-  webinar: 'ocean',
-  workshop: 'lavender',
-  exam: 'sunset',
-  other: 'sand',
+  training: 'emerald',    // Зеленый для онлайн-тренингов
+  webinar: 'ocean',       // Синий для вебинаров
+  workshop: 'purple',     // Фиолетовый для мастер-классов
+  exam: 'rose',           // Розовый для экзаменов
+  other: 'amber',         // Янтарный для других
 };
 const STATUS_TONE: Record<EventStatus, ToneKey> = {
   draft: 'slate',
@@ -182,8 +194,52 @@ function toneClass(tone: ToneKey): string {
   return {
     ocean: 'ir-ocean', mint: 'ir-mint', lavender: 'ir-lavender',
     sunset: 'ir-sunset', sand: 'ir-sand', slate: 'ir-slate',
+    emerald: 'ir-emerald', rose: 'ir-rose', amber: 'ir-amber',
+    indigo: 'ir-indigo', teal: 'ir-teal', purple: 'ir-purple',
   }[tone];
 }
+
+// Цветовые классы для чипов типов мероприятий
+function getTypeChipClasses(type: string, eventTypes?: { name_ru: string }) {
+  // Определяем тип по event.type или event.event_types.name_ru
+  let actualType = type;
+  
+  // Если event.type пустой или "other", используем event.event_types.name_ru
+  if ((!actualType || actualType === 'other') && eventTypes?.name_ru) {
+    // Маппинг русских названий на английские ключи
+    const nameMapping: Record<string, string> = {
+      'Онлайн-тренинг': 'training',
+      'Вебинар': 'webinar',
+      'Мастер-класс': 'workshop',
+      'Экзамен': 'exam',
+    };
+    actualType = nameMapping[eventTypes.name_ru] || 'other';
+  }
+  
+  const typeColors = {
+    training: 'bg-blue-500 text-white ring-blue-500',
+    webinar: 'bg-blue-100 text-blue-700 ring-blue-200',
+    workshop: 'bg-purple-100 text-purple-700 ring-purple-200',
+    exam: 'bg-rose-100 text-rose-700 ring-rose-200',
+    other: 'bg-amber-100 text-amber-700 ring-amber-200',
+  };
+  
+  return typeColors[actualType as keyof typeof typeColors] || 'bg-slate-100 text-slate-700 ring-slate-200';
+}
+
+// Цветовые классы для буллитов по типу мероприятия
+function getTypeBulletClasses(type: string) {
+  const typeBullets = {
+    training: 'text-white bg-blue-500 ring-blue-500',
+    webinar: 'text-blue-700 bg-blue-50 ring-blue-200',
+    workshop: 'text-purple-700 bg-purple-50 ring-purple-200',
+    exam: 'text-rose-700 bg-rose-50 ring-rose-200',
+    other: 'text-amber-700 bg-amber-50 ring-amber-200',
+  };
+  
+  return typeBullets[type as keyof typeof typeBullets] || 'text-slate-700 bg-slate-50 ring-slate-200';
+}
+
 
 
 /* ----------------- Основная карточка ----------------- */
@@ -209,7 +265,7 @@ export function EventCard({
     ? TYPE_LABELS[event.type] || { label: event.event_types?.name_ru || 'Мероприятие', icon: Info }
     : { label: event.event_types?.name_ru || 'Мероприятие', icon: Info };
   const irTone = toneForEvent(event);
-  const { badge, now } = dateBadges(d);
+  const { badge } = dateBadges(d);
 
   return (
     <article
@@ -228,18 +284,23 @@ export function EventCard({
           <div className="flex flex-col gap-2">
             {/* Первая строка: статус + ZOOM + время */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className={cx(
-                'inline-flex items-center gap-1.5 px-3 py-1 text-[11px] font-semibold ring-1 shadow-sm',
-                label ? 'rounded-full' : 'rounded-lg h-8 w-8 justify-center',
-                statusTone, ring
-              )}>
-                <StatusIcon className={
-                label === 'Активно' ? "h-4 w-4" : 
-                label === 'Идёт' ? "h-3.5 w-3.5" : 
-                label ? "h-3.5 w-3.5" : "h-12 w-12 text-white"
-              } />
-                {label && <span>{label}</span>}
-              </span>
+              {(() => {
+                const isIconOnly = !label;
+                const badgeClass = cx(
+                  'inline-flex items-center gap-1 text-[10px] font-semibold ring-1 shadow-sm',
+                  isIconOnly ? 'h-7 w-7 justify-center rounded-lg p-0' : 'rounded-full px-2 py-0.5',
+                  label ? statusTone : (event.type === 'training' ? getTypeBulletClasses(event.type) : statusTone),
+                  label ? ring : (event.type === 'training' ? '' : ring)
+                );
+                const iconSize = isIconOnly ? 'h-4 w-4' : 'h-3.5 w-3.5';
+
+                return (
+                  <span className={badgeClass}>
+                    <StatusIcon className={cx(iconSize, event.status === 'ongoing' && 'animate-spin')} />
+                    {!isIconOnly && <span>{label}</span>}
+                  </span>
+                );
+              })()}
               {event.location && event.location.toLowerCase().includes('zoom') && (
                 <SiZoom className="h-10 w-10 text-blue-600 ml-2" />
               )}
@@ -247,8 +308,10 @@ export function EventCard({
             
             {/* Вторая строка: тип мероприятия */}
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-700 ring-1 ring-slate-200 shadow-sm">
-                <typeInfo.icon className="h-3.5 w-3.5" />
+              <span className={cx(
+                'inline-flex items-center gap-1.5 rounded-lg px-3 py-1 text-[11px] font-semibold ring-1 shadow-sm',
+                getTypeChipClasses(event.type || 'other', event.event_types || undefined)
+              )}>
                 {typeInfo.label}
               </span>
             </div>
@@ -278,14 +341,17 @@ export function EventCard({
           </div>
           
       {/* Низ: действия и сервисная инфа */}
-      <footer className="mt-auto flex items-center justify-between flex-shrink-0">
-        <div className="text-[9px] text-slate-400 opacity-60">
-          Создано: {d ? `${d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })} ${new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit' }).format(d)}` : 'Дата не указана'}
-        </div>
+      <footer className="mt-auto flex-shrink-0">
+        {canCreateEvents ? (
+          <div className="flex items-center justify-between">
+            <div className="text-[9px] text-slate-400 opacity-60">
+              Создано: {event.created_at ? (() => {
+                const createdDate = new Date(event.created_at);
+                return `${createdDate.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })} ${new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit' }).format(createdDate)}`;
+              })() : 'Дата не указана'}
+            </div>
 
-        <div className="flex items-center gap-2">
-          {canCreateEvents && (
-            <>
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => onEditEvent?.(event.id)}
                 className="btn-neutral"
@@ -300,17 +366,26 @@ export function EventCard({
               >
                 <Trash2 className="h-4 w-4" />
               </button>
-            </>
-          )}
+              <button 
+                onClick={() => onNavigateToEvent?.(event.id)}
+                className="btn-primary"
+                title="Открыть"
+              >
+                <span className="text-sm font-medium">Открыть</span>
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        ) : (
           <button 
             onClick={() => onNavigateToEvent?.(event.id)}
-            className="btn-primary"
+            className="w-full justify-center relative overflow-hidden bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-600 hover:via-teal-600 hover:to-emerald-700 text-white font-medium py-2.5 px-4 rounded-lg transition-all duration-300 shadow-sm hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
             title="Открыть"
           >
-            <span className="text-sm font-medium">Открыть</span>
-            <ChevronRight className="h-4 w-4" />
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-[shimmer_3s_ease-in-out_infinite]"></div>
+            <span className="text-sm font-medium relative z-10">Открыть</span>
           </button>
-        </div>
+        )}
       </footer>
     </article>
   );

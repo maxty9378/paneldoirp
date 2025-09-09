@@ -55,6 +55,7 @@ export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: Ev
   const [sortBy, setSortBy] = useState<SortBy>('start_date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
 
   const { user, userProfile } = useAuth();
 
@@ -155,6 +156,13 @@ export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: Ev
   const filteredEvents = useMemo(() => {
     let list = [...events];
 
+    // Фильтрация по активной вкладке
+    if (activeTab === 'active') {
+      list = list.filter((ev) => ['active', 'published', 'ongoing', 'draft'].includes(ev.status));
+    } else if (activeTab === 'completed') {
+      list = list.filter((ev) => ev.status === 'completed');
+    }
+
     if (debouncedSearch) {
       const s = debouncedSearch.toLowerCase();
       list = list.filter(
@@ -198,7 +206,7 @@ export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: Ev
     });
 
     return list;
-  }, [events, debouncedSearch, statusFilter, typeFilter, sortBy, sortOrder]);
+  }, [events, debouncedSearch, statusFilter, typeFilter, sortBy, sortOrder, activeTab]);
 
   const canCreateEvents =
     !!userProfile?.role && ['trainer', 'moderator', 'administrator'].includes(userProfile.role);
@@ -214,9 +222,6 @@ export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: Ev
     }
   };
 
-  const toggleEventSelection = (id: string) => {
-    setSelectedEvents((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-  };
 
   // ---------------- UI helpers ----------------
   const resetFilters = () => {
@@ -285,22 +290,6 @@ export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: Ev
     );
   }
 
-  const activeCount = events.filter((e) => ['active', 'published', 'ongoing'].includes(e.status)).length;
-  const completedCount = events.filter((e) => e.status === 'completed').length;
-  const draftsCount = events.filter((e) => e.status === 'draft').length;
-  const inMonthCount = events.filter((e) => {
-    const d = new Date((e as any).start_date || (e as any).date_time || '');
-    const now = new Date();
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  }).length;
-  const tasksCount = events.reduce((acc, ev) => {
-    let t = 0;
-    if (ev.pending_tests && ev.pending_tests > 0) t++;
-    if (ev.pending_feedback && ev.pending_feedback > 0) t++;
-    // отчет
-    if (ev.status === 'completed' && !ev.has_report) t++;
-    return acc + t;
-  }, 0);
 
   return (
     <div className="space-y-8 pb-safe-bottom">
@@ -319,15 +308,17 @@ export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: Ev
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowSearchFilters((v) => !v)}
-            className="px-3.5 py-2 h-9 text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all text-sm inline-flex items-center gap-2"
-            title="Поиск и фильтры"
-          >
-            <Search className="w-4 h-4" />
-            <span className="hidden sm:inline">Поиск</span>
-            <Filter className="w-4 h-4" />
-          </button>
+          {canCreateEvents && (
+            <button
+              onClick={() => setShowSearchFilters((v) => !v)}
+              className="px-3.5 py-2 h-9 text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all text-sm inline-flex items-center gap-2"
+              title="Поиск и фильтры"
+            >
+              <Search className="w-4 h-4" />
+              <span className="hidden sm:inline">Поиск</span>
+              <Filter className="w-4 h-4" />
+            </button>
+          )}
 
           {canCreateEvents && (
             <>
@@ -355,7 +346,7 @@ export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: Ev
       </div>
 
       {/* Search & Filters */}
-      {showSearchFilters && (
+      {showSearchFilters && canCreateEvents && (
         <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm mt-2">
           <div className="flex flex-col gap-3 md:flex-row md:items-center">
             <div className="flex-1">
@@ -458,45 +449,91 @@ export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: Ev
       <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
         <StatCard
           label="Всего"
-          value={events.length}
+          value={filteredEvents.length}
           icon={<CalendarIcon className="w-4 h-4 text-slate-600" />}
           iconWrapClass="from-slate-100 to-slate-200"
         />
         <StatCard
           label="Активные"
-          value={activeCount}
+          value={activeTab === 'active' ? filteredEvents.filter((e) => ['active', 'published', 'ongoing'].includes(e.status)).length : 0}
           valueClass="text-emerald-600"
           icon={<Play className="w-4 h-4 text-emerald-600" />}
           iconWrapClass="from-emerald-100 to-emerald-200"
         />
         <StatCard
           label="Завершено"
-          value={completedCount}
+          value={activeTab === 'completed' ? filteredEvents.length : 0}
           valueClass="text-indigo-600"
           icon={<CheckCircle className="w-4 h-4 text-indigo-600" />}
           iconWrapClass="from-indigo-100 to-indigo-200"
         />
         <StatCard
           label="Черновики"
-          value={draftsCount}
+          value={activeTab === 'active' ? filteredEvents.filter((e) => e.status === 'draft').length : 0}
           valueClass="text-slate-700"
           icon={<Pause className="w-4 h-4 text-slate-600" />}
           iconWrapClass="from-slate-100 to-slate-200"
         />
         <StatCard
           label="Этот месяц"
-          value={inMonthCount}
+          value={filteredEvents.filter((e) => {
+            const d = new Date((e as any).start_date || (e as any).date_time || '');
+            const now = new Date();
+            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+          }).length}
           valueClass="text-purple-600"
           icon={<CalendarDays className="w-4 h-4 text-purple-600" />}
           iconWrapClass="from-purple-100 to-purple-200"
         />
         <StatCard
           label="Задачи"
-          value={tasksCount}
+          value={filteredEvents.reduce((acc, ev) => {
+            let t = 0;
+            if (ev.pending_tests && ev.pending_tests > 0) t++;
+            if (ev.pending_feedback && ev.pending_feedback > 0) t++;
+            if (ev.status === 'completed' && !ev.has_report) t++;
+            return acc + t;
+          }, 0)}
           valueClass="text-red-600"
           icon={<Zap className="w-4 h-4 text-red-600" />}
           iconWrapClass="from-red-100 to-red-200"
         />
+      </div>
+
+      {/* Tabs */}
+      <div className="flex space-x-1 bg-slate-100 p-1 rounded-xl">
+        <button
+          onClick={() => setActiveTab('active')}
+          className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+            activeTab === 'active'
+              ? 'bg-white text-slate-900 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+          }`}
+        >
+          <div className="flex items-center justify-center gap-2">
+            <Play className="w-4 h-4" />
+            <span>Активные</span>
+            <span className="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-xs font-medium">
+              {events.filter((e) => ['active', 'published', 'ongoing', 'draft'].includes(e.status)).length}
+            </span>
+          </div>
+        </button>
+        <button
+          onClick={() => setActiveTab('completed')}
+          className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+            activeTab === 'completed'
+              ? 'bg-white text-slate-900 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+          }`}
+        >
+          <div className="flex items-center justify-center gap-2">
+            <CheckCircle className="w-4 h-4" />
+            <span>Завершённые</span>
+            <span className="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-xs font-medium">
+              {events.filter((e) => e.status === 'completed').length}
+            </span>
+          </div>
+        </button>
       </div>
 
       {/* Bulk actions */}
