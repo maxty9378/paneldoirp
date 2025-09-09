@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 // Расширяем window для флага обработки
 declare global {
@@ -12,8 +12,6 @@ declare global {
 
 export default function AuthCallback() {
   const navigate = useNavigate();
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-  const [message, setMessage] = useState('Обработка авторизации...');
   const executedRef = useRef(false);
 
   useEffect(() => {
@@ -96,9 +94,6 @@ export default function AuthCallback() {
                 console.log('🧩 getSession says:', !!s?.user);
                 
                 if (s?.user) {
-                  setStatus('success');
-                  setMessage('Авторизация успешна! Перенаправление...');
-                  
                   try {
                     window.history.replaceState({}, '', '/');
                   } catch {}
@@ -118,9 +113,6 @@ export default function AuthCallback() {
                 const { data: { session: currentSession } } = await supabase.auth.getSession();
                 if (currentSession?.user) {
                   console.log('✅ User found in current session:', currentSession.user.email);
-
-          setStatus('success');
-          setMessage('Авторизация успешна! Перенаправление...');
                   
                   try {
                     window.history.replaceState({}, '', '/');
@@ -130,7 +122,7 @@ export default function AuthCallback() {
                   
                   console.log('🚀 Redirecting to home...');
                   window.location.replace('/');
-          return;
+                  return;
                 } else {
                   throw new Error('Не удалось установить сессию пользователя');
                 }
@@ -160,9 +152,6 @@ export default function AuthCallback() {
 
             if (data.user) {
               console.log('✅ Magic link token verified successfully:', data.user.email);
-
-          setStatus('success');
-          setMessage('Авторизация успешна! Перенаправление...');
               
               try {
                 window.history.replaceState({}, '', '/');
@@ -172,8 +161,8 @@ export default function AuthCallback() {
               
               console.log('🚀 Redirecting to home...');
               window.location.replace('/');
-          return;
-        }
+              return;
+            }
           }
 
           // Проверяем hash токены (для OAuth и других методов)
@@ -197,9 +186,6 @@ export default function AuthCallback() {
             if (data.user) {
               console.log('✅ Hash session set successfully:', data.user.email);
               
-              setStatus('success');
-              setMessage('Авторизация успешна! Перенаправление...');
-              
               try {
                 window.history.replaceState({}, '', '/');
               } catch {}
@@ -214,11 +200,9 @@ export default function AuthCallback() {
 
           // Если дошли до сюда и ничего не сработало
           console.log('❌ No suitable authentication method found');
-          setStatus('error');
-          setMessage('Не удалось обработать токены авторизации');
           setTimeout(() => {
             window.location.replace('/');
-          }, 3000);
+          }, 1000);
         })(); // Закрываем authPromise
         
         // Ждем либо завершения авторизации, либо таймаута
@@ -226,11 +210,9 @@ export default function AuthCallback() {
 
       } catch (error: any) {
         console.error('❌ Auth callback error:', error);
-        setStatus('error');
-        setMessage(error.message || 'Произошла ошибка при авторизации');
         setTimeout(() => {
           window.location.replace('/');
-        }, 3000);
+        }, 1000);
       } finally {
         // Очищаем флаг обработки
         window.authCallbackProcessing = false;
@@ -240,50 +222,13 @@ export default function AuthCallback() {
     handleAuthCallback();
   }, [navigate]);
 
+  // Показываем только минимальный индикатор загрузки
+  // Основной экран загрузки будет показан в App.tsx
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#e5f3ff] via-[#eafaf1] to-[#b6e0fe] px-4">
-      <div className="bg-white rounded-xl p-8 shadow-lg border border-gray-200 max-w-md w-full text-center">
-        {status === 'loading' && (
-          <>
-            <div className="w-16 h-16 bg-blue-100 rounded-full mx-auto flex items-center justify-center mb-4">
-              <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-            </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Обработка авторизации</h2>
-            <p className="text-gray-600">{message}</p>
-          </>
-        )}
-
-        {status === 'success' && (
-          <>
-            <div className="w-16 h-16 bg-green-100 rounded-full mx-auto flex items-center justify-center mb-4">
-              <CheckCircle className="w-8 h-8 text-green-600" />
-            </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Авторизация успешна!</h2>
-            <p className="text-gray-600 mb-4">{message}</p>
-            <button
-              onClick={() => window.location.replace('/')}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              Перейти в приложение
-            </button>
-          </>
-        )}
-
-        {status === 'error' && (
-          <>
-            <div className="w-16 h-16 bg-red-100 rounded-full mx-auto flex items-center justify-center mb-4">
-              <AlertCircle className="w-8 h-8 text-red-600" />
-            </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Ошибка авторизации</h2>
-            <p className="text-gray-600 mb-4">{message}</p>
-              <button
-              onClick={() => window.location.replace('/')}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-            >
-              Вернуться на главную
-              </button>
-          </>
-        )}
+      <div className="text-center">
+        <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-2" />
+        <p className="text-gray-600 text-sm">Обработка авторизации...</p>
       </div>
     </div>
   );
