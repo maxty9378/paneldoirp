@@ -55,6 +55,7 @@ function AppContent() {
   const isExpertQR = typeof window !== 'undefined' && window.location.pathname.startsWith('/auth/qr');
   const showOverlay =
     isAuthFlow ||
+    (loadingPhase === 'initializing') ||
     (loadingPhase === 'session-fetch') ||
     (loadingPhase === 'auth-change') ||
     (loadingPhase === 'profile-fetch' && !session);
@@ -253,7 +254,7 @@ function AppContent() {
   
   if (!user) {
     // Пока идёт auth-флоу или ранняя инициализация — форму вообще не показываем
-    if (isAuthFlow || loadingPhase === 'session-fetch' || loadingPhase === 'auth-change') {
+    if (isAuthFlow || loadingPhase === 'initializing' || loadingPhase === 'session-fetch' || loadingPhase === 'auth-change') {
       return null; // оверлей уже показан глобально
     }
     return <LoginForm />;
