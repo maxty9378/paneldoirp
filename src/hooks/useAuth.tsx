@@ -63,13 +63,20 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null); 
+  const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null); 
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true); 
   const [authError, setAuthError] = useState<string | null>(null);
   const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>('initializing');
   const [retryCount, setRetryCount] = useState(0);
+
+  // Хелпер для проверки авторизационного флоу
+  const isAuthFlowPath = () => {
+    if (typeof window === 'undefined') return false;
+    const p = window.location.pathname || '';
+    return p.startsWith('/auth/');
+  };
 
   // single-flight
   const inFlightProfile = useRef<Promise<User | null> | null>(null);
@@ -193,11 +200,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Глобальная проверка: не загружаем профиль во время авторизации
-    const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
-    const isAuthFlow = pathname.startsWith('/auth/');
-    if (isAuthFlow) {
-      console.log('⏳ On auth route, skipping profile fetch');
+    // Страховка: не загружаем профиль во время авторизации
+    if (isAuthFlowPath() || window.authCallbackProcessing) {
+      console.log('⏭ Bypass fetchUserProfile during auth flow');
       return;
     }
 
@@ -541,31 +546,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         if (session?.user) {
           console.log('✅ Initial session found, fetching profile');
-          setLoadingPhase('profile-fetch');
           
-          // Look for cached profile first
-          const cachedUser = getUserFromCache();
-          if (cachedUser && cachedUser.id === session.user.id) {
-            console.log('✅ Using cached user profile');
-            setUser(cachedUser);
-            setUserProfile(cachedUser);
-            setLoadingPhase('complete');
+          if (isAuthFlowPath() || window.authCallbackProcessing) {
+            console.log('⏸ Skip initial profile fetch during auth flow');
+            setLoadingPhase('ready');
             setLoading(false);
-            
-            // Background refresh handled by onAuthStateChange
           } else {
-            // No valid cached profile, fetch from server
-            try {
-              await Promise.race([
-                fetchUserProfile(session.user.id, { foreground: true }),
-                new Promise((_, reject) => 
-                  setTimeout(() => reject(new Error('Profile fetch timeout')), 60000)
-                )
-              ]);
-            } catch (e: any) {
-              console.warn('⚠️ Profile fetch timed out, using fallback');
+            // Look for cached profile first
+            const cachedUser = getUserFromCache();
+            if (cachedUser && cachedUser.id === session.user.id) {
+              console.log('✅ Using cached user profile');
+              setUser(cachedUser);
+              setUserProfile(cachedUser);
               setLoadingPhase('complete');
               setLoading(false);
+            } else {
+              setLoadingPhase('complete');
+              setLoading(false);
+              fetchUserProfile(session.user.id, { foreground: false })
+                .catch(e => console.warn('bg profile fetch failed', e));
             }
           }
         } else {
@@ -601,6 +600,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (event === 'INITIAL_SESSION') {
         return;
       }
+
+      // не дёргаем профиль, пока коллбэк ещё жуёт токены или мы на /auth/*
+      if (window.authCallbackProcessing || isAuthFlowPath()) {
+        console.log('⏸ Skip profile fetch during auth flow');
+        setLoadingPhase('ready');
+        setLoading(false);
+        return;
+      }
       
       // Обработка других событий (SIGNED_IN, SIGNED_OUT, etc.)
       if (session?.user) {
@@ -614,20 +621,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         
-        // Different user, fetch profile
-        setLoadingPhase('auth-change');
-        try {
-          await Promise.race([
-            fetchUserProfile(session.user.id, { foreground: true }),
-            new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Profile fetch timeout')), 60000)
-            )
-          ]);
-        } catch (e: any) {
-          console.warn('⚠️ Profile fetch timed out, using fallback');
-          setLoadingPhase('complete');
-          setLoading(false);
-        }
+        // Different user, fetch profile in background
+        setLoadingPhase('complete');
+        setLoading(false);
+        // фоново, без блокировки интерфейса
+        fetchUserProfile(session.user.id, { foreground: false })
+          .catch(e => console.warn('bg profile fetch failed', e));
       } else {
         console.log('ℹ️ No session after auth change');
         setLoadingPhase('logged-out');
