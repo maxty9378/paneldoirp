@@ -13,6 +13,7 @@ import {
   Plus,
   Search,
   Edit3,
+  X,
 } from 'lucide-react';
 
 interface TrainerTerritory {
@@ -40,6 +41,26 @@ interface TrainerTerritory {
   is_active: boolean;
 }
 
+interface TerritoryLog {
+  id: string;
+  trainer_territory_id: string;
+  trainer_id: string;
+  territory_id: string;
+  action: 'assigned' | 'unassigned' | 'activated' | 'deactivated' | 'deleted';
+  performed_by: string;
+  performed_at: string;
+  metadata: any;
+  trainer: {
+    full_name: string;
+  };
+  territory: {
+    name: string;
+  };
+  performer: {
+    full_name: string;
+  };
+}
+
 type Territory = {
   id: string;
   name: string;
@@ -52,6 +73,7 @@ export function TrainerTerritoriesView() {
 
   const [trainerTerritories, setTrainerTerritories] = useState<TrainerTerritory[]>([]);
   const [trainers, setTrainers] = useState<any[]>([]);
+  const [logs, setLogs] = useState<TerritoryLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +86,7 @@ export function TrainerTerritoriesView() {
 
   const [search, setSearch] = useState('');
   const [onlyActive, setOnlyActive] = useState(false);
+  const [showLogs, setShowLogs] = useState(false);
 
   const isAdmin = userProfile?.role === 'administrator';
 
@@ -84,6 +107,7 @@ export function TrainerTerritoriesView() {
     setLoading(true);
     setError(null);
     try {
+      // Загружаем назначения
       const { data: assignments, error: assignmentsError } = await supabase
         .from('trainer_territories')
         .select(`
@@ -98,6 +122,7 @@ export function TrainerTerritoriesView() {
 
       if (assignmentsError) throw assignmentsError;
 
+      // Загружаем тренеров
       const { data: trainersData, error: trainersError } = await supabase
         .from('users')
         .select(`
@@ -110,7 +135,21 @@ export function TrainerTerritoriesView() {
 
       if (trainersError) throw trainersError;
 
-      // выправляем возможные массивы из связей
+      // Загружаем логи
+      const { data: logsData, error: logsError } = await supabase
+        .from('trainer_territories_log')
+        .select(`
+          id, trainer_territory_id, trainer_id, territory_id, action, performed_by, performed_at, metadata,
+          trainer:users!trainer_territories_log_trainer_id_fkey(full_name),
+          territory:territories!trainer_territories_log_territory_id_fkey(name),
+          performer:users!trainer_territories_log_performed_by_fkey(full_name)
+        `)
+        .order('performed_at', { ascending: false })
+        .limit(50);
+
+      if (logsError) throw logsError;
+
+      // Форматируем данные
       const formattedAssignments: TrainerTerritory[] = (assignments || []).map((a: any) => {
         const trainer = Array.isArray(a.trainer) ? a.trainer[0] : a.trainer;
         const branch = Array.isArray(trainer?.branch) ? trainer.branch[0] : trainer?.branch;
@@ -123,8 +162,16 @@ export function TrainerTerritoriesView() {
         branch: Array.isArray(t.branch) ? t.branch[0] : t.branch,
       }));
 
+      const formattedLogs: TerritoryLog[] = (logsData || []).map((log: any) => ({
+        ...log,
+        trainer: Array.isArray(log.trainer) ? log.trainer[0] : log.trainer,
+        territory: Array.isArray(log.territory) ? log.territory[0] : log.territory,
+        performer: Array.isArray(log.performer) ? log.performer[0] : log.performer,
+      }));
+
       setTrainerTerritories(formattedAssignments);
       setTrainers(formattedTrainers);
+      setLogs(formattedLogs);
     } catch (e: any) {
       console.error(e);
       setError('Не удалось загрузить данные. Попробуйте обновить страницу.');
@@ -139,6 +186,22 @@ export function TrainerTerritoriesView() {
 
   function isTerritoryAssigned(trainerId: string, territoryId: string) {
     return trainerTerritories.some(tt => tt.trainer_id === trainerId && tt.territory_id === territoryId);
+  }
+
+  function getAvailableTerritories() {
+    const assignedTerritoryIds = new Set(trainerTerritories.map(tt => tt.territory_id));
+    return (territories as Territory[]).filter(t => !assignedTerritoryIds.has(t.id));
+  }
+
+  function getActionText(action: string) {
+    const actions = {
+      assigned: 'назначил',
+      unassigned: 'отменил назначение',
+      activated: 'активировал',
+      deactivated: 'деактивировал',
+      deleted: 'удалил'
+    };
+    return actions[action as keyof typeof actions] || action;
   }
 
   /* ---------- DnD ---------- */
@@ -304,13 +367,22 @@ export function TrainerTerritoriesView() {
             </label>
           </div>
 
-          <button
-            onClick={() => setSelectedTrainerForAssign({ bulk: true })}
-            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-emerald-700"
-          >
-            <Plus className="h-4 w-4" />
-            Массовое назначение
-          </button>
+           <div className="flex items-center gap-2">
+             <button
+               onClick={() => setShowLogs(!showLogs)}
+               className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+             >
+               <AlertCircle className="h-4 w-4" />
+               {showLogs ? 'Скрыть логи' : 'Показать логи'}
+             </button>
+             <button
+               onClick={() => setSelectedTrainerForAssign({ bulk: true })}
+               className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-emerald-700"
+             >
+               <Plus className="h-4 w-4" />
+               Массовое назначение
+             </button>
+           </div>
         </div>
       </div>
 
@@ -373,8 +445,8 @@ export function TrainerTerritoriesView() {
                        </button>
                      </div>
 
-                    {/* Assigned territories - Compact list */}
-                    <div className="space-y-1">
+                    {/* Assigned territories - Two columns */}
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                       {assignedTerritories.map((assignment) => (
                         <div
                           key={assignment.id}
@@ -411,7 +483,7 @@ export function TrainerTerritoriesView() {
                       ))}
 
                       {assignedTerritories.length === 0 && (
-                        <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-3 text-center text-sm text-gray-500">
+                        <div className="col-span-full rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-3 text-center text-sm text-gray-500">
                           Перетащи филиал сюда или нажми кнопку редактирования
                         </div>
                       )}
@@ -426,7 +498,7 @@ export function TrainerTerritoriesView() {
               <div className="sticky top-4 rounded-2xl border border-gray-200 bg-white p-4">
                 <h3 className="mb-4 text-lg font-semibold text-gray-900">Доступные филиалы</h3>
                 <div className="max-h-96 space-y-2 overflow-y-auto">
-                  {(territories as Territory[]).map((territory) => (
+                  {getAvailableTerritories().map((territory) => (
                     <div
                       key={territory.id}
                       draggable
@@ -451,7 +523,7 @@ export function TrainerTerritoriesView() {
                     </div>
                   ))}
 
-                  {(territories as Territory[]).length === 0 && (
+                  {getAvailableTerritories().length === 0 && (
                     <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-4 text-center text-sm text-gray-500">
                       Нет доступных филиалов
                     </div>
@@ -465,6 +537,42 @@ export function TrainerTerritoriesView() {
           </>
         )}
       </div>
+
+      {/* Logs section */}
+      {showLogs && (
+        <div className="rounded-2xl border border-gray-200 bg-white p-4">
+          <h3 className="mb-4 text-lg font-semibold text-gray-900">История изменений</h3>
+          <div className="max-h-64 space-y-2 overflow-y-auto">
+            {logs.map((log) => (
+              <div key={log.id} className="flex items-center gap-3 rounded-lg border border-gray-100 bg-gray-50 p-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                  <AlertCircle className="h-4 w-4 text-blue-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-gray-900">
+                    {log.performer?.full_name} {getActionText(log.action)} филиал "{log.territory?.name}" для {log.trainer?.full_name}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {new Date(log.performed_at).toLocaleString('ru-RU')}
+                  </div>
+                </div>
+                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${
+                  log.action === 'assigned' || log.action === 'activated' ? 'bg-green-100 text-green-700' :
+                  log.action === 'unassigned' || log.action === 'deactivated' || log.action === 'deleted' ? 'bg-red-100 text-red-700' :
+                  'bg-gray-100 text-gray-700'
+                }`}>
+                  {getActionText(log.action)}
+                </span>
+              </div>
+            ))}
+            {logs.length === 0 && (
+              <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-4 text-center text-sm text-gray-500">
+                Нет записей в истории
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Error toast */}
       {error && (
@@ -504,74 +612,127 @@ export function TrainerTerritoriesView() {
         </Modal>
       )}
 
-      {/* Modal assign (checkbox list) */}
-      {selectedTrainerForAssign && !selectedTrainerForAssign.bulk && (
-        <Modal onClose={() => setSelectedTrainerForAssign(null)} title={`Назначить филиалы для ${selectedTrainerForAssign.full_name}`}>
-          <div className="space-y-4">
-            <div className="rounded-lg bg-blue-50 p-3">
-              <div className="flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-blue-600" />
-                <span className="text-sm font-medium text-blue-900">
-                  Филиал базирования: {selectedTrainerForAssign.branch?.name || 'Не указан'}
-                </span>
-              </div>
-            </div>
+       {/* Modal assign (improved design) */}
+       {selectedTrainerForAssign && !selectedTrainerForAssign.bulk && (
+         <Modal onClose={() => setSelectedTrainerForAssign(null)} title={`Редактировать филиалы для ${selectedTrainerForAssign.full_name}`}>
+           <div className="space-y-6">
+             {/* Trainer info */}
+             <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+               <div className="flex items-center gap-3">
+                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
+                   <Users className="h-5 w-5 text-emerald-600" />
+                 </div>
+                 <div>
+                   <div className="font-medium text-gray-900">{selectedTrainerForAssign.full_name}</div>
+                   <div className="text-sm text-gray-500">{selectedTrainerForAssign.email}</div>
+                   {selectedTrainerForAssign.branch && (
+                     <div className="mt-1">
+                       <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
+                         <Building2 className="h-3 w-3" />
+                         Базирование: {selectedTrainerForAssign.branch.name}
+                       </span>
+                     </div>
+                   )}
+                 </div>
+               </div>
+             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Выберите филиалы работы:</label>
-              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                {(territories as Territory[]).map((territory) => {
-                  const assigned = isTerritoryAssigned(selectedTrainerForAssign.id, territory.id);
-                  return (
-                    <label
-                      key={territory.id}
-                      className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
-                        assigned
-                          ? 'border-emerald-300 bg-emerald-50'
-                          : 'border-gray-200 bg-white hover:border-emerald-300 hover:bg-emerald-50'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={assigned}
-                        onChange={async (e) => {
-                          if (e.target.checked) {
-                            await handleAssign(selectedTrainerForAssign.id, territory.id);
-                          } else {
-                            const assignment = trainerTerritories.find(
-                              tt => tt.trainer_id === selectedTrainerForAssign.id && tt.territory_id === territory.id
-                            );
-                            if (assignment) {
-                              await handleDelete(assignment.id);
-                            }
-                          }
-                        }}
-                        className="h-4 w-4 text-emerald-600 focus:ring-emerald-500"
-                      />
-                      <div className="flex-1">
-                        <div className="font-medium text-gray-900">{territory.name}</div>
-                        {territory.region && (
-                          <div className="text-sm text-gray-500">{territory.region}</div>
-                        )}
-                      </div>
-                      {assigned && <CheckCircle className="h-4 w-4 text-emerald-600" />}
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+             {/* Available territories */}
+             <div className="space-y-3">
+               <label className="text-sm font-medium text-gray-700">Доступные филиалы для назначения:</label>
+               <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3">
+                 {getAvailableTerritories().map((territory) => (
+                   <label
+                     key={territory.id}
+                     className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 bg-white p-3 transition-colors hover:border-emerald-300 hover:bg-emerald-50"
+                   >
+                     <input
+                       type="checkbox"
+                       checked={false}
+                       onChange={async () => {
+                         await handleAssign(selectedTrainerForAssign.id, territory.id);
+                       }}
+                       className="h-4 w-4 text-emerald-600 focus:ring-emerald-500"
+                     />
+                     <div className="flex-1">
+                       <div className="font-medium text-gray-900">{territory.name}</div>
+                       {territory.region && (
+                         <div className="text-sm text-gray-500">{territory.region}</div>
+                       )}
+                     </div>
+                     <Plus className="h-4 w-4 text-gray-400" />
+                   </label>
+                 ))}
+                 {getAvailableTerritories().length === 0 && (
+                   <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-4 text-center text-sm text-gray-500">
+                     Все филиалы уже назначены
+                   </div>
+                 )}
+               </div>
+             </div>
 
-          <div className="mt-6 flex justify-end">
-            <button
-              onClick={() => setSelectedTrainerForAssign(null)}
-              className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm hover:bg-gray-50"
-            >
-              Закрыть
-            </button>
-          </div>
-        </Modal>
-      )}
+             {/* Current assignments */}
+             <div className="space-y-3">
+               <label className="text-sm font-medium text-gray-700">Текущие назначения:</label>
+               <div className="space-y-2">
+                 {getTrainerTerritories(selectedTrainerForAssign.id).map((assignment) => (
+                   <div
+                     key={assignment.id}
+                     className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 p-3"
+                   >
+                     <div className="flex items-center gap-3">
+                       <MapPin className="h-4 w-4 text-emerald-600" />
+                       <div>
+                         <div className="font-medium text-emerald-900">{assignment.territory.name}</div>
+                         {assignment.territory.region && (
+                           <div className="text-sm text-emerald-600">{assignment.territory.region}</div>
+                         )}
+                       </div>
+                     </div>
+                     <div className="flex items-center gap-2">
+                       <span
+                         className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${
+                           assignment.is_active
+                             ? 'bg-green-100 text-green-700'
+                             : 'bg-red-100 text-red-700'
+                         }`}
+                       >
+                         <span
+                           className={`h-1.5 w-1.5 rounded-full ${
+                             assignment.is_active ? 'bg-green-500' : 'bg-red-500'
+                           }`}
+                         />
+                         {assignment.is_active ? 'Активно' : 'Неактивно'}
+                       </span>
+                       <button
+                         onClick={() => handleDelete(assignment.id)}
+                         className="rounded p-1 text-red-500 hover:bg-white hover:text-red-600"
+                         title="Удалить назначение"
+                       >
+                         <X className="h-4 w-4" />
+                       </button>
+                     </div>
+                   </div>
+                 ))}
+                 {getTrainerTerritories(selectedTrainerForAssign.id).length === 0 && (
+                   <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-4 text-center text-sm text-gray-500">
+                     Нет назначенных филиалов
+                   </div>
+                 )}
+               </div>
+             </div>
+           </div>
+
+           <div className="mt-6 flex justify-end">
+             <button
+               onClick={() => setSelectedTrainerForAssign(null)}
+               className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm hover:bg-gray-50"
+             >
+               Закрыть
+             </button>
+           </div>
+         </Modal>
+       )}
 
       {/* Modal bulk assign (info only) */}
       {selectedTrainerForAssign?.bulk && (
