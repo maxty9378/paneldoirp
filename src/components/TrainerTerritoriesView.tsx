@@ -476,15 +476,15 @@ export function TrainerTerritoriesView() {
                          <div className="min-w-0 flex-1">
                            <div className="truncate font-medium text-gray-900">{trainer.full_name}</div>
                            <div className="truncate text-sm text-gray-500">{trainer.email}</div>
-                           {trainer.branch && (
+                           {trainer.branch_id && (
                              <div className="mt-1">
                                <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
                                  <Building2 className="h-3 w-3" />
-                                 {trainer.branch.name} (ID: {trainer.branch.id})
+                                 {trainer.branch?.name || 'Филиал'} (ID: {trainer.branch_id})
                                </span>
                              </div>
                            )}
-                           {!trainer.branch && (
+                           {!trainer.branch_id && (
                              <div className="mt-1">
                                <span className="inline-flex items-center gap-1 rounded-full bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-500">
                                  <Building2 className="h-3 w-3" />
@@ -507,10 +507,10 @@ export function TrainerTerritoriesView() {
                     {/* Assigned territories - Two columns with base branch highlight */}
                     <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                       {assignedTerritories.map((assignment) => {
-                        const isBaseBranch = trainer.branch?.id === assignment.territory.id;
+                        const isBaseBranch = trainer.branch_id === assignment.territory.id;
                         console.log('🔍 Debug base branch:', {
                           trainerName: trainer.full_name,
-                          trainerBranchId: trainer.branch?.id,
+                          trainerBranchId: trainer.branch_id,
                           assignmentTerritoryId: assignment.territory.id,
                           isBaseBranch,
                           trainerBranch: trainer.branch,
@@ -754,7 +754,7 @@ export function TrainerTerritoriesView() {
                <label className="text-sm font-medium text-gray-700">Текущие назначения:</label>
                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                  {getTrainerTerritories(selectedTrainerForAssign.id).map((assignment) => {
-                   const isBaseBranch = selectedTrainerForAssign.branch?.id === assignment.territory.id;
+                   const isBaseBranch = selectedTrainerForAssign.branch_id === assignment.territory.id;
                    return (
                      <div
                        key={assignment.id}
