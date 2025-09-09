@@ -288,7 +288,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         console.warn('🚨 Using auth-based fallback after retries');
         const { data: authData } = await supabase.auth.getUser();
-        const isAdmin = authData?.user?.email === 'doirp@sns.ru';
         const fb = createFallbackUser(userId, authData?.user?.email, authData?.user?.user_metadata?.full_name, 'auth-based');
         setUser(fb);
         setUserProfile(fb);
@@ -527,6 +526,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         if (session?.user) {
           console.log('✅ Initial session found, fetching profile');
+          
+          // Проверяем, не находимся ли мы на /auth/* маршруте
+          const isOnAuthRoute = window.location.pathname.startsWith('/auth/');
+          if (isOnAuthRoute) {
+            console.log('⏳ On auth route, deferring profile fetch');
+            setLoadingPhase('auth-change');
+            setLoading(true);
+            return;
+          }
+          
           setLoadingPhase('profile-fetch');
           
           // Look for cached profile first
@@ -597,6 +606,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log('✅ User ID matches existing user, keeping current profile');
           setLoadingPhase('complete');
           setLoading(false);
+          return;
+        }
+        
+        // Проверяем, не находимся ли мы на /auth/* маршруте
+        const isOnAuthRoute = window.location.pathname.startsWith('/auth/');
+        if (isOnAuthRoute) {
+          console.log('⏳ On auth route, deferring profile fetch after auth change');
+          setLoadingPhase('auth-change');
+          setLoading(true);
           return;
         }
         
