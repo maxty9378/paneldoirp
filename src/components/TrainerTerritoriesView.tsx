@@ -260,41 +260,13 @@ export function TrainerTerritoriesView() {
 
 
       {/* Drag & Drop Interface */}
-      <div className="space-y-6">
+      <div className="flex flex-col gap-6 lg:flex-row">
         {loading ? (
           <SkeletonTable />
         ) : (
           <>
-            {/* Available Territories */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-4">
-              <h3 className="mb-4 text-lg font-semibold text-gray-900">Доступные филиалы</h3>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-                {territories.map((territory) => (
-                  <div
-                    key={territory.id}
-                    draggable
-                    onDragStart={() => handleDragStart(territory.id)}
-                    onDragEnd={handleDragEnd}
-                    className={`cursor-move rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-4 transition-all hover:border-emerald-400 hover:bg-emerald-50 ${
-                      draggedTerritory === territory.id ? 'opacity-50' : ''
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <GripVertical className="h-4 w-4 text-gray-400" />
-                      <div className="flex-1">
-                        <div className="font-medium text-gray-900">{territory.name}</div>
-                        {territory.region && (
-                          <div className="text-sm text-gray-500">{territory.region}</div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Trainers with their assigned territories */}
-            <div className="space-y-4">
+            {/* Trainers with their assigned territories - Main content */}
+            <div className="flex-1 space-y-4">
               <h3 className="text-lg font-semibold text-gray-900">Тренеры и их филиалы</h3>
               {trainers.map((trainer) => {
                 const assignedTerritories = getTrainerTerritories(trainer.id);
@@ -383,6 +355,48 @@ export function TrainerTerritoriesView() {
                   </div>
                 );
               })}
+            </div>
+
+            {/* Available Territories - Compact sidebar */}
+            <div className="w-full flex-shrink-0 lg:w-80">
+              <div className="sticky top-4 rounded-2xl border border-gray-200 bg-white p-4">
+                <h3 className="mb-4 text-lg font-semibold text-gray-900">Доступные филиалы</h3>
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {territories.map((territory) => (
+                    <div
+                      key={territory.id}
+                      draggable
+                      onDragStart={() => handleDragStart(territory.id)}
+                      onDragEnd={handleDragEnd}
+                      className={`cursor-move rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-3 transition-all hover:border-emerald-400 hover:bg-emerald-50 ${
+                        draggedTerritory === territory.id ? 'opacity-50' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <GripVertical className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate font-medium text-gray-900 text-sm">
+                            {territory.name}
+                          </div>
+                          {territory.region && (
+                            <div className="truncate text-xs text-gray-500">
+                              {territory.region}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {territories.length === 0 && (
+                    <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-4 text-center text-gray-500 text-sm">
+                      Нет доступных филиалов
+                    </div>
+                  )}
+                </div>
+                <div className="mt-4 text-xs text-gray-500">
+                  💡 Перетащите филиал к тренеру для назначения
+                </div>
+              </div>
             </div>
           </>
         )}
