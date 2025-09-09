@@ -122,17 +122,35 @@ export function TrainerTerritoriesView() {
       if (assignmentsError) throw assignmentsError;
 
       // Загружаем тренеров
+      // Сначала попробуем загрузить без связи с branches
       const { data: trainersData, error: trainersError } = await supabase
         .from('users')
         .select(`
-          id, full_name, email, phone, branch_id,
-          branch:branches!users_branch_id_fkey(id, name, code)
+          id, full_name, email, phone, branch_id
         `)
         .eq('role', 'trainer')
         .eq('is_active', true)
         .order('full_name');
 
-      if (trainersError) throw trainersError;
+      if (trainersError) {
+        console.error('❌ Error loading trainers:', trainersError);
+        throw trainersError;
+      }
+
+      console.log('👥 Raw trainers data:', trainersData);
+
+      // Загружаем данные о филиалах отдельно
+      const { data: branchesData, error: branchesError } = await supabase
+        .from('branches')
+        .select('id, name, code')
+        .order('name');
+
+      if (branchesError) {
+        console.error('❌ Error loading branches:', branchesError);
+        // Не выбрасываем ошибку, просто логируем
+      } else {
+        console.log('🏢 Branches data:', branchesData);
+      }
 
       // Загружаем логи
       const { data: logsData, error: logsError } = await supabase
@@ -157,14 +175,18 @@ export function TrainerTerritoriesView() {
       });
 
       const formattedTrainers = (trainersData || []).map((t: any) => {
+        // Находим филиал по branch_id
+        const branch = branchesData?.find(b => b.id === t.branch_id) || null;
+        
         const formatted = {
           ...t,
-          branch: Array.isArray(t.branch) ? t.branch[0] : t.branch,
+          branch: branch,
         };
         console.log('👤 Formatted trainer:', {
           name: formatted.full_name,
+          branchId: t.branch_id,
           branch: formatted.branch,
-          branchId: formatted.branch?.id
+          foundBranch: branch
         });
         return formatted;
       });
