@@ -156,10 +156,18 @@ export function TrainerTerritoriesView() {
         return { ...a, trainer: { ...trainer, branch }, territory };
       });
 
-      const formattedTrainers = (trainersData || []).map((t: any) => ({
-        ...t,
-        branch: Array.isArray(t.branch) ? t.branch[0] : t.branch,
-      }));
+      const formattedTrainers = (trainersData || []).map((t: any) => {
+        const formatted = {
+          ...t,
+          branch: Array.isArray(t.branch) ? t.branch[0] : t.branch,
+        };
+        console.log('👤 Formatted trainer:', {
+          name: formatted.full_name,
+          branch: formatted.branch,
+          branchId: formatted.branch?.id
+        });
+        return formatted;
+      });
 
       const formattedLogs: TerritoryLog[] = (logsData || []).map((log: any) => ({
         ...log,
@@ -450,7 +458,15 @@ export function TrainerTerritoriesView() {
                              <div className="mt-1">
                                <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
                                  <Building2 className="h-3 w-3" />
-                                 {trainer.branch.name}
+                                 {trainer.branch.name} (ID: {trainer.branch.id})
+                               </span>
+                             </div>
+                           )}
+                           {!trainer.branch && (
+                             <div className="mt-1">
+                               <span className="inline-flex items-center gap-1 rounded-full bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-500">
+                                 <Building2 className="h-3 w-3" />
+                                 Филиал базирования не указан
                                </span>
                              </div>
                            )}
@@ -470,6 +486,14 @@ export function TrainerTerritoriesView() {
                     <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                       {assignedTerritories.map((assignment) => {
                         const isBaseBranch = trainer.branch?.id === assignment.territory.id;
+                        console.log('🔍 Debug base branch:', {
+                          trainerName: trainer.full_name,
+                          trainerBranchId: trainer.branch?.id,
+                          assignmentTerritoryId: assignment.territory.id,
+                          isBaseBranch,
+                          trainerBranch: trainer.branch,
+                          assignmentTerritory: assignment.territory
+                        });
                         return (
                           <div
                             key={assignment.id}
@@ -487,7 +511,7 @@ export function TrainerTerritoriesView() {
                                 <div className={`truncate text-sm font-medium ${
                                   isBaseBranch ? 'text-blue-900' : 'text-emerald-900'
                                 }`}>
-                                  {assignment.territory.name}
+                                  {assignment.territory.name} (ID: {assignment.territory.id})
                                   {isBaseBranch && (
                                     <span className="ml-1 text-xs font-normal text-blue-600">
                                       (базирование)
