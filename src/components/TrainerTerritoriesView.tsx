@@ -430,38 +430,56 @@ export function TrainerTerritoriesView() {
                        </button>
                      </div>
 
-                    {/* Assigned territories - Compact list */}
-                    <div className="space-y-1">
-                      {assignedTerritories.map((assignment) => (
-                        <div
-                          key={assignment.id}
-                          className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2"
-                        >
-                          <div className="flex min-w-0 items-center gap-2">
-                            <MapPin className="h-3.5 w-3.5 text-emerald-600 flex-shrink-0" />
-                            <div className="min-w-0">
-                              <div className="truncate text-sm font-medium text-emerald-900">
-                                {assignment.territory.name}
-                              </div>
-                              {assignment.territory.region && (
-                                <div className="truncate text-xs text-emerald-600">
-                                  {assignment.territory.region}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => handleDelete(assignment.id)}
-                            className="rounded p-1 text-red-500 hover:bg-white hover:text-red-600"
-                            title="Удалить филиал"
+                    {/* Assigned territories - Two columns with base branch highlight */}
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                      {assignedTerritories.map((assignment) => {
+                        const isBaseBranch = trainer.branch?.id === assignment.territory.id;
+                        return (
+                          <div
+                            key={assignment.id}
+                            className={`flex items-center justify-between rounded-lg border px-3 py-2 ${
+                              isBaseBranch
+                                ? 'border-blue-300 bg-blue-50'
+                                : 'border-emerald-200 bg-emerald-50'
+                            }`}
                           >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      ))}
+                            <div className="flex min-w-0 items-center gap-2">
+                              <MapPin className={`h-3.5 w-3.5 flex-shrink-0 ${
+                                isBaseBranch ? 'text-blue-600' : 'text-emerald-600'
+                              }`} />
+                              <div className="min-w-0">
+                                <div className={`truncate text-sm font-medium ${
+                                  isBaseBranch ? 'text-blue-900' : 'text-emerald-900'
+                                }`}>
+                                  {assignment.territory.name}
+                                  {isBaseBranch && (
+                                    <span className="ml-1 text-xs font-normal text-blue-600">
+                                      (базирование)
+                                    </span>
+                                  )}
+                                </div>
+                                {assignment.territory.region && (
+                                  <div className={`truncate text-xs ${
+                                    isBaseBranch ? 'text-blue-600' : 'text-emerald-600'
+                                  }`}>
+                                    {assignment.territory.region}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => handleDelete(assignment.id)}
+                              className="rounded p-1 text-red-500 hover:bg-white hover:text-red-600"
+                              title="Удалить филиал"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })}
 
                       {assignedTerritories.length === 0 && (
-                        <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-3 text-center text-sm text-gray-500">
+                        <div className="col-span-full rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-3 text-center text-sm text-gray-500">
                           Перетащи филиал сюда или нажми кнопку редактирования
                         </div>
                       )}
@@ -471,26 +489,26 @@ export function TrainerTerritoriesView() {
               })}
             </div>
 
-            {/* Territories sidebar */}
-            <div className="w-full flex-shrink-0 lg:w-80">
-              <div className="sticky top-4 rounded-2xl border border-gray-200 bg-white p-4">
-                <h3 className="mb-4 text-lg font-semibold text-gray-900">Доступные филиалы</h3>
-                <div className="max-h-96 space-y-2 overflow-y-auto">
+            {/* Territories sidebar - Compact */}
+            <div className="w-full flex-shrink-0 lg:w-72">
+              <div className="sticky top-4 rounded-2xl border border-gray-200 bg-white p-3">
+                <h3 className="mb-3 text-base font-semibold text-gray-900">Доступные филиалы</h3>
+                <div className="max-h-80 space-y-1 overflow-y-auto">
                   {getAvailableTerritories().map((territory) => (
                     <div
                       key={territory.id}
                       draggable
                       onDragStart={() => handleDragStart(territory.id)}
                       onDragEnd={handleDragEnd}
-                      className={`cursor-move rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-3 transition-all hover:border-emerald-400 hover:bg-emerald-50 ${
+                      className={`cursor-move rounded-lg border border-dashed border-gray-300 bg-gray-50 px-2 py-1.5 transition-all hover:border-emerald-400 hover:bg-emerald-50 ${
                         draggedTerritory === territory.id ? 'opacity-50' : ''
                       }`}
                       title="Перетащите на карточку тренера"
                     >
                       <div className="flex items-center gap-2">
-                        <GripVertical className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                        <GripVertical className="h-3 w-3 text-gray-400 flex-shrink-0" />
                         <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-medium text-gray-900">
+                          <div className="truncate text-xs font-medium text-gray-900">
                             {territory.name}
                           </div>
                           {territory.region && (
@@ -502,13 +520,13 @@ export function TrainerTerritoriesView() {
                   ))}
 
                   {getAvailableTerritories().length === 0 && (
-                    <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-4 text-center text-sm text-gray-500">
+                    <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-3 text-center text-xs text-gray-500">
                       Нет доступных филиалов
                     </div>
                   )}
                 </div>
-                <div className="mt-4 text-xs text-gray-500">
-                  💡 Перетащи карточку филиала на тренера для назначения
+                <div className="mt-3 text-xs text-gray-500">
+                  💡 Перетащите на тренера
                 </div>
               </div>
             </div>
@@ -652,32 +670,54 @@ export function TrainerTerritoriesView() {
              {/* Current assignments */}
              <div className="space-y-3">
                <label className="text-sm font-medium text-gray-700">Текущие назначения:</label>
-               <div className="space-y-1">
-                 {getTrainerTerritories(selectedTrainerForAssign.id).map((assignment) => (
-                   <div
-                     key={assignment.id}
-                     className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2"
-                   >
-                     <div className="flex items-center gap-2">
-                       <MapPin className="h-3.5 w-3.5 text-emerald-600" />
-                       <div>
-                         <div className="text-sm font-medium text-emerald-900">{assignment.territory.name}</div>
-                         {assignment.territory.region && (
-                           <div className="text-xs text-emerald-600">{assignment.territory.region}</div>
-                         )}
-                       </div>
-                     </div>
-                     <button
-                       onClick={() => handleDelete(assignment.id)}
-                       className="rounded p-1 text-red-500 hover:bg-white hover:text-red-600"
-                       title="Удалить филиал"
+               <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                 {getTrainerTerritories(selectedTrainerForAssign.id).map((assignment) => {
+                   const isBaseBranch = selectedTrainerForAssign.branch?.id === assignment.territory.id;
+                   return (
+                     <div
+                       key={assignment.id}
+                       className={`flex items-center justify-between rounded-lg border px-3 py-2 ${
+                         isBaseBranch
+                           ? 'border-blue-300 bg-blue-50'
+                           : 'border-emerald-200 bg-emerald-50'
+                       }`}
                      >
-                       <X className="h-3.5 w-3.5" />
-                     </button>
-                   </div>
-                 ))}
+                       <div className="flex items-center gap-2">
+                         <MapPin className={`h-3.5 w-3.5 ${
+                           isBaseBranch ? 'text-blue-600' : 'text-emerald-600'
+                         }`} />
+                         <div>
+                           <div className={`text-sm font-medium ${
+                             isBaseBranch ? 'text-blue-900' : 'text-emerald-900'
+                           }`}>
+                             {assignment.territory.name}
+                             {isBaseBranch && (
+                               <span className="ml-1 text-xs font-normal text-blue-600">
+                                 (базирование)
+                               </span>
+                             )}
+                           </div>
+                           {assignment.territory.region && (
+                             <div className={`text-xs ${
+                               isBaseBranch ? 'text-blue-600' : 'text-emerald-600'
+                             }`}>
+                               {assignment.territory.region}
+                             </div>
+                           )}
+                         </div>
+                       </div>
+                       <button
+                         onClick={() => handleDelete(assignment.id)}
+                         className="rounded p-1 text-red-500 hover:bg-white hover:text-red-600"
+                         title="Удалить филиал"
+                       >
+                         <X className="h-3.5 w-3.5" />
+                       </button>
+                     </div>
+                   );
+                 })}
                  {getTrainerTerritories(selectedTrainerForAssign.id).length === 0 && (
-                   <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-3 text-center text-sm text-gray-500">
+                   <div className="col-span-full rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-3 text-center text-sm text-gray-500">
                      Нет назначенных филиалов
                    </div>
                  )}
