@@ -11,45 +11,74 @@ export default function QRAuthSuccessPage() {
   useEffect(() => {
     const processAuth = async () => {
       try {
-        // Извлекаем токены из URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        console.log('🔄 Processing QR auth success...');
         
-        const accessToken = urlParams.get('access_token') || hashParams.get('access_token');
-        const refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
-        const type = urlParams.get('type') || hashParams.get('type');
+        // Magic link уже установил сессию автоматически
+        // Просто проверяем, что сессия есть
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('❌ Session error:', sessionError);
+          throw new Error(`Ошибка получения сессии: ${sessionError.message}`);
+        }
 
-        if (accessToken && refreshToken && type === 'magiclink') {
-          console.log('✅ Magic link tokens found, setting session...');
+        if (session?.user) {
+          console.log('✅ Session found, user:', session.user.email);
+          setStatus('success');
+          setMessage('Авторизация успешна! Перенаправление...');
           
-          const { data, error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken
-          });
-
-          if (error) {
-            throw new Error(`Ошибка установки сессии: ${error.message}`);
-          }
-
-          if (data.session) {
-            console.log('✅ Session set successfully');
-            setStatus('success');
-            setMessage('Авторизация успешна! Перенаправление...');
-            
-            // Очищаем URL
-            try {
-              window.history.replaceState({}, '', '/');
-            } catch {}
-            
-            // Перенаправляем на главную
-            setTimeout(() => {
-              navigate('/');
-            }, 1000);
-          } else {
-            throw new Error('Сессия не создана');
-          }
+          // Очищаем URL
+          try {
+            window.history.replaceState({}, '', '/');
+          } catch {}
+          
+          // Перенаправляем на главную
+          setTimeout(() => {
+            navigate('/');
+          }, 1000);
         } else {
-          throw new Error('Токены авторизации не найдены');
+          // Если сессии нет, попробуем извлечь токены из URL
+          console.log('⚠️ No session found, checking URL for tokens...');
+          
+          const urlParams = new URLSearchParams(window.location.search);
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          
+          const accessToken = urlParams.get('access_token') || hashParams.get('access_token');
+          const refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
+          const type = urlParams.get('type') || hashParams.get('type');
+
+          if (accessToken && refreshToken && type === 'magiclink') {
+            console.log('✅ Magic link tokens found in URL, setting session...');
+            
+            const { data, error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken
+            });
+
+            if (error) {
+              throw new Error(`Ошибка установки сессии: ${error.message}`);
+            }
+
+            if (data.session) {
+              console.log('✅ Session set successfully from URL tokens');
+              setStatus('success');
+              setMessage('Авторизация успешна! Перенаправление...');
+              
+              // Очищаем URL
+              try {
+                window.history.replaceState({}, '', '/');
+              } catch {}
+              
+              // Перенаправляем на главную
+              setTimeout(() => {
+                navigate('/');
+              }, 1000);
+            } else {
+              throw new Error('Сессия не создана из URL токенов');
+            }
+          } else {
+            throw new Error('Сессия не найдена и токены авторизации отсутствуют');
+          }
         }
       } catch (error: any) {
         console.error('❌ Auth processing error:', error);

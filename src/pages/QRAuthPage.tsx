@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -129,29 +129,10 @@ export default function QRAuthPage() {
           throw new Error('Неожиданный формат ответа от сервера');
         }
 
-        // Шаг 3: Загрузка профиля
-        setStep('profile');
-        setMessage('Загрузка профиля пользователя…');
-        
-        // Проверяем, что сессия установлена
-        const { data: sessionData, error: sessionCheckError } = await supabase.auth.getSession();
-        if (sessionCheckError || !sessionData.session?.user) {
-          throw new Error('Не удалось подтвердить авторизацию');
-        }
-
-        // Успешная авторизация
-        setStatus('success');
-        setMessage('Авторизация успешна! Перенаправление...');
-        
-        // Очищаем URL и перенаправляем
-        try {
-          window.history.replaceState({}, '', '/');
-        } catch {}
-        
-        console.log('🚀 Redirecting to home...');
-        setTimeout(() => {
-          navigate('/');
-        }, 1000);
+        // Этот код недостижим, так как все ветки выше делают return
+        // Оставляем для совместимости, но он не должен выполняться
+        console.warn('⚠️ Unexpected code path reached in QRAuthPage');
+        throw new Error('Неожиданная ошибка в процессе авторизации');
       } catch (e: any) {
         console.error('QR auth error:', e);
         if (!alive.current) return;
