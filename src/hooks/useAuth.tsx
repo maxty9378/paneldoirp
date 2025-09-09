@@ -193,6 +193,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // Глобальная проверка: не загружаем профиль во время авторизации
+    const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+    const isAuthFlow = pathname.startsWith('/auth/');
+    if (isAuthFlow) {
+      console.log('⏳ On auth route, skipping profile fetch');
+      return;
+    }
+
+    // Дополнительно: проверяем сессию
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      console.log('⏳ No session, skipping profile fetch');
+      return;
+    }
+
     // если уже идёт один запрос — ждём его
     if (inFlightProfile.current) {
       console.log('⏳ Awaiting in-flight profile request');
@@ -526,16 +541,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         if (session?.user) {
           console.log('✅ Initial session found, fetching profile');
-          
-          // Проверяем, не находимся ли мы на /auth/* маршруте
-          const isOnAuthRoute = window.location.pathname.startsWith('/auth/');
-          if (isOnAuthRoute) {
-            console.log('⏳ On auth route, deferring profile fetch');
-            setLoadingPhase('auth-change');
-            setLoading(true);
-            return;
-          }
-          
           setLoadingPhase('profile-fetch');
           
           // Look for cached profile first
@@ -606,15 +611,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log('✅ User ID matches existing user, keeping current profile');
           setLoadingPhase('complete');
           setLoading(false);
-          return;
-        }
-        
-        // Проверяем, не находимся ли мы на /auth/* маршруте
-        const isOnAuthRoute = window.location.pathname.startsWith('/auth/');
-        if (isOnAuthRoute) {
-          console.log('⏳ On auth route, deferring profile fetch after auth change');
-          setLoadingPhase('auth-change');
-          setLoading(true);
           return;
         }
         
