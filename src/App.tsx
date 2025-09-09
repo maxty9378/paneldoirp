@@ -22,6 +22,7 @@ import TestResultsPage from './pages/TestResultsPage';
 import EventTestResultsPage from './pages/EventTestResultsPage';
 import AuthCallback from './pages/AuthCallback';
 import QRAuthPage from './pages/QRAuthPage';
+import { LoadingOverlay } from './components/LoadingOverlay';
 
 function EventDetailPage({ onStartTest }: { onStartTest: (testId: string, eventId: string, attemptId: string) => void }) {
   const { eventId } = useParams();
@@ -43,10 +44,20 @@ function AppContent() {
     resetAuth, 
     authError, 
     loadingPhase,
-    retryFetchProfile 
+    retryFetchProfile,
+    session
   } = useAuth();
   const [showCreateEventModal, setShowCreateEventModal] = useState(false);
   const navigate = useNavigate();
+
+  // Логика для показа глобального оверлея
+  const isAuthFlow = typeof window !== 'undefined' && window.location.pathname.startsWith('/auth/');
+  const isExpertQR = typeof window !== 'undefined' && window.location.pathname.startsWith('/auth/qr');
+  const showOverlay =
+    isAuthFlow ||
+    (loadingPhase === 'session-fetch') ||
+    (loadingPhase === 'auth-change') ||
+    (loadingPhase === 'profile-fetch' && !session);
 
   // Проверяем magic link параметры и перенаправляем на callback
   useEffect(() => {
@@ -241,11 +252,21 @@ function AppContent() {
   }
   
   if (!user) {
+    // Пока идёт auth-флоу или ранняя инициализация — форму вообще не показываем
+    if (isAuthFlow || loadingPhase === 'session-fetch' || loadingPhase === 'auth-change') {
+      return null; // оверлей уже показан глобально
+    }
     return <LoginForm />;
   }
   return (
-    <Layout currentView={currentView}>
-      <Routes>
+    <>
+      <LoadingOverlay
+        visible={showOverlay}
+        title={isExpertQR ? 'Вход эксперта' : 'Подтверждаем вход…'}
+        subtitle={isExpertQR ? 'Сверяем QR-токен и подгружаем доступы' : 'Идёт проверка токена и загрузка профиля'}
+      />
+      <Layout currentView={currentView}>
+        <Routes>
         <Route path="/" element={<DashboardView />} />
         <Route path="/events" element={<EventsView onNavigateToEvent={id => navigate(`/event/${id}`)} onEditEvent={id => handleEditEvent(id)} onCreateEvent={() => setShowCreateEventModal(true)} />} />
         <Route path="/event/:eventId" element={<EventDetailPage onStartTest={handleStartTest} />} />
@@ -290,6 +311,7 @@ function AppContent() {
         editingEvent={editingEvent}
       />
     </Layout>
+    </>
   );
 }
 

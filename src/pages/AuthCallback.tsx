@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Loader2 } from 'lucide-react';
 
 // Расширяем window для флага обработки
 declare global {
@@ -225,14 +224,6 @@ export default function AuthCallback() {
     handleAuthCallback();
   }, [navigate]);
 
-  // Показываем только минимальный индикатор загрузки
-  // Основной экран загрузки будет показан в App.tsx
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#e5f3ff] via-[#eafaf1] to-[#b6e0fe] px-4">
-      <div className="text-center">
-        <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-2" />
-        <p className="text-gray-600 text-sm">Обработка авторизации...</p>
-      </div>
-    </div>
-  );
+  // Не показываем отдельную страницу - глобальный оверлей в App.tsx
+  return null;
 }
