@@ -1,7 +1,7 @@
 -- Создание таблицы для аудита изменений филиалов тренеров
 CREATE TABLE IF NOT EXISTS trainer_territories_log (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  trainer_territory_id uuid REFERENCES public.trainer_territories(id) ON DELETE CASCADE,
+  trainer_territory_id uuid REFERENCES public.trainer_territories(id) ON DELETE SET NULL,
   trainer_id uuid REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
   territory_id uuid REFERENCES public.territories(id) ON DELETE CASCADE NOT NULL,
   action text NOT NULL CHECK (action IN ('assigned', 'unassigned', 'activated', 'deactivated', 'deleted')),
@@ -49,6 +49,7 @@ RETURNS TRIGGER AS $$
 DECLARE
   action_type text;
   metadata jsonb;
+  log_id uuid;
 BEGIN
   -- Определяем тип действия
   IF TG_OP = 'INSERT' THEN
@@ -82,8 +83,12 @@ BEGIN
     );
   END IF;
 
-  -- Записываем в лог
+  -- Генерируем ID для лога
+  log_id := gen_random_uuid();
+
+  -- Записываем в лог (для DELETE не используем trainer_territory_id)
   INSERT INTO trainer_territories_log (
+    id,
     trainer_territory_id,
     trainer_id,
     territory_id,
@@ -91,7 +96,8 @@ BEGIN
     performed_by,
     metadata
   ) VALUES (
-    COALESCE(NEW.id, OLD.id),
+    log_id,
+    CASE WHEN TG_OP = 'DELETE' THEN NULL ELSE COALESCE(NEW.id, OLD.id) END,
     COALESCE(NEW.trainer_id, OLD.trainer_id),
     COALESCE(NEW.territory_id, OLD.territory_id),
     action_type,
