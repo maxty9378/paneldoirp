@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Поиск тренера Кадочкин Максим</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>🔍 Поиск тренера Кадочкин Максим</h1>
+    <div id="results"></div>
+
+    <script>
+        // Настройки Supabase (замените на ваши)
+        const supabaseUrl = 'https://oaockmesooydvausfoca.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hb2NrbWVzb295ZHZhdXNmb2NhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY5NzQ4NzMsImV4cCI6MjA1MjU1MDg3M30.GhDbwgQ1cqFc4oUuPo-GaQpDY2zFACbLVniNY_OSCpTJKML3KR5D2hfWaquL2AOhG0BmCR1EYiW5d_Y4ZB2F2Q';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        const resultsDiv = document.getElementById('results');
+
+        async function findTrainer() {
+            resultsDiv.innerHTML = '<p>🔍 Поиск тренера Кадочкин Максим...</p>';
+
+            try {
+                // 1. Поиск по имени
+                const { data: trainers, error: trainerError } = await supabase
+                    .from('users')
+                    .select(`
+                        id,
+                        full_name,
+                        email,
+                        phone,
+                        branch_id,
+                        role,
+                        subdivision,
+                        branch_subrole,
+                        status
+                    `)
+                    .or('full_name.ilike.%Кадочкин%,full_name.ilike.%Максим%Кадочкин%,email.ilike.%кадочкин%')
+                    .eq('role', 'trainer');
+
+                if (trainerError) {
+                    resultsDiv.innerHTML += `<p>❌ Ошибка поиска тренеров: ${trainerError.message}</p>`;
+                    return;
+                }
+
+                resultsDiv.innerHTML += `<h2>👥 Найденные тренеры:</h2>`;
+                resultsDiv.innerHTML += `<pre>${JSON.stringify(trainers, null, 2)}</pre>`;
+
+                // 2. Если нашли тренера, получим его филиал
+                if (trainers && trainers.length > 0) {
+                    for (const trainer of trainers) {
+                        if (trainer.branch_id) {
+                            const { data: branch, error: branchError } = await supabase
+                                .from('branches')
+                                .select('id, name, code, address')
+                                .eq('id', trainer.branch_id)
+                                .single();
+
+                            if (branchError) {
+                                resultsDiv.innerHTML += `<p>❌ Ошибка загрузки филиала для ${trainer.full_name}: ${branchError.message}</p>`;
+                            } else {
+                                resultsDiv.innerHTML += `<h3>🏢 Филиал тренера ${trainer.full_name}:</h3>`;
+                                resultsDiv.innerHTML += `<pre>${JSON.stringify(branch, null, 2)}</pre>`;
+                            }
+                        } else {
+                            resultsDiv.innerHTML += `<p>⚠️ У тренера ${trainer.full_name} не указан филиал базирования</p>`;
+                        }
+                    }
+                } else {
+                    resultsDiv.innerHTML += `<p>❌ Тренер Кадочкин Максим не найден</p>`;
+                    
+                    // 3. Покажем всех тренеров
+                    const { data: allTrainers, error: allTrainersError } = await supabase
+                        .from('users')
+                        .select('id, full_name, email, branch_id')
+                        .eq('role', 'trainer')
+                        .order('full_name');
+
+                    if (allTrainersError) {
+                        resultsDiv.innerHTML += `<p>❌ Ошибка загрузки всех тренеров: ${allTrainersError.message}</p>`;
+                    } else {
+                        resultsDiv.innerHTML += `<h3>👥 Все тренеры в системе:</h3>`;
+                        allTrainers.forEach(t => {
+                            resultsDiv.innerHTML += `<p>- ${t.full_name} (${t.email}) - филиал: ${t.branch_id || 'не указан'}</p>`;
+                        });
+                    }
+                }
+
+                // 4. Покажем все филиалы
+                const { data: branches, error: branchesError } = await supabase
+                    .from('branches')
+                    .select('id, name, code, address')
+                    .order('name');
+
+                if (branchesError) {
+                    resultsDiv.innerHTML += `<p>❌ Ошибка загрузки филиалов: ${branchesError.message}</p>`;
+                } else {
+                    resultsDiv.innerHTML += `<h3>🏢 Все филиалы в системе:</h3>`;
+                    branches.forEach(b => {
+                        resultsDiv.innerHTML += `<p>- ${b.name} (${b.code || 'без кода'}) - ID: ${b.id}</p>`;
+                    });
+                }
+
+            } catch (error) {
+                resultsDiv.innerHTML += `<p>❌ Общая ошибка: ${error.message}</p>`;
+            }
+        }
+
+        // Запускаем поиск при загрузке страницы
+        findTrainer();
+    </script>
+</body>
+</html>

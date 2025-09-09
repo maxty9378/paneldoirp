@@ -1,394 +1,391 @@
-  import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
-import { 
+import {
   Filter,
   Search,
   Plus,
   Download,
   Upload,
-  Loader2,
-  TrendingUp,
-  Award,
-  CalendarDays,
-  Sparkles,
-  ChevronRight,
   RefreshCw,
+  CalendarDays,
   Calendar as CalendarIcon,
   Zap,
   AlertCircle,
-  Calendar,
   Play,
   CheckCircle,
-  Pause
+  Pause,
+  X,
+  ChevronRight,
 } from 'lucide-react';
 import { Event, EVENT_TYPE_LABELS } from '../types';
 import { EventCard } from './events/EventCard';
 
-  interface EventsViewProps {
-    onCreateEvent?: () => void;
-    onNavigateToEvent?: (eventId: string) => void;
+interface EventsViewProps {
+  onCreateEvent?: () => void;
+  onNavigateToEvent?: (eventId: string) => void;
   onEditEvent?: (eventId: string) => void;
-  }
+}
 
-  interface EventWithStats extends Event {
-    participants_count?: number;
-    attendance_rate?: number;
-    pending_tests?: number;
-    pending_feedback?: number;
-    has_report?: boolean;
+interface EventWithStats extends Event {
+  participants_count?: number;
+  attendance_rate?: number;
+  pending_tests?: number;
+  pending_feedback?: number;
+  has_report?: boolean;
   test_completed_count?: number;
   test_not_passed_count?: number;
   test_pass_percent?: number;
-  event_types?: {
-    id: string;
-    name: string;
-    name_ru: string;
-  };
-  }
+  event_types?: { id: string; name: string; name_ru: string };
+}
 
-  type SortBy = 'start_date' | 'title' | 'participants' | 'status' | 'created_at';
+type SortBy = 'start_date' | 'title' | 'participants' | 'status' | 'created_at';
 
 export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: EventsViewProps) {
-    const [events, setEvents] = useState<EventWithStats[]>([]);
-    const [filteredEvents, setFilteredEvents] = useState<EventWithStats[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState<string>('all');
-    const [typeFilter, setTypeFilter] = useState<string>('all');
-    const [sortBy, setSortBy] = useState<SortBy>('start_date');
-    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-    const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
-    const [showSearchFilters, setShowSearchFilters] = useState(false);
+  const [events, setEvents] = useState<EventWithStats[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // UI state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [showSearchFilters, setShowSearchFilters] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<SortBy>('start_date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
+
   const { user, userProfile } = useAuth();
 
-    useEffect(() => {
-      if (user) {
-        fetchEvents();
+  // Debounce поиска — приятнее UX и меньше ререндеров
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 300);
+    return () => clearTimeout(id);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    if (user) fetchEvents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  const fetchEvents = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const isAdmin =
+        !!userProfile?.role &&
+        ['administrator', 'moderator', 'trainer'].includes(userProfile.role);
+
+      let data: any[] | null = null;
+      let err: any = null;
+
+      if (isAdmin) {
+        const { data: d, error: e } = await supabase
+          .from('events')
+          .select('*, event_types(id, name, name_ru)')
+          .order('start_date', { ascending: false });
+        data = d;
+        err = e;
+      } else {
+        const { data: d, error: e } = await supabase
+          .from('events')
+          .select('*, event_types(id, name, name_ru), event_participants!inner(user_id)')
+          .eq('event_participants.user_id', user?.id)
+          .order('start_date', { ascending: false });
+        data = d;
+        err = e;
       }
-    }, [user]);
 
-    useEffect(() => {
-      filterAndSortEvents();
-    }, [events, searchTerm, statusFilter, typeFilter, sortBy, sortOrder]);
+      if (err) {
+        setError(`Ошибка загрузки: ${err.message}`);
+        setLoading(false);
+        return;
+      }
 
-    const fetchEvents = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        console.log('🔍 fetchEvents: userProfile:', userProfile);
-        console.log('🔍 fetchEvents: user ID:', user?.id);
-        
-        // Проверяем роль пользователя
-        const isAdmin = userProfile?.role && ['administrator', 'moderator', 'trainer'].includes(userProfile.role);
-        console.log('🔍 fetchEvents: isAdmin:', isAdmin, 'role:', userProfile?.role);
-        
-        let data, error;
-        
-        if (isAdmin) {
-          // Администраторы видят все мероприятия
-          console.log('🔍 fetchEvents: Making admin query');
-          const result = await supabase
-            .from('events')
-            .select(`
-              *,
-              event_types (
-                id,
-                name,
-                name_ru
-              )
-            `)
-            .order('start_date', { ascending: false });
-          data = result.data;
-          error = result.error;
-          console.log('🔍 fetchEvents: Admin query result:', { data: data?.length, error });
-        } else {
-          // Обычные пользователи видят только мероприятия, в которых они участвуют
-          console.log('🔍 fetchEvents: Making user query for ID:', user?.id);
-          const result = await supabase
-            .from('events')
-            .select(`
-              *,
-              event_types (
-                id,
-                name,
-                name_ru
-              ),
-              event_participants!inner(user_id)
-            `)
-            .eq('event_participants.user_id', user?.id)
-            .order('start_date', { ascending: false });
-          data = result.data;
-          error = result.error;
-          console.log('🔍 fetchEvents: User query result:', { data: data?.length, error });
-        }
-      
-        if (error) {
-          setError(`Ошибка загрузки: ${error.message}`);
-          setLoading(false);
-          return;
-        }
-      
-        if (!data || data.length === 0) {
-          setEvents([]);
-          setFilteredEvents([]);
-          setLoading(false);
-          return;
-        }
+      if (!data || data.length === 0) {
+        setEvents([]);
+        setLoading(false);
+        return;
+      }
 
-        const eventsWithStats: EventWithStats[] = await Promise.all(data.map(async (event: Event) => {
+      // Подтягиваем быстрые метрики по каждому событию
+      const eventsWithStats: EventWithStats[] = await Promise.all(
+        data.map(async (event: Event) => {
           const { data: participantsData } = await supabase
             .from('event_participants')
             .select('id, user_id')
             .eq('event_id', event.id);
-          const participantsCount = participantsData ? participantsData.length : 0;
-        
+
+          const participantsCount = participantsData?.length || 0;
+
           const { data: completedAttempts } = await supabase
             .from('user_test_attempts')
             .select('id, user_id')
             .eq('event_id', event.id)
             .eq('status', 'completed');
-          const completedCount = completedAttempts ? completedAttempts.length : 0;
-        
-          const { data: allAttempts } = await supabase
-            .from('user_test_attempts')
-            .select('id, user_id')
-            .eq('event_id', event.id);
-          const allAttemptsCount = allAttempts ? allAttempts.length : 0;
-        
-          const testPassPercent = participantsCount > 0 ? Math.round((completedCount / participantsCount) * 100) : 0;
-          const notPassedCount = participantsCount - completedCount;
-        
+
+          const completedCount = completedAttempts?.length || 0;
+
+          const testPassPercent =
+            participantsCount > 0 ? Math.round((completedCount / participantsCount) * 100) : 0;
+
+          const notPassedCount = Math.max(participantsCount - completedCount, 0);
+
           return {
             ...event,
             participants_count: participantsCount,
             test_completed_count: completedCount,
             test_pass_percent: testPassPercent,
-            test_not_passed_count: notPassedCount
+            test_not_passed_count: notPassedCount,
           };
-        }));
-      
-        setEvents(eventsWithStats);
-        setFilteredEvents(eventsWithStats);
-      } catch (error) {
-        setError(`Произошла ошибка: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
-      } finally {
-        setLoading(false);
-      }
-    };
+        })
+      );
 
-    const filterAndSortEvents = () => {
-      let filtered = [...events];
-
-      if (searchTerm) {
-        filtered = filtered.filter(event =>
-          event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          event.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          event.location?.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-      }
-
-      if (statusFilter !== 'all') {
-        filtered = filtered.filter(event => event.status === statusFilter);
-      }
-
-      if (typeFilter !== 'all') {
-        filtered = filtered.filter(event => event.type === typeFilter);
-      }
-
-      filtered.sort((a, b) => {
-        let aValue: any, bValue: any;
-
-        switch (sortBy) {
-          case 'start_date':
-          aValue = new Date(a.start_date || a.date_time || '');
-          bValue = new Date(b.start_date || b.date_time || '');
-            break;
-          case 'title':
-            aValue = a.title.toLowerCase();
-            bValue = b.title.toLowerCase();
-            break;
-          case 'participants':
-            aValue = a.participants_count || 0;
-            bValue = b.participants_count || 0;
-            break;
-          case 'status':
-            aValue = a.status;
-            bValue = b.status;
-            break;
-          case 'created_at':
-          aValue = new Date(a.created_at || '');
-          bValue = new Date(b.created_at || '');
-            break;
-          default:
-          aValue = new Date(a.start_date || a.date_time || '');
-          bValue = new Date(b.start_date || b.date_time || '');
-        }
-
-        if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
-        if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
-        return 0;
-      });
-
-      setFilteredEvents(filtered);
-    };
-    
-    const canCreateEvents = userProfile?.role && ['trainer', 'moderator', 'administrator'].includes(userProfile.role);
-  console.log('canCreateEvents:', canCreateEvents, 'userProfile.role:', userProfile?.role);
-    
-
-
-    const handleDeleteEvent = async (eventId: string) => {
-      if (confirm('Вы уверены, что хотите удалить это мероприятие?')) {
-        try {
-          const { error } = await supabase
-            .from('events')
-            .delete()
-            .eq('id', eventId);
-          
-          if (error) throw error;
-          fetchEvents();
-        } catch (error) {
-          console.error('Error deleting event:', error);
-        }
-      }
-    };
-
-      const toggleEventSelection = (eventId: string) => {
-    setSelectedEvents(prev =>
-      prev.includes(eventId)
-        ? prev.filter(id => id !== eventId)
-        : [...prev, eventId]
-    );
+      setEvents(eventsWithStats);
+    } catch (e: any) {
+      setError(`Произошла ошибка: ${e?.message || 'Неизвестная ошибка'}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
-      if (loading) {
+  // Фильтрация + сортировка — на мемо, чтобы не трясти DOM
+  const filteredEvents = useMemo(() => {
+    let list = [...events];
+
+    if (debouncedSearch) {
+      const s = debouncedSearch.toLowerCase();
+      list = list.filter(
+        (ev) =>
+          ev.title?.toLowerCase().includes(s) ||
+          ev.description?.toLowerCase().includes(s) ||
+          ev.location?.toLowerCase().includes(s)
+      );
+    }
+
+    if (statusFilter !== 'all') list = list.filter((ev) => ev.status === statusFilter);
+    if (typeFilter !== 'all') list = list.filter((ev) => ev.type === typeFilter);
+
+    list.sort((a, b) => {
+      let av: any;
+      let bv: any;
+      switch (sortBy) {
+        case 'title':
+          av = (a.title || '').toLowerCase();
+          bv = (b.title || '').toLowerCase();
+          break;
+        case 'participants':
+          av = a.participants_count || 0;
+          bv = b.participants_count || 0;
+          break;
+        case 'status':
+          av = a.status || '';
+          bv = b.status || '';
+          break;
+        case 'created_at':
+          av = new Date(a.created_at || 0).getTime();
+          bv = new Date(b.created_at || 0).getTime();
+          break;
+        case 'start_date':
+        default:
+          av = new Date((a as any).start_date || (a as any).date_time || 0).getTime();
+          bv = new Date((b as any).start_date || (b as any).date_time || 0).getTime();
+      }
+      const res = av < bv ? -1 : av > bv ? 1 : 0;
+      return sortOrder === 'asc' ? res : -res;
+    });
+
+    return list;
+  }, [events, debouncedSearch, statusFilter, typeFilter, sortBy, sortOrder]);
+
+  const canCreateEvents =
+    !!userProfile?.role && ['trainer', 'moderator', 'administrator'].includes(userProfile.role);
+
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!confirm('Удалить мероприятие?')) return;
+    try {
+      const { error: delErr } = await supabase.from('events').delete().eq('id', eventId);
+      if (delErr) throw delErr;
+      await fetchEvents();
+    } catch (e) {
+      console.error('Error deleting event:', e);
+    }
+  };
+
+  const toggleEventSelection = (id: string) => {
+    setSelectedEvents((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  // ---------------- UI helpers ----------------
+  const resetFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setTypeFilter('all');
+    setSortBy('start_date');
+    setSortOrder('desc');
+  };
+
+  // ---------------- Render ----------------
+
+  if (loading) {
     return (
-      <div className="min-h-[400px] flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="relative">
-            <div className="w-16 h-16 border-4 border-slate-200 border-t-sns-500 rounded-full animate-spin mx-auto"></div>
-            <div className="absolute inset-0 w-16 h-16 border-4 border-transparent border-t-sns-400 rounded-full animate-spin mx-auto" style={{ animationDelay: '0.5s' }}></div>
-            </div>
-          <div className="space-y-2">
-            <h3 className="text-lg font-semibold text-slate-700">Загрузка мероприятий</h3>
-            <p className="text-slate-500">Подготавливаем данные для вас...</p>
+      <div className="min-h-[420px]">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sns-500 to-sns-600 animate-pulse" />
+            <div className="h-6 w-48 bg-slate-200 rounded-md animate-pulse" />
           </div>
-            </div>
+          <div className="hidden md:flex gap-2">
+            <div className="h-9 w-32 bg-slate-200 rounded-lg animate-pulse" />
+            <div className="h-9 w-40 bg-slate-200 rounded-lg animate-pulse" />
+            <div className="h-9 w-44 bg-slate-200 rounded-lg animate-pulse" />
           </div>
-        );
+        </div>
+
+        <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-xl border border-slate-200 p-4">
+              <div className="h-4 w-16 bg-slate-200 rounded mb-2 animate-pulse" />
+              <div className="h-6 w-10 bg-slate-200 rounded animate-pulse" />
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-40 bg-white rounded-2xl border border-slate-200 animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (error) {
     return (
-      <div className="min-h-[400px] flex items-center justify-center">
+      <div className="min-h-[420px] flex items-center justify-center">
         <div className="text-center space-y-4 max-w-md">
           <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto">
             <AlertCircle className="w-10 h-10 text-red-500" />
-                    </div>
+          </div>
           <div className="space-y-2">
             <h3 className="text-xl font-semibold text-slate-800">Ошибка загрузки</h3>
             <p className="text-slate-600">{error}</p>
-                    </div>
-                      <button 
-            onClick={() => window.location.reload()}
+          </div>
+          <button
+            onClick={() => fetchEvents()}
             className="inline-flex items-center px-6 py-3 bg-sns-500 text-white font-medium rounded-xl hover:bg-sns-600 transition-all duration-200 shadow-lg hover:shadow-xl"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             Попробовать снова
-                      </button>
-                    </div>
-          </div>
-        );
-    }
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-    return (
+  const activeCount = events.filter((e) => ['active', 'published', 'ongoing'].includes(e.status)).length;
+  const completedCount = events.filter((e) => e.status === 'completed').length;
+  const draftsCount = events.filter((e) => e.status === 'draft').length;
+  const inMonthCount = events.filter((e) => {
+    const d = new Date((e as any).start_date || (e as any).date_time || '');
+    const now = new Date();
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }).length;
+  const tasksCount = events.reduce((acc, ev) => {
+    let t = 0;
+    if (ev.pending_tests && ev.pending_tests > 0) t++;
+    if (ev.pending_feedback && ev.pending_feedback > 0) t++;
+    // отчет
+    if (ev.status === 'completed' && !ev.has_report) t++;
+    return acc + t;
+  }, 0);
+
+  return (
     <div className="space-y-8 pb-safe-bottom">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-sns-500 to-sns-600 rounded-xl flex items-center justify-center">
+          <div className="w-10 h-10 bg-gradient-to-br from-sns-500 to-sns-600 rounded-xl flex items-center justify-center shadow-sm">
             <CalendarDays className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">
-              Мероприятия по обучению
-            </h1>
+            <h1 className="text-2xl font-bold text-slate-800">Мероприятия по обучению</h1>
             <p className="text-slate-600 text-sm">
-              {canCreateEvents 
-                ? 'Создавайте и управляйте обучающими программами'
-                : 'Участвуйте в образовательных мероприятиях'
-              }
+              {canCreateEvents ? 'Создавайте и управляйте программами' : 'Участвуйте и проходите обучение'}
             </p>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-2">
-          {/* Search and Filters Button */}
           <button
-            onClick={() => setShowSearchFilters(!showSearchFilters)}
-            className="px-4 py-2 text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all duration-200 text-sm flex items-center gap-2"
+            onClick={() => setShowSearchFilters((v) => !v)}
+            className="px-3.5 py-2 h-9 text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all text-sm inline-flex items-center gap-2"
+            title="Поиск и фильтры"
           >
             <Search className="w-4 h-4" />
-            <span>Поиск</span>
+            <span className="hidden sm:inline">Поиск</span>
             <Filter className="w-4 h-4" />
           </button>
 
           {canCreateEvents && (
             <>
-              <button className="px-4 py-2 text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all duration-200 text-sm">
-                <div className="flex items-center gap-2">
-                  <Download className="w-4 h-4" />
-                  <span>Экспорт</span>
-                </div>
+              <button className="px-3.5 py-2 h-9 text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all text-sm inline-flex items-center gap-2">
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">Экспорт</span>
               </button>
-              <button className="px-4 py-2 text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-all duration-200 text-sm">
-                <div className="flex items-center gap-2">
-                  <Upload className="w-4 h-4" />
-                  <span>Импорт</span>
-                </div>
+              <button className="px-3.5 py-2 h-9 text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-all text-sm inline-flex items-center gap-2">
+                <Upload className="w-4 h-4" />
+                <span className="hidden sm:inline">Импорт</span>
               </button>
             </>
           )}
+
           {canCreateEvents && (
-            <button 
-              onClick={() => onCreateEvent && onCreateEvent()}
-              className="px-4 py-2 bg-sns-500 text-white font-medium rounded-lg hover:bg-sns-600 transition-all duration-200 text-sm"
+            <button
+              onClick={() => onCreateEvent?.()}
+              className="px-3.5 py-2 h-9 bg-sns-500 text-white font-medium rounded-lg hover:bg-sns-600 transition-all text-sm inline-flex items-center gap-2 shadow-sm"
             >
-              <div className="flex items-center gap-2">
-                <Plus className="w-4 h-4" />
-                <span>Создать мероприятие</span>
-              </div>
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Создать</span>
             </button>
           )}
         </div>
-              </div>
+      </div>
 
-        {/* Search and Filters Panel */}
-        {showSearchFilters && (
-          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm mt-4">
-            <div className="flex items-center gap-3">
-              {/* Search */}
-              <div className="flex-1">
-                <div className="relative group">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-sns-500 transition-colors" />
-                  <input
-                    type="text"
-                    placeholder="Поиск мероприятий..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sns-500 focus:border-sns-500 focus:bg-white transition-all duration-200 text-slate-700 placeholder-slate-400 text-sm"
-                  />
-                </div>
+      {/* Search & Filters */}
+      {showSearchFilters && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm mt-2">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <div className="flex-1">
+              <div className="relative group">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-sns-500 transition-colors" />
+                <input
+                  type="text"
+                  placeholder="Поиск по названию, описанию или месту…"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sns-500 focus:border-sns-500 focus:bg-white transition-all text-sm"
+                />
+                {searchTerm && (
+                  <button
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-slate-100"
+                    onClick={() => setSearchTerm('')}
+                    aria-label="Очистить"
+                  >
+                    <X className="w-4 h-4 text-slate-400" />
+                  </button>
+                )}
               </div>
+            </div>
 
-              {/* Status Filter */}
+            <div className="flex flex-wrap gap-2">
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sns-500 focus:border-sns-500 transition-all duration-200 text-slate-700 text-sm"
+                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sns-500 text-sm"
+                title="Статус"
               >
                 <option value="all">Все статусы</option>
                 <option value="draft">Черновик</option>
@@ -399,23 +396,25 @@ export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: Ev
                 <option value="cancelled">Отменено</option>
               </select>
 
-              {/* Type Filter */}
               <select
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
-                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sns-500 focus:border-sns-500 transition-all duration-200 text-slate-700 text-sm"
+                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sns-500 text-sm"
+                title="Тип"
               >
                 <option value="all">Все типы</option>
                 {Object.entries(EVENT_TYPE_LABELS).map(([key, label]) => (
-                  <option key={key} value={key}>{label}</option>
+                  <option key={key} value={key}>
+                    {label}
+                  </option>
                 ))}
               </select>
 
-              {/* Sort By */}
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortBy)}
-                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sns-500 focus:border-sns-500 transition-all duration-200 text-slate-700 text-sm"
+                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sns-500 text-sm"
+                title="Сортировка"
               >
                 <option value="start_date">По дате проведения</option>
                 <option value="title">По названию</option>
@@ -424,133 +423,89 @@ export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: Ev
                 <option value="created_at">По дате создания</option>
               </select>
 
-              {/* Sort Order */}
               <select
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
-                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sns-500 focus:border-sns-500 transition-all duration-200 text-slate-700 text-sm"
+                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sns-500 text-sm"
+                title="Порядок"
               >
                 <option value="desc">По убыванию</option>
                 <option value="asc">По возрастанию</option>
               </select>
 
-              {/* Reset Button */}
               <button
-                onClick={() => {
-                  setSearchTerm('');
-                  setStatusFilter('all');
-                  setTypeFilter('all');
-                  setSortBy('start_date');
-                  setSortOrder('desc');
-                }}
-                className="px-3 py-2 text-slate-600 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-all duration-200 font-medium text-sm"
+                onClick={resetFilters}
+                className="px-3 py-2 text-slate-700 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-all font-medium text-sm"
+                title="Сбросить фильтры"
               >
                 Сбросить
               </button>
             </div>
           </div>
-        )}
 
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-        <div className="group bg-white rounded-xl p-4 border border-slate-200 hover:shadow-md hover:border-slate-300 transition-all duration-200">
-            <div className="flex items-center justify-between">
-              <div>
-              <p className="text-xs font-medium text-slate-600">Всего</p>
-              <p className="text-xl font-bold text-slate-800">{events.length}</p>
-              </div>
-            <div className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Calendar className="w-4 h-4 text-slate-600" />
-              </div>
-            </div>
-          </div>
-
-        <div className="group bg-white rounded-xl p-4 border border-slate-200 hover:shadow-md hover:border-slate-300 transition-all duration-200">
-            <div className="flex items-center justify-between">
-              <div>
-              <p className="text-xs font-medium text-slate-600">Активные</p>
-              <p className="text-xl font-bold text-emerald-600">{events.filter(e => ['active', 'published', 'ongoing'].includes(e.status)).length}</p>
-              </div>
-            <div className="w-8 h-8 bg-gradient-to-br from-emerald-100 to-emerald-200 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Play className="w-4 h-4 text-emerald-600" />
-              </div>
-            </div>
-          </div>
-
-        <div className="group bg-white rounded-xl p-4 border border-slate-200 hover:shadow-md hover:border-slate-300 transition-all duration-200">
-            <div className="flex items-center justify-between">
-              <div>
-              <p className="text-xs font-medium text-slate-600">Завершено</p>
-              <p className="text-xl font-bold text-indigo-600">{events.filter(e => e.status === 'completed').length}</p>
-              </div>
-            <div className="w-8 h-8 bg-gradient-to-br from-indigo-100 to-indigo-200 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-              <CheckCircle className="w-4 h-4 text-indigo-600" />
-              </div>
-            </div>
-          </div>
-
-        <div className="group bg-white rounded-xl p-4 border border-slate-200 hover:shadow-md hover:border-slate-300 transition-all duration-200">
-            <div className="flex items-center justify-between">
-              <div>
-              <p className="text-xs font-medium text-slate-600">Черновики</p>
-              <p className="text-xl font-bold text-slate-600">{events.filter(e => e.status === 'draft').length}</p>
-              </div>
-            <div className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Pause className="w-4 h-4 text-slate-600" />
-              </div>
-            </div>
-          </div>
-
-        <div className="group bg-white rounded-xl p-4 border border-slate-200 hover:shadow-md hover:border-slate-300 transition-all duration-200">
-            <div className="flex items-center justify-between">
-              <div>
-              <p className="text-xs font-medium text-slate-600">В этом месяце</p>
-              <p className="text-xl font-bold text-purple-600">{events.filter(e => {
-                const eventDate = new Date(e.start_date || e.date_time || '');
-                  const now = new Date();
-                  return eventDate.getMonth() === now.getMonth() && eventDate.getFullYear() === now.getFullYear();
-                }).length}</p>
-              </div>
-            <div className="w-8 h-8 bg-gradient-to-br from-purple-100 to-purple-200 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-              <CalendarDays className="w-4 h-4 text-purple-600" />
-              </div>
-            </div>
-          </div>
-
-        <div className="group bg-white rounded-xl p-4 border border-slate-200 hover:shadow-md hover:border-slate-300 transition-all duration-200">
-            <div className="flex items-center justify-between">
-              <div>
-              <p className="text-xs font-medium text-slate-600">Задачи</p>
-              <p className="text-xl font-bold text-red-600">{events.reduce((acc, event) => {
-                const tasks = [];
-                if (event.pending_tests && event.pending_tests > 0) {
-                  tasks.push(`${event.pending_tests} не прошли тест`);
-                }
-                if (event.pending_feedback && event.pending_feedback > 0) {
-                  tasks.push(`${event.pending_feedback} не заполнили обратную связь`);
-                }
-                if (event.status === 'completed' && !event.has_report) {
-                  tasks.push('Не отправлен отчет');
-                }
-                return acc + tasks.length;
-              }, 0)}</p>
-              </div>
-            <div className="w-8 h-8 bg-gradient-to-br from-red-100 to-red-200 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Zap className="w-4 h-4 text-red-600" />
-              </div>
-            </div>
+          {/* Чипы-состояния под фильтрами */}
+          <div className="flex flex-wrap gap-2 mt-3">
+            {statusFilter !== 'all' && (
+              <Chip onClear={() => setStatusFilter('all')}>Статус: {statusFilter}</Chip>
+            )}
+            {typeFilter !== 'all' && <Chip onClear={() => setTypeFilter('all')}>Тип: {typeFilter}</Chip>}
+            {debouncedSearch && <Chip onClear={() => setSearchTerm('')}>Поиск: {debouncedSearch}</Chip>}
           </div>
         </div>
+      )}
 
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+        <StatCard
+          label="Всего"
+          value={events.length}
+          icon={<CalendarIcon className="w-4 h-4 text-slate-600" />}
+          iconWrapClass="from-slate-100 to-slate-200"
+        />
+        <StatCard
+          label="Активные"
+          value={activeCount}
+          valueClass="text-emerald-600"
+          icon={<Play className="w-4 h-4 text-emerald-600" />}
+          iconWrapClass="from-emerald-100 to-emerald-200"
+        />
+        <StatCard
+          label="Завершено"
+          value={completedCount}
+          valueClass="text-indigo-600"
+          icon={<CheckCircle className="w-4 h-4 text-indigo-600" />}
+          iconWrapClass="from-indigo-100 to-indigo-200"
+        />
+        <StatCard
+          label="Черновики"
+          value={draftsCount}
+          valueClass="text-slate-700"
+          icon={<Pause className="w-4 h-4 text-slate-600" />}
+          iconWrapClass="from-slate-100 to-slate-200"
+        />
+        <StatCard
+          label="Этот месяц"
+          value={inMonthCount}
+          valueClass="text-purple-600"
+          icon={<CalendarDays className="w-4 h-4 text-purple-600" />}
+          iconWrapClass="from-purple-100 to-purple-200"
+        />
+        <StatCard
+          label="Задачи"
+          value={tasksCount}
+          valueClass="text-red-600"
+          icon={<Zap className="w-4 h-4 text-red-600" />}
+          iconWrapClass="from-red-100 to-red-200"
+        />
+      </div>
 
-
-        {/* Bulk Actions */}
-        {selectedEvents.length > 0 && canCreateEvents && (
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6">
-            <div className="flex items-center justify-between">
+      {/* Bulk actions */}
+      {selectedEvents.length > 0 && canCreateEvents && (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-blue-600" />
+                <ChevronRight className="w-5 h-5 text-blue-600" />
               </div>
               <div>
                 <span className="text-sm font-semibold text-blue-900">
@@ -565,42 +520,34 @@ export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: Ev
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button className="px-4 py-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-all duration-200 font-medium">
-                  Активировать
-                </button>
-              <button className="px-4 py-2 bg-slate-500 text-white rounded-xl hover:bg-slate-600 transition-all duration-200 font-medium">
-                  Деактивировать
-                </button>
-              <button className="px-4 py-2 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all duration-200 font-medium">
-                  Удалить
-                </button>
-              </div>
+              <ActionBtn>Активировать</ActionBtn>
+              <ActionBtn className="bg-slate-500 hover:bg-slate-600">Деактивировать</ActionBtn>
+              <ActionBtn className="bg-red-500 hover:bg-red-600">Удалить</ActionBtn>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Events Grid */}
+      {/* Grid */}
       {filteredEvents.length === 0 ? (
         <div className="text-center py-16">
           <div className="w-24 h-24 bg-gradient-to-br from-slate-100 to-slate-200 rounded-3xl flex items-center justify-center mx-auto mb-6">
-            <Calendar className="w-12 h-12 text-slate-400" />
+            <CalendarIcon className="w-12 h-12 text-slate-400" />
           </div>
           <h3 className="text-xl font-semibold text-slate-800 mb-2">
-            {events.length === 0 ? 'Нет мероприятий' : 'Мероприятия не найдены'}
+            {events.length === 0 ? 'Нет мероприятий' : 'Ничего не найдено'}
           </h3>
           <p className="text-slate-600 mb-6 max-w-md mx-auto">
-            {events.length === 0 
-              ? (canCreateEvents 
-                  ? 'Начните создавать мероприятия для обучения ваших сотрудников'
-                  : 'Мероприятия появятся здесь, когда вы будете добавлены как участник'
-                )
-              : 'Попробуйте изменить параметры поиска или фильтры'
-            }
+            {events.length === 0
+              ? canCreateEvents
+                ? 'Создайте первое мероприятие для команды'
+                : 'Здесь появятся ваши мероприятия, когда вас добавят участником'
+              : 'Попробуйте скорректировать поиск или фильтры'}
           </p>
           {canCreateEvents && events.length === 0 && (
             <button
-              onClick={() => onCreateEvent && onCreateEvent()}
-              className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-sns-500 to-sns-600 text-white font-semibold rounded-xl transition-all duration-300"
+              onClick={() => onCreateEvent?.()}
+              className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-sns-500 to-sns-600 text-white font-semibold rounded-xl transition-all shadow-sm hover:shadow-md"
             >
               <Plus className="w-5 h-5 mr-2" />
               Создать первое мероприятие
@@ -609,7 +556,7 @@ export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: Ev
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredEvents.map((event: EventWithStats, idx: number) => (
+          {filteredEvents.map((event, idx) => (
             <EventCard
               key={event.id}
               event={event}
@@ -622,6 +569,75 @@ export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: Ev
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ---------- Маленькие UI-компоненты ---------- */
+
+function StatCard({
+  label,
+  value,
+  valueClass,
+  icon,
+  iconWrapClass,
+}: {
+  label: string;
+  value: number | string;
+  valueClass?: string;
+  icon: React.ReactNode;
+  iconWrapClass?: string;
+}) {
+  return (
+    <div className="group bg-white rounded-xl p-4 border border-slate-200 hover:shadow-md hover:border-slate-300 transition-all">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs font-medium text-slate-600">{label}</p>
+          <p className={`text-xl font-bold ${valueClass || 'text-slate-800'}`}>{value}</p>
+        </div>
+        <div
+          className={`w-8 h-8 bg-gradient-to-br ${iconWrapClass || 'from-slate-100 to-slate-200'} rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform`}
+        >
+          {icon}
+        </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
+
+function Chip({
+  children,
+  onClear,
+}: {
+  children: React.ReactNode;
+  onClear: () => void;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-sm bg-slate-100 text-slate-700 border border-slate-200 rounded-full px-3 py-1">
+      {children}
+      <button
+        onClick={onClear}
+        className="p-0.5 rounded-full hover:bg-slate-200"
+        aria-label="Очистить"
+      >
+        <X className="w-3.5 h-3.5" />
+      </button>
+    </span>
+  );
+}
+
+function ActionBtn({
+  children,
+  className = 'bg-emerald-500 hover:bg-emerald-600',
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <button
+      className={`px-4 py-2 text-white rounded-xl transition-all font-medium shadow-sm ${className}`}
+    >
+      {children}
+    </button>
+  );
+}

@@ -1,68 +1,63 @@
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+/* Иридесцентный нежный перелив + тонкая стеклянная рамка */
+.ir-card { position: relative; isolation: isolate; }
+.ir-card::before {
+  content: "";
+  position: absolute; inset: -1px; z-index: -1; border-radius: 1.15rem;
+  background:
+    radial-gradient(1200px 200px at 0% 0%, var(--ir-a, rgba(0,0,0,0)) 0%, transparent 65%),
+    radial-gradient(1200px 200px at 100% 0%, var(--ir-b, rgba(0,0,0,0)) 0%, transparent 65%),
+    conic-gradient(from 180deg at 50% 50%, var(--ir-c, transparent), var(--ir-d, transparent), var(--ir-c, transparent));
+  opacity: .5; filter: saturate(110%);
+  animation: ir-shift 12s linear infinite;
+  background-size: 100% 100%, 100% 100%, 200% 200%;
+  background-position: 0 0, 100% 0, 50% 50%;
+}
+.ir-ring {
+  box-shadow: inset 0 0 0 1px var(--ir-ring, rgba(148,163,184,.35)),
+              inset 0 1px 0 0 rgba(255,255,255,.7);
+  backdrop-filter: saturate(110%);
+}
+@keyframes ir-shift {
+  0% { background-position: 0 0, 100% 0, 50% 50%; }
+  50%{ background-position: 0 0, 100% 0, 62% 42%; }
+  100%{background-position: 0 0, 100% 0, 50% 50%; }
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+/* Тоновые переменные (пастель) */
+.ir-ocean   { --ir-a: rgba(56,189,248,.22); --ir-b: rgba(99,102,241,.18); --ir-c: rgba(16,185,129,.10); --ir-d: rgba(59,130,246,.12); --ir-ring: rgba(59,130,246,.28); }
+.ir-mint    { --ir-a: rgba(110,231,183,.22);--ir-b: rgba(45,212,191,.18); --ir-c: rgba(16,185,129,.10); --ir-d: rgba(34,197,94,.10);  --ir-ring: rgba(16,185,129,.26); }
+.ir-lavender{ --ir-a: rgba(196,181,253,.22);--ir-b: rgba(129,140,248,.18); --ir-c: rgba(236,72,153,.08);  --ir-d: rgba(99,102,241,.12); --ir-ring: rgba(99,102,241,.26); }
+.ir-sunset  { --ir-a: rgba(253,186,116,.25);--ir-b: rgba(251,113,133,.20); --ir-c: rgba(245,158,11,.10);  --ir-d: rgba(244,63,94,.10);  --ir-ring: rgba(244,63,94,.26); }
+.ir-sand    { --ir-a: rgba(250,204,21,.20); --ir-b: rgba(253,230,138,.20); --ir-c: rgba(217,119,6,.08);    --ir-d: rgba(234,179,8,.08);  --ir-ring: rgba(217,119,6,.24); }
+.ir-slate   { --ir-a: rgba(148,163,184,.16);--ir-b: rgba(203,213,225,.16); --ir-c: rgba(100,116,139,.08);  --ir-d: rgba(148,163,184,.08); --ir-ring: rgba(148,163,184,.26); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ir-card::before { animation: none; }
 }
 
-@keyframes scaleIn {
-  from {
-    transform: scale(0.9);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
+/* Кнопки (ровные, заметный focus) */
+.btn-primary,
+.btn-neutral,
+.btn-danger {
+  display: inline-flex; align-items: center; gap: .5rem; height: 36px;
+  padding: 0 .75rem; border-radius: .5rem; font-weight: 600; font-size: 12px;
+  box-shadow: 0 1px 2px rgba(2,8,23,.06); transition: all .2s ease;
+  outline: none;
 }
-
-/* Анимации для кнопок меню */
-.menu-button-hover {
-  transition: all 0.2s ease-out;
+.btn-primary {
+  color: #fff; background-image: linear-gradient(to right, var(--sns-500,#06A478), var(--sns-600,#0b7f62));
 }
+.btn-primary:hover { filter: brightness(1.02); transform: translateY(-1px); }
+.btn-primary:focus-visible { box-shadow: 0 0 0 2px rgba(34,197,94,.35); }
 
-.menu-button-hover:hover {
-  background: rgba(59, 130, 246, 0.15);
+.btn-neutral {
+  color: #334155; background: #fff; border: 1px solid #e2e8f0;
 }
+.btn-neutral:hover { background: #f8fafc; border-color: #cbd5e1; }
+.btn-neutral:focus-visible { box-shadow: 0 0 0 2px rgba(100,116,139,.25); }
 
-/* Стили для кнопок в стеклянном меню */
-.glass-menu-button {
-  transition: all 0.2s ease-out;
-  border-radius: 0.5rem;
-  margin: 0;
-  box-sizing: border-box;
+.btn-danger {
+  color: #be123c; background: #fff1f2; border: 1px solid #fecdd3;
 }
-
-.glass-menu-button:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-/* Эффект стекла */
-.glass-effect {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.1);
-}
-
-/* Анимация для модального окна */
-.modal-backdrop {
-  animation: fadeIn 0.3s ease-out;
-}
-
-.modal-content {
-  animation: scaleIn 0.3s ease-out;
-} 
+.btn-danger:hover { background: #ffe4e6; border-color: #fda4af; }
+.btn-danger:focus-visible { box-shadow: 0 0 0 2px rgba(244,63,94,.25); }

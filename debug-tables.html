@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Отладка таблиц branches и territories</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>🔍 Отладка таблиц branches и territories</h1>
+    <div id="results"></div>
+
+    <script>
+        const supabaseUrl = 'https://oaockmesooydvausfoca.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hb2NrbWVzb295ZHZhdXNmb2NhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY5NzQ4NzMsImV4cCI6MjA1MjU1MDg3M30.GhDbwgQ1cqFc4oUuPo-GaQpDY2zFACbLVniNY_OSCpTJKML3KR5D2hfWaquL2AOhG0BmCR1EYiW5d_Y4ZB2F2Q';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        const resultsDiv = document.getElementById('results');
+
+        async function debugTables() {
+            resultsDiv.innerHTML = '<p>🔍 Загружаем данные...</p>';
+
+            try {
+                // 1. Загружаем филиалы (branches)
+                const { data: branches, error: branchesError } = await supabase
+                    .from('branches')
+                    .select('id, name, code, address')
+                    .order('name');
+
+                if (branchesError) {
+                    resultsDiv.innerHTML += `<p>❌ Ошибка загрузки филиалов: ${branchesError.message}</p>`;
+                } else {
+                    resultsDiv.innerHTML += `<h2>🏢 Филиалы (branches):</h2>`;
+                    branches.forEach(b => {
+                        resultsDiv.innerHTML += `<p>- ${b.name} (${b.code || 'без кода'}) - ID: ${b.id}</p>`;
+                    });
+                }
+
+                // 2. Загружаем территории (territories)
+                const { data: territories, error: territoriesError } = await supabase
+                    .from('territories')
+                    .select('id, name, region')
+                    .order('name');
+
+                if (territoriesError) {
+                    resultsDiv.innerHTML += `<p>❌ Ошибка загрузки территорий: ${territoriesError.message}</p>`;
+                } else {
+                    resultsDiv.innerHTML += `<h2>🗺️ Территории (territories):</h2>`;
+                    territories.forEach(t => {
+                        resultsDiv.innerHTML += `<p>- ${t.name} (${t.region || 'без региона'}) - ID: ${t.id}</p>`;
+                    });
+                }
+
+                // 3. Загружаем тренеров с их филиалами
+                const { data: trainers, error: trainersError } = await supabase
+                    .from('users')
+                    .select(`
+                        id, full_name, email, branch_id,
+                        branch:branches!users_branch_id_fkey(id, name, code)
+                    `)
+                    .eq('role', 'trainer')
+                    .eq('is_active', true)
+                    .order('full_name');
+
+                if (trainersError) {
+                    resultsDiv.innerHTML += `<p>❌ Ошибка загрузки тренеров: ${trainersError.message}</p>`;
+                } else {
+                    resultsDiv.innerHTML += `<h2>👥 Тренеры с филиалами:</h2>`;
+                    trainers.forEach(t => {
+                        const branch = Array.isArray(t.branch) ? t.branch[0] : t.branch;
+                        resultsDiv.innerHTML += `<p>- ${t.full_name}: филиал ${branch?.name || 'не указан'} (ID: ${t.branch_id || 'нет'})</p>`;
+                    });
+                }
+
+                // 4. Загружаем назначения тренеров на территории
+                const { data: assignments, error: assignmentsError } = await supabase
+                    .from('trainer_territories')
+                    .select(`
+                        id, trainer_id, territory_id, is_active,
+                        trainer:users!trainer_territories_trainer_id_fkey(full_name),
+                        territory:territories!trainer_territories_territory_id_fkey(name, region)
+                    `)
+                    .order('assigned_at', { ascending: false });
+
+                if (assignmentsError) {
+                    resultsDiv.innerHTML += `<p>❌ Ошибка загрузки назначений: ${assignmentsError.message}</p>`;
+                } else {
+                    resultsDiv.innerHTML += `<h2>🔗 Назначения тренеров на территории:</h2>`;
+                    assignments.forEach(a => {
+                        const trainer = Array.isArray(a.trainer) ? a.trainer[0] : a.trainer;
+                        const territory = Array.isArray(a.territory) ? a.territory[0] : a.territory;
+                        resultsDiv.innerHTML += `<p>- ${trainer?.full_name} → ${territory?.name} (ID: ${a.territory_id})</p>`;
+                    });
+                }
+
+                // 5. Анализ проблемы
+                resultsDiv.innerHTML += `<h2>🔍 Анализ проблемы:</h2>`;
+                resultsDiv.innerHTML += `<p>Проблема: мы сравниваем branch_id (из branches) с territory_id (из territories)</p>`;
+                resultsDiv.innerHTML += `<p>Это разные таблицы с разными ID!</p>`;
+                
+                // Проверим, есть ли совпадения по названиям
+                if (branches && territories) {
+                    resultsDiv.innerHTML += `<h3>🔍 Поиск совпадений по названиям:</h3>`;
+                    branches.forEach(branch => {
+                        const matchingTerritory = territories.find(t => 
+                            t.name.toLowerCase() === branch.name.toLowerCase() ||
+                            (t.region && t.region.toLowerCase() === branch.name.toLowerCase())
+                        );
+                        if (matchingTerritory) {
+                            resultsDiv.innerHTML += `<p>✅ Совпадение: "${branch.name}" (branch ID: ${branch.id}) = "${matchingTerritory.name}" (territory ID: ${matchingTerritory.id})</p>`;
+                        }
+                    });
+                }
+
+            } catch (error) {
+                resultsDiv.innerHTML += `<p>❌ Общая ошибка: ${error.message}</p>`;
+            }
+        }
+
+        debugTables();
+    </script>
+</body>
+</html>

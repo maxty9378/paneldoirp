@@ -115,6 +115,17 @@ export function DashboardView() {
     return parts.length > 1 ? parts[1] : parts[0];
   }
 
+  const getMotivationalMessage = () => {
+    const messages = [
+      'Готовы к новым знаниям?',
+      'Продолжайте развиваться!',
+      'Каждый день — новая возможность учиться',
+      'Ваш путь к успеху начинается здесь',
+      'Инвестируйте в свое будущее'
+    ];
+    return messages[Math.floor(Math.random() * messages.length)];
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -136,7 +147,7 @@ export function DashboardView() {
               {getGreeting()}, {extractFirstName(userProfile?.full_name || 'Пользователь')}!
             </h1>
             <p className="text-white/90 text-base sm:text-lg mb-2">
-              Добро пожаловать в личный кабинет своего обучения
+              {getMotivationalMessage()}
             </p>
             <div className="flex items-center space-x-2 text-white/80 text-sm">
               <Shield size={16} />
