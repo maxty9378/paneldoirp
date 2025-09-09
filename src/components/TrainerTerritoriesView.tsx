@@ -253,13 +253,49 @@ export function TrainerTerritoriesView() {
     setSaving(true);
     setError(null);
     try {
-      const { error } = await supabase.from('trainer_territories').delete().eq('id', id);
-      if (error) throw error;
+      console.log('🗑️ Deleting assignment:', id);
+      console.log('👤 Current user role:', userProfile?.role);
+      
+      // Проверяем права доступа
+      if (userProfile?.role !== 'administrator') {
+        throw new Error('У вас нет прав для удаления назначений');
+      }
+      
+      // Сначала проверим, что запись существует
+      const { data: existingRecord, error: checkError } = await supabase
+        .from('trainer_territories')
+        .select('id, trainer_id, territory_id')
+        .eq('id', id)
+        .single();
+      
+      if (checkError) {
+        console.error('❌ Check error:', checkError);
+        throw checkError;
+      }
+      
+      if (!existingRecord) {
+        throw new Error('Запись не найдена');
+      }
+      
+      console.log('✅ Record found:', existingRecord);
+      
+      // Удаляем запись
+      const { error: deleteError } = await supabase
+        .from('trainer_territories')
+        .delete()
+        .eq('id', id);
+      
+      if (deleteError) {
+        console.error('❌ Delete error:', deleteError);
+        throw deleteError;
+      }
+      
+      console.log('✅ Successfully deleted');
       setConfirmDeleteId(null);
       await fetchData();
     } catch (e: any) {
-      console.error(e);
-      setError('Ошибка удаления назначения.');
+      console.error('❌ Delete failed:', e);
+      setError(`Ошибка удаления: ${e.message || 'Неизвестная ошибка'}`);
     } finally {
       setSaving(false);
     }
