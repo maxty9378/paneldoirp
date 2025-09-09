@@ -16,6 +16,7 @@ import { SupervisorsView } from './components/SupervisorsView';
 import { ExpertEventsView } from './components/ExpertEventsView';
 import { TasksView } from './components/TasksView'; 
 import { TestingView } from './components/admin/TestingView';
+import { TrainerTerritoriesView } from './components/TrainerTerritoriesView';
 import { Loader2, RefreshCw, AlertOctagon } from 'lucide-react';
 import TakeTestPage from './pages/TakeTestPage';
 import TestResultsPage from './pages/TestResultsPage';
@@ -277,6 +278,7 @@ function AppContent() {
         <Route path="/expert-events" element={<ExpertEventsView />} />
         <Route path="/tasks" element={<TasksView />} />
         <Route path="/testing" element={<TestingView />} />
+        <Route path="/trainer-territories" element={<TrainerTerritoriesView />} />
         <Route path="/admin" element={<AdminView />} />
         <Route path="/employees" element={<EmployeesView />} />
         <Route path="/create-event" element={
