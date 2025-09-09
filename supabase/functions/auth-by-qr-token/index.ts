@@ -80,8 +80,8 @@ serve(async (req) => {
 
     console.log('✅ User found:', user.email)
 
-    // Генерируем magic link
-    const finalRedirectUrl = 'https://paneldoirp.vercel.app/auth/qr/success'
+    // Генерируем magic link - перенаправляем напрямую на /auth/callback
+    const finalRedirectUrl = 'https://paneldoirp.vercel.app/auth/callback'
     
     const { data, error } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',

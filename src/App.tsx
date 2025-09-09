@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { supabase } from './lib/supabase';
 import { Layout } from './components/Layout';
-import { TestTakingView } from './components/admin/TestTakingView';
-import { EnhancedMobileTestTakingView } from './components/admin/EnhancedMobileTestTakingView';
 import { LoginForm } from './components/LoginForm';
 import { CreateEventModal } from './components/events/CreateEventModal';
 import { DashboardView } from './components/DashboardView';
@@ -18,15 +16,14 @@ import { SupervisorsView } from './components/SupervisorsView';
 import { ExpertEventsView } from './components/ExpertEventsView';
 import { TasksView } from './components/TasksView'; 
 import { TestingView } from './components/admin/TestingView';
-import { Loader2, RefreshCw, AlertOctagon, Users } from 'lucide-react';
+import { Loader2, RefreshCw, AlertOctagon } from 'lucide-react';
 import TakeTestPage from './pages/TakeTestPage';
 import TestResultsPage from './pages/TestResultsPage';
 import EventTestResultsPage from './pages/EventTestResultsPage';
 import AuthCallback from './pages/AuthCallback';
 import QRAuthPage from './pages/QRAuthPage';
-import QRAuthSuccessPage from './pages/QRAuthSuccessPage';
 
-function EventDetailPage({ onStartTest }: { onStartTest: (testType: 'entry' | 'final' | 'annual', testId: string, eventId: string, attemptId: string) => void }) {
+function EventDetailPage({ onStartTest }: { onStartTest: (testId: string, eventId: string, attemptId: string) => void }) {
   const { eventId } = useParams();
   const navigate = useNavigate();
   
@@ -42,7 +39,6 @@ function EventDetailPage({ onStartTest }: { onStartTest: (testType: 'entry' | 'f
 function AppContent() {
   const { 
     user, 
-    userProfile, 
     loading, 
     resetAuth, 
     authError, 
@@ -97,7 +93,6 @@ function AppContent() {
     return (
       <Routes>
         <Route path="/auth/qr/:token" element={<QRAuthPage />} />
-        <Route path="/auth/qr/success" element={<QRAuthSuccessPage />} />
       </Routes>
     );
   }
@@ -122,7 +117,7 @@ function AppContent() {
   const currentView = getCurrentView();
 
   // Новый обработчик запуска теста
-  const handleStartTest = (testType: 'entry' | 'final' | 'annual', testId: string, eventId: string, attemptId?: string) => {
+  const handleStartTest = (testId: string, eventId: string, attemptId?: string) => {
     const params = new URLSearchParams({
       eventId: eventId,
       testId: testId

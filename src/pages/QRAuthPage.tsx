@@ -82,7 +82,7 @@ export default function QRAuthPage() {
 
         // Обрабатываем разные форматы ответа
         if (data.redirectUrl) {
-          // Magic link - активируем через редирект
+          // Magic link - активируем через редирект напрямую на /auth/callback
           console.log('🔗 Redirecting to magic link:', data.redirectUrl);
           window.location.replace(data.redirectUrl);
           return;
