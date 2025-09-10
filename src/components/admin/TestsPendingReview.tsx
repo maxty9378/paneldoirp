@@ -155,22 +155,22 @@ export function TestsPendingReview({ eventId, onReviewComplete, onEditReview }: 
           const correctAnswers = reviews?.filter(r => r.is_correct).length || 0;
           const totalAnswers = reviews?.length || 0;
 
-          // Рассчитываем процент из test_answer_reviews для точности
-          const calculatedScore = totalAnswers > 0 ? Math.round((correctAnswers / totalAnswers) * 100) : 0;
-          const calculatedPassed = calculatedScore >= (attempt.test.passing_score || 70);
+          // Используем score из user_test_attempts для консистентности
+          const calculatedScore = attempt.score || 0;
+          const calculatedPassed = calculatedScore >= ((attempt.test as any).passing_score || 70);
 
           return {
             attempt_id: attempt.id,
-            user_name: attempt.user.full_name || 'Неизвестно',
-            user_email: attempt.user.email || '',
-            test_title: attempt.test.title || 'Без названия',
-            test_type: attempt.test.type || 'unknown',
+            user_name: (attempt.user as any).full_name || 'Неизвестно',
+            user_email: (attempt.user as any).email || '',
+            test_title: (attempt.test as any).title || 'Без названия',
+            test_type: (attempt.test as any).type || 'unknown',
             reviewed_at: attempt.reviewed_at || new Date().toISOString(),
             score: calculatedScore, // Используем рассчитанный процент
             passed: calculatedPassed, // Используем рассчитанный статус
             correct_answers: correctAnswers,
             total_answers: totalAnswers,
-            reviewer_name: attempt.reviewer?.full_name || 'Неизвестно'
+            reviewer_name: (attempt.reviewer as any)?.full_name || 'Неизвестно'
           };
         })
       );
