@@ -155,8 +155,8 @@ export function TestsPendingReview({ eventId, onReviewComplete, onEditReview }: 
           const correctAnswers = reviews?.filter(r => r.is_correct).length || 0;
           const totalAnswers = reviews?.length || 0;
 
-          // Используем score из user_test_attempts для консистентности
-          const calculatedScore = attempt.score || 0;
+          // Рассчитываем процент из test_answer_reviews для точности
+          const calculatedScore = totalAnswers > 0 ? Math.round((correctAnswers / totalAnswers) * 100) : 0;
           const calculatedPassed = calculatedScore >= ((attempt.test as any).passing_score || 70);
 
           return {

@@ -211,10 +211,17 @@ export function TestReviewModal({ isOpen, onClose, attemptId, eventId }: TestRev
         throw new Error('Пользователь не авторизован');
       }
 
-      // Подсчитываем правильные ответы
+      // Подсчитываем правильные ответы только среди открытых вопросов
       const correctAnswers = answers.filter(answer => answer.is_correct === true).length;
       const totalAnswers = answers.length;
       const score = Math.round((correctAnswers / totalAnswers) * 100);
+      
+      console.log('Review calculation (open questions only):', {
+        correctAnswers,
+        totalAnswers,
+        score,
+        note: 'Calculated only for open-ended questions'
+      });
       const passingScore = attemptInfo?.test.passing_score;
       const passed = passingScore ? score >= passingScore : true; // Если проходной балл не установлен, считаем пройденным
       
