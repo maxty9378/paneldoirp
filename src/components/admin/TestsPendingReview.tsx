@@ -1,15 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { Clock, User, FileText, CheckCircle, Eye, AlertCircle, BarChart3 } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Clock,
+  User,
+  FileText,
+  CheckCircle,
+  Eye,
+  BarChart3,
+  Search,
+  Filter,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../../hooks/use-toast';
 import { TestReviewModal } from './TestReviewModal';
 
+// -------------------- Types --------------------
 interface PendingTest {
   attempt_id: string;
   user_name: string;
   user_email: string;
   test_title: string;
-  test_type: string;
+  test_type: 'entry' | 'final' | 'annual' | string;
   submitted_at: string;
   open_questions_count: number;
 }
@@ -19,7 +31,7 @@ interface ReviewedTest {
   user_name: string;
   user_email: string;
   test_title: string;
-  test_type: string;
+  test_type: 'entry' | 'final' | 'annual' | string;
   reviewed_at: string;
   score: number;
   passed: boolean;
@@ -34,29 +46,98 @@ interface TestsPendingReviewProps {
   onEditReview?: (attemptId: string) => void;
 }
 
+// -------------------- Small UI helpers --------------------
+function TypePill({ type }: { type: PendingTest['test_type'] }) {
+  const map: Record<string, string> = {
+    entry: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
+    final: 'bg-blue-50 text-blue-700 ring-1 ring-blue-200',
+    annual: 'bg-purple-50 text-purple-700 ring-1 ring-purple-200',
+    default: 'bg-gray-50 text-gray-700 ring-1 ring-gray-200',
+  };
+  const cls = map[type] || map.default;
+  const label = type === 'entry' ? 'Входной' : type === 'final' ? 'Финальный' : type === 'annual' ? 'Годовой' : type;
+  return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}>{label}</span>;
+}
+
+function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="px-6 py-10 text-center text-gray-500">
+      <Icon className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+      <p className="text-lg font-medium text-gray-900 mb-1">{title}</p>
+      <p className="text-sm text-gray-600 mb-4">{description}</p>
+      {children}
+    </div>
+  );
+}
+
+function SkeletonRow() {
+  return (
+    <tr>
+      <td className="px-6 py-4"><div className="h-4 w-40 bg-gray-200 rounded animate-pulse" /></td>
+      <td className="px-6 py-4"><div className="h-4 w-52 bg-gray-200 rounded animate-pulse" /></td>
+      <td className="px-6 py-4"><div className="h-4 w-20 bg-gray-200 rounded animate-pulse" /></td>
+      <td className="px-6 py-4"><div className="h-4 w-16 bg-gray-200 rounded animate-pulse" /></td>
+      <td className="px-6 py-4"><div className="h-4 w-28 bg-gray-200 rounded animate-pulse" /></td>
+      <td className="px-6 py-4"><div className="h-8 w-24 bg-gray-200 rounded animate-pulse ml-auto" /></td>
+    </tr>
+  );
+}
+
+// -------------------- Main --------------------
 export function TestsPendingReview({ eventId, onReviewComplete, onEditReview }: TestsPendingReviewProps) {
   const { toast } = useToast();
+
   const [tests, setTests] = useState<PendingTest[]>([]);
   const [reviewedTests, setReviewedTests] = useState<ReviewedTest[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [reviewedLoading, setReviewedLoading] = useState(true);
-  const [showReviewedSection, setShowReviewedSection] = useState(true);
-  const [questionStats, setQuestionStats] = useState<any[]>([]);
   const [statsLoading, setStatsLoading] = useState(true);
+
+  const [questionStats, setQuestionStats] = useState<any[]>([]);
+
+  const [showReviewedSection, setShowReviewedSection] = useState(true);
+
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedAttemptId, setSelectedAttemptId] = useState<string | null>(null);
 
+  // UX: фильтры/поиск/сортировка
+  const [rawSearch, setRawSearch] = useState('');
+  const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'entry' | 'final' | 'annual'>('all');
+  const [sortKey, setSortKey] = useState<'time' | 'name' | 'title' | 'open'>('time');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+  // Пагинация проверенных тестов
+  const [revPage, setRevPage] = useState(1);
+  const [revPageSize, setRevPageSize] = useState(10);
+
+  useEffect(() => {
+    const id = setTimeout(() => setSearch(rawSearch.trim().toLowerCase()), 250);
+    return () => clearTimeout(id);
+  }, [rawSearch]);
 
   useEffect(() => {
     fetchPendingTests();
     fetchReviewedTests();
     fetchQuestionStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId]);
 
-  const fetchPendingTests = async () => {
+  // ---------- Data fetchers ----------
+  async function fetchPendingTests() {
     setLoading(true);
     try {
-      // Загружаем попытки тестов со статусом pending_review ИЛИ completed с баллом 0
       let query = supabase
         .from('user_test_attempts')
         .select(`
@@ -65,551 +146,660 @@ export function TestsPendingReview({ eventId, onReviewComplete, onEditReview }: 
           score,
           completed_at,
           created_at,
+          test_id,
           user:user_id(id, full_name, email),
           test:tests(id, title, type)
         `)
         .or('status.eq.pending_review,and(status.eq.completed,score.eq.0)')
         .order('completed_at', { ascending: false });
 
-      // Если указан eventId, фильтруем по мероприятию
-      if (eventId) {
-        query = query.eq('event_id', eventId);
-      }
+      if (eventId) query = query.eq('event_id', eventId);
+      const { data: attempts, error } = await query;
+      if (error) throw error;
 
-      const { data: attempts, error: attemptsError } = await query;
+      const validAttempts = (attempts || []).filter(a => a.test);
+      const testIds = Array.from(new Set(validAttempts.map(a => a.test.id)));
 
-      if (attemptsError) throw attemptsError;
+      // Загружаем количество открытых вопросов для всех тестов одним запросом
+      const { data: openQuestions, error: qErr } = await supabase
+        .from('test_questions')
+        .select('id, test_id')
+        .in('test_id', testIds)
+        .eq('question_type', 'text');
+      if (qErr) throw qErr;
 
+      const openCountByTest = new Map<string, number>();
+      (openQuestions || []).forEach(q => {
+        openCountByTest.set(q.test_id, (openCountByTest.get(q.test_id) || 0) + 1);
+      });
 
-      // Для каждой попытки получаем количество открытых вопросов
-      const testsWithOpenQuestions = await Promise.all(
-        (attempts || []).map(async (attempt) => {
-          const { data: openQuestions, error: questionsError } = await supabase
-            .from('test_questions')
-            .select('id')
-            .eq('test_id', attempt.test.id)
-            .eq('question_type', 'text');
-
-          if (questionsError) {
-            console.error('Ошибка загрузки открытых вопросов:', questionsError);
-            return null;
-          }
-
-          // Показываем только тесты с открытыми вопросами
-          if ((openQuestions?.length || 0) === 0) {
-            return null;
-          }
-
-          const result = {
-            attempt_id: attempt.id,
-            user_name: attempt.user.full_name || 'Неизвестно',
-            user_email: attempt.user.email || '',
-            test_title: attempt.test.title || 'Без названия',
-            test_type: attempt.test.type || 'unknown',
-            submitted_at: attempt.completed_at || attempt.created_at || new Date().toISOString(),
-            open_questions_count: openQuestions?.length || 0
-          };
-
-          return result;
+      const rows: PendingTest[] = validAttempts
+        .map((a: any) => {
+          const openCount = openCountByTest.get(a.test.id) || 0;
+          if (openCount === 0) return null; // показываем только если есть открытые вопросы
+          return {
+            attempt_id: a.id,
+            user_name: a.user?.full_name || 'Неизвестно',
+            user_email: a.user?.email || '',
+            test_title: a.test?.title || 'Без названия',
+            test_type: a.test?.type || 'unknown',
+            submitted_at: a.completed_at || a.created_at || new Date().toISOString(),
+            open_questions_count: openCount,
+          } as PendingTest;
         })
-      );
+        .filter(Boolean) as PendingTest[];
 
-      // Фильтруем null значения
-      setTests(testsWithOpenQuestions.filter(Boolean) as PendingTest[]);
-    } catch (error: any) {
-      console.error('Ошибка загрузки тестов на проверке:', error);
-      toast(`Ошибка загрузки: ${error.message}`);
+      setTests(rows);
+    } catch (e: any) {
+      console.error('Ошибка загрузки тестов на проверке:', e);
+      toast(`Ошибка загрузки: ${e.message}`);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const fetchReviewedTests = async () => {
+  async function fetchReviewedTests() {
     setReviewedLoading(true);
     try {
-      // Загружаем проверенные тесты с результатами проверки
-      const { data: attempts, error: attemptsError } = await supabase
+      const { data: attempts, error } = await supabase
         .from('user_test_attempts')
         .select(`
           id,
           score,
           passed,
           reviewed_at,
-          user:user_id(id, full_name, email),
           test:tests(id, title, type, passing_score),
+          user:user_id(id, full_name, email),
           reviewer:reviewed_by(id, full_name)
         `)
         .not('reviewed_at', 'is', null)
         .order('reviewed_at', { ascending: false });
 
-      if (attemptsError) throw attemptsError;
+      if (error) throw error;
 
-      // Получаем детали проверки из test_answer_reviews
-      const reviewedTestsWithDetails = await Promise.all(
-        (attempts || []).map(async (attempt) => {
+      const reviewedWithCalc: ReviewedTest[] = await Promise.all(
+        (attempts || []).map(async (a: any) => {
           const { data: reviews } = await supabase
             .from('test_answer_reviews')
             .select('is_correct')
-            .eq('attempt_id', attempt.id);
+            .eq('attempt_id', a.id);
 
-          const correctAnswers = reviews?.filter(r => r.is_correct).length || 0;
-          const totalAnswers = reviews?.length || 0;
-
-          // Рассчитываем процент из test_answer_reviews для точности
-          const calculatedScore = totalAnswers > 0 ? Math.round((correctAnswers / totalAnswers) * 100) : 0;
-          const calculatedPassed = calculatedScore >= ((attempt.test as any).passing_score || 70);
+          const correct = (reviews || []).filter(r => r.is_correct).length;
+          const total = reviews?.length || 0;
+          const score = total > 0 ? Math.round((correct / total) * 100) : 0;
+          const passed = score >= (a.test?.passing_score ?? 70);
 
           return {
-            attempt_id: attempt.id,
-            user_name: (attempt.user as any).full_name || 'Неизвестно',
-            user_email: (attempt.user as any).email || '',
-            test_title: (attempt.test as any).title || 'Без названия',
-            test_type: (attempt.test as any).type || 'unknown',
-            reviewed_at: attempt.reviewed_at || new Date().toISOString(),
-            score: calculatedScore, // Используем рассчитанный процент
-            passed: calculatedPassed, // Используем рассчитанный статус
-            correct_answers: correctAnswers,
-            total_answers: totalAnswers,
-            reviewer_name: (attempt.reviewer as any)?.full_name || 'Неизвестно'
-          };
+            attempt_id: a.id,
+            user_name: a.user?.full_name || 'Неизвестно',
+            user_email: a.user?.email || '',
+            test_title: a.test?.title || 'Без названия',
+            test_type: a.test?.type || 'unknown',
+            reviewed_at: a.reviewed_at || new Date().toISOString(),
+            score,
+            passed,
+            correct_answers: correct,
+            total_answers: total,
+            reviewer_name: a.reviewer?.full_name || 'Неизвестно',
+          } as ReviewedTest;
         })
       );
 
-      setReviewedTests(reviewedTestsWithDetails);
-    } catch (error: any) {
-      console.error('Ошибка загрузки проверенных тестов:', error);
-      toast(`Ошибка загрузки проверенных тестов: ${error.message}`);
+      setReviewedTests(reviewedWithCalc);
+    } catch (e: any) {
+      console.error('Ошибка загрузки проверенных тестов:', e);
+      toast(`Ошибка загрузки проверенных тестов: ${e.message}`);
     } finally {
       setReviewedLoading(false);
     }
-  };
+  }
 
-  const handleReviewTest = (attemptId: string) => {
+  async function fetchQuestionStats() {
+    setStatsLoading(true);
+    try {
+      if (!eventId) {
+        setQuestionStats([]);
+        return;
+      }
+
+      const { data: allAttempts, error: attErr } = await supabase
+        .from('user_test_attempts')
+        .select(`id, test_id, status, test:tests(id, title)`) // для заголовков
+        .eq('event_id', eventId)
+        .in('status', ['completed', 'pending_review']);
+      if (attErr) throw attErr;
+      if (!allAttempts || allAttempts.length === 0) {
+        setQuestionStats([]);
+        return;
+      }
+
+      const attemptIds = allAttempts.map(a => a.id);
+      const testIds = Array.from(new Set(allAttempts.map(a => a.test_id)));
+
+      const { data: testQuestions, error: qErr } = await supabase
+        .from('test_questions')
+        .select('id, question, question_type, test_id')
+        .in('test_id', testIds)
+        .in('question_type', ['text', 'sequence']);
+      if (qErr) throw qErr;
+      if (!testQuestions || testQuestions.length === 0) {
+        setQuestionStats([]);
+        return;
+      }
+
+      const { data: allReviews } = await supabase
+        .from('test_answer_reviews')
+        .select('question_id, is_correct, attempt_id')
+        .in('attempt_id', attemptIds);
+
+      const questionStatsMap = new Map<string, any>();
+
+      testQuestions.forEach((q) => {
+        const testTitle = allAttempts.find(a => a.test_id === q.test_id)?.test?.title || 'Неизвестный тест';
+        const totalAnswers = allAttempts.filter(a => a.test_id === q.test_id).length;
+        const qReviews = (allReviews || []).filter((r: any) => r.question_id === q.id);
+        const correct = qReviews.filter((r: any) => r.is_correct).length;
+        const correct_percentage = totalAnswers > 0 ? Math.round((correct / totalAnswers) * 100) : 0;
+        questionStatsMap.set(q.id, {
+          question_id: q.id,
+          question_text: q.question,
+          test_title: testTitle,
+          total_answers: totalAnswers,
+          correct_answers: correct,
+          correct_percentage,
+        });
+      });
+
+      setQuestionStats(Array.from(questionStatsMap.values()));
+    } catch (e: any) {
+      console.error('Ошибка загрузки статистики вопросов:', e);
+      toast('Не удалось загрузить статистику');
+    } finally {
+      setStatsLoading(false);
+    }
+  }
+
+  // ---------- Actions ----------
+  function handleReviewTest(attemptId: string) {
     setSelectedAttemptId(attemptId);
     setShowReviewModal(true);
-  };
+  }
 
-  const handleReviewComplete = () => {
+  function handleReviewCompleteLocal() {
     setShowReviewModal(false);
     setSelectedAttemptId(null);
     fetchPendingTests();
     fetchReviewedTests();
     onReviewComplete?.();
-  };
-
-  const handleEditReview = (attemptId: string) => {
-    console.log('handleEditReview called with attemptId:', attemptId);
-    onEditReview?.(attemptId);
-  };
-
-  const fetchQuestionStats = async () => {
-    setStatsLoading(true);
-    try {
-      if (!eventId) {
-        console.log('No eventId provided');
-        return;
-      }
-      console.log('Fetching question stats for eventId:', eventId);
-
-      // Получаем все попытки тестов в рамках мероприятия (включая проверенные)
-      const { data: allAttempts, error: attemptsError } = await supabase
-        .from('user_test_attempts')
-        .select(`
-          id,
-          test_id,
-          status,
-          test:tests(id, title)
-        `)
-        .eq('event_id', eventId)
-        .in('status', ['completed', 'pending_review']);
-
-      if (attemptsError) throw attemptsError;
-
-      console.log('All attempts:', allAttempts);
-
-      if (!allAttempts || allAttempts.length === 0) {
-        console.log('No attempts found');
-        setQuestionStats([]);
-        return;
-      }
-
-      const attemptIds = allAttempts.map(attempt => attempt.id);
-      const testIds = [...new Set(allAttempts.map(attempt => attempt.test_id))];
-      console.log('Attempt IDs:', attemptIds);
-      console.log('Test IDs:', testIds);
-
-      // Получаем все открытые вопросы для этих тестов
-      const { data: testQuestions, error: questionsError } = await supabase
-        .from('test_questions')
-        .select('id, question, question_type, test_id')
-        .in('test_id', testIds)
-        .in('question_type', ['text', 'sequence']);
-
-      if (questionsError) throw questionsError;
-
-      console.log('Test questions:', testQuestions);
-
-      if (!testQuestions || testQuestions.length === 0) {
-        console.log('No open-ended questions found');
-        setQuestionStats([]);
-        return;
-      }
-
-      // Получаем результаты проверки для всех попыток
-      const { data: allReviews, error: reviewsError } = await supabase
-        .from('test_answer_reviews')
-        .select('question_id, is_correct, attempt_id')
-        .in('attempt_id', attemptIds);
-
-      if (reviewsError) {
-        console.log('No reviews found (this is OK for new tests):', reviewsError);
-      }
-
-      console.log('All reviews:', allReviews);
-
-      // Группируем по вопросам и считаем статистику
-      const questionStatsMap = new Map();
-
-      testQuestions.forEach(question => {
-        const questionId = question.id;
-        const questionText = question.question;
-        
-        // Находим тест для этого вопроса
-        const test = allAttempts.find(attempt => attempt.test_id === question.test_id)?.test;
-        const testTitle = test?.title || 'Неизвестный тест';
-        
-        // Находим все попытки для этого теста
-        const testAttempts = allAttempts.filter(attempt => attempt.test_id === question.test_id);
-        const totalAnswers = testAttempts.length;
-        
-        // Находим все ответы на этот вопрос (все попытки)
-        const questionReviews = allReviews?.filter(r => r.question_id === questionId) || [];
-        
-        // Находим правильные ответы
-        const correctAnswers = questionReviews.filter(r => r.is_correct === true).length;
-        
-        const correctPercentage = totalAnswers > 0 ? Math.round((correctAnswers / totalAnswers) * 100) : 0;
-        
-        console.log(`Question ${questionId}: totalAnswers=${totalAnswers}, correctAnswers=${correctAnswers}, percentage=${correctPercentage}`);
-        
-        questionStatsMap.set(questionId, {
-          question_id: questionId,
-          question_text: questionText,
-          test_title: testTitle,
-          total_answers: totalAnswers,
-          correct_answers: correctAnswers,
-          correct_percentage: correctPercentage
-        });
-      });
-
-      const statsArray = Array.from(questionStatsMap.values());
-      console.log('Question stats loaded:', statsArray);
-      console.log('Stats array length:', statsArray.length);
-      console.log('All reviews data:', allReviews);
-      console.log('Test questions data:', testQuestions);
-      setQuestionStats(statsArray);
-    } catch (error: any) {
-      console.error('Ошибка загрузки статистики вопросов:', error);
-    } finally {
-      setStatsLoading(false);
-    }
-  };
-
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'entry': return 'Входной';
-      case 'final': return 'Финальный';
-      case 'annual': return 'Годовой';
-      default: return type;
-    }
-  };
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'entry': return 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200';
-      case 'final': return 'bg-blue-50 text-blue-700 ring-1 ring-blue-200';
-      case 'annual': return 'bg-purple-50 text-purple-700 ring-1 ring-purple-200';
-      default: return 'bg-gray-50 text-gray-700 ring-1 ring-gray-200';
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="bg-white rounded-xl shadow-soft border border-gray-100 p-6">
-        <div className="flex items-center justify-center py-8">
-          <div className="w-6 h-6 border-2 border-sns-green border-t-transparent rounded-full animate-spin mr-2"></div>
-          Загрузка тестов на проверке...
-        </div>
-      </div>
-    );
   }
 
-  // Убираем ранний return и всегда показываем статистику
+  function handleEditReview(attemptId: string) {
+    onEditReview?.(attemptId);
+  }
 
+  // ---------- Derived ----------
+  const filteredPending = useMemo(() => {
+    const arr = tests.filter((t) => {
+      const byType = typeFilter === 'all' ? true : t.test_type === typeFilter;
+      const s = search;
+      const byText = s
+        ? t.user_name.toLowerCase().includes(s) ||
+          t.user_email.toLowerCase().includes(s) ||
+          t.test_title.toLowerCase().includes(s)
+        : true;
+      return byType && byText;
+    });
+
+    const dir = sortDir === 'asc' ? 1 : -1;
+    return arr.sort((a, b) => {
+      switch (sortKey) {
+        case 'name':
+          return a.user_name.localeCompare(b.user_name) * dir;
+        case 'title':
+          return a.test_title.localeCompare(b.test_title) * dir;
+        case 'open':
+          return (a.open_questions_count - b.open_questions_count) * dir;
+        case 'time':
+        default:
+          return (new Date(a.submitted_at).getTime() - new Date(b.submitted_at).getTime()) * dir;
+      }
+    });
+  }, [tests, typeFilter, search, sortKey, sortDir]);
+
+  const filteredReviewed = useMemo(() => {
+    const s = search;
+    let arr = reviewedTests.filter((t) =>
+      s
+        ? t.user_name.toLowerCase().includes(s) ||
+          t.user_email.toLowerCase().includes(s) ||
+          t.test_title.toLowerCase().includes(s)
+        : true
+    );
+    // простая сортировка: последние сверху
+    arr = arr.sort((a, b) => new Date(b.reviewed_at).getTime() - new Date(a.reviewed_at).getTime());
+    return arr;
+  }, [reviewedTests, search]);
+
+  // пагинация проверенных
+  const revTotalPages = Math.max(1, Math.ceil(filteredReviewed.length / revPageSize));
+  useEffect(() => setRevPage(1), [search, revPageSize]);
+  const revPaged = useMemo(() => {
+    const start = (revPage - 1) * revPageSize;
+    return filteredReviewed.slice(start, start + revPageSize);
+  }, [filteredReviewed, revPage, revPageSize]);
+
+  // date helper
+  function formatDateSafe(iso: string) {
+    const d = new Date(iso);
+    if (isNaN(d.getTime()) || d.getFullYear() < 2020) return 'Дата не указана';
+    return d.toLocaleString('ru-RU');
+  }
+
+  // ---------- Render ----------
   return (
-    <>
+    <div className="space-y-6">
+      {/* Панель фильтров/поиска */}
+      <div className="bg-white rounded-xl shadow-soft border border-gray-100 p-4 md:p-6">
+        <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
+          <div className="relative md:flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <input
+              value={rawSearch}
+              onChange={(e) => setRawSearch(e.target.value)}
+              placeholder="Поиск по имени, email или названию теста"
+              className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-sns-green focus:border-transparent"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-gray-500" />
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value as any)}
+              className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-sns-green focus:border-transparent"
+            >
+              <option value="all">Все типы</option>
+              <option value="entry">Входные</option>
+              <option value="final">Финальные</option>
+              <option value="annual">Годовые</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Сортировка:</span>
+            <select
+              value={sortKey}
+              onChange={(e) => setSortKey(e.target.value as any)}
+              className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-sns-green focus:border-transparent"
+            >
+              <option value="time">По времени отправки</option>
+              <option value="name">По участнику</option>
+              <option value="title">По названию теста</option>
+              <option value="open">По открытым вопросам</option>
+            </select>
+            <select
+              value={sortDir}
+              onChange={(e) => setSortDir(e.target.value as any)}
+              className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-sns-green focus:border-transparent"
+            >
+              <option value="desc">По убыванию</option>
+              <option value="asc">По возрастанию</option>
+            </select>
+          </div>
+        </div>
+      </div>
 
-      {/* Секция тестов на проверке */}
-      {tests.length === 0 ? (
-        <div className="bg-white rounded-xl shadow-soft border border-gray-100 p-6">
-          <div className="text-center py-8">
-            <CheckCircle className="h-12 w-12 mx-auto text-green-500 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Нет тестов на проверке
-            </h3>
-            <p className="text-gray-600 mb-8">
-              Все тесты проверены или нет тестов с открытыми вопросами
-            </p>
-            
-            {/* Добавляем секцию проверенных тестов прямо сюда */}
-            <div className="mt-8 text-left">
-              <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-                Проверенные тесты ({reviewedTests.length})
-              </h4>
-              
-              {reviewedLoading ? (
-                <div className="text-center py-4">
-                  <div className="inline-flex items-center px-4 py-2 font-semibold leading-6 text-sm shadow rounded-md text-gray-500 bg-white">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Загрузка проверенных тестов...
+      {/* Секция: тесты на проверке */}
+      <div className="bg-white rounded-xl shadow-soft border border-gray-100">
+        <div className="p-4 md:p-6 border-b border-gray-200">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                <Clock className="h-5 w-5 mr-2 text-amber-500" /> Тесты на проверке
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                {loading ? 'Загрузка…' : `${filteredPending.length} тест(ов) ожидают проверки тренером или администратором`}
+              </p>
+            </div>
+            {!loading && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                {filteredPending.length} ожидают
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Мобильные карточки */}
+        <div className="p-4 space-y-3 md:hidden">
+          {loading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="rounded-xl border border-gray-100 p-4">
+                <div className="h-4 w-52 bg-gray-200 rounded animate-pulse mb-2" />
+                <div className="h-3 w-80 bg-gray-200 rounded animate-pulse mb-3" />
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="h-8 bg-gray-100 rounded" />
+                  <div className="h-8 bg-gray-100 rounded" />
+                  <div className="h-8 bg-gray-100 rounded" />
+                </div>
+              </div>
+            ))
+          ) : filteredPending.length === 0 ? (
+            <EmptyState
+              icon={CheckCircle}
+              title="Нет тестов на проверке"
+              description="Все проверено или нет тестов с открытыми вопросами"
+            />
+          ) : (
+            filteredPending.map((t) => (
+              <div key={t.attempt_id} className="rounded-xl border border-gray-100 p-4 flex flex-col gap-3 hover:bg-gray-50">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
+                      <User className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900">{t.user_name}</div>
+                      <div className="text-xs text-gray-500">{t.user_email}</div>
+                      <div className="mt-1 text-sm text-gray-800">{t.test_title}</div>
+                      <div className="mt-1"><TypePill type={t.test_type} /></div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs text-gray-500">Отправлен</div>
+                    <div className="text-sm text-gray-700">{formatDateSafe(t.submitted_at)}</div>
                   </div>
                 </div>
-              ) : reviewedTests.length === 0 ? (
-                <div className="text-center py-4 text-gray-500">
-                  <p className="text-sm">Нет проверенных тестов</p>
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-gray-600 flex items-center">
+                    <FileText className="h-4 w-4 mr-1" /> {t.open_questions_count} открытых
+                  </div>
+                  <button
+                    onClick={() => handleReviewTest(t.attempt_id)}
+                    className="inline-flex items-center px-3 py-1.5 text-sm bg-sns-green text-white rounded-lg hover:bg-sns-green-dark"
+                  >
+                    <Eye className="h-4 w-4 mr-1" /> Проверить
+                  </button>
                 </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Таблица для md+ */}
+        <div className="overflow-hidden hidden md:block">
+          <table className="w-full">
+            <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Участник</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Тест</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Тип</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Открытые вопросы</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Отправлен</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {loading ? (
+                Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)
+              ) : filteredPending.length === 0 ? (
+                <tr>
+                  <td colSpan={6}>
+                    <EmptyState
+                      icon={CheckCircle}
+                      title="Нет тестов на проверке"
+                      description="Все проверено или нет тестов с открытыми вопросами"
+                    />
+                  </td>
+                </tr>
               ) : (
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="space-y-3">
-                    {reviewedTests.map((test) => (
-                      <div key={test.attempt_id} className="bg-white p-4 rounded-lg border border-gray-200 flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                            <User className="h-5 w-5 text-green-600" />
-                          </div>
-                          <div>
-                            <div className="font-medium text-gray-900">{test.user_name}</div>
-                            <div className="text-sm text-gray-500">{test.test_title}</div>
-                          </div>
+                filteredPending.map((t) => (
+                  <tr key={t.attempt_id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                          <User className="h-4 w-4 text-blue-600" />
                         </div>
-                        <div className="flex items-center space-x-4">
-                          <div className="text-right">
-                            <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              test.passed 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-red-100 text-red-800'
-                            }`}>
-                              {test.score}%
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1">
-                              {test.correct_answers}/{test.total_answers}
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => handleEditReview(test.attempt_id)}
-                            className="text-blue-600 hover:text-blue-900 text-sm font-medium"
-                          >
-                            Изменить
-                          </button>
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{t.user_name}</div>
+                          <div className="text-xs text-gray-500">{t.user_email}</div>
                         </div>
                       </div>
-                    ))}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm font-medium text-gray-900">{t.test_title}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap"><TypePill type={t.test_type} /></td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center text-sm text-gray-600">
+                        <FileText className="h-4 w-4 mr-1" /> {t.open_questions_count}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{formatDateSafe(t.submitted_at)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <button
+                        onClick={() => handleReviewTest(t.attempt_id)}
+                        className="inline-flex items-center px-3 py-1.5 text-sm bg-sns-green text-white rounded-lg hover:bg-sns-green-dark"
+                      >
+                        <Eye className="h-4 w-4 mr-1" /> Проверить
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Секция: проверенные тесты */}
+      <div className="bg-white rounded-xl shadow-soft border border-gray-100">
+        <button
+          onClick={() => setShowReviewedSection(v => !v)}
+          className="w-full p-4 md:p-6 flex items-center justify-between border-b border-gray-200 text-left"
+        >
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-600" /> Проверенные тесты ({filteredReviewed.length})
+            </h3>
+            <p className="text-sm text-gray-600 mt-1">История проверок и быстрый переход к редактированию</p>
+          </div>
+          <span className="text-gray-400">{showReviewedSection ? <ChevronUp /> : <ChevronDown />}</span>
+        </button>
+
+        {showReviewedSection && (
+          <div className="p-4 md:p-6">
+            {/* Мобильные карточки */}
+            <div className="space-y-3 md:hidden">
+              {reviewedLoading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="rounded-xl border border-gray-100 p-4">
+                    <div className="h-4 w-48 bg-gray-200 rounded animate-pulse mb-2" />
+                    <div className="h-3 w-72 bg-gray-200 rounded animate-pulse mb-3" />
+                    <div className="h-8 w-24 bg-gray-200 rounded animate-pulse" />
+                  </div>
+                ))
+              ) : filteredReviewed.length === 0 ? (
+                <EmptyState icon={FileText} title="Нет проверенных тестов" description="История проверок появится здесь" />
+              ) : (
+                revPaged.map((t) => (
+                  <div key={t.attempt_id} className="rounded-xl border border-gray-100 p-4 flex flex-col gap-3 hover:bg-gray-50">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-medium text-gray-900">{t.user_name}</div>
+                        <div className="text-xs text-gray-500">{t.user_email}</div>
+                        <div className="mt-1 text-sm text-gray-800">{t.test_title}</div>
+                        <div className="mt-1"><TypePill type={t.test_type} /></div>
+                      </div>
+                      <div className="text-right">
+                        <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${t.passed ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{t.score}%</div>
+                        <div className="text-xs text-gray-600 mt-1">{t.correct_answers}/{t.total_answers}</div>
+                        <div className="text-xs text-gray-500">{formatDateSafe(t.reviewed_at)}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-end">
+                      <button onClick={() => handleEditReview(t.attempt_id)} className="text-blue-600 hover:text-blue-800 text-sm font-medium">Изменить</button>
+                    </div>
+                  </div>
+                ))
+              )}
+
+              {/* Пагинация моб */}
+              {filteredReviewed.length > 0 && (
+                <div className="flex items-center justify-between text-sm text-gray-600 pt-2">
+                  <span>Стр. {revPage} / {revTotalPages}</span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setRevPage(p => Math.max(1, p - 1))}
+                      disabled={revPage <= 1}
+                      className="px-3 py-1.5 rounded border disabled:opacity-50"
+                    >Назад</button>
+                    <button
+                      onClick={() => setRevPage(p => Math.min(revTotalPages, p + 1))}
+                      disabled={revPage >= revTotalPages}
+                      className="px-3 py-1.5 rounded border disabled:opacity-50"
+                    >Вперёд</button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Таблица для md+ */}
+            <div className="hidden md:block">
+              <div className="overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Участник</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Тест</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Тип</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Результат</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Проверено</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {reviewedLoading ? (
+                      Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)
+                    ) : filteredReviewed.length === 0 ? (
+                      <tr>
+                        <td colSpan={6}>
+                          <EmptyState icon={FileText} title="Нет проверенных тестов" description="История проверок появится здесь" />
+                        </td>
+                      </tr>
+                    ) : (
+                      revPaged.map((t) => (
+                        <tr key={t.attempt_id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">{t.user_name}</div>
+                            <div className="text-xs text-gray-500">{t.user_email}</div>
+                          </td>
+                          <td className="px-6 py-4"><div className="text-sm text-gray-900">{t.test_title}</div></td>
+                          <td className="px-6 py-4 whitespace-nowrap"><TypePill type={t.test_type} /></td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-semibold text-gray-900">{t.score}%</div>
+                            <div className="text-xs text-gray-600">{t.correct_answers}/{t.total_answers}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{formatDateSafe(t.reviewed_at)}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right">
+                            <button onClick={() => handleEditReview(t.attempt_id)} className="text-blue-600 hover:text-blue-900 text-sm font-medium">Изменить</button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Пагинация */}
+              {filteredReviewed.length > 0 && (
+                <div className="flex items-center justify-between p-4 border-t border-gray-100 text-sm text-gray-600">
+                  <div>
+                    Показано {revPaged.length} из {filteredReviewed.length}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span>На странице:</span>
+                    <select
+                      value={revPageSize}
+                      onChange={(e) => setRevPageSize(parseInt(e.target.value) || 10)}
+                      className="border border-gray-300 rounded-lg px-2 py-1 focus:ring-2 focus:ring-sns-green focus:border-transparent"
+                    >
+                      {[10, 20, 50].map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                    <span className="ml-3">Стр. {revPage} / {revTotalPages}</span>
+                    <div className="ml-2 flex gap-1">
+                      <button
+                        onClick={() => setRevPage(p => Math.max(1, p - 1))}
+                        disabled={revPage <= 1}
+                        className="px-2 py-1 rounded border text-gray-700 disabled:opacity-50"
+                      >Назад</button>
+                      <button
+                        onClick={() => setRevPage(p => Math.min(revTotalPages, p + 1))}
+                        disabled={revPage >= revTotalPages}
+                        className="px-2 py-1 rounded border text-gray-700 disabled:opacity-50"
+                      >Вперёд</button>
+                    </div>
                   </div>
                 </div>
               )}
             </div>
           </div>
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl shadow-soft border border-gray-100">
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-                  <Clock className="h-5 w-5 mr-2 text-amber-500" />
-                  Тесты на проверке
-                </h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  {tests.length} тест(ов) ожидают проверки тренером или администратором
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                  {tests.length} ожидают
-                </span>
-              </div>
-            </div>
-          </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Участник
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Тест
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Тип
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Открытые вопросы
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Отправлен
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Действия
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {tests.map((test) => (
-                <tr key={test.attempt_id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                        <User className="h-4 w-4 text-blue-600" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {test.user_name}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {test.user_email}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm font-medium text-gray-900">
-                      {test.test_title}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getTypeColor(test.test_type)}`}>
-                      {getTypeLabel(test.test_type)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center text-sm text-gray-600">
-                      <FileText className="h-4 w-4 mr-1" />
-                      {test.open_questions_count}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {(() => {
-                      const date = new Date(test.submitted_at);
-                      if (isNaN(date.getTime()) || date.getFullYear() < 2020) {
-                        return 'Дата не указана';
-                      }
-                      return date.toLocaleString('ru-RU');
-                    })()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <button
-                      onClick={() => handleReviewTest(test.attempt_id)}
-                      className="inline-flex items-center px-3 py-1.5 text-sm bg-sns-green text-white rounded-lg hover:bg-sns-green-dark transition-colors"
-                    >
-                      <Eye className="h-4 w-4 mr-1" />
-                      Проверить
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        </div>
-      )}
-
-
-
-
-
+        )}
+      </div>
 
       {/* Общая статистика */}
-      <div className="mt-8">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-blue-600" />
-              Общая статистика
-            </h3>
-            <p className="text-sm text-gray-600 mt-1">
-              Статистика по всем вопросам Итогового теста "Управление территорией для развития АКБ"
-            </p>
-          </div>
-          <div className="p-6">
-            {statsLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                <span className="ml-2 text-gray-600">Загрузка статистики...</span>
-              </div>
-            ) : questionStats.length > 0 ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {questionStats.map((stat, index) => (
-                  <div key={stat.question_id} className="bg-gray-50 rounded-lg p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h4 className="font-medium text-gray-900">
-                            Вопрос {index + 1}
-                          </h4>
-                        </div>
-                        <p className="text-sm text-gray-600 line-clamp-3">
-                          {stat.question_text}
-                        </p>
-                      </div>
-                      <div className="ml-4 text-right">
-                        <div className="text-2xl font-bold text-gray-900">
-                          {stat.correct_percentage}%
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          {stat.correct_answers}/{stat.total_answers}
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          правильных
-                        </div>
-                      </div>
+      <div className="bg-white rounded-xl shadow-soft border border-gray-100">
+        <div className="px-4 md:px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-blue-600" /> Общая статистика
+          </h3>
+          <p className="text-sm text-gray-600 mt-1">Статистика по открытым/последовательным вопросам в границах выбранного мероприятия</p>
+        </div>
+        <div className="p-4 md:p-6">
+          {statsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              <span className="ml-2 text-gray-600">Загрузка статистики...</span>
+            </div>
+          ) : questionStats.length > 0 ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {questionStats.map((stat, idx) => (
+                <div key={stat.question_id} className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-gray-900">Вопрос {idx + 1}</h4>
+                      <p className="text-sm text-gray-600 line-clamp-3">{stat.question_text}</p>
+                      <p className="mt-1 text-xs text-gray-500">{stat.test_title}</p>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className={`h-2 rounded-full transition-all duration-300 ${
-                          stat.correct_percentage >= 80 
-                            ? 'bg-green-500' 
-                            : stat.correct_percentage >= 60 
-                            ? 'bg-yellow-500' 
-                            : stat.correct_percentage >= 40
-                            ? 'bg-orange-500'
-                            : 'bg-red-500'
-                        }`}
-                        style={{ width: `${stat.correct_percentage}%` }}
-                      ></div>
+                    <div className="ml-4 text-right">
+                      <div className="text-2xl font-bold text-gray-900">{stat.correct_percentage}%</div>
+                      <div className="text-sm text-gray-600">{stat.correct_answers}/{stat.total_answers}</div>
+                      <div className="text-xs text-gray-500 mt-1">правильных</div>
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">Нет данных для статистики</p>
-                <p className="text-sm text-gray-500 mt-1">
-                  Статистика появится после проверки тестов с открытыми вопросами
-                </p>
-              </div>
-            )}
-          </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full transition-all duration-300 ${
+                        stat.correct_percentage >= 80
+                          ? 'bg-green-500'
+                          : stat.correct_percentage >= 60
+                          ? 'bg-yellow-500'
+                          : stat.correct_percentage >= 40
+                          ? 'bg-orange-500'
+                          : 'bg-red-500'
+                      }`}
+                      style={{ width: `${stat.correct_percentage}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState icon={BarChart3} title="Нет данных для статистики" description="Статистика появится после проверок открытых вопросов" />
+          )}
         </div>
       </div>
 
-      {/* Модальное окно для проверки тестов */}
+      {/* Модальное окно проверки */}
       {showReviewModal && selectedAttemptId && eventId && (
         <TestReviewModal
           isOpen={showReviewModal}
@@ -619,8 +809,9 @@ export function TestsPendingReview({ eventId, onReviewComplete, onEditReview }: 
           }}
           attemptId={selectedAttemptId}
           eventId={eventId}
+          onComplete={handleReviewCompleteLocal}
         />
       )}
-    </>
+    </div>
   );
 }

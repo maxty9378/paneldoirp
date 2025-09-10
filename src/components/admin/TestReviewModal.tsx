@@ -222,8 +222,17 @@ export function TestReviewModal({ isOpen, onClose, attemptId, eventId }: TestRev
         score,
         note: 'Calculated only for open-ended questions'
       });
+      
       const passingScore = attemptInfo?.test.passing_score;
       const passed = passingScore ? score >= passingScore : true; // Если проходной балл не установлен, считаем пройденным
+      
+      console.log('Saving to database:', {
+        attemptId,
+        score,
+        passed,
+        correctAnswers,
+        totalAnswers
+      });
       
       console.log('Review calculation:', {
         correctAnswers,
