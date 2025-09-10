@@ -251,7 +251,7 @@ export default function EventParticipantsList({ eventId, refreshKey = 0 }) {
                   
                   {isAdmin && (
                     <>
-                      <th className="px-1 sm:px-2 py-2 sm:py-3 text-center font-semibold text-gray-700 text-xs uppercase tracking-wider w-[80px] sm:w-[100px]">Статус</th>
+                      <th className="px-1 sm:px-2 py-2 sm:py-3 text-center font-semibold text-gray-700 text-xs uppercase tracking-wider w-[120px] sm:w-[140px]">Явка</th>
                       <th className="px-1 sm:px-2 py-2 sm:py-3 text-center font-semibold text-gray-700 text-xs uppercase tracking-wider w-[100px] sm:w-[120px]">Тесты</th>
                       <th className="px-2 sm:px-3 py-2 sm:py-3 text-center font-semibold text-gray-700 text-xs uppercase tracking-wider rounded-r-lg w-[100px] sm:w-[120px]">Обратная связь</th>
                     </>
@@ -308,29 +308,25 @@ export default function EventParticipantsList({ eventId, refreshKey = 0 }) {
                           <div className="flex justify-center">
                             <button
                               onClick={() => toggleAttendance(p.id, p.attended)}
-                              className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-200 touch-manipulation ${
+                              className={`w-20 sm:w-24 px-1 py-1 sm:py-1.5 rounded-lg text-xs font-medium transition-all duration-200 touch-manipulation ${
                                 p.attended 
-                                  ? 'bg-green-100 text-green-600 hover:bg-green-200' 
-                                  : 'bg-red-100 text-red-600 hover:bg-red-200'
+                                  ? 'bg-green-100 text-green-700 hover:bg-green-200 border border-green-200' 
+                                  : 'bg-red-100 text-red-700 hover:bg-red-200 border border-red-200'
                               }`}
                               title={p.attended ? 'Отметить как отсутствующего' : 'Отметить как присутствующего'}
                             >
-                              {p.attended ? (
-                                <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
+                              {updatingStatus === p.id ? (
+                                <div className="flex items-center gap-1">
+                                  <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z" />
+                                  </svg>
+                                  <span>...</span>
+                                </div>
                               ) : (
-                                <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
+                                p.attended ? 'Присутствовал' : 'Отсутствовал'
                               )}
                             </button>
-                            {updatingStatus === p.id && (
-                              <svg className="animate-spin h-3 w-3 sm:h-4 sm:w-4 text-gray-500 ml-1 sm:ml-2" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z" />
-                              </svg>
-                            )}
                           </div>
                         </td>
 
@@ -358,30 +354,16 @@ export default function EventParticipantsList({ eventId, refreshKey = 0 }) {
                         </td>
 
                         <td className="px-2 sm:px-3 py-2 sm:py-3 text-center align-middle">
-                          <div
-                            className={`inline-flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md text-xs font-medium border transition-all duration-200 ${
-                              p.feedback_submitted 
-                                ? 'bg-green-50 text-green-700 border-green-200' 
-                                : 'bg-orange-50 text-orange-700 border-orange-200'
-                            }`}
-                          >
-                            {p.feedback_submitted ? (
-                              <>
-                                <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                                <span className="hidden sm:inline">Да</span>
-                                <span className="sm:hidden">✓</span>
-                              </>
-                            ) : (
-                              <>
-                                <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                                <span className="hidden sm:inline">Нет</span>
-                                <span className="sm:hidden">✗</span>
-                              </>
-                            )}
+                          <div className="flex justify-center">
+                            <div
+                              className={`w-12 sm:w-14 px-1 py-1 sm:py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                                p.feedback_submitted 
+                                  ? 'bg-green-100 text-green-700 border border-green-200' 
+                                  : 'bg-red-100 text-red-700 border border-red-200'
+                              }`}
+                            >
+                              {p.feedback_submitted ? 'Да' : 'Нет'}
+                            </div>
                           </div>
                         </td>
                       </>

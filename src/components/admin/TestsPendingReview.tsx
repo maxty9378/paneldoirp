@@ -398,74 +398,106 @@ export function TestsPendingReview({ eventId, onReviewComplete, onEditReview }: 
   // ---------- Render ----------
   return (
     <div className="space-y-6">
-      {/* Панель фильтров/поиска */}
-      <div className="bg-white rounded-xl shadow-soft border border-gray-100 p-4 md:p-6">
-        <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
-          <div className="relative md:flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
-              value={rawSearch}
-              onChange={(e) => setRawSearch(e.target.value)}
-              placeholder="Поиск по имени, email или названию теста"
-              className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-sns-green focus:border-transparent"
-            />
+      {/* Сообщение когда нет тестов на проверке */}
+      {!loading && filteredPending.length === 0 && (
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100">
+          <div className="absolute inset-0 opacity-50">
+            <div className="absolute inset-0" style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%2310b981' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+              backgroundRepeat: 'repeat'
+            }}></div>
           </div>
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-500" />
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value as any)}
-              className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-sns-green focus:border-transparent"
-            >
-              <option value="all">Все типы</option>
-              <option value="entry">Входные</option>
-              <option value="final">Финальные</option>
-              <option value="annual">Годовые</option>
-            </select>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Сортировка:</span>
-            <select
-              value={sortKey}
-              onChange={(e) => setSortKey(e.target.value as any)}
-              className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-sns-green focus:border-transparent"
-            >
-              <option value="time">По времени отправки</option>
-              <option value="name">По участнику</option>
-              <option value="title">По названию теста</option>
-              <option value="open">По открытым вопросам</option>
-            </select>
-            <select
-              value={sortDir}
-              onChange={(e) => setSortDir(e.target.value as any)}
-              className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-sns-green focus:border-transparent"
-            >
-              <option value="desc">По убыванию</option>
-              <option value="asc">По возрастанию</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Секция: тесты на проверке */}
-      <div className="bg-white rounded-xl shadow-soft border border-gray-100">
-        <div className="p-4 md:p-6 border-b border-gray-200">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-                <Clock className="h-5 w-5 mr-2 text-amber-500" /> Тесты на проверке
-              </h2>
-              <p className="text-sm text-gray-600 mt-1">
-                {loading ? 'Загрузка…' : `${filteredPending.length} тест(ов) ожидают проверки тренером или администратором`}
-              </p>
+          <div className="relative p-6">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0">
+                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                  <CheckCircle className="h-6 w-6 text-green-600" />
+                </div>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">Нет тестов на проверку</h3>
+                <p className="text-gray-600">Все проверено или нет тестов с открытыми вопросами</p>
+                <div className="mt-3 flex items-center gap-2 text-sm text-green-700">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="font-medium">Все задачи выполнены</span>
+                </div>
+              </div>
             </div>
-            {!loading && (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                {filteredPending.length} ожидают
-              </span>
-            )}
           </div>
         </div>
+      )}
+
+      {/* Панель фильтров/поиска - только если есть тесты на проверке */}
+      {filteredPending.length > 0 && (
+        <div className="bg-white rounded-xl shadow-soft border border-gray-100 p-4 md:p-6">
+          <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
+            <div className="relative md:flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                value={rawSearch}
+                onChange={(e) => setRawSearch(e.target.value)}
+                placeholder="Поиск по имени, email или названию теста"
+                className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-sns-green focus:border-transparent"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-gray-500" />
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value as any)}
+                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-sns-green focus:border-transparent"
+              >
+                <option value="all">Все типы</option>
+                <option value="entry">Входные</option>
+                <option value="final">Финальные</option>
+                <option value="annual">Годовые</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Сортировка:</span>
+              <select
+                value={sortKey}
+                onChange={(e) => setSortKey(e.target.value as any)}
+                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-sns-green focus:border-transparent"
+              >
+                <option value="time">По времени отправки</option>
+                <option value="name">По участнику</option>
+                <option value="title">По названию теста</option>
+                <option value="open">По открытым вопросам</option>
+              </select>
+              <select
+                value={sortDir}
+                onChange={(e) => setSortDir(e.target.value as any)}
+                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-sns-green focus:border-transparent"
+              >
+                <option value="desc">По убыванию</option>
+                <option value="asc">По возрастанию</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Секция: тесты на проверке - только если есть тесты */}
+      {filteredPending.length > 0 && (
+        <div className="bg-white rounded-xl shadow-soft border border-gray-100">
+          <div className="p-4 md:p-6 border-b border-gray-200">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <Clock className="h-5 w-5 mr-2 text-amber-500" /> Тесты на проверке
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  {loading ? 'Загрузка…' : `${filteredPending.length} тест(ов) ожидают проверки тренером или администратором`}
+                </p>
+              </div>
+              {!loading && (
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                  {filteredPending.length} ожидают
+                </span>
+              )}
+            </div>
+          </div>
 
         {/* Мобильные карточки */}
         <div className="p-4 space-y-3 md:hidden">
@@ -515,7 +547,7 @@ export function TestsPendingReview({ eventId, onReviewComplete, onEditReview }: 
                     onClick={() => handleReviewTest(t.attempt_id)}
                     className="inline-flex items-center px-3 py-1.5 text-sm bg-sns-green text-white rounded-lg hover:bg-sns-green-dark"
                   >
-                    <Eye className="h-4 w-4 mr-1" /> Проверить
+                    <Eye className="h-4 w-4 mr-1" /> Проверить тесты
                   </button>
                 </div>
               </div>
@@ -578,7 +610,7 @@ export function TestsPendingReview({ eventId, onReviewComplete, onEditReview }: 
                         onClick={() => handleReviewTest(t.attempt_id)}
                         className="inline-flex items-center px-3 py-1.5 text-sm bg-sns-green text-white rounded-lg hover:bg-sns-green-dark"
                       >
-                        <Eye className="h-4 w-4 mr-1" /> Проверить
+                        <Eye className="h-4 w-4 mr-1" /> Проверить тесты
                       </button>
                     </td>
                   </tr>
@@ -587,7 +619,8 @@ export function TestsPendingReview({ eventId, onReviewComplete, onEditReview }: 
             </tbody>
           </table>
         </div>
-      </div>
+        </div>
+      )}
 
       {/* Секция: проверенные тесты */}
       <div className="bg-white rounded-xl shadow-soft border border-gray-100">
@@ -596,8 +629,8 @@ export function TestsPendingReview({ eventId, onReviewComplete, onEditReview }: 
           className="w-full p-4 md:p-6 flex items-center justify-between border-b border-gray-200 text-left"
         >
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-600" /> Проверенные тесты ({filteredReviewed.length})
+            <h3 className="text-lg font-semibold text-gray-900">
+              Проверенные тесты
             </h3>
             <p className="text-sm text-gray-600 mt-1">История проверок и быстрый переход к редактированию</p>
           </div>

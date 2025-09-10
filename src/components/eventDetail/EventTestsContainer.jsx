@@ -20,7 +20,7 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
     final: { available: false, completed: false, score: null, attemptId: null, testId: null, test: null },
     annual: { available: false, completed: false, score: null, attemptId: null, testId: null, test: null }
   });
-  const [isTestsExpanded, setIsTestsExpanded] = useState(false); // состояние сворачивания секции тестирования
+  const [isTestsExpanded, setIsTestsExpanded] = useState(true); // состояние сворачивания секции тестирования
   const navigate = useNavigate();
   
   // Определяем, является ли пользователь участником (employee)
@@ -434,26 +434,6 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
                     <p className="text-xs sm:text-sm text-gray-400">{getTestDescription()}</p>
                   </div>
                   
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <span className="text-xs text-gray-400 hidden sm:inline">
-                      {isTestsExpanded ? 'Скрыть тесты' : 'Раскрыть тесты'}
-                    </span>
-                    <button 
-                      className="!w-5 !h-5 sm:!w-8 sm:!h-8 rounded-full bg-gradient-to-r from-[#06A478] to-[#059669] hover:from-[#059669] hover:to-[#048A5A] flex items-center justify-center transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
-                      onClick={() => setIsTestsExpanded(!isTestsExpanded)}
-                    >
-                      <svg 
-                        className={`!w-3 !h-3 sm:!w-4 sm:!h-4 text-white transition-transform duration-200 ${
-                          isTestsExpanded ? 'rotate-45' : 'rotate-0'
-                        }`} 
-                        fill="none" 
-                        stroke="currentColor" 
-                        viewBox="0 0 24 24"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                    </button>
-                  </div>
                 </div>
               </div>
 

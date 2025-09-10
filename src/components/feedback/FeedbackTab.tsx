@@ -546,10 +546,7 @@ export function FeedbackTab({ eventId, adminStatOnly = false }: FeedbackTabProps
       
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         {/* Заголовок с возможностью сворачивания */}
-        <div 
-          className="px-4 sm:px-6 py-3 sm:py-4 bg-white border-b border-gray-100 cursor-pointer"
-          onClick={() => setIsFeedbackExpanded(!isFeedbackExpanded)}
-        >
+        <div className="px-4 sm:px-6 py-3 sm:py-4 bg-white border-b border-gray-100">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900">Обратная связь</h3>
@@ -560,26 +557,12 @@ export function FeedbackTab({ eventId, adminStatOnly = false }: FeedbackTabProps
               </p>
             </div>
             
-            <div className="flex items-center gap-2 sm:gap-3">
-              <span className="text-xs text-gray-400 hidden sm:inline">
-                {isFeedbackExpanded ? 'Скрыть отзывы' : 'Раскрыть отзывы'}
-              </span>
-                              <button 
-                  className="!w-5 !h-5 sm:!w-8 sm:!h-8 rounded-full bg-gradient-to-r from-[#06A478] to-[#059669] hover:from-[#059669] hover:to-[#048A5A] flex items-center justify-center transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
-                  onClick={() => setIsFeedbackExpanded(!isFeedbackExpanded)}
-                >
-                <svg 
-                  className={`!w-3 !h-3 sm:!w-4 sm:!h-4 text-white transition-transform duration-200 ${
-                    isFeedbackExpanded ? 'rotate-45' : 'rotate-0'
-                  }`} 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              </button>
-            </div>
+            <button 
+              className="px-4 py-2 bg-[#06A478] text-white rounded-lg text-sm font-medium hover:bg-[#059669] transition-colors"
+              onClick={() => setIsFeedbackExpanded(!isFeedbackExpanded)}
+            >
+              Открыть
+            </button>
           </div>
         </div>
 

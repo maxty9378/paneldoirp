@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { X, CheckCircle, XCircle, Clock, User, FileText } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../../hooks/use-toast';
@@ -6,12 +6,12 @@ import { useAuth } from '../../hooks/useAuth';
 import { clsx } from 'clsx';
 
 interface TestAnswer {
-  id: string;
+  id: string; // id ответа пользователя или temp-id
   question_id: string;
   question: string;
-  question_type: string;
+  question_type: string; // 'text' | 'sequence'
   text_answer?: string;
-  is_correct?: boolean;
+  is_correct?: boolean; // undefined — не оценено
 }
 
 interface TestReviewModalProps {
@@ -21,45 +21,108 @@ interface TestReviewModalProps {
   eventId: string;
 }
 
+// Вспомогательная плашка статуса
+function StatusDot({ color }: { color: 'green' | 'red' | 'gray' }) {
+  const m = {
+    green: 'bg-green-500',
+    red: 'bg-red-500',
+    gray: 'bg-gray-300',
+  } as const;
+  return <span className={clsx('inline-block w-2 h-2 rounded-full', m[color])} />;
+}
+
 export function TestReviewModal({ isOpen, onClose, attemptId, eventId }: TestReviewModalProps) {
   const { toast } = useToast();
-  const { userProfile, user } = useAuth();
+  const { user } = useAuth();
+
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
   const [answers, setAnswers] = useState<TestAnswer[]>([]);
   const [attemptInfo, setAttemptInfo] = useState<any>(null);
 
-  console.log('TestReviewModal render:', { isOpen, attemptId, eventId });
+  // UX state
+  const [filter, setFilter] = useState<'all' | 'unreviewed' | 'correct' | 'incorrect'>('all');
+  const [activeIndex, setActiveIndex] = useState(0); // для навигации с клавиатуры
 
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+
+  // Загрузка
   useEffect(() => {
-    if (isOpen && attemptId) {
-      fetchTestAnswers();
-    }
+    if (isOpen && attemptId) fetchTestAnswers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, attemptId]);
 
-  const fetchTestAnswers = async () => {
+  // Вычисляем filteredAnswers перед эффектами
+  const filteredAnswers = useMemo(() => {
+    let arr = answers;
+    if (filter === 'unreviewed') arr = arr.filter((a) => a.is_correct === undefined);
+    if (filter === 'correct') arr = arr.filter((a) => a.is_correct === true);
+    if (filter === 'incorrect') arr = arr.filter((a) => a.is_correct === false);
+    return arr;
+  }, [answers, filter]);
+
+  // Клавиатурные шорткаты внутри модалки
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { onClose(); return; }
+      if (answers.length === 0) return;
+      if (['j', 'ArrowDown'].includes(e.key)) {
+        e.preventDefault();
+        setActiveIndex((i) => Math.min(i + 1, filteredAnswers.length - 1));
+      }
+      if (['k', 'ArrowUp'].includes(e.key)) {
+        e.preventDefault();
+        setActiveIndex((i) => Math.max(i - 1, 0));
+      }
+      if (e.key === '1') { // отметить верно
+        e.preventDefault();
+        const a = filteredAnswers[activeIndex];
+        if (a) markAnswer(a.id, true);
+      }
+      if (e.key === '2') { // отметить неверно
+        e.preventDefault();
+        const a = filteredAnswers[activeIndex];
+        if (a) markAnswer(a.id, false);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { // сохранение/завершение
+        e.preventDefault();
+        handleSubmitReview();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, answers, filteredAnswers, activeIndex]);
+
+  // Автоскролл к активной карточке
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const card = container.querySelector<HTMLDivElement>(`[data-idx="${activeIndex}"]`);
+    if (card) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [activeIndex]);
+
+  async function fetchTestAnswers() {
     setLoading(true);
     try {
-      // Получаем информацию о попытке
+      // Попытка
       const { data: attemptData, error: attemptError } = await supabase
         .from('user_test_attempts')
         .select(`
-          *,
+          id, test_id, status, updated_at,
           user:user_id(full_name, email),
-          test:tests(title, type, passing_score)
+          test:tests(id, title, type, passing_score)
         `)
         .eq('id', attemptId)
         .single();
-
       if (attemptError) throw attemptError;
-      console.log('Attempt data:', attemptData);
-      console.log('Test ID from attempt:', attemptData.test_id);
       setAttemptInfo(attemptData);
 
-      // Получаем открытые вопросы теста
       const testId = attemptData.test_id || attemptData.test?.id;
-      console.log('Using test ID:', testId);
-      
+
+      // Вопросы: открытые и последовательности (ручная проверка)
       const { data: questionsData, error: questionsError } = await supabase
         .from('test_questions')
         .select('id, question, question_type, created_at, "order"')
@@ -68,393 +131,296 @@ export function TestReviewModal({ isOpen, onClose, attemptId, eventId }: TestRev
         .order('"order"', { ascending: true, nullsLast: true })
         .order('created_at', { ascending: true, nullsLast: true })
         .order('id', { ascending: true });
+      if (questionsError) throw questionsError;
 
-      if (questionsError) {
-        console.error('Questions error:', questionsError);
-        throw questionsError;
-      }
+      const qIds = (questionsData || []).map((q) => q.id);
 
-      console.log('Questions data:', questionsData);
-      console.log('Number of questions:', questionsData?.length);
-      console.log('Questions order:', questionsData?.map(q => ({ 
-        id: q.id, 
-        order: q.order,
-        created_at: q.created_at,
-        question: q.question.substring(0, 50) + '...' 
-      })));
-
-      // Получаем ответы пользователя на эти вопросы
-      const questionIds = questionsData.map(q => q.id);
-      console.log('Question IDs for answers query:', questionIds);
-      
+      // Ответы пользователя
       const { data: answersData, error: answersError } = await supabase
         .from('user_test_answers')
         .select('id, question_id, text_answer')
         .eq('attempt_id', attemptId)
-        .in('question_id', questionIds);
+        .in('question_id', qIds);
+      if (answersError) throw answersError;
 
-      if (answersError) {
-        console.error('Answers error:', answersError);
-        throw answersError;
-      }
-
-      console.log('Answers data:', answersData);
-
-      // Получаем существующие результаты проверки
-      const { data: reviewData, error: reviewError } = await supabase
+      // Существующие оценки (если были)
+      const { data: reviewData } = await supabase
         .from('test_answer_reviews')
         .select('question_id, is_correct')
         .eq('attempt_id', attemptId);
 
-      if (reviewError) {
-        console.log('No existing reviews found (this is OK):', reviewError);
-      } else {
-        console.log('Existing reviews loaded:', reviewData);
-      }
-
-      // Создаем массив вопросов с ответами пользователя и существующими оценками
-      const formattedAnswers = questionsData.map(question => {
-        const userAnswer = answersData.find(answer => answer.question_id === question.id);
-        const existingReview = reviewData?.find(review => review.question_id === question.id);
-        
+      const formatted: TestAnswer[] = (questionsData || []).map((q) => {
+        const ua = (answersData || []).find((a) => a.question_id === q.id);
+        const rev = (reviewData || []).find((r) => r.question_id === q.id);
         return {
-          id: userAnswer?.id || `temp-${question.id}`,
-          question_id: question.id,
-          question: question.question,
-          question_type: question.question_type,
-          text_answer: userAnswer?.text_answer,
-          is_correct: existingReview?.is_correct ?? false
+          id: ua?.id || `temp-${q.id}`,
+          question_id: q.id,
+          question: q.question,
+          question_type: q.question_type,
+          text_answer: ua?.text_answer,
+          is_correct: rev?.is_correct,
         };
       });
 
-      console.log('Formatted answers:', formattedAnswers);
-      setAnswers(formattedAnswers);
+      // Восстановление драфта из localStorage
+      const draftKey = `review-draft-${attemptId}`;
+      const draft = localStorage.getItem(draftKey);
+      if (draft) {
+        try {
+          const parsed: Record<string, boolean> = JSON.parse(draft);
+          for (const ans of formatted) {
+            if (parsed[ans.id] !== undefined) ans.is_correct = parsed[ans.id];
+          }
+        } catch {}
+      }
+
+      setAnswers(formatted);
+      setActiveIndex(0);
     } catch (error: any) {
       console.error('Ошибка загрузки ответов:', error);
-      console.error('Error details:', {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint
-      });
       toast(`Ошибка загрузки: ${error.message}`);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-
-  const handleCorrectnessChange = (answerId: string, isCorrect: boolean) => {
-    setAnswers(prev => prev.map(answer => 
-      answer.id === answerId 
-        ? { ...answer, is_correct: isCorrect }
-        : answer
-    ));
-  };
-
-  const saveReviewResults = async (attemptId: string, answers: TestAnswer[], correctAnswers: number, totalAnswers: number, score: number, passed: boolean) => {
-    try {
-      // Сначала удаляем старые записи проверки для этой попытки
-      const { error: deleteError } = await supabase
-        .from('test_answer_reviews')
-        .delete()
-        .eq('attempt_id', attemptId);
-
-      if (deleteError) {
-        console.log('Could not delete old reviews (this is OK):', deleteError);
-      }
-
-      // Сохраняем результаты проверки в таблице test_answer_reviews
-      const reviewData = answers.map(answer => ({
-        attempt_id: attemptId,
-        question_id: answer.question_id,
-        reviewer_id: user.id,
-        is_correct: answer.is_correct || false,
-        points_awarded: answer.is_correct ? 1 : 0,
-        review_notes: null
-      }));
-
-      const { error: reviewError } = await supabase
-        .from('test_answer_reviews')
-        .insert(reviewData);
-
-      if (reviewError) {
-        console.error('Error saving review results:', reviewError);
-        throw reviewError;
-      }
-
-      console.log('Review results saved successfully:', {
-        attemptId,
-        correctAnswers,
-        totalAnswers,
-        score,
-        passed
+  const markAnswer = useCallback((answerId: string, isCorrect: boolean) => {
+    setAnswers((prev) => {
+      const next = prev.map((a) => (a.id === answerId ? { ...a, is_correct: isCorrect } : a));
+      // Автосейв драфта
+      const draftMap: Record<string, boolean> = {};
+      next.forEach((a) => {
+        if (a.is_correct !== undefined) draftMap[a.id] = a.is_correct;
       });
-    } catch (error) {
-      console.error('Failed to save review results:', error);
-      throw error;
-    }
-  };
+      localStorage.setItem(`review-draft-${attemptId}`, JSON.stringify(draftMap));
+      return next;
+    });
+  }, [attemptId]);
 
-  const handleSubmitReview = async () => {
-    const reviewedAnswers = answers.filter(answer => answer.is_correct !== undefined);
-    if (reviewedAnswers.length === 0) {
+  const handleCorrectnessChange = (answerId: string, value: boolean) => markAnswer(answerId, value);
+
+  const reviewedCount = useMemo(() => answers.filter((a) => a.is_correct !== undefined).length, [answers]);
+  const correctCount = useMemo(() => answers.filter((a) => a.is_correct === true).length, [answers]);
+  const incorrectCount = useMemo(() => answers.filter((a) => a.is_correct === false).length, [answers]);
+
+  async function saveReviewResults(attemptId: string, answers: TestAnswer[], correctAnswers: number, totalAnswers: number, score: number, passed: boolean) {
+    // стираем старые оценки и пишем новые
+    const { error: delErr } = await supabase.from('test_answer_reviews').delete().eq('attempt_id', attemptId);
+    if (delErr) console.log('Не удалось очистить прошлые оценки (не критично):', delErr);
+
+    const payload = answers.map((a) => ({
+      attempt_id: attemptId,
+      question_id: a.question_id,
+      reviewer_id: user?.id,
+      is_correct: !!a.is_correct,
+      points_awarded: a.is_correct ? 1 : 0,
+      review_notes: null,
+    }));
+
+    const { error: insErr } = await supabase.from('test_answer_reviews').insert(payload);
+    if (insErr) throw insErr;
+  }
+
+  async function handleSubmitReview() {
+    const reviewed = answers.filter((a) => a.is_correct !== undefined);
+    if (reviewed.length === 0) {
       toast('Необходимо оценить хотя бы один ответ');
       return;
     }
 
     setSubmitting(true);
     try {
-      // Получаем ID текущего пользователя
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('Пользователь не авторизован');
-      }
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth?.user) throw new Error('Пользователь не авторизован');
 
-      // Подсчитываем правильные ответы только среди открытых вопросов
-      const correctAnswers = answers.filter(answer => answer.is_correct === true).length;
+      const correctAnswers = answers.filter((a) => a.is_correct === true).length;
       const totalAnswers = answers.length;
       const score = Math.round((correctAnswers / totalAnswers) * 100);
-      
-      console.log('Review calculation (open questions only):', {
-        correctAnswers,
-        totalAnswers,
-        score,
-        note: 'Calculated only for open-ended questions'
-      });
-      
-      const passingScore = attemptInfo?.test.passing_score;
-      const passed = passingScore ? score >= passingScore : true; // Если проходной балл не установлен, считаем пройденным
-      
-      console.log('Saving to database:', {
-        attemptId,
-        score,
-        passed,
-        correctAnswers,
-        totalAnswers
-      });
-      
-      console.log('Review calculation:', {
-        correctAnswers,
-        totalAnswers,
-        score,
-        passingScore,
-        passed
-      });
+      const passingScore = attemptInfo?.test?.passing_score;
+      const passed = passingScore ? score >= passingScore : true;
 
-      // Сохраняем результаты проверки в test_answer_reviews (это всегда работает)
       await saveReviewResults(attemptId, answers, correctAnswers, totalAnswers, score, passed);
 
-      // Обновляем основную таблицу с результатами проверки
-      try {
-        const { error: updateError } = await supabase
-          .from('user_test_attempts')
-          .update({
-            status: 'completed',
-            score: score,
-            passed: passed,
-            reviewed_by: user.id,
-            reviewed_at: new Date().toISOString()
-          })
-          .eq('id', attemptId);
+      // апдейт попытки
+      const { error: upErr } = await supabase
+        .from('user_test_attempts')
+        .update({
+          status: 'completed',
+          score,
+          passed,
+          reviewed_by: auth.user.id,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq('id', attemptId);
+      if (upErr) console.log('Не удалось обновить user_test_attempts (оценки сохранены):', upErr);
 
-        if (updateError) {
-          console.log('Could not update user_test_attempts, but review is saved:', updateError);
-        } else {
-          console.log('Successfully updated user_test_attempts with full data');
-        }
-      } catch (updateError) {
-        console.log('Update attempt failed, but review is saved:', updateError);
-      }
+      // чистим драфт
+      localStorage.removeItem(`review-draft-${attemptId}`);
 
-      toast(`✅ Тест проверен: ${correctAnswers}/${totalAnswers} правильных ответов (${score}%)`);
+      toast(`✅ Тест проверен: ${correctAnswers}/${totalAnswers} (${score}%)`);
       onClose();
-    } catch (error: any) {
-      console.error('Ошибка проверки теста:', error);
-      toast(`Ошибка проверки: ${error.message}`);
+    } catch (e: any) {
+      console.error('Ошибка проверки теста:', e);
+      toast(`Ошибка проверки: ${e.message}`);
     } finally {
       setSubmitting(false);
     }
-  };
-
-  if (!isOpen) {
-    console.log('TestReviewModal: not open, returning null');
-    return null;
   }
 
-  console.log('TestReviewModal: rendering modal');
+  if (!isOpen) return null;
+
+  // Прогресс-бар
+  const progress = answers.length ? Math.round((reviewedCount / answers.length) * 100) : 0;
+
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-gray-100">
-          <div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Проверка теста</h3>
-            {attemptInfo && (
-              <div className="flex items-center gap-4 text-sm text-gray-600">
-                <div className="flex items-center gap-2 bg-blue-50 px-3 py-1 rounded-full">
-                  <User size={14} />
-                  <span className="font-medium">{attemptInfo.user.full_name}</span>
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* фон */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+
+      {/* модалка */}
+      <div className="relative bg-white rounded-xl max-w-5xl w-[96vw] md:w-[90vw] max-h-[92vh] shadow-xl ring-1 ring-black/5 flex flex-col">
+        {/* header */}
+        <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-gray-100">
+          {/* Заголовок и кнопка закрытия */}
+          <div className="p-3 md:p-6 flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <h3 className="text-lg md:text-xl font-bold text-gray-900">Проверка теста</h3>
+              {attemptInfo && (
+                <div className="mt-1 md:mt-2 flex flex-wrap items-center gap-1.5 md:gap-2 text-xs md:text-sm text-gray-600">
+                  <span className="inline-flex items-center gap-1.5 bg-blue-50 px-2 py-0.5 md:px-2.5 md:py-1 rounded-full"><User size={12} /><span className="font-medium truncate max-w-[30vw] md:max-w-none">{attemptInfo.user?.full_name}</span></span>
+                  <span className="inline-flex items-center gap-1.5 bg-gray-50 px-2 py-0.5 md:px-2.5 md:py-1 rounded-full"><FileText size={12} /><span className="font-medium truncate max-w-[30vw] md:max-w-none">{attemptInfo.test?.title}</span></span>
                 </div>
-                <div className="flex items-center gap-2 bg-gray-50 px-3 py-1 rounded-full">
-                  <FileText size={14} />
-                  <span className="font-medium">{attemptInfo.test.title}</span>
-                </div>
-                <div className="flex items-center gap-2 bg-gray-50 px-3 py-1 rounded-full">
-                  <Clock size={14} />
-                  <span>{new Date(attemptInfo.updated_at).toLocaleString('ru-RU')}</span>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
+            <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 flex-shrink-0"><X size={20} /></button>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-600"
-          >
-            <X size={20} />
-          </button>
+
+          {/* Статистика и фильтры */}
+          <div className="px-3 md:px-6 pb-3 md:pb-4">
+            {/* Статистика в сетке - компактная на мобилке */}
+            <div className="grid grid-cols-3 gap-2 md:gap-3 mb-3 md:mb-4">
+              <div className="bg-gray-50 rounded-lg p-2 md:p-3 text-center">
+                <div className="text-xs font-medium text-gray-500 mb-0.5 md:mb-1">Не оценено</div>
+                <div className="text-sm md:text-lg font-bold text-gray-900">{answers.length - reviewedCount}</div>
+              </div>
+              <div className="bg-green-50 rounded-lg p-2 md:p-3 text-center">
+                <div className="text-xs font-medium text-green-600 mb-0.5 md:mb-1">Верно</div>
+                <div className="text-sm md:text-lg font-bold text-green-700">{correctCount}</div>
+              </div>
+              <div className="bg-red-50 rounded-lg p-2 md:p-3 text-center">
+                <div className="text-xs font-medium text-red-600 mb-0.5 md:mb-1">Неверно</div>
+                <div className="text-sm md:text-lg font-bold text-red-700">{incorrectCount}</div>
+              </div>
+            </div>
+
+
+            {/* Прогресс-бар */}
+            <div className="mt-3 flex items-center gap-2 md:gap-3">
+              <div className="text-xs md:text-sm text-gray-700">Проходной балл: <span className="font-medium">{attemptInfo?.test?.passing_score ?? '—'}%</span></div>
+              <div className="flex items-center gap-2 flex-1">
+                <div className="flex-1 md:w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-full bg-sns-green transition-all" style={{ width: `${progress}%` }} />
+                </div>
+                <div className="text-xs md:text-sm text-gray-700 whitespace-nowrap font-medium">{reviewedCount}/{answers.length}</div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="p-6">
+        {/* content */}
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3">
+
           {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="w-6 h-6 border-2 border-sns-green border-t-transparent rounded-full animate-spin mr-2"></div>
-              Загрузка ответов...
+            <div className="flex items-center justify-center py-8 text-gray-600">
+              <div className="w-6 h-6 border-2 border-sns-green border-t-transparent rounded-full animate-spin mr-2" /> Загрузка ответов...
+            </div>
+          ) : filteredAnswers.length === 0 ? (
+            <div className="text-center py-12 text-gray-600">
+              <FileText className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+              Ничего не найдено по текущим фильтрам
             </div>
           ) : (
-            <>
-              {/* Сводка */}
-              <div className="bg-gradient-to-r from-sns-green/5 to-blue-50 p-4 rounded-xl border border-sns-green/20 mb-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-1">Проверка ответов</h4>
-                    <p className="text-sm text-gray-600">
-                      Оцените каждый ответ как "Верно" или "Неверно"
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="inline-flex items-center px-3 py-1 bg-sns-green/10 text-sns-green text-sm font-medium rounded-full">
-                      {attemptInfo?.test.passing_score 
-                        ? `Проходной балл: ${attemptInfo.test.passing_score}%`
-                        : 'Проходной балл не установлен'
-                      }
+            filteredAnswers.map((answer, idx) => {
+              const realIndex = answers.findIndex((a) => a.id === answer.id);
+              const isActive = realIndex === activeIndex;
+              return (
+                <div
+                  key={answer.id}
+                  data-idx={realIndex}
+                  className={clsx('border rounded-xl p-4 transition-all', isActive ? 'border-sns-green ring-1 ring-sns-green/30 bg-sns-green/5' : 'border-gray-100 bg-white hover:bg-gray-50')}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center justify-center w-6 h-6 bg-sns-green text-white text-xs font-medium rounded-full">{realIndex + 1}</span>
+                      <span className="text-sm font-medium text-gray-600">Вопрос {realIndex + 1}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      {answer.is_correct === true && (<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200"><CheckCircle size={12}/> верно</span>)}
+                      {answer.is_correct === false && (<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200"><XCircle size={12}/> неверно</span>)}
+                      {answer.is_correct === undefined && (<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-50 text-gray-700 border border-gray-200">не оценено</span>)}
                     </div>
                   </div>
-                </div>
-                <div className="mt-3 flex items-center gap-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="text-gray-600">Верно: {answers.filter(a => a.is_correct === true).length}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                    <span className="text-gray-600">Неверно: {answers.filter(a => a.is_correct === false).length}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-                    <span className="text-gray-600">Не оценено: {answers.filter(a => a.is_correct === undefined).length}</span>
-                  </div>
-                </div>
-              </div>
 
-              {/* Список ответов */}
-              <div className="space-y-4">
-                {answers.map((answer, index) => (
-                  <div key={answer.id} className="bg-white border border-gray-100 rounded-xl p-4 hover:shadow-sm transition-shadow">
-                    <div className="flex items-start gap-4">
-                      {/* Вопрос и ответ участника слева */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="inline-flex items-center justify-center w-6 h-6 bg-sns-green text-white text-xs font-medium rounded-full">
-                            {index + 1}
-                          </span>
-                          <span className="text-sm font-medium text-gray-600">Вопрос {index + 1}</span>
-                        </div>
-                        
-                        {/* Вопрос */}
-                        <div className="mb-3">
-                          <p className="text-gray-800 text-sm leading-relaxed font-medium">
-                            {answer.question}
-                          </p>
-                        </div>
-                        
-                        {/* Ответ участника */}
-                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                          <p className="text-xs font-medium text-gray-500 mb-2">Ответ участника:</p>
-                          <p className="text-gray-900 text-sm leading-relaxed whitespace-pre-wrap">
-                            {answer.text_answer || 'Нет ответа'}
-                          </p>
-                        </div>
-                      </div>
+                  {/* вопрос */}
+                  <div className="mt-3 text-gray-900 text-sm leading-relaxed font-medium whitespace-pre-wrap">{answer.question}</div>
 
-                      {/* Кнопки Верно/Неверно справа */}
-                      <div className="flex flex-col gap-2 min-w-[120px]">
-                        <button
-                          onClick={() => handleCorrectnessChange(answer.id, true)}
-                          className={clsx(
-                            'flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all',
-                            answer.is_correct === true
-                              ? 'bg-green-100 border-2 border-green-500 text-green-700'
-                              : 'bg-white border border-gray-200 text-gray-600 hover:border-green-300 hover:bg-green-50'
-                          )}
-                        >
-                          <CheckCircle size={16} />
-                          Верно
-                        </button>
-                        <button
-                          onClick={() => handleCorrectnessChange(answer.id, false)}
-                          className={clsx(
-                            'flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all',
-                            answer.is_correct === false
-                              ? 'bg-red-100 border-2 border-red-500 text-red-700'
-                              : 'bg-white border border-gray-200 text-gray-600 hover:border-red-300 hover:bg-red-50'
-                          )}
-                        >
-                          <XCircle size={16} />
-                          Неверно
-                        </button>
-                      </div>
-                    </div>
+                  {/* ответ участника */}
+                  <div className="mt-3 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                    <p className="text-xs font-medium text-gray-500 mb-1">Ответ участника:</p>
+                    <p className="text-gray-900 text-sm leading-relaxed whitespace-pre-wrap">{answer.text_answer || 'Нет ответа'}</p>
                   </div>
-                ))}
-              </div>
 
-              {/* Кнопки действий */}
-              <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-100">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-sns-green rounded-full"></div>
-                  <span className="text-sm text-gray-600">
-                    {answers.filter(a => a.is_correct !== undefined).length} из {answers.length} ответов оценено
-                  </span>
+                  {/* кнопки */}
+                  <div className="mt-3 grid grid-cols-2 md:flex md:flex-wrap md:items-center gap-2">
+                    <button
+                      onClick={() => handleCorrectnessChange(answer.id, true)}
+                      className={clsx('flex items-center justify-center gap-2 px-3 py-2.5 md:py-2 rounded-lg text-sm font-medium transition-all', answer.is_correct === true ? 'bg-green-100 border-2 border-green-500 text-green-700' : 'bg-white border border-gray-200 text-gray-700 hover:border-green-300 hover:bg-green-50')}
+                      title="1"
+                    >
+                      <CheckCircle size={16}/> Верно
+                    </button>
+                    <button
+                      onClick={() => handleCorrectnessChange(answer.id, false)}
+                      className={clsx('flex items-center justify-center gap-2 px-3 py-2.5 md:py-2 rounded-lg text-sm font-medium transition-all', answer.is_correct === false ? 'bg-red-100 border-2 border-red-500 text-red-700' : 'bg-white border border-gray-200 text-gray-700 hover:border-red-300 hover:bg-red-50')}
+                      title="2"
+                    >
+                      <XCircle size={16}/> Неверно
+                    </button>
+                  </div>
                 </div>
-                <div className="flex gap-3">
-                  <button
-                    onClick={onClose}
-                    className="px-4 py-2 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium"
-                  >
-                    Отмена
-                  </button>
-                  <button
-                    onClick={handleSubmitReview}
-                    disabled={submitting || answers.filter(a => a.is_correct !== undefined).length === 0}
-                    className="px-6 py-2 bg-sns-green text-white rounded-lg hover:bg-sns-green-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium"
-                  >
-                    {submitting ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        Проверка...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle size={16} />
-                        Завершить проверку
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </>
+              );
+            })
           )}
+        </div>
 
+        {/* footer */}
+        <div className="sticky bottom-0 bg-white/95 backdrop-blur border-t border-gray-100">
+          <div className="p-4 md:p-6">
+            {/* Кнопки */}
+            <div className="flex items-center justify-center md:justify-end gap-3">
+              <button onClick={onClose} className="px-4 py-2.5 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 text-sm font-medium transition-all">
+                Отмена
+              </button>
+              <button
+                onClick={handleSubmitReview}
+                disabled={submitting || reviewedCount === 0}
+                className="px-4 py-2.5 bg-sns-green text-white rounded-lg hover:bg-sns-green-dark disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium inline-flex items-center justify-center gap-2 transition-all"
+                title="Ctrl/Cmd + S"
+              >
+                {submitting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/>
+                    Проверка…
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle size={16}/>
+                    Завершить проверку
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

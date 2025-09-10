@@ -344,7 +344,6 @@ function AdminTestCard({ type, testData, eventId }) {
             <div className="text-[11px] text-gray-500">{test?.title}</div>
           </div>
         </div>
-        <Chip className={s.chip}>Участников: {total}</Chip>
       </div>
 
       {loading ? (
@@ -784,45 +783,47 @@ export default function EventTestPrompts({ eventId, onStartTest, testStatus, ref
         </div>
         
         {/* Кнопки для администраторов */}
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Кнопка проверки вопросов */}
-          <div className="w-full bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between">
-            <div className="flex items-center">
-              <div className="p-2 rounded-lg bg-amber-200 mr-3">
-                <CheckCircle className="h-5 w-5 text-amber-600" />
+          <div className="bg-gray-50 rounded-xl p-4 flex flex-col">
+            <div className="flex items-center mb-3">
+              <div className="p-2 rounded-lg bg-gray-200 mr-3">
+                <CheckCircle className="h-5 w-5 text-gray-600" />
               </div>
-              <div>
-                <h3 className="font-semibold text-sm sm:text-base text-amber-800">Проверка вопросов</h3>
-                <p className="text-xs sm:text-sm text-amber-600">Проверка тестов с открытыми вопросами, требующих ручной оценки</p>
+              <div className="flex-1">
+                <h3 className="font-semibold text-sm sm:text-base text-gray-800">Проверка ответов</h3>
+                <p className="text-xs sm:text-sm text-gray-400">Проверка тестов с открытыми вопросами, требующих ручной оценки</p>
               </div>
             </div>
             <button
               onClick={() => {
                 console.log('Переход к проверке тестов для мероприятия:', eventId);
                 navigate(`/event-test-review/${eventId}`);
+                // Прокручиваем наверх экрана
+                window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className="px-6 py-2 bg-amber-600 text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-amber-700"
+              className="w-full px-4 py-2.5 bg-sns-green text-white rounded-lg text-sm font-semibold hover:bg-sns-green-dark transition-all duration-200 shadow-md hover:shadow-lg"
             >
-              Проверить
+              Проверить тесты
             </button>
           </div>
 
           {/* Кнопка детальной статистики */}
-          <div className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center justify-between">
-            <div className="flex items-center">
+          <div className="bg-gray-50 rounded-xl p-4 flex flex-col">
+            <div className="flex items-center mb-3">
               <div className="p-2 rounded-lg bg-gray-200 mr-3">
                 <svg className="h-5 w-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
               </div>
-              <div>
+              <div className="flex-1">
                 <h3 className="font-semibold text-sm sm:text-base text-gray-800">Детальная статистика</h3>
                 <p className="text-xs sm:text-sm text-gray-400">Каждый ответ участника, время прохождения, правильность решений</p>
               </div>
             </div>
             <button
               onClick={() => navigate(`/event-test-results/${eventId}`)}
-              className="px-6 py-2 bg-[#06A478] text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-[#059669]"
+              className="w-full px-4 py-2.5 bg-gray-200 text-gray-500 rounded-lg text-sm font-medium hover:bg-gray-300 hover:text-gray-600 transition-colors"
             >
               Открыть
             </button>
