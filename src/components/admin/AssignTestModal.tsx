@@ -153,7 +153,7 @@ export function AssignTestModal({
   const getTestTypeLabel = (type: string) => {
     switch (type) {
       case 'entry': return 'Входной тест';
-      case 'final': return 'Финальный тест';
+      case 'final': return 'Итоговый тест';
       case 'annual': return 'Годовой тест';
       default: return type;
     }

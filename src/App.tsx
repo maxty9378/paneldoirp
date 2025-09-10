@@ -21,6 +21,7 @@ import { Loader2, RefreshCw, AlertOctagon } from 'lucide-react';
 import TakeTestPage from './pages/TakeTestPage';
 import TestResultsPage from './pages/TestResultsPage';
 import EventTestResultsPage from './pages/EventTestResultsPage';
+import EventTestReviewPage from './pages/EventTestReviewPage';
 import AuthCallback from './pages/AuthCallback';
 import QRAuthPage from './pages/QRAuthPage';
 import { LoadingOverlay } from './components/LoadingOverlay';
@@ -303,6 +304,7 @@ function AppContent() {
         <Route path="/take-test" element={<TakeTestPage />} />
         <Route path="/test-results/:attemptId" element={<TestResultsPage />} />
         <Route path="/event-test-results/:eventId" element={<EventTestResultsPage />} />
+        <Route path="/event-test-review/:eventId" element={<EventTestReviewPage />} />
         <Route path="/auth/qr/:token" element={<QRAuthPage />} />
       </Routes>
       <CreateEventModal 

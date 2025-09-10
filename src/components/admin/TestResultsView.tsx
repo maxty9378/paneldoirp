@@ -512,7 +512,7 @@ export function TestResultsView({ testId, attemptId, score, isPassed, onClose }:
 function getTypeLabel(type: string): string {
   switch (type) {
     case 'entry': return 'Входной тест';
-    case 'final': return 'Финальный тест';
+    case 'final': return 'Итоговый тест';
     case 'annual': return 'Годовой тест';
     default: return 'Тест';
   }

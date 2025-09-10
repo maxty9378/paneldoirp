@@ -191,12 +191,13 @@ export function useAdmin() {
 
   const updateUser = async (userId: string, updates: Partial<User>) => {
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .update(updates)
-        .eq('id', userId)
-        .select()
-        .single();
+      // Используем Edge Function для обновления пользователя
+      const { data, error } = await supabase.functions.invoke('update-user', {
+        body: {
+          userId,
+          updates
+        }
+      });
 
       if (error) throw error;
       

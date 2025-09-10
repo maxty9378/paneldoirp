@@ -154,7 +154,7 @@ const CheckCircle = (props) => (
 
 const ICONS = {
   entry: { color: 'blue', label: 'Входной тест' },
-  final: { color: 'purple', label: 'Финальный тест' },
+  final: { color: 'purple', label: 'Итоговый тест' },
   annual: { color: 'amber', label: 'Годовой тест' },
 };
 
@@ -227,16 +227,27 @@ function AdminTestCard({ type, testData, eventId }) {
   const test = testData.test;
   const [participants, setParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [hasOpenEndedQuestions, setHasOpenEndedQuestions] = useState(false);
 
   useEffect(() => {
     const loadParticipantsData = async () => {
       if (!test?.id || !eventId) return;
       try {
+        // Загружаем информацию о типах вопросов в тесте
+        const { data: questionsData, error: questionsError } = await supabase
+          .from('test_questions')
+          .select('question_type')
+          .eq('test_id', test.id);
+
+        if (questionsError) throw questionsError;
+        
+        const hasOpenEnded = questionsData?.some(q => q.question_type === 'text') || false;
+        setHasOpenEndedQuestions(hasOpenEnded);
+
         const { data: participantsData, error: participantsError } = await supabase
           .from('event_participants')
           .select(`user_id, user:users(id, full_name, email)`)
-          .eq('event_id', eventId)
-          .eq('attended', true);
+          .eq('event_id', eventId);
 
         if (participantsError) throw participantsError;
 
@@ -244,7 +255,7 @@ function AdminTestCard({ type, testData, eventId }) {
 
         const { data: attemptsData, error } = await supabase
           .from('user_test_attempts')
-          .select(`id, score, status, created_at, user:users(id, full_name, email)`)
+          .select(`id, score, status, created_at, user:user_id(id, full_name, email)`)
           .eq('test_id', test.id)
           .eq('event_id', eventId)
           .in('user_id', participantIds)
@@ -257,7 +268,7 @@ function AdminTestCard({ type, testData, eventId }) {
           map.set(p.user_id, { user: p.user, score: null, status: null, attemptId: null });
         });
         (attemptsData ?? []).forEach(a => {
-          if (a.status === 'completed' && a.score != null) {
+          if ((a.status === 'completed' || a.status === 'pending_review') && a.score != null) {
             const prev = map.get(a.user.id);
             if (!prev || a.score > (prev.score ?? -1)) {
               map.set(a.user.id, { user: a.user, score: a.score, status: a.status, attemptId: a.id });
@@ -274,9 +285,38 @@ function AdminTestCard({ type, testData, eventId }) {
     loadParticipantsData();
   }, [test?.id, eventId]);
 
+  // Функция для получения финального балла с учетом результатов проверки
+  const getFinalScore = async (participant) => {
+    if (!participant.attemptId) return participant.score;
+    
+    try {
+      const { data: reviews } = await supabase
+        .from('test_answer_reviews')
+        .select('is_correct')
+        .eq('attempt_id', participant.attemptId);
+      
+      if (reviews && reviews.length > 0) {
+        const correctAnswers = reviews.filter(r => r.is_correct).length;
+        const totalAnswers = reviews.length;
+        return Math.round((correctAnswers / totalAnswers) * 100);
+      }
+    } catch (error) {
+      console.error('Error getting review score:', error);
+    }
+    
+    return participant.score;
+  };
+
   const withScores = participants.filter(p => p.score != null);
+  const pendingReview = participants.filter(p => p.status === 'pending_review');
+  const completed = participants.filter(p => p.status === 'completed');
+  // Для тестов с открытыми вопросами, если есть завершенные тесты с баллом 0, считаем их на проверке
+  const needsReview = hasOpenEndedQuestions ? 
+    participants.filter(p => p.status === 'completed' && p.score === 0) : [];
   const total = participants.length;
   const done = withScores.length;
+  
+  // Пока используем исходные баллы, но в будущем можно обновить для учета результатов проверки
   const average = done ? Math.round(withScores.reduce((s, p) => s + (p.score ?? 0), 0) / done) : 0;
   const passed = withScores.filter(p => test?.passing_score ? p.score >= test.passing_score : (p.score ?? 0) > 0).length;
   const passPct = done ? Math.round((passed / done) * 100) : 0;
@@ -299,7 +339,7 @@ function AdminTestCard({ type, testData, eventId }) {
           </div>
           <div>
             <div className={cx('font-semibold text-sm', s.title)}>
-              {type === 'entry' ? 'Входной тест' : type === 'final' ? 'Финальный тест' : 'Годовой тест'}
+              {type === 'entry' ? 'Входной тест' : type === 'final' ? 'Итоговый тест' : 'Годовой тест'}
             </div>
             <div className="text-[11px] text-gray-500">{test?.title}</div>
           </div>
@@ -318,11 +358,19 @@ function AdminTestCard({ type, testData, eventId }) {
             </div>
             <div className="rounded-lg border bg-white/70 p-3">
               <div className="text-[11px] text-gray-500">Средний балл</div>
-              <div className="text-base font-semibold text-gray-900">{done ? `${average}%` : '—'}</div>
+              <div className="text-base font-semibold text-gray-900">
+                {(pendingReview.length > 0 || needsReview.length > 0) ? (
+                  <span className="text-amber-600">На проверке</span>
+                ) : done ? `${average}%` : '—'}
+              </div>
             </div>
             <div className="rounded-lg border bg-white/70 p-3">
               <div className="text-[11px] text-gray-500">Порог пройден</div>
-              <div className="text-base font-semibold text-gray-900">{done ? `${passPct}%` : '—'}</div>
+              <div className="text-base font-semibold text-gray-900">
+                {(pendingReview.length > 0 || needsReview.length > 0) ? (
+                  <span className="text-amber-600">На проверке</span>
+                ) : done ? `${passPct}%` : '—'}
+              </div>
             </div>
           </div>
 
@@ -338,18 +386,31 @@ function AdminTestCard({ type, testData, eventId }) {
                   </thead>
                   <tbody>
                     {participants.map((p) => {
-                      const has = p.score != null;
-                      const ok = has && (test?.passing_score ? p.score >= test.passing_score : p.score > 0);
+                      const hasAttempt = p.attemptId != null;
+                      const isPendingReview = p.status === 'pending_review' || (hasOpenEndedQuestions && p.status === 'completed' && p.score === 0);
+                      
+                      // Пока используем исходные баллы, в будущем можно добавить кэширование результатов проверки
+                      const finalScore = p.score;
+                      const finalPassed = test?.passing_score ? p.score >= test.passing_score : (p.score ?? 0) > 0;
+                      
+                      const ok = hasAttempt && !isPendingReview && finalPassed;
+                      
                       return (
                         <tr key={p.attemptId ?? p.user.id} className="border-t">
                           <td className="px-1 sm:px-2 py-1">
                             <div className="truncate text-gray-800 text-xs">{p.user.full_name || p.user.email}</div>
                           </td>
                           <td className="px-1 sm:px-2 py-1 text-right">
-                            {has ? (
-                              <span className={cx('font-semibold text-xs', ok ? 'text-green-700' : 'text-rose-700')}>
-                                {p.score}%
-                              </span>
+                            {hasAttempt ? (
+                              isPendingReview ? (
+                                <span className="font-semibold text-xs text-amber-600">
+                                  На проверке
+                                </span>
+                              ) : (
+                                <span className={cx('font-semibold text-xs', ok ? 'text-green-700' : 'text-rose-700')}>
+                                  {finalScore}%
+                                </span>
+                              )
                             ) : (
                               <span className="text-gray-600 text-xs">—</span>
                             )}
@@ -466,7 +527,7 @@ function TestCard({ type, testData, onStart, eventEndDate }) {
           </div>
           <div>
             <h3 className={cx('font-semibold text-sm', s.title)}>
-              {type === 'entry' ? 'Входной тест' : type === 'final' ? 'Финальный тест' : 'Годовой тест'}
+              {type === 'entry' ? 'Входной тест' : type === 'final' ? 'Итоговый тест' : 'Годовой тест'}
             </h3>
             <div className="text-[11px] text-gray-500">Тест мероприятия</div>
           </div>
@@ -722,8 +783,31 @@ export default function EventTestPrompts({ eventId, onStartTest, testStatus, ref
           {testStatus.annual?.test && <AdminTestCard type="annual" testData={testStatus.annual} eventId={eventId} />}
         </div>
         
-        {/* Кнопка детальной статистики для администраторов */}
-        <div className="mt-4">
+        {/* Кнопки для администраторов */}
+        <div className="mt-4 space-y-3">
+          {/* Кнопка проверки вопросов */}
+          <div className="w-full bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="p-2 rounded-lg bg-amber-200 mr-3">
+                <CheckCircle className="h-5 w-5 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm sm:text-base text-amber-800">Проверка вопросов</h3>
+                <p className="text-xs sm:text-sm text-amber-600">Проверка тестов с открытыми вопросами, требующих ручной оценки</p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                console.log('Переход к проверке тестов для мероприятия:', eventId);
+                navigate(`/event-test-review/${eventId}`);
+              }}
+              className="px-6 py-2 bg-amber-600 text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-amber-700"
+            >
+              Проверить
+            </button>
+          </div>
+
+          {/* Кнопка детальной статистики */}
           <div className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center justify-between">
             <div className="flex items-center">
               <div className="p-2 rounded-lg bg-gray-200 mr-3">
@@ -819,6 +903,7 @@ export default function EventTestPrompts({ eventId, onStartTest, testStatus, ref
             </div>
           </div>
         )}
+
     </div>
   );
 }

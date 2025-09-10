@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   CalendarDays,
   Users2,
@@ -12,8 +12,10 @@ import {
   XCircle,
   Loader2,
   Video,
+  Clock,
 } from 'lucide-react';
 import { SiZoom } from 'react-icons/si';
+import { TestsPendingReview } from '../admin/TestsPendingReview';
 import './EventCard.css';
 
 export type EventStatus = 'draft' | 'published' | 'active' | 'ongoing' | 'completed' | 'cancelled';
@@ -31,6 +33,7 @@ export interface EventWithStats {
   participants_count?: number;
   test_completed_count?: number;
   test_not_passed_count?: number;
+  test_pending_review_count?: number;  // тесты на проверке
   test_pass_percent?: number;   // 0..100
   event_types?: { id: string; name: string; name_ru: string } | null;
 }
@@ -96,9 +99,6 @@ function dateBadges(d?: Date | null) {
   return { badge: nowish ? 'Сейчас идёт' : isToday ? 'Сегодня' : isTomorrow ? 'Завтра' : null, now: nowish };
 }
 
-function ruWeekday(d: Date) {
-  return d.toLocaleDateString('ru-RU', { weekday: 'short' }).replace('.', ''); // пн, вт...
-}
 
 // Мини-компонент акцента даты
 function DateAccent({
@@ -136,18 +136,6 @@ function DateAccent({
     : tone === 'purple' ? 'from-purple-50 to-purple-100 ring-purple-200'
     : 'from-slate-50 to-slate-100 ring-slate-200';
 
-  const timePill = tone === 'mint' ? 'bg-emerald-600'
-    : tone === 'ocean' ? 'bg-indigo-600'
-    : tone === 'lavender' ? 'bg-indigo-600'
-    : tone === 'sunset' ? 'bg-rose-600'
-    : tone === 'sand' ? 'bg-amber-600'
-    : tone === 'emerald' ? 'bg-emerald-600'
-    : tone === 'rose' ? 'bg-rose-600'
-    : tone === 'amber' ? 'bg-amber-600'
-    : tone === 'indigo' ? 'bg-indigo-600'
-    : tone === 'teal' ? 'bg-teal-600'
-    : tone === 'purple' ? 'bg-purple-600'
-    : 'bg-slate-700';
 
   return (
     <div className={`rounded-2xl ring-1 px-4 py-3 bg-gradient-to-br ${toneBox} shadow-sm text-center relative`}>
@@ -258,6 +246,7 @@ export function EventCard({
   onEditEvent?: (id: string) => void;
   onDeleteEvent?: (id: string) => void;
 }) {
+  const [showTestReview, setShowTestReview] = useState(false);
   const d = parseDate(event);
   const status = STATUS_MAP[event.status] || STATUS_MAP.draft;
   const { label, tone: statusTone, ring, Icon: StatusIcon } = status;
@@ -265,7 +254,6 @@ export function EventCard({
     ? TYPE_LABELS[event.type] || { label: event.event_types?.name_ru || 'Мероприятие', icon: Info }
     : { label: event.event_types?.name_ru || 'Мероприятие', icon: Info };
   const irTone = toneForEvent(event);
-  const { badge } = dateBadges(d);
 
   return (
     <article
@@ -338,6 +326,46 @@ export function EventCard({
           </p>
           </div>
       )}
+
+        {/* Статистика тестов */}
+        {(event.test_completed_count !== undefined || event.test_pending_review_count !== undefined) && (
+          <div className="mb-4 rounded-xl bg-slate-50/70 p-3 ring-1 ring-slate-200">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-sm font-medium text-slate-700">Статистика тестов</h4>
+              {event.test_pass_percent !== undefined && (
+                <span className="text-xs text-slate-500">
+                  Проходной балл: {event.test_pass_percent}%
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {event.test_completed_count !== undefined && (
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                  <span className="text-xs text-slate-600">
+                    Пройдено: {event.test_completed_count}
+                  </span>
+                </div>
+              )}
+              {event.test_not_passed_count !== undefined && event.test_not_passed_count > 0 && (
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                  <span className="text-xs text-slate-600">
+                    Не пройдено: {event.test_not_passed_count}
+                  </span>
+                </div>
+              )}
+              {event.test_pending_review_count !== undefined && event.test_pending_review_count > 0 && (
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+                  <span className="text-xs text-slate-600">
+                    На проверке: {event.test_pending_review_count}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
           </div>
           
       {/* Низ: действия и сервисная инфа */}
@@ -352,6 +380,16 @@ export function EventCard({
             </div>
 
             <div className="flex items-center gap-2">
+              {(event.test_pending_review_count ?? 0) > 0 && (
+                <button
+                  onClick={() => setShowTestReview(true)}
+                  className="btn-warning"
+                  title="Проверка тестов"
+                >
+                  <Clock className="h-4 w-4" />
+                  <span className="text-sm font-medium">{event.test_pending_review_count}</span>
+                </button>
+              )}
               <button
                 onClick={() => onEditEvent?.(event.id)}
                 className="btn-neutral"
@@ -387,6 +425,31 @@ export function EventCard({
           </button>
         )}
       </footer>
+
+      {/* Модальное окно проверки тестов */}
+      {showTestReview && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto m-4">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Проверка тестов - {event.title}
+              </h2>
+              <button
+                onClick={() => setShowTestReview(false)}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <XCircle className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <TestsPendingReview
+                eventId={event.id}
+                onReviewComplete={() => setShowTestReview(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </article>
   );
 }

@@ -131,7 +131,7 @@ export default function AdminTestSection({ eventId, userProfile, onStartTest }) 
       <div className={`${styles.bg} ${styles.border} rounded-lg p-4 transition-shadow hover:shadow-md`}>
         <h4 className={`font-medium ${styles.text} flex items-center`}>
           <FileTextIcon className="h-4 w-4 mr-2" />
-          {type === 'entry' ? 'Входной тест' : type === 'final' ? 'Финальный тест' : 'Годовой тест'}
+          {type === 'entry' ? 'Входной тест' : type === 'final' ? 'Итоговый тест' : 'Годовой тест'}
         </h4>
         <p className={`text-sm ${styles.textSecondary} mt-1 mb-3`}>{test.title}</p>
         <div className={`text-xs ${styles.textInfo} mb-4 space-y-1`}>

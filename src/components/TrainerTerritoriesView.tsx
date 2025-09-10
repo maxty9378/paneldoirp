@@ -87,6 +87,7 @@ export function TrainerTerritoriesView() {
   const [logsLimit, setLogsLimit] = useState(10);
 
   const isAdmin = userProfile?.role === 'administrator';
+  const canViewTrainerTerritories = userProfile?.role === 'administrator' || userProfile?.role === 'trainer';
   const isTouch = typeof window !== 'undefined' && matchMedia('(pointer: coarse)').matches;
 
   // debounce
@@ -98,7 +99,7 @@ export function TrainerTerritoriesView() {
     return () => { if (debounceRef.current) window.clearTimeout(debounceRef.current); };
   }, [search]);
 
-  useEffect(() => { if (isAdmin) fetchData(); }, [isAdmin, logsLimit]);
+  useEffect(() => { if (canViewTrainerTerritories) fetchData(); }, [canViewTrainerTerritories, logsLimit]);
 
   async function fetchData() {
     setLoading(true);
@@ -211,11 +212,11 @@ export function TrainerTerritoriesView() {
   }
 
   /* DnD (desktop) */
-  function handleDragStart(territoryId: string) { if (!isTouch) setDraggedTerritory(territoryId); }
+  function handleDragStart(territoryId: string) { if (!isTouch && isAdmin) setDraggedTerritory(territoryId); }
   function handleDragEnd() { setDraggedTerritory(null); setDragOverTrainer(null); }
-  function handleDragOverTrainerCard(e: React.DragEvent, trainerId: string) { e.preventDefault(); setDragOverTrainer(trainerId); }
+  function handleDragOverTrainerCard(e: React.DragEvent, trainerId: string) { if (isAdmin) { e.preventDefault(); setDragOverTrainer(trainerId); } }
   async function handleDrop(trainerId: string) {
-    if (draggedTerritory) {
+    if (draggedTerritory && isAdmin) {
       if (!isTerritoryAssigned(trainerId, draggedTerritory)) await handleAssign(trainerId, draggedTerritory);
     }
     setDraggedTerritory(null); setDragOverTrainer(null);
@@ -257,7 +258,7 @@ export function TrainerTerritoriesView() {
     });
   }, [trainers, debounced]);
 
-  if (!isAdmin) {
+  if (!canViewTrainerTerritories) {
     return (
       <div className="p-6">
         <div className="rounded-xl border border-red-200 bg-red-50/60 p-4">
@@ -361,11 +362,11 @@ export function TrainerTerritoriesView() {
                 return (
                   <div
                     key={trainer.id}
-                    onDrop={() => !isTouch && handleDrop(trainer.id)}
-                    onDragOver={(e) => !isTouch && handleDragOverTrainerCard(e, trainer.id)}
+                    onDrop={() => !isTouch && isAdmin && handleDrop(trainer.id)}
+                    onDragOver={(e) => !isTouch && isAdmin && handleDragOverTrainerCard(e, trainer.id)}
                     onDragLeave={() => setDragOverTrainer(null)}
                     className={`rounded-2xl border bg-white p-3 sm:p-4 transition-colors ${
-                      !isTouch && isDropTarget ? 'border-emerald-400 ring-2 ring-emerald-200' : 'border-gray-200'
+                      !isTouch && isAdmin && isDropTarget ? 'border-emerald-400 ring-2 ring-emerald-200' : 'border-gray-200'
                     }`}
                   >
                      {/* header row */}
@@ -396,14 +397,16 @@ export function TrainerTerritoriesView() {
                          <span className="hidden sm:inline rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-600">
                            {pluralizeTerritories(assigned.length)}
                          </span>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setSelectedTrainerForAssign(trainer); }}
-                          className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100 text-gray-600 hover:bg-emerald-100 hover:text-emerald-700"
-                          title="Редактировать филиалы"
-                        >
-                          <Edit3 className="h-4 w-4" />
-                        </button>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setSelectedTrainerForAssign(trainer); }}
+                            className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100 text-gray-600 hover:bg-emerald-100 hover:text-emerald-700"
+                            title="Редактировать филиалы"
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </button>
+                        )}
                          {isTouch && <ChevronDown className={`h-5 w-5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />}
                        </div>
                      </div>
@@ -440,7 +443,7 @@ export function TrainerTerritoriesView() {
                                   )}
                                 </div>
                               </div>
-                              {!isBase && (
+                              {!isBase && isAdmin && (
                                 <button
                                   onClick={() => handleDelete(a.id)}
                                   className="rounded p-1 text-red-500 hover:bg-white hover:text-red-600"
@@ -474,13 +477,13 @@ export function TrainerTerritoriesView() {
                         getAvailableTerritories().map((t) => (
                           <div
                             key={t.id}
-                            draggable
+                            draggable={isAdmin}
                             onDragStart={() => handleDragStart(t.id)}
                             onDragEnd={handleDragEnd}
-                            className={`cursor-move rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-2 transition-all hover:border-emerald-400 hover:bg-emerald-50 ${
+                            className={`${isAdmin ? 'cursor-move' : 'cursor-default'} rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-2 transition-all hover:border-emerald-400 hover:bg-emerald-50 ${
                               draggedTerritory === t.id ? 'opacity-50' : ''
                             }`}
-                            title="Перетащите на карточку тренера"
+                            title={isAdmin ? "Перетащите на карточку тренера" : "Только для администраторов"}
                           >
                             <div className="flex items-center gap-2">
                               <GripVertical className="h-3 w-3 text-gray-400 flex-shrink-0" />
@@ -625,7 +628,7 @@ export function TrainerTerritoriesView() {
                         {a.territory.region && <div className={`text-xs ${isBase ? 'text-blue-600' : 'text-emerald-600'}`}>{a.territory.region}</div>}
                       </div>
                     </div>
-                    {!isBase && (
+                    {!isBase && isAdmin && (
                       <button 
                         onClick={() => handleDelete(a.id)} 
                         className="rounded-lg p-1.5 text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors" 
@@ -673,13 +676,15 @@ export function TrainerTerritoriesView() {
                     <div className="font-medium text-gray-900">{t.name}</div>
                     {t.region && <div className="text-xs text-gray-500">{t.region}</div>}
                   </div>
-                  <button
-                    onClick={async () => { await handleAssign(selectedTrainerForAssign.id, t.id); }}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 hover:bg-emerald-200 hover:text-emerald-700 transition-colors"
-                    title="Добавить филиал"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
+                  {isAdmin && (
+                    <button
+                      onClick={async () => { await handleAssign(selectedTrainerForAssign.id, t.id); }}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 hover:bg-emerald-200 hover:text-emerald-700 transition-colors"
+                      title="Добавить филиал"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               ))}
               {getFilteredAvailableTerritories().length === 0 && (

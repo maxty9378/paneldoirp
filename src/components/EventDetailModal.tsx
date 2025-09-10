@@ -18,7 +18,7 @@ export function EventDetailModal({ isOpen, eventId, onClose }: EventDetailModalP
   const [event, setEvent] = useState<any | null>(null);
   const [participants, setParticipants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('details');
+  const [activeTab, setActiveTab] = useState('tests');
   const [error, setError] = useState<string | null>(null);
   const [testStatus, setTestStatus] = useState({
     entry: { available: false, completed: false, score: null, attemptId: null },
@@ -443,7 +443,7 @@ export function EventDetailModal({ isOpen, eventId, onClose }: EventDetailModalP
                         </div>
                       )}
 
-                      {/* Финальный тест */}
+                      {/* Итоговый тест */}
                       {event.event_type?.has_final_test && testStatus.final.available && (
                         <div className={clsx(
                           "p-4 rounded-lg border",
@@ -455,7 +455,7 @@ export function EventDetailModal({ isOpen, eventId, onClose }: EventDetailModalP
                                 <CheckCircle2 className={testStatus.final.completed ? "text-green-600" : "text-purple-600"} />
                               </div>
                               <div>
-                                <h4 className="font-medium text-gray-900">Финальный тест</h4>
+                                <h4 className="font-medium text-gray-900">Итоговый тест</h4>
                                 {testStatus.final.completed ? (
                                   <div className="flex items-center text-sm text-green-700 mt-1">
                                     <CheckCircle2 className="h-4 w-4 mr-1" />
@@ -709,7 +709,7 @@ export function EventDetailModal({ isOpen, eventId, onClose }: EventDetailModalP
                                     )}>
                                       <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
                                       {participant.final_test_score !== null 
-                                        ? `Финальный тест: ${participant.final_test_score}%` 
+                                        ? `Итоговый тест: ${participant.final_test_score}%` 
                                         : "Нет финального теста"}
                                     </div>
                                   )}
@@ -745,7 +745,7 @@ export function EventDetailModal({ isOpen, eventId, onClose }: EventDetailModalP
                             <li className="flex items-center text-sm">
                               <div className="w-4 h-4 rounded-full bg-purple-200 mr-2 flex-shrink-0"></div>
                               <span className="text-gray-800">
-                                Финальный тест - проверка полученных знаний после мероприятия
+                                Итоговый тест - проверка полученных знаний после мероприятия
                               </span>
                             </li>
                           )}

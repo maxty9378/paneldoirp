@@ -285,7 +285,7 @@ export function EventTestsList({ eventId, onSuccess }: EventTestsListProps) {
             )}
             {finalTest && (
               <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 text-left">
-                <h4 className="font-medium text-purple-800">Финальный тест: {finalTest.title}</h4>
+                <h4 className="font-medium text-purple-800">Итоговый тест: {finalTest.title}</h4>
                 <div className="text-sm text-purple-700 mt-2">
                   <div className="flex items-center mb-1">
                     <Clock size={14} className="mr-2" />
@@ -346,7 +346,7 @@ export function EventTestsList({ eventId, onSuccess }: EventTestsListProps) {
               )}
               {finalTest && (
                 <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-                  <p className="font-medium text-purple-800">Финальный тест: {finalTest.title}</p>
+                  <p className="font-medium text-purple-800">Итоговый тест: {finalTest.title}</p>
                   <div className="text-sm text-purple-700 mt-1">
                     Время: {finalTest.time_limit} мин. • Проходной балл: {finalTest.passing_score}%
                   </div>
@@ -417,7 +417,7 @@ export function EventTestsList({ eventId, onSuccess }: EventTestsListProps) {
           <div className="bg-purple-50 rounded-lg p-4 border border-purple-100 hover:shadow-md transition-all cursor-pointer"
                onClick={() => alert(`Просмотр деталей теста ${finalTest.id}`)}>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="font-medium text-purple-800">Финальный тест</h3>
+              <h3 className="font-medium text-purple-800">Итоговый тест</h3>
               {finalTest.time_limit === 0 ? (
                 <div className="px-2 py-1 bg-purple-100 rounded-lg text-xs text-purple-800">
                   <Clock size={12} className="inline mr-1" />
@@ -503,7 +503,7 @@ export function EventTestsList({ eventId, onSuccess }: EventTestsListProps) {
               <div className="text-xl font-semibold text-green-900">
                 {attendedParticipants.filter(p => p.final_test_score !== null).length} / {attendedParticipants.length}
               </div>
-              <div className="text-xs text-green-600">Финальный тест</div>
+              <div className="text-xs text-green-600">Итоговый тест</div>
             </div>
           </div>
         </div>
@@ -514,7 +514,7 @@ export function EventTestsList({ eventId, onSuccess }: EventTestsListProps) {
         <h4 className="font-medium text-blue-800 mb-2">Последовательность тестов</h4>
         <ul className="list-disc list-inside text-sm text-blue-700 space-y-1">
           <li>Сначала участники проходят <b>Входной тест</b> для оценки начальных знаний</li>
-          <li><b>Финальный тест</b> становится доступен только после успешного прохождения входного теста</li>
+          <li><b>Итоговый тест</b> становится доступен только после успешного прохождения входного теста</li>
           <li><b>Годовой тест</b> автоматически назначается через 3 месяца после мероприятия</li>
         </ul>
       </div>
@@ -558,7 +558,7 @@ export function EventTestsList({ eventId, onSuccess }: EventTestsListProps) {
                 )}
                 {eventType?.has_final_test && (
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Финальный тест
+                    Итоговый тест
                   </th>
                 )}
               </tr>

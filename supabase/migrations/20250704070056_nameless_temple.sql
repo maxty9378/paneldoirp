@@ -106,7 +106,7 @@ BEGIN
             END IF;
         END IF;
         
-        -- Финальный тест
+        -- Итоговый тест
         IF final_test_id IS NOT NULL THEN
             -- Проверяем, существует ли уже попытка
             IF NOT EXISTS (

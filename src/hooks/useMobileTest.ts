@@ -311,6 +311,9 @@ export const useMobileTest = (testId: string, eventId: string, attemptId: string
   // Submit test
   const submitTest = useCallback(async () => {
     try {
+      // Check if test has open-ended questions (text type)
+      const hasOpenEndedQuestions = questions.some(q => q.question_type === 'text');
+      
       // Calculate score
       let totalScore = 0;
       let maxScore = 0;
@@ -345,18 +348,22 @@ export const useMobileTest = (testId: string, eventId: string, attemptId: string
             totalScore += question.points;
           }
         }
+        // For text questions, we don't calculate score automatically - they need manual review
       }
 
+      // Determine status based on question types
+      const status = hasOpenEndedQuestions ? 'pending_review' : 'completed';
+      
       // Update attempt
-      console.log('Updating attempt status to completed:', { attemptId, totalScore, maxScore });
+      console.log('Updating attempt status:', { attemptId, status, totalScore, maxScore, hasOpenEndedQuestions });
       const { error: updateError } = await supabase
         .from('user_test_attempts')
         .update({
-          status: 'completed',
+          status: status,
           completed_at: new Date().toISOString(),
-          score: totalScore,
+          score: hasOpenEndedQuestions ? 0 : totalScore, // Set score to 0 for pending review
           max_score: maxScore,
-          passed: totalScore >= (test?.passing_score || 0)
+          passed: hasOpenEndedQuestions ? false : totalScore >= (test?.passing_score || 0)
         })
         .eq('id', attemptId);
 

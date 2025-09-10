@@ -149,7 +149,7 @@ BEGIN
     AND t.type = 'entry'
   LIMIT 1;
   
-  -- Финальный тест
+  -- Итоговый тест
   SELECT 
     status = 'completed',
     COALESCE(score, 0)

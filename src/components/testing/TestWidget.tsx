@@ -12,7 +12,7 @@ export function TestWidget({ eventId, testType }: TestWidgetProps) {
   const getTestTitle = () => {
     switch (testType) {
       case 'entry': return 'Входной тест';
-      case 'final': return 'Финальный тест';
+      case 'final': return 'Итоговый тест';
       case 'annual': return 'Годовой тест';
       default: return 'Тест';
     }

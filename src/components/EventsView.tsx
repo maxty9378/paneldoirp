@@ -35,6 +35,7 @@ interface EventWithStats extends Event {
   has_report?: boolean;
   test_completed_count?: number;
   test_not_passed_count?: number;
+  test_pending_review_count?: number;
   test_pass_percent?: number;
   event_types?: { id: string; name: string; name_ru: string };
 }
@@ -129,10 +130,24 @@ export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: Ev
 
           const completedCount = completedAttempts?.length || 0;
 
-          const testPassPercent =
-            participantsCount > 0 ? Math.round((completedCount / participantsCount) * 100) : 0;
+          // Получаем проходной балл из тестов мероприятия
+          const { data: eventTests } = await supabase
+            .from('tests')
+            .select('passing_score')
+            .eq('event_type_id', event.event_type_id)
+            .limit(1);
+
+          const testPassPercent = eventTests?.[0]?.passing_score || 70;
 
           const notPassedCount = Math.max(participantsCount - completedCount, 0);
+
+          // Подсчитываем тесты на проверке
+          const pendingReviewCount = await supabase
+            .from('user_test_attempts')
+            .select('id', { count: 'exact', head: true })
+            .eq('event_id', event.id)
+            .eq('status', 'pending_review')
+            .then(({ count }) => count || 0);
 
           return {
             ...event,
@@ -140,6 +155,7 @@ export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: Ev
             test_completed_count: completedCount,
             test_pass_percent: testPassPercent,
             test_not_passed_count: notPassedCount,
+            test_pending_review_count: pendingReviewCount,
           };
         })
       );

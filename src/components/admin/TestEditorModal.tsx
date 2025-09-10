@@ -565,7 +565,7 @@ export function TestEditorModal({ isOpen, onClose, testId, onSuccess }: TestEdit
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="entry">Входной тест</option>
-                    <option value="final">Финальный тест</option>
+                    <option value="final">Итоговый тест</option>
                     <option value="annual">Годовой тест</option>
                   </select>
                 </div>

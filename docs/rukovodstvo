@@ -557,7 +557,7 @@ const TestFeedbackCorrelationPanel = () => {
               <h3>Корреляция между финальным тестом и общей оценкой</h3>
               <ScatterChart 
                 data={correlationData} 
-                xAxisKey="Финальный тест"
+                xAxisKey="Итоговый тест"
                 yAxisKey="Общая оценка"
                 nameKey="Участник"
               />
