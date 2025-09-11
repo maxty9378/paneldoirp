@@ -1342,22 +1342,36 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent }: C
               });
               
               if (newParticipantsToAdd.length > 0) {
-                const { error: insertError } = await supabase
-                  .from('event_participants')
-                  .insert(newParticipantsToAdd);
-                  
-                if (insertError) {
-                  console.error('❌ Ошибка добавления новых участников:', insertError);
-                  console.error('📋 Детали ошибки:', {
-                    code: insertError.code,
-                    message: insertError.message,
-                    details: insertError.details,
-                    hint: insertError.hint
-                  });
-                  throw insertError;
+                try {
+                  const { error: insertError } = await supabase
+                    .from('event_participants')
+                    .insert(newParticipantsToAdd);
+                    
+                  if (insertError) {
+                    // Если ошибка связана с дубликатами, это нормально
+                    if (insertError.code === '23505') {
+                      console.log(`ℹ️ Некоторые участники уже существуют в мероприятии (дубликаты проигнорированы)`);
+                    } else {
+                      console.error('❌ Ошибка добавления новых участников:', insertError);
+                      console.error('📋 Детали ошибки:', {
+                        code: insertError.code,
+                        message: insertError.message,
+                        details: insertError.details,
+                        hint: insertError.hint
+                      });
+                      throw insertError;
+                    }
+                  } else {
+                    console.log(`✅ Успешно добавлено ${newParticipantsToAdd.length} новых участников`);
+                  }
+                } catch (error) {
+                  // Игнорируем ошибки дубликатов
+                  if (error.code === '23505') {
+                    console.log(`ℹ️ Некоторые участники уже существуют в мероприятии (дубликаты проигнорированы)`);
+                  } else {
+                    throw error;
+                  }
                 }
-                
-                console.log(`✅ Успешно добавлено ${newParticipantsToAdd.length} новых участников`);
               } else {
                 console.log(`ℹ️ Все участники уже существуют в мероприятии`);
               }
@@ -1403,22 +1417,36 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent }: C
             });
             
             if (participantsToAdd.length > 0) {
-              const { error: insertError } = await supabase
-                .from('event_participants')
-                .insert(participantsToAdd);
-                
-              if (insertError) {
-                console.error('❌ Ошибка добавления участников с существующими ID:', insertError);
-                console.error('📋 Детали ошибки:', {
-                  code: insertError.code,
-                  message: insertError.message,
-                  details: insertError.details,
-                  hint: insertError.hint
-                });
-                throw insertError;
+              try {
+                const { error: insertError } = await supabase
+                  .from('event_participants')
+                  .insert(participantsToAdd);
+                  
+                if (insertError) {
+                  // Если ошибка связана с дубликатами, это нормально
+                  if (insertError.code === '23505') {
+                    console.log(`ℹ️ Некоторые участники уже существуют в мероприятии (дубликаты проигнорированы)`);
+                  } else {
+                    console.error('❌ Ошибка добавления участников с существующими ID:', insertError);
+                    console.error('📋 Детали ошибки:', {
+                      code: insertError.code,
+                      message: insertError.message,
+                      details: insertError.details,
+                      hint: insertError.hint
+                    });
+                    throw insertError;
+                  }
+                } else {
+                  console.log(`✅ Добавлено ${participantsToAdd.length} участников с существующими ID`);
+                }
+              } catch (error) {
+                // Игнорируем ошибки дубликатов
+                if (error.code === '23505') {
+                  console.log(`ℹ️ Некоторые участники уже существуют в мероприятии (дубликаты проигнорированы)`);
+                } else {
+                  throw error;
+                }
               }
-              
-              console.log(`✅ Добавлено ${participantsToAdd.length} участников с существующими ID`);
             } else {
               console.log(`ℹ️ Все участники с существующими ID уже есть в мероприятии`);
             }

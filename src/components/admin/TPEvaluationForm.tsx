@@ -332,8 +332,7 @@ export function TPEvaluationForm({ eventId, onClose, onSuccess }: TPEvaluationFo
             average_skills_score: evaluation.average_skills_score,
             notes: evaluation.notes,
             evaluated_at: new Date().toISOString()
-          })),
-          { onConflict: 'event_id,participant_id' }
+          }))
         );
 
       if (error) throw error;
