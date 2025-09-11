@@ -21,12 +21,19 @@ interface TPEvaluation {
   business_communication: Level;
   learning_ability: Level;
   motivation_level: Level;
+  // Старые поля (обязательные в БД)
   goal_setting: number;
   client_contact: number;
   needs_identification: number;
   presentation_demo: number;
   objection_handling: number;
+  // Новые поля
+  bonus_calculation: number;
+  tools_usage: number;
+  task_execution: number;
+  weekly_planning: number;
   new_client_connection: number;
+  client_connection_skill: number;
   average_skills_score: number;
 }
 
@@ -172,74 +179,85 @@ const evaluationCriteria = {
   }
 } as const;
 
-const salesCriteria = {
-  goal_setting: {
-    title: 'Цели на визит (SMART)',
-    description: 'ТП умеет ставить конкретные, измеримые, достижимые, релевантные и ограниченные по времени цели для каждого визита к клиенту.',
-    levels: {
+  // --- Улучшенная структура для "Навыков продаж" ---
+
+  const skillLevels = {
       5: 'Очень высокий уровень: ТП самостоятельно и безошибочно демонстрирует умение',
       4: 'Высокий уровень: ТП самостоятельно и с небольшим количеством ошибок демонстрирует умение',
       3: 'Средний уровень: ТП с помощью тренера и с небольшим количеством ошибок демонстрирует умение',
       2: 'Низкий уровень: ТП с помощью тренера и с большим количеством ошибок демонстрирует умение',
-      1: 'Очень низкий уровень: ТП саботирует применение умения'
-    }
-  },
-  client_contact: {
-    title: 'Деловой контакт',
-    description: 'ТП умеет устанавливать и поддерживать деловые отношения с клиентами, соблюдает профессиональную дистанцию.',
-    levels: {
-      5: 'Очень высокий уровень: ТП самостоятельно и безошибочно демонстрирует умение',
-      4: 'Высокий уровень: ТП самостоятельно и с небольшим количеством ошибок демонстрирует умение',
-      3: 'Средний уровень: ТП с помощью тренера и с небольшим количеством ошибок демонстрирует умение',
-      2: 'Низкий уровень: ТП с помощью тренера и с большим количеством ошибок демонстрирует умение',
-      1: 'Очень низкий уровень: ТП саботирует применение умения'
-    }
-  },
-  needs_identification: {
-    title: 'Выявление потребностей',
-    description: 'ТП умеет задавать правильные вопросы, слушать клиента и выявлять его реальные потребности.',
-    levels: {
-      5: 'Очень высокий уровень: ТП самостоятельно и безошибочно демонстрирует умение',
-      4: 'Высокий уровень: ТП самостоятельно и с небольшим количеством ошибок демонстрирует умение',
-      3: 'Средний уровень: ТП с помощью тренера и с небольшим количеством ошибок демонстрирует умение',
-      2: 'Низкий уровень: ТП с помощью тренера и с большим количеством ошибок демонстрирует умение',
-      1: 'Очень низкий уровень: ТП саботирует применение умения'
-    }
-  },
-  presentation_demo: {
-    title: 'Демонстрация предложения',
-    description: 'ТП умеет презентовать продукт или услугу, подчеркивая выгоды для клиента.',
-    levels: {
-      5: 'Очень высокий уровень: ТП самостоятельно и безошибочно демонстрирует умение',
-      4: 'Высокий уровень: ТП самостоятельно и с небольшим количеством ошибок демонстрирует умение',
-      3: 'Средний уровень: ТП с помощью тренера и с небольшим количеством ошибок демонстрирует умение',
-      2: 'Низкий уровень: ТП с помощью тренера и с большим количеством ошибок демонстрирует умение',
-      1: 'Очень низкий уровень: ТП саботирует применение умения'
-    }
-  },
-  objection_handling: {
-    title: 'Работа с возражениями',
-    description: 'ТП умеет работать с возражениями клиента, превращая их в возможности для продажи.',
-    levels: {
-      5: 'Очень высокий уровень: ТП самостоятельно и безошибочно демонстрирует умение',
-      4: 'Высокий уровень: ТП самостоятельно и с небольшим количеством ошибок демонстрирует умение',
-      3: 'Средний уровень: ТП с помощью тренера и с небольшим количеством ошибок демонстрирует умение',
-      2: 'Низкий уровень: ТП с помощью тренера и с большим количеством ошибок демонстрирует умение',
-      1: 'Очень низкий уровень: ТП саботирует применение умения'
-    }
-  },
+    1: 'Очень низкий уровень: ТП саботирует применение умения',
+  };
+
+  const salesCriteria = {
+    bonus_management: {
+      categoryTitle: 'Управление бонусной системой',
+      skills: {
+        bonus_calculation: {
+          title: 'Расчет бонуса',
+          description: 'Умеет рассчитать свой бонус по всем направлениям с учетом порогов.',
+          levels: skillLevels,
+        },
+        tools_usage: {
+          title: 'Инструменты ТП',
+          description: 'Умеет пользоваться инструментами ТП для решения задач СПП в ТТ.',
+          levels: skillLevels,
+        },
+      },
+    },
+    task_planning: {
+      categoryTitle: 'Планирование и выполнение задач',
+      skills: {
+        task_execution: {
+          title: 'Выполнение задач СПП',
+          description: 'Умеет выполнять задачи СПП, исходя из категории ТТ.',
+          levels: skillLevels,
+        },
+        weekly_planning: {
+          title: 'Недельное планирование',
+          description: 'Умеет планировать выполнение задач СПП по неделям для получения 100% бонуса с учетом развития территории.',
+          levels: skillLevels,
+        },
+      },
+    },
+    client_development: {
+      categoryTitle: 'Развитие клиентской базы',
+      skills: {
   new_client_connection: {
-    title: 'Подключение клиента',
-    description: 'ТП умеет завершать сделку, получать согласие клиента и планировать следующие шаги.',
-    levels: {
-      5: 'Очень высокий уровень: ТП самостоятельно и безошибочно демонстрирует умение',
-      4: 'Высокий уровень: ТП самостоятельно и с небольшим количеством ошибок демонстрирует умение',
-      3: 'Средний уровень: ТП с помощью тренера и с небольшим количеством ошибок демонстрирует умение',
-      2: 'Низкий уровень: ТП с помощью тренера и с большим количеством ошибок демонстрирует умение',
-      1: 'Очень низкий уровень: ТП саботирует применение умения'
+          title: 'Подключение нового клиента',
+          description: 'Умеет подключать нового клиента.',
+          levels: skillLevels,
+        },
+        client_connection_skill: {
+          title: 'Навык подключения',
+          description: 'Демонстрирует высокий навык подключения нового клиента.',
+          levels: skillLevels,
+        },
+      },
+    },
+    // Средняя оценка
+    average_skills_score: {
+      title: 'Средняя оценка навыков управления бонусной системой и планирования выполнения задач СПП',
+      description: 'Общая оценка уровня развития навыков продаж у ТП',
+      levels: {
+        5: 'Очень высокий уровень: ТП самостоятельно и безошибочно демонстрирует навык',
+        4: 'Высокий уровень: ТП самостоятельно и с небольшим количеством ошибок демонстрирует навык',
+        3: 'Средний уровень: ТП с помощью тренера и с небольшим количеством ошибок демонстрирует навык',
+        2: 'Низкий уровень: ТП с помощью тренера и с большим количеством ошибок демонстрирует навык',
+        1: 'Очень низкий уровень: ТП саботирует применение навыка'
+      }
     }
-  }
-} as const;
+  } as const;
+
+  type PersonalKey = keyof typeof evaluationCriteria;
+  type SalesKey = keyof typeof salesCriteria['bonus_management']['skills'] | keyof typeof salesCriteria['task_planning']['skills'] | keyof typeof salesCriteria['client_development']['skills'];
+
+
+  const SALES_KEYS = Object.values(salesCriteria)
+    .filter(category => 'skills' in category)
+    .flatMap(category => Object.keys(category.skills)) as SalesKey[];
+
+
 
 /* ========================== Основной компонент ========================== */
 
@@ -254,10 +272,10 @@ export default function EventTPEvaluation() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [flashRow, setFlashRow] = useState<string | null>(null);
-  const [openInfo, setOpenInfo] = useState<string | null>(null);
+    const [openInfo, setOpenInfo] = useState<string | null>(null); // Хранит key критерия
 
-  // пагинация для больших групп (мобилкам легче)
-  const pageSize = 15;
+    // пагинация для больших групп
+    const pageSize = 20;
   const [page, setPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(participants.length / pageSize));
   const pagedParticipants = useMemo(() => {
@@ -328,46 +346,40 @@ export default function EventTPEvaluation() {
       setParticipants(participantsList);
 
       // Оценки (если есть)
-      let evaluationsData = null;
-      try {
-        console.log('📥 Загружаем оценки для мероприятия:', eventId, 'оценщик:', userProfile?.id);
-        
-        const { data, error } = await supabase
+        const { data: evaluationsData, error: evaluationsError } = await supabase
           .from('tp_evaluations')
           .select('*')
           .eq('event_id', eventId)
           .eq('evaluator_id', userProfile?.id);
         
-        if (error) {
-          console.warn('❌ Ошибка загрузки оценок:', error);
-        } else {
-          console.log('✅ Загружено оценок:', data?.length || 0, data);
-          evaluationsData = data;
-        }
-      } catch (err) {
-        console.warn('❌ Исключение при загрузке оценок:', err);
+        if (evaluationsError) {
+          console.warn('❌ Ошибка загрузки оценок:', evaluationsError);
       }
 
       const map = new Map<string, TPEvaluation>();
       evaluationsData?.forEach((e: any) => {
-        console.log('🔄 Обрабатываем оценку:', e);
         map.set(e.participant_id, {
           participant_id: e.participant_id,
           leadership_potential: e.leadership_potential || 'high',
           business_communication: e.business_communication || 'high',
           learning_ability: e.learning_ability || 'high',
           motivation_level: e.motivation_level || 'high',
+          // Старые поля
           goal_setting: e.goal_setting || 1,
           client_contact: e.client_contact || 1,
           needs_identification: e.needs_identification || 1,
           presentation_demo: e.presentation_demo || 1,
           objection_handling: e.objection_handling || 1,
+          // Новые поля
+          bonus_calculation: e.bonus_calculation || 1,
+          tools_usage: e.tools_usage || 1,
+          task_execution: e.task_execution || 1,
+          weekly_planning: e.weekly_planning || 1,
           new_client_connection: e.new_client_connection || 1,
+          client_connection_skill: e.client_connection_skill || 1,
           average_skills_score: e.average_skills_score || 1,
         });
       });
-
-      console.log('📊 Создана карта оценок:', map);
       setEvaluations(map);
     } catch (err) {
       console.error(err);
@@ -379,147 +391,75 @@ export default function EventTPEvaluation() {
 
   const getOrCreateEval = useCallback(
     (participantId: string): TPEvaluation => {
-      const current =
-        evaluations.get(participantId) ||
-        ({
+        if (evaluations.has(participantId)) {
+          return evaluations.get(participantId)!;
+        }
+
+        const newEval: TPEvaluation = {
         participant_id: participantId,
         leadership_potential: 'high',
         business_communication: 'high',
         learning_ability: 'high',
         motivation_level: 'high',
+        // Старые поля (обязательные в БД)
         goal_setting: 1,
         client_contact: 1,
         needs_identification: 1,
         presentation_demo: 1,
         objection_handling: 1,
+        // Новые поля
+        bonus_calculation: 1,
+        tools_usage: 1,
+        task_execution: 1,
+        weekly_planning: 1,
         new_client_connection: 1,
+        client_connection_skill: 1,
           average_skills_score: 1,
-        } as TPEvaluation);
-      if (!evaluations.has(participantId)) {
-        setEvaluations(prev => new Map(prev.set(participantId, current)));
-      }
-      return current;
+        };
+
+        setEvaluations(prev => new Map(prev).set(participantId, newEval));
+        return newEval;
     },
     [evaluations]
   );
 
   const update = async (participantId: string, updates: Partial<TPEvaluation>) => {
-    try {
       setSaving(true);
 
       const current = getOrCreateEval(participantId);
       const updated = { ...current, ...updates };
       
-      // Вычисляем среднюю оценку навыков продаж
-      const skillsScores = [
-        updated.goal_setting,
-        updated.client_contact,
-        updated.needs_identification,
-        updated.presentation_demo,
-        updated.objection_handling,
-        updated.new_client_connection
-      ];
-      updated.average_skills_score = skillsScores.reduce((sum, score) => sum + score, 0) / skillsScores.length;
+      const skillsScores = SALES_KEYS.map(k => updated[k]);
+      updated.average_skills_score = skillsScores.reduce((s, x) => s + x, 0) / skillsScores.length;
 
-      // мгновенное обновление UI
-      setEvaluations(prev => new Map(prev.set(participantId, updated)));
+      setEvaluations(prev => new Map(prev).set(participantId, updated));
       setFlashRow(participantId);
       setTimeout(() => setFlashRow(null), 500);
 
-      // Проверяем права доступа
       if (!userProfile?.id) {
         console.error('❌ Пользователь не авторизован');
+        setSaving(false);
         return;
       }
 
-      if (!['administrator', 'moderator', 'trainer', 'expert'].includes(userProfile?.role || '')) {
-        console.error('❌ Недостаточно прав для сохранения оценок. Роль:', userProfile?.role);
-        return;
-      }
-
-      // попытка сохранить
       try {
         const dataToSave = {
             event_id: eventId,
-            evaluator_id: userProfile?.id,
+            evaluator_id: userProfile.id,
             ...updated,
             updated_at: new Date().toISOString()
         };
         
-        console.log('💾 Сохраняем оценку в БД:', {
-          event_id: eventId,
-          participant_id: participantId,
-          evaluator_id: userProfile?.id,
-          user_role: userProfile?.role,
-          data: dataToSave
-        });
-
-        // Сначала пробуем upsert
-        let { data, error } = await supabase
+        const { error } = await supabase
           .from('tp_evaluations')
-          .upsert(dataToSave, {
-            onConflict: 'event_id,participant_id,evaluator_id'
-          })
-          .select();
-
-        // Если upsert не работает, пробуем insert с обработкой дубликатов
-        if (error && error.code === '42P10') {
-          console.log('🔄 Upsert не поддерживается, пробуем insert...');
-          
-          const { data: insertData, error: insertError } = await supabase
-            .from('tp_evaluations')
-            .insert(dataToSave)
-            .select();
-            
-          if (insertError) {
-            if (insertError.code === '23505') {
-              // Дубликат - пробуем обновить существующую запись
-              console.log('🔄 Запись уже существует, обновляем...');
-              
-              const { data: updateData, error: updateError } = await supabase
-                .from('tp_evaluations')
-                .update(dataToSave)
-                .eq('event_id', eventId)
-                .eq('participant_id', participantId)
-                .eq('evaluator_id', userProfile?.id)
-                .select();
-                
-              if (updateError) {
-                console.error('❌ Ошибка обновления записи:', updateError);
-                error = updateError;
-              } else {
-                console.log('✅ Успешно обновлено в БД:', updateData);
-                data = updateData;
-                error = null;
-              }
-            } else {
-              console.error('❌ Ошибка вставки записи:', insertError);
-              error = insertError;
-            }
-          } else {
-            console.log('✅ Успешно вставлено в БД:', insertData);
-            data = insertData;
-            error = null;
-          }
-        }
+          .upsert(dataToSave, { onConflict: 'event_id,participant_id,evaluator_id' });
 
         if (error) {
-          console.error('❌ Ошибка сохранения в базу данных:', error);
-          console.error('📋 Детали ошибки:', {
-            code: error.code,
-            message: error.message,
-            details: error.details,
-            hint: error.hint
-          });
-        } else {
-          console.log('✅ Успешно сохранено в БД:', data);
-        }
-      } catch (e) {
-        console.warn('Ошибка сохранения (таблица может не существовать):', e);
+          throw error;
       }
     } catch (err) {
-      console.error('Ошибка обновления оценки:', err);
-      alert('Не удалось обновить оценку');
+        console.error('Ошибка сохранения оценки:', err);
+        // alert('Не удалось обновить оценку'); // Раскомментировать для отладки
     } finally {
       setSaving(false);
     }
@@ -531,7 +471,7 @@ export default function EventTPEvaluation() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4" />
+            <Loader2 className="animate-spin h-12 w-12 text-emerald-600 mx-auto mb-4" />
           <p className="text-gray-600">Загрузка данных…</p>
         </div>
       </div>
@@ -564,20 +504,20 @@ export default function EventTPEvaluation() {
       <div className="bg-white border-b border-gray-200 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-3 gap-3">
-            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 min-w-0">
               <button
                 onClick={() => navigate(-1)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
                 aria-label="Назад"
               >
                 <ArrowLeft className="h-5 w-5 text-gray-700" />
               </button>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight">Оценка ТП</h1>
-                <p className="text-sm text-gray-600">Личностные качества и навыки продаж</p>
+                <div className="min-w-0">
+                  <h1 className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight truncate">Оценка уровня развития навыков продаж у ТП</h1>
+                  <p className="text-sm text-gray-600 truncate">Личностные качества и навыки управления бонусной системой и планирования выполнения задач СПП</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-shrink-0">
               <span className="hidden sm:inline text-sm text-gray-500">{participants.length} участника(ов)</span>
               <SaveChip saving={saving} />
             </div>
@@ -586,7 +526,7 @@ export default function EventTPEvaluation() {
       </div>
 
       {/* Контент */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+        <div className="w-full px-2 py-6 space-y-8">
         {participants.length === 0 ? (
           <div className="text-center py-12">
             <UserCheck className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -595,11 +535,11 @@ export default function EventTPEvaluation() {
           </div>
         ) : (
           <>
-            {/* ======= Блок 1: Личностные качества (адаптив) ======= */}
+              {/* ======= Блок 1: Личностные качества ======= */}
             <section aria-labelledby="personal-title">
               <div className="mb-4">
                 <h3 id="personal-title" className="text-lg font-semibold text-emerald-700 flex items-center gap-2">
-                  <UserCheck className="w-5 h-5 text-emerald-700" />
+                    <UserCheck className="w-5 h-5" />
                   Личностные качества и мотивация
                 </h3>
                 <p className="text-sm text-slate-500 mt-1">
@@ -610,43 +550,30 @@ export default function EventTPEvaluation() {
               {/* Мобильные карточки */}
               <div className="grid gap-4 md:hidden">
                 {pagedParticipants.map(p => {
-                  const e = evaluations.get(p.id) || getOrCreateEval(p.id);
+                    const e = getOrCreateEval(p.id);
                   const isFlash = flashRow === p.id;
                   return (
                     <div
                       key={p.id}
-                      className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ${isFlash ? 'ring-2 ring-emerald-300' : ''}`}
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <div>
-                          <div className="font-semibold text-slate-900">{p.full_name}</div>
-                          <div className="text-xs text-slate-500">
+                        className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow ${isFlash ? 'ring-2 ring-emerald-300' : ''}`}
+                      >
+                        <h4 className="font-semibold text-slate-900">{p.full_name}</h4>
+                        <p className="text-xs text-slate-500 mb-3">
                             {p.territory_name || '—'} {p.territory_region ? `· ${p.territory_region}` : ''}
-                          </div>
-                        </div>
-                        <button
-                          className="p-2 rounded-lg hover:bg-slate-50"
-                          onClick={() => setOpenInfo('personal')}
-                          aria-label="Описание критериев"
-                        >
-                          <Info className="w-4 h-4 text-slate-500" />
-                        </button>
-                      </div>
+                        </p>
 
                       <div className="space-y-3">
-                        {(
-                          [
-                            ['leadership_potential', 'Лидерство'],
-                            ['business_communication', 'Коммуникация'],
-                            ['learning_ability', 'Обучаемость'],
-                            ['motivation_level', 'Мотивация'],
-                          ] as const
-                        ).map(([key, label]) => (
+                          {Object.entries(evaluationCriteria).map(([key, crit]) => (
                           <div key={key}>
-                            <div className="text-sm text-slate-600 mb-1 whitespace-nowrap">{label}</div>
+                              <div className="flex items-center gap-1.5 text-sm text-slate-600 mb-1">
+                                <span>{crit.title}</span>
+                                <button onClick={() => setOpenInfo(key)} aria-label={`Подробнее о ${crit.title}`}>
+                                  <Info className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600"/>
+                                </button>
+                              </div>
                             <Segmented3
-                              value={(e as any)[key]}
-                              onChange={(v: Level) => update(p.id, { [key]: v } as any)}
+                                value={e[key as PersonalKey]}
+                                onChange={(v: Level) => update(p.id, { [key]: v })}
                             />
                           </div>
                         ))}
@@ -658,23 +585,22 @@ export default function EventTPEvaluation() {
 
               {/* Десктоп-таблица */}
               <div className="hidden md:block overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <div className="min-w-[900px] overflow-hidden">
-                  <table className="w-full text-sm table-fixed">
-                    <thead className="bg-emerald-600 text-white">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50">
                       <tr>
-                        <th className="sticky left-0 z-10 text-left py-3 px-4 font-semibold bg-emerald-600 w-40">
+                        <th className="sticky left-0 z-10 text-left py-3 px-4 font-semibold bg-slate-50 w-52">
                           Участник
                         </th>
-                        {Object.values(evaluationCriteria).map(c => (
-                          <th key={c.title} className="text-center py-3 px-2 font-semibold w-32">
-                            <div className="inline-flex items-center gap-1">
-                              <span className="whitespace-nowrap text-xs">{c.title}</span>
+                        {Object.entries(evaluationCriteria).map(([key, c]) => (
+                          <th key={key} className="text-center py-3 px-2 font-semibold">
+                            <div className="inline-flex items-center gap-1.5">
+                              <span>{c.title}</span>
                               <button
-                                onClick={() => setOpenInfo(c.title)}
-                                className="p-1 rounded hover:bg-white/15 flex-shrink-0"
+                                onClick={() => setOpenInfo(key)}
+                                className="p-1 rounded-full hover:bg-slate-200"
                                 aria-label={`Подробнее: ${c.title}`}
                               >
-                                <Info className="w-3 h-3 text-white" />
+                                <Info className="w-3.5 h-3.5 text-slate-500" />
                               </button>
                             </div>
                           </th>
@@ -683,39 +609,23 @@ export default function EventTPEvaluation() {
                     </thead>
                     <tbody>
                       {pagedParticipants.map((p, i) => {
-                        const e = evaluations.get(p.id) || getOrCreateEval(p.id);
+                        const e = getOrCreateEval(p.id);
                         const isFlash = flashRow === p.id;
                         return (
-                          <tr
-                            key={p.id}
-                            className={`${i % 2 ? 'bg-white' : 'bg-slate-50/60'} transition-colors`}
-                          >
-                            <td
-                              className={`sticky left-0 z-10 bg-inherit border-r border-slate-200 py-2 px-4 w-40 ${
-                                isFlash ? 'ring-2 ring-emerald-300' : ''
-                              }`}
-                            >
-                              <div className="font-medium text-slate-900 text-sm truncate">{p.full_name}</div>
+                          <tr key={p.id} className={`transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/70'}`}>
+                            <td className={`sticky left-0 z-10 bg-inherit border-r border-slate-200 py-2.5 px-4 w-52 ${isFlash ? 'ring-2 ring-inset ring-emerald-300' : ''}`}>
+                              <div className="font-medium text-slate-900 truncate">{p.full_name}</div>
                               <div className="text-xs text-slate-500 truncate">
                                 {p.territory_name || '—'}
                                 {p.territory_region && ` · ${p.territory_region}`}
                               </div>
                             </td>
-                            {(
-                              [
-                                ['leadership_potential'],
-                                ['business_communication'],
-                                ['learning_ability'],
-                                ['motivation_level'],
-                              ] as const
-                            ).map(([key]) => (
-                              <td key={key} className="py-2 px-2 text-center w-32">
-                                <div className="w-full">
+                            {Object.keys(evaluationCriteria).map((key) => (
+                              <td key={key} className="py-2 px-3 text-center">
                                   <Segmented3
-                                    value={(e as any)[key]}
-                                    onChange={(v: Level) => update(p.id, { [key]: v } as any)}
+                                  value={e[key as PersonalKey]}
+                                  onChange={(v: Level) => update(p.id, { [key]: v })}
                                   />
-                                </div>
                               </td>
                             ))}
                           </tr>
@@ -723,25 +633,24 @@ export default function EventTPEvaluation() {
                       })}
                     </tbody>
                   </table>
-                </div>
               </div>
             </section>
 
-            {/* ======= Пагинация между блоками (общая для страницы) ======= */}
+              {/* Пагинация */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2">
+                <div className="flex items-center justify-center gap-2 pt-4">
                 <button
-                  className="px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50"
+                    className="px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm hover:bg-slate-50 disabled:opacity-50"
                   onClick={() => setPage(p => Math.max(1, p - 1))}
                   disabled={page === 1}
                 >
                   Назад
                 </button>
                 <div className="text-sm text-slate-600">
-                  Страница <span className="font-semibold">{page}</span> из {totalPages}
+                    Страница <span className="font-semibold text-slate-800">{page}</span> из {totalPages}
                 </div>
                 <button
-                  className="px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50"
+                    className="px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm hover:bg-slate-50 disabled:opacity-50"
                   onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
                 >
@@ -750,157 +659,140 @@ export default function EventTPEvaluation() {
               </div>
             )}
 
-            {/* ======= Блок 2: Навыки продаж (адаптив) ======= */}
+              {/* ======= Блок 2: Навыки продаж (карточка = вся строка) ======= */}
             <section aria-labelledby="sales-title">
               <div className="mb-4">
                 <h3 id="sales-title" className="text-lg font-semibold text-emerald-700 flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-emerald-700" />
-                  Навыки продаж
+                  <BarChart3 className="w-5 h-5" />
+                  Навыки управления бонусной системой и планирования выполнения задач СПП
                 </h3>
                 <p className="text-sm text-slate-500 mt-1">
-                  Ставка целей, контакт, потребности, презентация, возражения, подключение
+                  Расчет бонуса, инструменты ТП, выполнение задач СПП, планирование, подключение клиентов
                 </p>
               </div>
 
-              {/* Мобильные карточки */}
-              <div className="grid gap-4 md:hidden">
+              {/* одна карточка = вся ширина ряда */}
+              <div className="grid gap-4 grid-cols-1">
                 {pagedParticipants.map(p => {
-                  const e = evaluations.get(p.id) || getOrCreateEval(p.id);
+                  const e = getOrCreateEval(p.id);
                   const avg = e.average_skills_score;
                   const isFlash = flashRow === p.id;
+
+                  // раскладка 3 верхних + 3 нижних навыка
+                  const topSkills: SalesKey[] = ['bonus_calculation','tools_usage','task_execution'];
+                  const bottomSkills: SalesKey[] = ['weekly_planning','new_client_connection','client_connection_skill'];
 
                   return (
                     <div
                       key={p.id}
-                      className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ${isFlash ? 'ring-2 ring-emerald-300' : ''}`}
+                      className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow ${isFlash ? 'ring-2 ring-emerald-300' : ''}`}
                     >
-                      <div className="flex items-center justify-between mb-3">
-                        <div>
-                          <div className="font-semibold text-slate-900">{p.full_name}</div>
+                      {/* шапка карточки (как на скрине — светлая полоса) */}
+                      <div className="bg-slate-50 rounded-xl px-4 py-3 mb-4">
+                        <div className="font-semibold text-slate-800">{p.full_name}</div>
                           <div className="text-xs text-slate-500">
                             {p.territory_name || '—'} {p.territory_region ? `· ${p.territory_region}` : ''}
-                          </div>
-                        </div>
-                        <div className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 px-2.5 py-1 text-xs font-semibold">
-                          Средняя {avg.toFixed(1)}
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3">
-                        {(
-                          [
-                            ['goal_setting', salesCriteria.goal_setting.title],
-                            ['client_contact', salesCriteria.client_contact.title],
-                            ['needs_identification', salesCriteria.needs_identification.title],
-                            ['presentation_demo', salesCriteria.presentation_demo.title],
-                            ['objection_handling', salesCriteria.objection_handling.title],
-                            ['new_client_connection', salesCriteria.new_client_connection.title],
-                          ] as const
-                        ).map(([key, title]) => (
-                          <div key={key} className="col-span-2 sm:col-span-1">
-                            <div className="text-sm text-slate-600 mb-1 whitespace-nowrap">{title}</div>
-                            <NumberScale 
-                              value={(e as any)[key]} 
-                              onChange={(v: number) => update(p.id, { [key]: v } as any)} 
-                            />
+                      {/* внутренняя сетка 3 колонки + панель со средней
+                          на больших: 3 фракции + фиксированная правая колонка
+                          на мобиле: последовательно */}
+                      <div className="
+                        grid gap-4
+                        grid-cols-1
+                        lg:[grid-template-columns:repeat(3,minmax(0,1fr))_240px]
+                      ">
+                        {/* верхний ряд (3 плитки) */}
+                        {topSkills.map(key => (
+                          <div key={key} className="rounded-xl border border-slate-200 bg-white px-4 py-3 min-h-[96px] flex flex-col justify-between relative">
+                            <div className="flex items-start justify-between">
+                              <span className="text-sm font-medium text-slate-700 pr-2">
+                                {key === 'bonus_calculation' && 'Умеет рассчитать свой бонус по всем направлениям с учетом порогов'}
+                                {key === 'tools_usage' && 'Умеет пользоваться инструментами ТП для решения задач СПП в ТТ'}
+                                {key === 'task_execution' && 'Умеет выполнять задачи СПП, исходя из категории ТТ'}
+                              </span>
+                              <button onClick={() => setOpenInfo(key)} className="text-slate-400 hover:text-slate-600 flex-shrink-0" aria-label="Описание">
+                                <Info className="w-4 h-4" />
+                              </button>
                           </div>
-                        ))}
+                            <div className="mt-2 flex justify-start">
+                              <NumberScale value={e[key]} onChange={(v:number) => update(p.id, { [key]: v })} />
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                        ))}
 
-              {/* Десктоп-таблица */}
-              <div className="hidden md:block overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <div className="min-w-[1000px] overflow-hidden">
-                  <table className="w-full text-sm table-fixed">
-                    <thead className="bg-emerald-600 text-white">
-                      <tr>
-                        <th className="sticky left-0 z-10 text-left py-3 px-4 font-semibold bg-emerald-600 w-48">Участник</th>
-                        {Object.values(salesCriteria).map(c => (
-                          <th key={c.title} className="text-center py-3 px-1 font-semibold w-20">
-                            <div className="inline-flex items-center gap-1">
-                              <span className="whitespace-nowrap text-xs truncate">{c.title}</span>
+                        {/* правая панель со средней — на всю высоту двух рядов */}
+                        <div className={`rounded-xl border px-4 py-3 row-span-2 ${
+                          avg > 4.0 ? 'border-green-200 bg-green-50' :
+                          avg >= 3.0 ? 'border-yellow-200 bg-yellow-50' :
+                          'border-red-200 bg-red-50'
+                        }`}>
+                          <div className="flex items-start justify-between">
+                            <span className="text-sm font-semibold text-slate-800 pr-2">
+                              Средняя оценка навыков управления бонусной системой и планирования выполнения задач СПП
+                            </span>
                               <button
-                                onClick={() => setOpenInfo(c.title)}
-                                className="p-1 rounded hover:bg-white/15 flex-shrink-0"
-                                aria-label={`Подробнее: ${c.title}`}
-                              >
-                                <Info className="w-3 h-3 text-white" />
+                              onClick={() => setOpenInfo('average_skills_score')}
+                              className="text-slate-400 hover:text-slate-600 flex-shrink-0"
+                              aria-label="Подробнее о средней оценке"
+                            >
+                              <Info className="w-4 h-4" />
                               </button>
                             </div>
-                          </th>
-                        ))}
-                        <th className="text-center py-3 px-2 font-semibold w-20">Средняя</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pagedParticipants.map((p, i) => {
-                        const e = evaluations.get(p.id) || getOrCreateEval(p.id);
-                        const avg = e.average_skills_score;
-                        const isFlash = flashRow === p.id;
-
-                        return (
-                          <tr key={p.id} className={`${i % 2 ? 'bg-white' : 'bg-slate-50/60'}`}>
-                            <td
-                              className={`sticky left-0 z-10 bg-inherit border-r border-slate-200 py-2 px-4 ${
-                                isFlash ? 'ring-2 ring-emerald-300' : ''
-                              }`}
-                            >
-                              <div className="font-medium text-slate-900 text-sm truncate">{p.full_name}</div>
-                              <div className="text-xs text-slate-500 truncate">
-                                {p.territory_name || '—'}
-                                {p.territory_region && ` · ${p.territory_region}`}
-                              </div>
-                            </td>
-
-                            {(
-                              [
-                                ['goal_setting'],
-                                ['client_contact'],
-                                ['needs_identification'],
-                                ['presentation_demo'],
-                                ['objection_handling'],
-                                ['new_client_connection'],
-                              ] as const
-                            ).map(([key]) => (
-                              <td key={key} className="py-2 px-1 text-center">
-                                <div className="w-full flex justify-center">
-                                  <NumberScale value={(e as any)[key]} onChange={(v: number) => update(p.id, { [key]: v } as any)} />
-                                </div>
-                            </td>
-                            ))}
-
-                            <td className="py-2 px-2 text-center">
-                              <div className="inline-flex items-center justify-center w-10 h-7 bg-emerald-600 text-white text-xs font-semibold rounded-full">
+                          <div className="mt-16 flex justify-center">
+                            <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl ${
+                              avg > 4.0 ? 'text-green-800' :
+                              avg >= 3.0 ? 'text-yellow-800' :
+                              'text-red-800'
+                            }`}>
+                              <span className="text-5xl font-black leading-none tracking-tight">
                                 {avg.toFixed(1)}
+                              </span>
                               </div>
-                            </td>
-                          </tr>
+                          </div>
+                        </div>
+
+                        {/* нижний ряд (3 плитки) */}
+                        {bottomSkills.map(key => (
+                          <div key={key} className="rounded-xl border border-slate-200 bg-white px-4 py-3 min-h-[96px] flex flex-col justify-between relative">
+                            <div className="flex items-start justify-between">
+                              <span className="text-sm font-medium text-slate-700 pr-2">
+                                {key === 'weekly_planning' && 'Умеет планировать выполнение задач СПП по неделям для получения 100% бонуса с учетом развития территории'}
+                                {key === 'new_client_connection' && 'Умеет подключать нового клиента'}
+                                {key === 'client_connection_skill' && 'Навык подключения нового клиента'}
+                              </span>
+                              <button onClick={() => setOpenInfo(key)} className="text-slate-400 hover:text-slate-600 flex-shrink-0" aria-label="Описание">
+                                <Info className="w-4 h-4" />
+                              </button>
+                                </div>
+                            <div className="mt-2 flex justify-start">
+                              <NumberScale value={e[key]} onChange={(v:number) => update(p.id, { [key]: v })} />
+                            </div>
+                          </div>
+                            ))}
+                              </div>
+                    </div>
                         );
                       })}
-                    </tbody>
-                  </table>
-                </div>
               </div>
             </section>
 
-            {/* Повторная пагинация внизу для удобства */}
+              {/* Повторная пагинация */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2">
+                <div className="flex items-center justify-center gap-2 pt-4">
                 <button
-                  className="px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50"
+                    className="px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm hover:bg-slate-50 disabled:opacity-50"
                   onClick={() => setPage(p => Math.max(1, p - 1))}
                   disabled={page === 1}
                 >
                   Назад
                 </button>
                 <div className="text-sm text-slate-600">
-                  Страница <span className="font-semibold">{page}</span> из {totalPages}
+                    Страница <span className="font-semibold text-slate-800">{page}</span> из {totalPages}
                 </div>
                 <button
-                  className="px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50"
+                    className="px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm hover:bg-slate-50 disabled:opacity-50"
                   onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
                 >
@@ -912,9 +804,9 @@ export default function EventTPEvaluation() {
         )}
       </div>
 
-      {/* Модалки с описанием критериев */}
+        {/* Модальное окно с описанием */}
       {openInfo && (
-        <InfoModal title={openInfo} onClose={() => setOpenInfo(null)} />
+          <InfoModal criterionId={openInfo} onClose={() => setOpenInfo(null)} />
       )}
     </div>
   );
@@ -922,84 +814,103 @@ export default function EventTPEvaluation() {
 
 /* ========================== Вспомогательная модалка ========================== */
 
-function InfoModal({ title, onClose }: { title: string; onClose: () => void }) {
-  // Ищем в личностных качествах
-  let entry: any = Object.values(evaluationCriteria).find(c => c.title === title);
-  let isPersonal = true;
-  
+  function InfoModal({ criterionId, onClose }: { criterionId: string; onClose: () => void }) {
+    let entry: any = null;
+    let isPersonal = false;
+
+    // Ищем в личностных качествах
+    if (Object.prototype.hasOwnProperty.call(evaluationCriteria, criterionId)) {
+      entry = (evaluationCriteria as any)[criterionId];
+      isPersonal = true;
+    }
   // Если не найдено, ищем в навыках продаж
-  if (!entry) {
-    entry = Object.values(salesCriteria).find(c => c.title === title);
-    isPersonal = false;
+    else {
+      // Сначала проверяем среднюю оценку
+      if (criterionId === 'average_skills_score') {
+        entry = salesCriteria.average_skills_score;
+      } else {
+        // Ищем в категориях навыков
+        for (const category of Object.values(salesCriteria)) {
+          if ('skills' in category && Object.prototype.hasOwnProperty.call(category.skills, criterionId)) {
+            entry = (category.skills as any)[criterionId];
+            break;
+          }
+        }
+      }
   }
 
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-[2px] flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 border border-slate-100">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-slate-900">{entry?.title || title}</h3>
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+        <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 border" onClick={e => e.stopPropagation()}>
+          <div className="flex items-start justify-between mb-4">
+            <h3 className="text-lg font-semibold text-slate-900">{entry?.title || 'Информация'}</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
-            <XCircle className="w-5 h-5" />
+              <XCircle className="w-6 h-6" />
           </button>
         </div>
         {entry ? (
           <div className="space-y-4 text-sm text-slate-700">
             <div>
-              <div className="font-medium mb-1">Описание</div>
-              <div className="text-slate-600">{entry.description}</div>
+                <p className="font-semibold text-slate-800 mb-1">Описание</p>
+                <p className="text-slate-600">{entry.description}</p>
             </div>
-            {isPersonal && 'levels' in entry ? (
+              {isPersonal ? (
               <div>
-                <div className="font-medium mb-1">Уровни</div>
+                  <p className="font-semibold text-slate-800 mb-2">Уровни</p>
                 <ul className="space-y-2 text-slate-600">
-                  <li className="flex items-start gap-2">
-                    <div className="w-3 h-3 rounded-full bg-emerald-600 mt-1 flex-shrink-0"></div>
-                    <div><b>Высокий:</b> {entry.levels.high}</div>
+                    <li className="flex items-start gap-3">
+                      <div className="w-3 h-3 rounded-full bg-emerald-500 mt-1 flex-shrink-0 border-2 border-white ring-1 ring-emerald-500"></div>
+                      <div><b className="text-slate-800">Высокий:</b>{entry.levels.high}</div>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <div className="w-3 h-3 rounded-full bg-amber-500 mt-1 flex-shrink-0"></div>
-                    <div><b>Средний:</b> {entry.levels.medium}</div>
+                    <li className="flex items-start gap-3">
+                      <div className="w-3 h-3 rounded-full bg-amber-500 mt-1 flex-shrink-0 border-2 border-white ring-1 ring-amber-500"></div>
+                      <div><b className="text-slate-800">Средний:</b>{entry.levels.medium}</div>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <div className="w-3 h-3 rounded-full bg-rose-500 mt-1 flex-shrink-0"></div>
-                    <div><b>Низкий:</b> {entry.levels.low}</div>
+                    <li className="flex items-start gap-3">
+                      <div className="w-3 h-3 rounded-full bg-rose-500 mt-1 flex-shrink-0 border-2 border-white ring-1 ring-rose-500"></div>
+                      <div><b className="text-slate-800">Низкий:</b>{entry.levels.low}</div>
                   </li>
                 </ul>
               </div>
-            ) : !isPersonal && 'levels' in entry ? (
+              ) : (
               <div>
-                <div className="font-medium mb-1">Уровни оценки</div>
-                <div className="space-y-2">
-                  {Object.entries(entry.levels).map(([level, description]) => {
-                    const getColor = (level: string) => {
-                      if (level.toLowerCase().includes('высокий') || level.toLowerCase().includes('high')) return 'bg-emerald-600';
-                      if (level.toLowerCase().includes('средний') || level.toLowerCase().includes('medium')) return 'bg-amber-500';
-                      if (level.toLowerCase().includes('низкий') || level.toLowerCase().includes('low')) return 'bg-rose-500';
-                      return 'bg-slate-400';
-                    };
-                    return (
-                      <div key={level} className="p-2 bg-slate-50 rounded-lg">
-                        <div className="flex items-center gap-2 mb-1">
-                          <div className={`w-3 h-3 rounded-full ${getColor(level)} flex-shrink-0`}></div>
-                          <span className="px-2 py-1 rounded text-xs font-medium bg-slate-100 text-slate-700">
-                            {level}
-                          </span>
+                  <p className="font-semibold text-slate-800 mb-2">Уровни оценки (1-5)</p>
+                  <div className="space-y-1.5 text-xs text-slate-600">
+                    {Object.entries(entry.levels).reverse().map(([level, description]) => (
+                      <p key={level}><b>{level}:</b> {String(description)}</p>
+                    ))}
                         </div>
-                        <p className="text-xs text-slate-600">{String(description)}</p>
+                      
+                      {/* Добавляем информацию о цветовой индикации для средней оценки */}
+                      {criterionId === 'average_skills_score' && (
+                        <div className="mt-4 pt-4 border-t border-slate-200">
+                          <p className="font-semibold text-slate-800 mb-2">Автоматическое цветовое выделение:</p>
+                          <div className="space-y-1.5 text-xs text-slate-600">
+                            <p className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-green-500 flex-shrink-0"></div>
+                              <b className="text-green-700">Зелёным</b> - оценка &gt;4,0. Высокий уровень применения проф. умений у ТП.
+                            </p>
+                            <p className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-yellow-500 flex-shrink-0"></div>
+                              <b className="text-yellow-700">Жёлтым</b> - оценка от 3,0 до 4.0. Средний уровень применения проф. умений у ТП.
+                            </p>
+                            <p className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-red-500 flex-shrink-0"></div>
+                              <b className="text-red-700">Красным</b> - оценка &lt;3,0. Низкий уровень применения проф. умений у ТП.
+                            </p>
+                          </div>
+                        </div>
+                      )}
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : null}
+              )}
           </div>
         ) : (
-          <div className="text-slate-600 text-sm">
-            Подробности по критерию будут доступны позже.
-          </div>
+            <p className="text-slate-600 text-sm">
+              Подробная информация для этого критерия не найдена.
+            </p>
         )}
         <div className="mt-6 flex justify-end">
-          <button onClick={onClose} className="px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700">
+            <button onClick={onClose} className="px-5 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-500 transition-colors text-sm font-medium">
             Понятно
           </button>
         </div>
