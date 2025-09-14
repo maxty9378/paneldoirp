@@ -142,17 +142,7 @@ serve(async (req) => {
           id: authData?.user?.id || (userExists ? null : undefined),
           email,
           full_name: fullName,
-          // Валидация роли
-          const VALID_ROLES = [
-            'employee',
-            'supervisor',
-            'trainer',
-            'expert',
-            'moderator',
-            'administrator'
-          ];
-          const safeRole = VALID_ROLES.includes(role) ? role : 'employee';
-          role: safeRole,
+          role: role,
           subdivision: 'management_company',
           status: 'active',
           is_active: true,

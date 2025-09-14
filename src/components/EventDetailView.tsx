@@ -47,8 +47,7 @@ export default function EventDetailView({ eventId, onStartTest, onBack }: EventD
               phone,
               avatar_url,
               position:position_id(name),
-              territory:territory_id(name),
-              branch:branch_id(name)
+              territory:territory_id(name)
             )
           `)
           .eq('id', eventId)
@@ -278,7 +277,7 @@ export default function EventDetailView({ eventId, onStartTest, onBack }: EventD
               onCompleteEvent={handleCompleteEvent}
             />
             <div data-section="participants">
-              <EventParticipantsList eventId={eventId} refreshKey={refreshKey} />
+              <EventParticipantsList eventId={eventId} refreshKey={refreshKey} hasOpenEndedQuestions={true} />
             </div>
             <div data-section="tests">
               <EventTestsContainer 

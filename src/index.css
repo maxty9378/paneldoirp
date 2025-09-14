@@ -397,10 +397,7 @@ button, input, select, textarea {
 }
 
 .superellipse {
-  --squircle-radius: 12px;
-  --squircle-smooth: 1;
-  mask-image: paint(squircle);
-  -webkit-mask-image: paint(squircle);
+  /* Squircle отключен */
 }
 
 /* Стилизация для мобильных устройств */
@@ -476,48 +473,28 @@ a:hover, a:focus {
 
 /* Универсальный squircle только для шейпов */
 .squircle24 {
-  --squircle-radius: 24px;
-  --squircle-smooth: 1;
-  mask-image: paint(squircle);
-  -webkit-mask-image: paint(squircle);
-  /* box-shadow: 0 0 0 2px #2196f3;  // Добавлять только если нужна обводка */
+  border-radius: 24px;
 }
 
 .squircle12 {
-  --squircle-radius: 12px;
-  --squircle-smooth: 1;
-  mask-image: paint(squircle);
-  -webkit-mask-image: paint(squircle);
+  /* Squircle отключен */
   border-radius: 12px;
 }
 
 .squircle8 {
-  --squircle-radius: 8px;
-  --squircle-smooth: 1;
-  mask-image: paint(squircle);
-  -webkit-mask-image: paint(squircle);
   border-radius: 8px;
 }
 
 .squirclesbs24 div {
-  --squircle-radius: 24px;
-  --squircle-smooth: 1;
-  mask-image: paint(squircle);
-  -webkit-mask-image: paint(squircle);
+  border-radius: 24px;
 }
 
 .squircleform24 .t-input-block {
-  --squircle-radius: 24px;
-  --squircle-smooth: 1;
-  mask-image: paint(squircle);
-  -webkit-mask-image: paint(squircle);
+  border-radius: 24px;
 }
 
 .squircleform24 .tn-form__submit button {
-  --squircle-radius: 24px;
-  --squircle-smooth: 1;
-  mask-image: paint(squircle);
-  -webkit-mask-image: paint(squircle);
+  border-radius: 24px;
 }
 
 /* Анимации для карточек тестов */

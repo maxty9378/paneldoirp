@@ -42,7 +42,7 @@ function splitFullName(fullName) {
   return { main: parts.slice(0, 2).join(' '), extra: parts.slice(2).join(' ') };
 }
 
-export default function EventParticipantsList({ eventId, refreshKey = 0 }) {
+export default function EventParticipantsList({ eventId, refreshKey = 0, hasOpenEndedQuestions = false }) {
   const { userProfile } = useAuth();
   const [participants, setParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -84,7 +84,35 @@ export default function EventParticipantsList({ eventId, refreshKey = 0 }) {
 
       if (error) throw error;
 
-      setParticipants(data || []);
+      // Используем переданную информацию об открытых вопросах
+      console.log('Using hasOpenEndedQuestions from props:', hasOpenEndedQuestions);
+
+      // Обновляем данные участников с информацией об открытых вопросах
+      const updatedParticipants = (data || []).map(participant => {
+        const isPendingReview = hasOpenEndedQuestions && 
+          participant.final_test_score === 0 && 
+          participant.final_test_status === 'completed';
+        
+        // Отладочная информация
+        if (participant.final_test_score === 0) {
+          console.log('Participant with 0% final test:', {
+            name: participant.full_name,
+            hasOpenEndedQuestions,
+            final_test_score: participant.final_test_score,
+            final_test_status: participant.final_test_status,
+            isPendingReview
+          });
+        }
+        
+        return {
+          ...participant,
+          hasOpenEndedQuestions,
+          final_test_pending_review: isPendingReview
+        };
+      });
+
+      console.log('Updated participants with pending review logic:', updatedParticipants);
+      setParticipants(updatedParticipants);
     } catch (err) {
       console.error('Ошибка при загрузке данных:', err);
       setError(err.message);
@@ -334,21 +362,37 @@ export default function EventParticipantsList({ eventId, refreshKey = 0 }) {
                           <div className="flex flex-col gap-0.5 sm:gap-1 items-center">
                             <div
                               className={`w-full px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md text-xs font-medium border transition-all duration-200 ${
-                                p.entry_test_score !== null 
+                                p.entry_test_score !== null && p.entry_test_status === 'completed'
                                   ? 'bg-yellow-50 text-yellow-700 border-yellow-200' 
+                                  : p.entry_test_status === 'in_progress'
+                                  ? 'bg-orange-50 text-orange-700 border-orange-200'
                                   : 'bg-gray-50 text-gray-500 border-gray-200'
                               }`}
                             >
-                              {p.entry_test_score !== null ? `${p.entry_test_score}%` : '—'}
+                              {p.entry_test_score !== null && p.entry_test_status === 'completed' 
+                                ? `${p.entry_test_score}%` 
+                                : p.entry_test_status === 'in_progress'
+                                ? 'В процессе'
+                                : '—'}
                             </div>
                             <div
                               className={`w-full px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md text-xs font-medium border transition-all duration-200 ${
-                                p.final_test_score !== null 
+                                p.final_test_pending_review
+                                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                  : p.final_test_score !== null && p.final_test_status === 'completed'
                                   ? 'bg-blue-50 text-blue-700 border-blue-200' 
+                                  : p.final_test_status === 'in_progress'
+                                  ? 'bg-orange-50 text-orange-700 border-orange-200'
                                   : 'bg-gray-50 text-gray-500 border-gray-200'
                               }`}
                             >
-                              {p.final_test_score !== null ? `${p.final_test_score}%` : '—'}
+                              {p.final_test_pending_review
+                                ? 'На проверке'
+                                : p.final_test_score !== null && p.final_test_status === 'completed' 
+                                ? `${p.final_test_score}%` 
+                                : p.final_test_status === 'in_progress'
+                                ? 'В процессе'
+                                : '—'}
                             </div>
                           </div>
                         </td>

@@ -12,7 +12,7 @@ interface StatsCardProps {
 
 export function StatsCard({ title, value, change, changeType, icon }: StatsCardProps) {
   return (
-    <div className="bg-white rounded-squircle-lg shadow-soft p-6 hover:shadow-medium transition-all duration-200 hover:scale-[1.02] squircle24">
+    <div className="bg-white rounded-2xl shadow-soft p-6 hover:shadow-medium transition-all duration-200 hover:scale-[1.02]">
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
@@ -29,7 +29,7 @@ export function StatsCard({ title, value, change, changeType, icon }: StatsCardP
           </div>
         </div>
         <div className={clsx(
-          "w-12 h-12 rounded-squircle flex items-center justify-center",
+          "w-12 h-12 rounded-2xl flex items-center justify-center",
           changeType === 'positive' && "bg-green-100 text-green-600",
           changeType === 'negative' && "bg-red-100 text-red-600",
           changeType === 'neutral' && "bg-sns-100 text-sns-600"

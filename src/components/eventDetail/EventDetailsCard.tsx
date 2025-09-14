@@ -7,31 +7,7 @@ import { useToast } from '../../hooks/use-toast';
 
 // Хук для инициализации CSS Houdini один раз
 function useHoudiniSquircleOnce() {
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        if (typeof window === 'undefined') return;
-        if (!('paintWorklet' in CSS)) {
-          try { await import('css-paint-polyfill'); } catch {}
-        }
-        // @ts-expect-error paintWorklet может не быть в типах
-        if (!cancelled && CSS?.paintWorklet && !(window as any).__squircleLoaded) {
-          try {
-            // @ts-expect-error addModule типы
-            await CSS.paintWorklet.addModule('https://www.unpkg.com/css-houdini-squircle/squircle.min.js');
-            (window as any).__squircleLoaded = true;
-          } catch (error) {
-            // Игнорируем ошибки регистрации, если уже зарегистрировано
-            if (!error.message?.includes('already registered')) {
-              console.warn('Squircle paint worklet error:', error);
-            }
-          }
-        }
-      } catch {}
-    })();
-    return () => { cancelled = true; };
-  }, []);
+  // Squircle отключен для избежания ошибок регистрации
 }
 
 // Типизация
@@ -217,7 +193,7 @@ export const Avatar = React.memo(function Avatar({
 
   return (
     <div
-      className={`relative ${className} squircle24 overflow-hidden`} 
+      className={`relative ${className} rounded-3xl overflow-hidden`} 
       // ВАЖНО: squircle на контейнер, а не на img
     >
       {visibleSrc ? (
@@ -286,9 +262,7 @@ export function EventDetailsCard({ event, isCreator = false, participants = [], 
   
   // Оптимизированные стили для squircle и touch-манипуляций
   const squircleStyles = useMemo(() => `
-    .squircle24 { --squircle-radius:24px; --squircle-smooth:1; mask-image:paint(squircle); -webkit-mask-image:paint(squircle); border-radius:24px; }
-    .squircle12 { --squircle-radius:12px; --squircle-smooth:1; mask-image:paint(squircle); -webkit-mask-image:paint(squircle); border-radius:12px; }
-    .squircle8  { --squircle-radius:8px;  --squircle-smooth:1; mask-image:paint(squircle); -webkit-mask-image:paint(squircle); border-radius:8px; }
+    /* Squircle отключен, используем обычные border-radius */
     
     /* Улучшения для touch-устройств */
     @media (hover: none) and (pointer: coarse) {

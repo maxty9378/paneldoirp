@@ -28,13 +28,11 @@ ORDER BY t.type;
 
 -- 3. Назначим тесты участнику (замените USER_ID и EVENT_ID на реальные значения)
 -- Входной тест
-INSERT INTO user_test_attempts (user_id, test_id, event_id, status, start_time)
+INSERT INTO user_test_attempts (user_id, test_id, started_at)
 SELECT 
     ep.user_id,
     t.id,
-    ep.event_id,
-    'in_progress',
-    NOW()
+    now()
 FROM event_participants ep
 JOIN events e ON ep.event_id = e.id
 JOIN tests t ON t.title ILIKE '%Управление территорией для развития АКБ%' AND t.type = 'entry' AND t.status = 'active'
@@ -42,16 +40,17 @@ WHERE e.title ILIKE '%Управление территорией для раз�
 AND ep.user_id IN (
     SELECT u.id FROM users u WHERE u.full_name ILIKE '%Темнов%'
 )
-ON CONFLICT (user_id, test_id, event_id) DO NOTHING;
+AND NOT EXISTS (
+    SELECT 1 FROM user_test_attempts uta2 
+    WHERE uta2.user_id = ep.user_id AND uta2.test_id = t.id
+);
 
 -- Итоговый тест
-INSERT INTO user_test_attempts (user_id, test_id, event_id, status, start_time)
+INSERT INTO user_test_attempts (user_id, test_id, started_at)
 SELECT 
     ep.user_id,
     t.id,
-    ep.event_id,
-    'pending',
-    NOW()
+    now()
 FROM event_participants ep
 JOIN events e ON ep.event_id = e.id
 JOIN tests t ON t.title ILIKE '%Управление территорией для развития АКБ%' AND t.type = 'final' AND t.status = 'active'
@@ -59,16 +58,17 @@ WHERE e.title ILIKE '%Управление территорией для раз�
 AND ep.user_id IN (
     SELECT u.id FROM users u WHERE u.full_name ILIKE '%Темнов%'
 )
-ON CONFLICT (user_id, test_id, event_id) DO NOTHING;
+AND NOT EXISTS (
+    SELECT 1 FROM user_test_attempts uta2 
+    WHERE uta2.user_id = ep.user_id AND uta2.test_id = t.id
+);
 
 -- Годовой тест
-INSERT INTO user_test_attempts (user_id, test_id, event_id, status, start_time)
+INSERT INTO user_test_attempts (user_id, test_id, started_at)
 SELECT 
     ep.user_id,
     t.id,
-    ep.event_id,
-    'pending',
-    NOW()
+    now()
 FROM event_participants ep
 JOIN events e ON ep.event_id = e.id
 JOIN tests t ON t.title ILIKE '%Управление территорией для развития АКБ%' AND t.type = 'annual' AND t.status = 'active'
@@ -76,7 +76,10 @@ WHERE e.title ILIKE '%Управление территорией для раз�
 AND ep.user_id IN (
     SELECT u.id FROM users u WHERE u.full_name ILIKE '%Темнов%'
 )
-ON CONFLICT (user_id, test_id, event_id) DO NOTHING;
+AND NOT EXISTS (
+    SELECT 1 FROM user_test_attempts uta2 
+    WHERE uta2.user_id = ep.user_id AND uta2.test_id = t.id
+);
 
 -- 4. Проверим результат
 SELECT 
@@ -86,14 +89,14 @@ SELECT
     uta.test_id,
     t.title as test_title,
     t.type as test_type,
-    uta.event_id,
-    e.title as event_title,
-    uta.status,
-    uta.start_time
+    uta.started_at,
+    uta.completed_at
 FROM user_test_attempts uta
 JOIN users u ON uta.user_id = u.id
 JOIN tests t ON uta.test_id = t.id
-JOIN events e ON uta.event_id = e.id
 WHERE u.full_name ILIKE '%Темнов%'
-AND e.title ILIKE '%Управление территорией для развития АКБ%'
+AND t.title ILIKE '%Управление территорией для развития АКБ%'
 ORDER BY t.type;
+
+
+

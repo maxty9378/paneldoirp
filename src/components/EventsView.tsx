@@ -141,13 +141,16 @@ export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: Ev
 
           const notPassedCount = Math.max(participantsCount - completedCount, 0);
 
-          // Подсчитываем тесты на проверке
-          const pendingReviewCount = await supabase
-            .from('user_test_attempts')
-            .select('id', { count: 'exact', head: true })
-            .eq('event_id', event.id)
-            .eq('status', 'pending_review')
-            .then(({ count }) => count || 0);
+          // Подсчитываем тесты на проверке (только для существующих событий)
+          let pendingReviewCount = 0;
+          if (event.id) {
+            const { count } = await supabase
+              .from('user_test_attempts')
+              .select('id', { count: 'exact', head: false })
+              .eq('event_id', event.id)
+              .eq('status', 'pending_review');
+            pendingReviewCount = count || 0;
+          }
 
           return {
             ...event,

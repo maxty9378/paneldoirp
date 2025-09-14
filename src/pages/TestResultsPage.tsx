@@ -21,7 +21,7 @@ interface TestResult {
   status: string;
   score: number;
   start_time: string;
-  end_time: string;
+  completed_at: string;
   test: {
     id: string;
     title: string;
@@ -102,7 +102,7 @@ export default function TestResultsPage() {
           status,
           score,
           start_time,
-          end_time,
+          completed_at,
           test:tests(
             id,
             title,
@@ -368,7 +368,7 @@ export default function TestResultsPage() {
               <span className="text-sm text-gray-600">Время прохождения</span>
             </div>
             <div className="text-2xl font-bold text-gray-900 mt-1">
-              {formatDuration(result.start_time, result.end_time)}
+              {formatDuration(result.start_time, result.completed_at)}
             </div>
           </div>
 
@@ -378,7 +378,7 @@ export default function TestResultsPage() {
               <span className="text-sm text-gray-600">Дата прохождения</span>
             </div>
             <div className="text-sm font-medium text-gray-900 mt-1">
-              {formatDate(result.end_time)}
+              {formatDate(result.completed_at)}
             </div>
           </div>
         </div>

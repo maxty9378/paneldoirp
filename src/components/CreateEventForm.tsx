@@ -155,8 +155,8 @@ export function CreateEventForm({ onSuccess }: CreateEventFormProps) {
   if (isSuccess) {
     return (
       <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-squircle-lg shadow-medium p-8 text-center animate-scale-in">
-          <div className="w-16 h-16 bg-green-100 rounded-squircle mx-auto flex items-center justify-center mb-4">
+        <div className="bg-white rounded-2xl shadow-medium p-8 text-center animate-scale-in">
+          <div className="w-16 h-16 bg-green-100 rounded-2xl mx-auto flex items-center justify-center mb-4">
             <Check className="h-8 w-8 text-green-600" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Мероприятие создано!</h3>
@@ -168,7 +168,7 @@ export function CreateEventForm({ onSuccess }: CreateEventFormProps) {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="bg-white rounded-squircle-lg shadow-medium overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-medium overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-sns-50 to-sns-100">
           <h2 className="text-xl font-semibold text-gray-900">Создание мероприятия</h2>
           <p className="mt-1 text-sm text-gray-600">

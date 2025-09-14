@@ -1343,6 +1343,10 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent }: C
               
               if (newParticipantsToAdd.length > 0) {
                 try {
+                  console.log('🔍 Попытка вставки участников:', {
+                    count: newParticipantsToAdd.length,
+                    data: newParticipantsToAdd.map(p => ({ event_id: p.event_id, user_id: p.user_id }))
+                  });
                   const { error: insertError } = await supabase
                     .from('event_participants')
                     .insert(newParticipantsToAdd);

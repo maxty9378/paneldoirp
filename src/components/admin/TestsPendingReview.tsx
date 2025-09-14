@@ -206,7 +206,6 @@ export function TestsPendingReview({ eventId, onReviewComplete, onEditReview }: 
         .select(`
           id,
           score,
-          passed,
           reviewed_at,
           test:tests(id, title, type, passing_score),
           user:user_id(id, full_name, email),
@@ -226,7 +225,7 @@ export function TestsPendingReview({ eventId, onReviewComplete, onEditReview }: 
 
           const correct = (reviews || []).filter(r => r.is_correct).length;
           const total = reviews?.length || 0;
-          const score = total > 0 ? Math.round((correct / total) * 100) : 0;
+          const score = total > 0 ? Math.round((correct / total) * 100) : (a.score || 0);
           const passed = score >= (a.test?.passing_score ?? 70);
 
           return {

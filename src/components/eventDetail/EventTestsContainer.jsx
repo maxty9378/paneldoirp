@@ -127,33 +127,60 @@ export default function EventTestsContainer({ eventId, userProfile, isAdmin, onS
           // Последняя попытка (самая свежая)
           lastAttempt = attempts[0];
         }
+        // Проверяем, есть ли открытые вопросы в тесте
+        const { data: questionsData, error: questionsError } = await supabase
+          .from('test_questions')
+          .select('question_type')
+          .eq('test_id', test.id);
+
+        if (questionsError) {
+          console.error(`Ошибка при получении вопросов для теста ${test.type}:`, questionsError);
+        }
+        
+        const hasOpenEndedQuestions = questionsData?.some(q => q.question_type === 'text') || false;
+
         console.log(`Test ${test.type}:`, {
           testId: test.id,
           attemptsCount: attempts?.length || 0,
           completedAttempt: completedAttempt?.id,
           lastAttempt: lastAttempt?.id,
-          lastAttemptStatus: lastAttempt?.status
+          lastAttemptStatus: lastAttempt?.status,
+          hasOpenEndedQuestions
         });
 
         if (completedAttempt) {
           // Если есть завершенная попытка для данного мероприятия, показываем результат
+          // Но если тест имеет открытые вопросы и балл 0, считаем его на проверке
+          let finalStatus = completedAttempt.status;
+          if (hasOpenEndedQuestions && completedAttempt.score === 0 && completedAttempt.status === 'completed') {
+            finalStatus = 'pending_review';
+          }
+          
           statusObj[test.type] = {
             available: true,
             completed: true,
             score: completedAttempt.score,
             attemptId: completedAttempt.id,
             testId: test.id,
-            test: test
+            test: test,
+            status: finalStatus // Добавляем статус для проверки
           };
         } else if (lastAttempt) {
           // Если есть попытка для текущего мероприятия, показываем её статус
+          // Но если тест имеет открытые вопросы и балл 0, считаем его на проверке
+          let finalStatus = lastAttempt.status;
+          if (hasOpenEndedQuestions && lastAttempt.score === 0 && lastAttempt.status === 'completed') {
+            finalStatus = 'pending_review';
+          }
+          
           statusObj[test.type] = {
             available: true,
             completed: lastAttempt.status === 'completed',
             score: lastAttempt.score,
             attemptId: lastAttempt.id,
             testId: test.id,
-            test: test
+            test: test,
+            status: finalStatus // Добавляем статус для проверки
           };
         } else {
           // Если нет попыток для данного мероприятия, тест недоступен

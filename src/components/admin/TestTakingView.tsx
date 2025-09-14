@@ -149,6 +149,7 @@ export const TestTakingView: React.FC<TestTakingViewProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [showCongrats, setShowCongrats] = useState(false);
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const [hasExistingProgress, setHasExistingProgress] = useState(false);
@@ -411,30 +412,46 @@ export const TestTakingView: React.FC<TestTakingViewProps> = ({
   const saveUserAnswer = async () => {
     const currentQuestion = questions[currentQuestionIndex];
     const answer = userAnswers.find((a) => a.questionId === currentQuestion.id);
-    if (!answer) return;
+    if (!answer || saving) return;
 
+    setSaving(true);
     try {
-      await supabase
+      // Сначала удаляем существующие ответы для этого вопроса
+      const { error: deleteError } = await supabase
         .from('user_test_answers')
         .delete()
         .eq('attempt_id', attemptId)
         .eq('question_id', currentQuestion.id);
 
+      if (deleteError) {
+        console.error('Ошибка при удалении существующих ответов:', deleteError);
+        // Продолжаем выполнение, даже если удаление не удалось
+      }
+
+      // Затем вставляем новые ответы
       if (currentQuestion.question_type === 'text') {
         if (answer.textAnswer && answer.textAnswer.trim()) {
-          await supabase.from('user_test_answers').insert({
+          const { error: insertError } = await supabase.from('user_test_answers').insert({
             attempt_id: attemptId,
             question_id: currentQuestion.id,
             text_answer: answer.textAnswer.trim(),
           });
+          if (insertError) {
+            console.error('Ошибка при вставке текстового ответа:', insertError);
+            throw insertError;
+          }
         }
       } else if (currentQuestion.question_type === 'single_choice') {
         if (answer.answerId) {
-          await supabase.from('user_test_answers').insert({
+          const { error: insertError } = await supabase.from('user_test_answers').insert({
             attempt_id: attemptId,
             question_id: currentQuestion.id,
             answer_id: answer.answerId,
           });
+          if (insertError) {
+            console.error('Ошибка при вставке ответа с выбором:', insertError);
+            throw insertError;
+          }
         }
       } else if (currentQuestion.question_type === 'multiple_choice') {
         if (answer.answerId) {
@@ -445,19 +462,31 @@ export const TestTakingView: React.FC<TestTakingViewProps> = ({
             answer_id: answerId,
           }));
 
-          await supabase.from('user_test_answers').insert(insertData);
+          const { error: insertError } = await supabase.from('user_test_answers').insert(insertData);
+          if (insertError) {
+            console.error('Ошибка при вставке множественных ответов:', insertError);
+            throw insertError;
+          }
         }
       } else if (currentQuestion.question_type === 'sequence') {
         if (answer.userOrder && answer.userOrder.length > 0) {
-          await supabase.from('user_test_answers').insert({
+          const { error: insertError } = await supabase.from('user_test_answers').insert({
             attempt_id: attemptId,
             question_id: currentQuestion.id,
             user_order: answer.userOrder,
           });
+          if (insertError) {
+            console.error('Ошибка при вставке последовательности:', insertError);
+            throw insertError;
+          }
         }
       }
     } catch (error) {
       console.error('Ошибка сохранения ответа:', error);
+      // Показываем пользователю ошибку, но не блокируем навигацию
+      alert('Не удалось сохранить ответ. Попробуйте еще раз.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -529,7 +558,7 @@ export const TestTakingView: React.FC<TestTakingViewProps> = ({
       const { error: updateError } = await supabase
         .from('user_test_attempts')
         .update({
-          end_time: new Date().toISOString(),
+          completed_at: new Date().toISOString(),
           score: scorePercentage,
           status: 'completed',
         })
@@ -551,13 +580,13 @@ export const TestTakingView: React.FC<TestTakingViewProps> = ({
   };
 
   // Navigation handlers
-  const handlePrevious = () => {
-    saveUserAnswer();
+  const handlePrevious = async () => {
+    await saveUserAnswer();
     setCurrentQuestionIndex((prev) => Math.max(0, prev - 1));
   };
 
-  const handleNext = () => {
-    saveUserAnswer();
+  const handleNext = async () => {
+    await saveUserAnswer();
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex((prev) => prev + 1);
     } else {
@@ -964,10 +993,10 @@ export const TestTakingView: React.FC<TestTakingViewProps> = ({
 
                 <button
                   onClick={handleNext}
-                  disabled={submitting || !isAnswerFilled}
+                  disabled={submitting || saving || !isAnswerFilled}
                   className="flex items-center space-x-2 px-6 py-3 rounded-xl font-bold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-[#06A478] to-[#148A6B] hover:from-[#148A6B] hover:to-[#06A478] text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                 >
-                  {submitting ? (
+                  {submitting || saving ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
                       <span>Отправка...</span>

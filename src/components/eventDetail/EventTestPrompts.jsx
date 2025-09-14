@@ -89,6 +89,36 @@ export function ProgressRing({ value, size = 88, stroke = 8 }) {
   );
 }
 
+// Кольцо загрузки (для pending_review)
+export function LoadingRing({ size = 88, stroke = 8 }) {
+  const radius = (size - stroke) / 2;
+
+  return (
+    <svg width={size} height={size} className="block">
+      {/* Фоновое кольцо */}
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        stroke="rgba(0,0,0,0.06)"
+        strokeWidth={stroke}
+        fill="none"
+      />
+      {/* Текст внутри */}
+      <text
+        x="50%"
+        y="50%"
+        dominantBaseline="middle"
+        textAnchor="middle"
+        className="fill-gray-600 font-medium"
+        fontSize={size * 0.18}
+      >
+        ...
+      </text>
+    </svg>
+  );
+}
+
 // Маленький чип
 export function Chip({ className, children }) {
   return (
@@ -439,6 +469,7 @@ function TestCard({ type, testData, onStart, eventEndDate }) {
   const completed = testData.completed;
   const score = testData.score ?? 0;
   const passingScore = test?.passing_score;
+  const status = testData.status; // Добавляем статус
 
   // Состояние для таймера обратного отсчета
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -553,17 +584,25 @@ function TestCard({ type, testData, onStart, eventEndDate }) {
       </div>
 
       {/* Footer: CTA / Progress */}
-      {available && completed ? (
+      {available && (completed || status === 'pending_review') ? (
         <div className="flex items-center gap-4 mt-4">
           <div className={cx('text-emerald-600', s.icon)}>
-            <ProgressRing value={score} />
+            {status === 'pending_review' ? (
+              <LoadingRing />
+            ) : (
+              <ProgressRing value={score} />
+            )}
           </div>
           <div className="text-sm">
             <div className="font-semibold text-gray-900">Результат</div>
             <div className="text-gray-600">
-              {passingScore && passingScore > 0
-                ? score >= passingScore ? 'Порог достигнут' : 'Ниже проходного'
-                : 'Тест завершен'}
+              {status === 'pending_review' ? (
+                'На проверке'
+              ) : (
+                passingScore && passingScore > 0
+                  ? score >= passingScore ? 'Порог достигнут' : 'Ниже проходного'
+                  : 'Тест завершен'
+              )}
             </div>
           </div>
         </div>
@@ -672,12 +711,7 @@ export default function EventTestPrompts({ eventId, onStartTest, testStatus, ref
     // Проверяем, имеет ли пользователь административные права
     const hasAdminAccess = userProfile?.role === 'administrator' || userProfile?.role === 'moderator' || userProfile?.role === 'trainer' || userProfile?.role === 'expert';
     
-    // Если администратор не является участником, не позволяем проходить тесты
-    if (hasAdminAccess && !isParticipant) {
-      console.log('❌ Администратор не является участником');
-      alert('Для прохождения тестов необходимо зарегистрироваться на мероприятие как участник.');
-      return;
-    }
+    // Администраторы могут проходить тесты, если они участники
 
     const testInfo = testStatus[testType];
     console.log('📋 testInfo для', testType, ':', testInfo);
@@ -747,7 +781,7 @@ export default function EventTestPrompts({ eventId, onStartTest, testStatus, ref
   // Проверяем, имеет ли пользователь административные права
   const hasAdminAccess = userProfile?.role === 'administrator' || userProfile?.role === 'moderator' || userProfile?.role === 'trainer' || userProfile?.role === 'expert';
 
-  if (!loading && !isParticipant && !hasAdminAccess) {
+  if (!loading && !hasAdminAccess) {
     return (
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center">
         <AlertCircleIcon className="h-12 w-12 text-blue-500 mx-auto mb-4" />
@@ -758,7 +792,9 @@ export default function EventTestPrompts({ eventId, onStartTest, testStatus, ref
   }
 
   // Показываем информационное сообщение для администраторов, которые не являются участниками
-  if (!loading && !isParticipant && hasAdminAccess) {
+  console.log('EventTestPrompts debug:', { loading, isParticipant, hasAdminAccess, userRole: userProfile?.role });
+  
+  if (!loading && hasAdminAccess) {
     console.log('Rendering admin view with testStatus:', testStatus);
     
     // Проверяем, есть ли тесты для отображения

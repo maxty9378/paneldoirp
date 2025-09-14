@@ -26,7 +26,7 @@ interface TestAttempt {
   status: 'in_progress' | 'completed' | 'failed';
   score: number | null;
   start_time: string;
-  end_time: string | null;
+  completed_at: string | null;
   test: {
     id: string;
     title: string;
@@ -93,7 +93,7 @@ export function ParticipantTestsView() {
           status,
           score,
           start_time,
-          end_time,
+          completed_at,
           test:tests(
             id,
             title,
@@ -111,7 +111,7 @@ export function ParticipantTestsView() {
         `)
         .eq('user_id', userProfile.id)
         .not('score', 'is', null)
-        .order('end_time', { ascending: false });
+        .order('completed_at', { ascending: false });
 
       console.log('Completed tests raw data:', completedData);
       console.log('Completed tests details:', completedData?.map(attempt => ({
@@ -137,7 +137,7 @@ export function ParticipantTestsView() {
           status,
           score,
           start_time,
-          end_time,
+          completed_at,
           test:tests(
             id,
             title,
@@ -906,7 +906,7 @@ export function ParticipantTestsView() {
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
                               <div className="flex items-center space-x-1 min-w-0">
                                 <Clock className="h-3 w-3 flex-shrink-0" />
-                                <span className="whitespace-nowrap">Дата: {formatDate(attempt.end_time || attempt.start_time)}</span>
+                                <span className="whitespace-nowrap">Дата: {formatDate(attempt.completed_at || attempt.start_time)}</span>
                               </div>
                               <div className="flex items-center space-x-1 min-w-0">
                                 <CheckCircle className="h-3 w-3 flex-shrink-0" />

@@ -40,8 +40,7 @@ export function useEventDetail(eventId: string) {
           phone,
           avatar_url,
           position: position_id(name),
-          territory: territory_id(name),
-          branch: branch_id(name)
+          territory: territory_id(name)
         )
       `)
       .eq('id', eventId)

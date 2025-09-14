@@ -114,7 +114,7 @@ export function EventCard({ event, onView }: EventCardProps) {
 
   return (
     <div
-      className="relative overflow-hidden bg-white/90 shadow-2xl rounded-3xl p-7 cursor-pointer group transition-transform duration-200 hover:scale-[1.025] hover:-translate-y-1 squircle24"
+      className="relative overflow-hidden bg-white/90 shadow-2xl rounded-3xl p-7 cursor-pointer group transition-transform duration-200 hover:scale-[1.025] hover:-translate-y-1"
       onClick={onView}
     >
       {/* Цветная полоса слева по типу */}

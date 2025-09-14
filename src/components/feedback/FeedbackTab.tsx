@@ -186,18 +186,30 @@ export function FeedbackTab({ eventId, adminStatOnly = false }: FeedbackTabProps
         .select('id, name, description')
         .eq('event_type_id', eventData.event_type_id)
         .eq('is_default', true)
-        .single();
+        .limit(1);
 
       if (templateError) {
         console.error('Error fetching feedback template:', templateError);
         throw templateError;
       }
 
+      // Если шаблон не найден, пропускаем загрузку статистики
+      if (!templateData || templateData.length === 0) {
+        console.log('No feedback template found for event type:', eventData.event_type_id);
+        setFeedbackStats([]);
+        setAverageRating(0);
+        setTotalSubmissions(0);
+        setTextComments([]);
+        return;
+      }
+
+      const template = templateData[0];
+
       // Получаем вопросы шаблона
       const { data: questionsData, error: questionsError } = await supabase
         .from('feedback_questions')
         .select('id, question, question_type, required, order_num, options')
-        .eq('template_id', templateData.id)
+        .eq('template_id', template.id)
         .order('order_num');
 
       if (questionsError) {
@@ -217,7 +229,7 @@ export function FeedbackTab({ eventId, adminStatOnly = false }: FeedbackTabProps
           users!inner(full_name)
         `)
         .eq('event_id', eventId)
-        .eq('template_id', templateData.id);
+        .eq('template_id', template.id);
 
       if (submissionsError) {
         console.error('Error fetching feedback submissions:', submissionsError);
