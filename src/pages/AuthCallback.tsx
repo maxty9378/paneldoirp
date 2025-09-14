@@ -161,8 +161,8 @@ export default function AuthCallback() {
               
               window.authCallbackProcessing = false; // сбросить флаг до ухода
               
-              console.log('🚀 Redirecting to home...');
-              window.location.replace('/');
+              console.log('🚀 Auth successful, staying on page...');
+              // Убираем принудительный редирект - пусть React Router обработает переход
               return;
             }
           }
@@ -194,17 +194,15 @@ export default function AuthCallback() {
               
               window.authCallbackProcessing = false; // сбросить флаг до ухода
               
-              console.log('🚀 Redirecting to home...');
-              window.location.replace('/');
+              console.log('🚀 Auth successful, staying on page...');
+              // Убираем принудительный редирект - пусть React Router обработает переход
               return;
             }
           }
 
           // Если дошли до сюда и ничего не сработало
           console.log('❌ No suitable authentication method found');
-          setTimeout(() => {
-            window.location.replace('/');
-          }, 1000);
+          // Убираем принудительный редирект
         })(); // Закрываем authPromise
         
         // Ждем либо завершения авторизации, либо таймаута
@@ -212,9 +210,7 @@ export default function AuthCallback() {
 
       } catch (error: any) {
         console.error('❌ Auth callback error:', error);
-        setTimeout(() => {
-          window.location.replace('/');
-        }, 1000);
+        // Убираем принудительный редирект при ошибке
       } finally {
         // Очищаем флаг обработки
         window.authCallbackProcessing = false;

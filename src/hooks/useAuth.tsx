@@ -392,10 +392,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     supabase.auth.signOut();
     
-    // Принудительно перезагружаем страницу для полной очистки
-    setTimeout(() => {
-      window.location.reload();
-    }, 100);
+    // Убираем перезагрузку страницы - просто сбрасываем состояние
+    // Пользователь останется на той же странице, но разлогинится
   };
 
   const signIn = async (identifier: string, password: string): Promise<{ data: any; error: any }> => {
@@ -443,6 +441,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
         // Clear any previous errors on successful sign in
         setAuthError(null);
+        
+        // Не сбрасываем loading сразу - пусть onAuthStateChange обработает это
+        // setLoading(false) будет вызван в onAuthStateChange когда пользователь загрузится
+        
         return result;
       } else {
         // Handle SAP number login
@@ -479,6 +481,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           // Clear any previous errors on successful sign in
           setAuthError(null);
+          
+          // Не сбрасываем loading сразу - пусть onAuthStateChange обработает это
           console.log('SignIn result for SAP user:', result);
           return result;
         } catch (error: any) {

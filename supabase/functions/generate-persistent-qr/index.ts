@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
 }
 
 serve(async (req) => {
@@ -28,7 +28,9 @@ serve(async (req) => {
       throw new Error('Email is required')
     }
 
-    console.log('📧 Generating persistent QR for:', email)
+    // Нормализуем email к строчным буквам для поиска
+    const normalizedEmail = email.toLowerCase()
+    console.log('📧 Generating persistent QR for:', normalizedEmail)
 
     // Находим пользователя
     const { data: usersList, error: usersError } = await supabaseAdmin.auth.admin.listUsers()
@@ -37,7 +39,7 @@ serve(async (req) => {
       throw new Error('Failed to list users')
     }
 
-    const existingUser = usersList.users.find(user => user.email === email)
+    const existingUser = usersList.users.find(user => user.email === normalizedEmail)
     if (!existingUser) {
       throw new Error(`User ${email} not found`)
     }
@@ -45,15 +47,20 @@ serve(async (req) => {
     console.log('✅ User found:', existingUser.id)
 
     // Проверяем существующий активный токен
-    const { data: existingToken, error: tokenError } = await supabaseAdmin
+    const { data: existingTokens, error: tokenError } = await supabaseAdmin
       .from('user_qr_tokens')
       .select('token')
       .eq('user_id', existingUser.id)
       .eq('is_active', true)
-      .single()
 
-    if (existingToken && !tokenError) {
+    if (tokenError) {
+      console.error('❌ Error checking existing tokens:', tokenError)
+      throw new Error('Failed to check existing tokens')
+    }
+
+    if (existingTokens && existingTokens.length > 0) {
       console.log('🔄 Returning existing token')
+      const existingToken = existingTokens[0]
       const persistentUrl = `https://paneldoirp.vercel.app/auth/qr/${existingToken.token}`
       
       return new Response(
