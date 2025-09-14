@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, MapPin, Users, Star, LinkIcon, Save, Upload, Download, Search, Plus, FileSpreadsheet, User, Check, CalendarDays, Building2, UserCheck, Target, ChevronLeft, ArrowRight, Sparkles, ChevronRight, Edit } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
-import { createRegularUser } from '../../lib/userManagement';
+import { ExamTypeSelector } from './ExamTypeSelector';
+import { createRegularUser, findUserByEmail } from '../../lib/userManagement';
 import { clsx } from 'clsx';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
@@ -18,9 +19,10 @@ interface CreateEventModalProps {
   onClose: () => void;
   onSuccess: () => void;
   editingEvent?: any;
+  defaultEventType?: 'online' | 'offline' | 'exam';
 }
 
-export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent }: CreateEventModalProps) {
+export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent, defaultEventType }: CreateEventModalProps) {
   const { user, userProfile } = useAuth();
   const [formData, setFormData] = useState({
     title: '',
@@ -52,7 +54,7 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent }: C
 
   const [eventTypes, setEventTypes] = useState<any[]>([]);
   const [selectedEventType, setSelectedEventType] = useState<any | null>(null);
-  const [eventType, setEventType] = useState<'online' | 'offline' | null>(null);
+  const [eventType, setEventType] = useState<'online' | 'offline' | 'exam' | null>(null);
   const [loading, setLoading] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isTimeOpen, setIsTimeOpen] = useState(false);
@@ -68,6 +70,19 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent }: C
   const [territories, setTerritories] = useState<any[]>([]);
   const [showImportPreview, setShowImportPreview] = useState(false);
   const [importPreview, setImportPreview] = useState<any[]>([]);
+  
+  // Состояние для экзамена
+  const [examData, setExamData] = useState({
+    talentCategory: null as any,
+    groupName: '',
+    expertEmails: [] as string[],
+    experts: [] as Array<{
+      id: string;
+      fullName: string;
+      position: string;
+      email: string;
+    }>,
+  });
   const [sapAnalysis, setSapAnalysis] = useState<{
     existing: string[];
     new: string[];
@@ -75,6 +90,71 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent }: C
   } | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const searchRef = React.useRef<HTMLDivElement>(null);
+
+  // Отладочная информация
+  console.log('CreateEventModal: Рендер с eventType:', eventType, 'eventTypes:', eventTypes);
+  console.log('CreateEventModal: isOpen:', isOpen, 'defaultEventType:', defaultEventType, 'editingEvent:', editingEvent);
+
+  // Устанавливаем тип мероприятия по умолчанию
+  useEffect(() => {
+    if (isOpen && defaultEventType && !editingEvent && eventTypes.length > 0) {
+      console.log('Устанавливаем тип мероприятия по умолчанию:', defaultEventType);
+      
+      if (defaultEventType === 'exam') {
+        setEventType('exam');
+        const examType = eventTypes.find(type => 
+          type.name === 'exam_talent_reserve' || 
+          type.name_ru === 'Экзамен кадрового резерва'
+        );
+        console.log('Найденный тип экзамена для defaultEventType:', examType);
+        if (examType) {
+          console.log('Устанавливаем formData для экзамена с event_type_id:', examType.id);
+          setFormData(prev => ({
+            ...prev,
+            title: "Экзамен кадрового резерва",
+            description: "Комплексная оценка кандидатов в кадровый резерв",
+            event_type_id: examType.id,
+            status: "draft",
+            points: 0,
+          }));
+          setExamData({
+            talentCategory: null,
+            groupName: '',
+            expertEmails: [],
+            experts: [],
+          });
+          console.log('formData установлен для экзамена');
+        } else {
+          console.log('Тип экзамена не найден в eventTypes');
+        }
+      }
+    }
+  }, [isOpen, defaultEventType, editingEvent, eventTypes]);
+
+  // Сброс состояния при закрытии модального окна
+  useEffect(() => {
+    if (!isOpen) {
+      setEventType(null);
+      setFormData({
+        title: '',
+        description: '',
+        event_type_id: '',
+        start_date: '',
+        end_date: '',
+        location: '',
+        meeting_link: '',
+        points: 0,
+        max_participants: '',
+        status: 'draft',
+      });
+      setExamData({
+        talentCategory: null,
+        groupName: '',
+        expertEmails: [],
+        experts: [],
+      });
+    }
+  }, [isOpen]);
 
   // Заполняем форму при редактировании
   useEffect(() => {
@@ -105,6 +185,29 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent }: C
           } else if (typeName === 'offline_training' || (typeName === 'in_person_training' && isOnline === false)) {
             setEventType('offline');
           }
+        }
+
+        // Обработка экзаменов кадрового резерва
+        if (editingEvent.event_types?.name === 'exam_talent_reserve') {
+          console.log('Редактирование экзамена кадрового резерва:', editingEvent);
+          setEventType('exam');
+          
+          // Загружаем данные экзамена
+          setExamData({
+            talentCategory: editingEvent.talent_category ? {
+              id: editingEvent.talent_category.id,
+              name_ru: editingEvent.talent_category.name_ru,
+              color: editingEvent.talent_category.color
+            } : null,
+            groupName: editingEvent.group_name || '',
+            expertEmails: editingEvent.expert_emails || [],
+            experts: editingEvent.expert_emails ? editingEvent.expert_emails.map((email: string, index: number) => ({
+              id: `expert-${index}`,
+              fullName: `Эксперт ${index + 1}`,
+              position: 'Эксперт',
+              email: email
+            })) : []
+          });
         }
 
         // Загружаем участников мероприятия
@@ -210,6 +313,13 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent }: C
       if (error) throw error;
       setEventTypes(data || []);
       console.log('Загружены типы мероприятий:', data);
+      
+      // Проверяем наличие экзамена кадрового резерва
+      const examType = data?.find(type => 
+        type.name === 'exam_talent_reserve' || 
+        type.name_ru === 'Экзамен кадрового резерва'
+      );
+      console.log('Найденный тип экзамена кадрового резерва:', examType);
       
       // Отладочная информация для тренеров
       if (userProfile?.role === 'trainer') {
@@ -991,9 +1101,14 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent }: C
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
+    console.log('validateForm: Начало валидации');
+    console.log('formData.event_type_id:', formData.event_type_id);
+    console.log('eventType:', eventType);
 
-    if (!formData.event_type_id) {
+    // Для экзаменов кадрового резерва event_type_id может быть не установлен сразу
+    if (!formData.event_type_id && !(defaultEventType === 'exam' && eventType === 'exam')) {
       newErrors.event_type_id = 'Тип мероприятия обязателен';
+      console.log('validateForm: Ошибка - не выбран тип мероприятия');
     }
 
     if (!formData.title.trim()) {
@@ -1012,12 +1127,35 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent }: C
       newErrors.max_participants = 'Количество участников должно быть больше 0';
     }
 
+    // Валидация для экзамена
+    if (eventType === 'exam') {
+      console.log('validateForm: Валидация экзамена');
+      console.log('examData.talentCategory:', examData.talentCategory);
+      console.log('examData.groupName:', examData.groupName);
+      console.log('examData.experts:', examData.experts);
+      
+      if (!examData.talentCategory) {
+        newErrors.talentCategory = 'Выберите категорию талантов';
+        console.log('validateForm: Ошибка - не выбрана категория талантов');
+      }
+      if (!examData.groupName.trim()) {
+        newErrors.groupName = 'Название группы обязательно';
+        console.log('validateForm: Ошибка - не указано название группы');
+      }
+      if (examData.experts.length === 0) {
+        newErrors.expertEmails = 'Добавьте хотя бы одного эксперта';
+        console.log('validateForm: Ошибка - не добавлены эксперты');
+      }
+    }
+
     // Проверка участников на шаге 2
     if (step === 2 && participants.length === 0) {
       newErrors.participants = 'Необходимо добавить хотя бы одного участника';
     }
 
     setErrors(newErrors);
+    console.log('validateForm: Результат валидации:', Object.keys(newErrors).length === 0);
+    console.log('validateForm: Ошибки:', newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
@@ -1025,8 +1163,33 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent }: C
   const nextStep = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) return;
+    console.log('nextStep: Проверка формы...');
+    console.log('formData:', formData);
+    console.log('eventType:', eventType);
+    console.log('examData:', examData);
     
+    // Для экзаменов кадрового резерва убеждаемся, что event_type_id установлен
+    if (defaultEventType === 'exam' && eventType === 'exam' && !formData.event_type_id) {
+      console.log('nextStep: Устанавливаем event_type_id для экзамена');
+      const examType = eventTypes.find(type => 
+        type.name === 'exam_talent_reserve' || 
+        type.name_ru === 'Экзамен кадрового резерва'
+      );
+      if (examType) {
+        setFormData(prev => ({
+          ...prev,
+          event_type_id: examType.id
+        }));
+        console.log('nextStep: event_type_id установлен:', examType.id);
+      }
+    }
+    
+    if (!validateForm()) {
+      console.log('nextStep: Валидация не прошла, ошибки:', errors);
+      return;
+    }
+    
+    console.log('nextStep: Валидация прошла, переходим к шагу 2');
     setStep(2);
   };
 
@@ -1057,6 +1220,12 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent }: C
         points: parseInt(formData.points.toString()) || 0,
         max_participants: formData.max_participants ? parseInt(formData.max_participants) : null,
         status: formData.status,
+        // Данные для экзамена
+        ...(eventType === 'exam' && examData.talentCategory && {
+          talent_category_id: examData.talentCategory.id,
+          group_name: examData.groupName,
+          expert_emails: examData.expertEmails,
+        }),
         creator_id: user?.id,
         updated_at: new Date().toISOString(),
       };
@@ -1072,6 +1241,35 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent }: C
         
         if (error) throw error;
         eventId = editingEvent.id;
+        
+        // Создание учетных записей для экспертов при обновлении экзамена
+        if (eventType === 'exam' && examData.experts && examData.experts.length > 0) {
+          
+          for (const expert of examData.experts) {
+            try {
+              // Пытаемся создать пользователя - функция сама обработает случай существующего пользователя
+              
+              const result = await createRegularUser(
+                expert.email,
+                expert.fullName,
+                'expert', // Используем роль 'expert' после добавления в enum
+                '123456', // Пароль по умолчанию
+                {
+                  sap_number: '', // У экспертов может не быть SAP номера
+                  territory_id: userProfile?.territory_id || null, // Привязываем к территории создателя
+                  position_id: null, // Позиция будет установлена отдельно
+                  work_experience_days: 0
+                }
+              );
+
+              if (!result.success) {
+                console.error(`❌ Не удалось обработать эксперта ${expert.fullName}:`, result.message);
+              }
+            } catch (error) {
+              console.error(`❌ Ошибка при обработке эксперта ${expert.fullName}:`, error);
+            }
+          }
+        }
         
         // Если есть участники, обновляем их
         if (participants.length > 0) {
@@ -1483,6 +1681,55 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent }: C
         
         eventId = data.id;
         console.log(`✅ Мероприятие создано с ID: ${eventId}`);
+        
+        // Создание конфигурации экзамена, если это экзамен
+        if (eventType === 'exam' && examData.talentCategory) {
+          console.log(`🎓 Создание конфигурации экзамена`);
+          const { error: examConfigError } = await supabase
+            .from('exam_configs')
+            .insert([{
+              exam_event_id: eventId,
+              total_duration_hours: 8,
+              break_duration_minutes: 30,
+              max_participants: formData.max_participants || 20,
+              evaluation_criteria: {},
+            }]);
+
+          if (examConfigError) {
+            console.error('❌ Ошибка создания конфигурации экзамена:', examConfigError);
+            throw examConfigError;
+          }
+          console.log(`✅ Конфигурация экзамена создана`);
+
+          // Создание учетных записей для экспертов
+          if (examData.experts && examData.experts.length > 0) {
+            
+            for (const expert of examData.experts) {
+              try {
+                // Пытаемся создать пользователя - функция сама обработает случай существующего пользователя
+                
+                const result = await createRegularUser(
+                  expert.email,
+                  expert.fullName,
+                  'expert', // Используем роль 'expert' после добавления в enum
+                  '123456', // Пароль по умолчанию
+                  {
+                    sap_number: '', // У экспертов может не быть SAP номера
+                    territory_id: userProfile?.territory_id || null, // Привязываем к территории создателя
+                    position_id: null, // Позиция будет установлена отдельно
+                    work_experience_days: 0
+                  }
+                );
+
+                if (!result.success) {
+                  console.error(`❌ Не удалось обработать эксперта ${expert.fullName}:`, result.message);
+                }
+              } catch (error) {
+                console.error(`❌ Ошибка при обработке эксперта ${expert.fullName}:`, error);
+              }
+            }
+          }
+        }
         
         // Если есть участники, добавляем их
         if (participants.length > 0 && data) {
@@ -2046,33 +2293,33 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent }: C
         className="bg-white rounded-2xl max-w-4xl w-full max-h-[95vh] flex flex-col shadow-2xl pb-safe-bottom"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-8 border-b border-gray-200">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-[#06A478]/5 to-emerald-50">
           <div className="flex items-center gap-4">
-                          <div className="w-16 h-16 rounded-full bg-sns-green flex items-center justify-center text-white">
-                <CalendarDays className="w-8 h-8" />
-              </div>
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-[#06A478] to-emerald-600 flex items-center justify-center text-white shadow-lg">
+              <CalendarDays className="w-6 h-6" />
+            </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">
-              {editingEvent ? 'Редактировать мероприятие' : 'Создать мероприятие'}
-            </h2>
-              <p className="text-base text-gray-500">
+              <h2 className="text-xl font-bold text-gray-900">
+                {editingEvent ? 'Редактировать мероприятие' : 'Создать мероприятие'}
+              </h2>
+              <p className="text-sm text-gray-600">
                 {editingEvent ? 'Внесите изменения в мероприятие' : 'Заполните информацию о новом мероприятии'}
               </p>
             </div>
           </div>
-            <button
-              onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-full w-10 h-10 flex items-center justify-center transition-colors duration-200"
-            >
-            <X size={24} />
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 bg-white hover:bg-gray-50 rounded-xl w-10 h-10 flex items-center justify-center transition-colors duration-200 shadow-sm border border-gray-200"
+          >
+            <X size={20} />
+          </button>
+        </div>
 
-          {/* Прогресс-бар во всю ширину */}
-          <div className="px-8 py-4 border-b border-gray-100">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-700">Прогресс заполнения</span>
-              <span className="text-sm text-gray-500">
+          {/* Прогресс-бар */}
+          <div className="px-6 py-4 border-b border-gray-100">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold text-gray-800">Прогресс заполнения</span>
+              <span className="text-sm font-medium text-[#06A478]">
                 {Math.min(
                   (formData.title ? 20 : 0) + 
                   (formData.description ? 20 : 0) + 
@@ -2083,9 +2330,9 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent }: C
                 )}%
               </span>
             </div>
-            <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden shadow-inner">
+            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
               <motion.div
-                className="h-full bg-gradient-to-r from-emerald-400 via-sns-green to-emerald-600 rounded-full shadow-sm"
+                className="h-full bg-gradient-to-r from-[#06A478] to-emerald-500 rounded-full"
                 initial={{ width: 0 }}
                 animate={{ 
                   width: `${Math.min(
@@ -2105,8 +2352,23 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent }: C
         {/* Content */}
         <div className="flex-grow overflow-y-auto">
           
+          {/* Информационное сообщение для экзаменов кадрового резерва */}
+          {defaultEventType === 'exam' && (
+            <div className="mx-6 mt-4 mb-2 p-4 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border border-blue-200 rounded-xl">
+              <div className="flex items-center">
+                <Target className="w-5 h-5 text-blue-600 mr-3" />
+                <div>
+                  <h3 className="text-base font-semibold text-blue-800">Экзамен кадрового резерва</h3>
+                  <p className="text-sm text-blue-600 mt-1">
+                    Создание комплексной оценки кандидатов в кадровый резерв
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          
           {/* Выбор типа мероприятия для тренеров - только на первом шаге */}
-          {userProfile?.role === 'trainer' && step === 1 && (
+          {userProfile?.role === 'trainer' && step === 1 && !defaultEventType && (
             <div className="mx-6 mt-4 mb-2 p-4 bg-gray-50 border border-gray-200 rounded-xl">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center">
@@ -2132,37 +2394,8 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent }: C
                 )}
               </div>
               
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEventType('online');
-                    // Находим ID для онлайн-тренинга (точно по названию)
-                    const onlineType = eventTypes.find(type => 
-                      type.name === 'online_training' || 
-                      type.name_ru === 'Онлайн-тренинг' ||
-                      type.name === 'in_person_training' && type.is_online === true
-                    );
-                    setFormData({
-                      ...formData,
-                      title: "Технология эффективных продаж",
-                      description: "Онлайн тренинг предназначен для развития у новых ТП навыка продаж.",
-                      event_type_id: onlineType?.id || '',
-                      status: "published",
-                      points: 100,
-                      location: "ZOOM",
-                    });
-                  }}
-                  className={`flex-1 px-4 py-3 border-2 rounded-lg text-center transition-all duration-200 ${
-                    eventType === 'online'
-                      ? 'border-sns-green bg-sns-green/5 text-sns-green shadow-sm'
-                      : 'border-gray-300 bg-white hover:border-sns-green/50 hover:bg-sns-green/5'
-                  }`}
-                >
-                  <div className="font-medium text-sm">Онлайн-тренинг</div>
-                  <div className="text-xs text-gray-500 mt-1">Технология эффективных продаж</div>
-                </button>
-                
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* Очный тренинг - первый */}
                 <button
                   type="button"
                   onClick={() => {
@@ -2182,15 +2415,117 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent }: C
                       points: 100,
                     });
                   }}
-                  className={`flex-1 px-4 py-3 border-2 rounded-lg text-center transition-all duration-200 ${
+                  className={`px-4 py-4 border-2 rounded-xl text-center transition-all duration-200 ${
                     eventType === 'offline'
-                      ? 'border-sns-green bg-sns-green/5 text-sns-green shadow-sm'
-                      : 'border-gray-300 bg-white hover:border-sns-green/50 hover:bg-sns-green/5'
+                      ? 'border-[#06A478] bg-[#06A478]/5 text-[#06A478] shadow-lg'
+                      : 'border-gray-300 bg-white hover:border-[#06A478]/50 hover:bg-[#06A478]/5 hover:shadow-md'
                   }`}
                 >
-                  <div className="font-medium text-sm">Очный тренинг</div>
-                  <div className="text-xs text-gray-500 mt-1">Управление территорией для развития АКБ</div>
+                  <div className="flex items-center justify-center mb-2">
+                    <div className="p-2 bg-[#06A478]/10 rounded-lg mr-3">
+                      <Users className="w-5 h-5 text-[#06A478]" />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-semibold text-base">Очный тренинг</div>
+                      <div className="text-xs text-gray-500">Управление территорией для развития АКБ</div>
+                    </div>
+                  </div>
                 </button>
+                
+                {/* Экзамен кадрового резерва - второй */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    console.log('Кнопка "Экзамен кадрового резерва" нажата!');
+                    setEventType('exam');
+                    // Находим ID для экзамена кадрового резерва
+                    const examType = eventTypes.find(type => 
+                      type.name === 'exam_talent_reserve' || 
+                      type.name_ru === 'Экзамен кадрового резерва'
+                    );
+                    console.log('Найденный тип экзамена:', examType);
+                    setFormData({
+                      ...formData,
+                      title: "Экзамен кадрового резерва",
+                      description: "Комплексная оценка кандидатов в кадровый резерв",
+                      event_type_id: examType?.id || '',
+                      status: "draft",
+                      points: 0,
+                    });
+                    // Сброс данных экзамена
+                    setExamData({
+                      talentCategory: null,
+                      groupName: '',
+                      expertEmails: [],
+                      experts: [],
+                    });
+                    console.log('Установлен eventType: exam, event_type_id:', examType?.id);
+                  }}
+                  className={`px-4 py-4 border-2 rounded-xl text-center transition-all duration-200 ${
+                    eventType === 'exam'
+                      ? 'border-[#06A478] bg-[#06A478]/5 text-[#06A478] shadow-lg'
+                      : 'border-gray-300 bg-white hover:border-[#06A478]/50 hover:bg-[#06A478]/5 hover:shadow-md'
+                  }`}
+                >
+                  <div className="flex items-center justify-center mb-2">
+                    <div className="p-2 bg-[#06A478]/10 rounded-lg mr-3">
+                      <Target className="w-5 h-5 text-[#06A478]" />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-semibold text-base">Экзамен кадрового резерва</div>
+                      <div className="text-xs text-gray-500">Оценка талантов и потенциала</div>
+                    </div>
+                  </div>
+                </button>
+              </div>
+
+              {/* Неактивные типы мероприятий */}
+              <div className="mt-6">
+                <h4 className="text-sm font-medium text-gray-500 mb-3 flex items-center">
+                  <Clock className="w-4 h-4 mr-2" />
+                  Другие типы мероприятий (в разработке)
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  <div className="px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-center opacity-40 cursor-not-allowed select-none relative">
+                    <div className="font-medium text-sm text-gray-400">Онлайн-тренинг</div>
+                    <div className="inline-flex items-center px-2 py-1 rounded-full bg-gray-200 text-gray-600 text-xs mt-1">
+                      в разработке
+                    </div>
+                  </div>
+                  <div className="px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-center opacity-40 cursor-not-allowed select-none relative">
+                    <div className="font-medium text-sm text-gray-400">Вебинар</div>
+                    <div className="inline-flex items-center px-2 py-1 rounded-full bg-gray-200 text-gray-600 text-xs mt-1">
+                      в разработке
+                    </div>
+                  </div>
+                  <div className="px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-center opacity-40 cursor-not-allowed select-none relative">
+                    <div className="font-medium text-sm text-gray-400">Конференция</div>
+                    <div className="inline-flex items-center px-2 py-1 rounded-full bg-gray-200 text-gray-600 text-xs mt-1">
+                      в разработке
+                    </div>
+                  </div>
+                  <div className="px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-center opacity-40 cursor-not-allowed select-none relative">
+                    <div className="font-medium text-sm text-gray-400">Практикум</div>
+                    <div className="inline-flex items-center px-2 py-1 rounded-full bg-gray-200 text-gray-600 text-xs mt-1">
+                      в разработке
+                    </div>
+                  </div>
+                  <div className="px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-center opacity-40 cursor-not-allowed select-none relative">
+                    <div className="font-medium text-sm text-gray-400">Деловая игра</div>
+                    <div className="inline-flex items-center px-2 py-1 rounded-full bg-gray-200 text-gray-600 text-xs mt-1">
+                      в разработке
+                    </div>
+                  </div>
+                  <div className="px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-center opacity-40 cursor-not-allowed select-none relative">
+                    <div className="font-medium text-sm text-gray-400">Семинар</div>
+                    <div className="inline-flex items-center px-2 py-1 rounded-full bg-gray-200 text-gray-600 text-xs mt-1">
+                      в разработке
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400 mt-2 text-center">
+                  Эти типы мероприятий будут доступны в следующих версиях
+                </p>
               </div>
             </div>
           )}
@@ -2198,89 +2533,212 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent }: C
           <form onSubmit={step === 1 ? nextStep : handleSubmit} className="px-6 pt-2 pb-6 space-y-6">
           {step === 1 && (
             <div className="space-y-4">
-              {/* Тип мероприятия - скрыт для тренеров */}
-              {userProfile?.role !== 'trainer' && (
+              {/* Тип мероприятия - скрыт для тренеров и когда defaultEventType установлен */}
+              {userProfile?.role !== 'trainer' && !defaultEventType && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Тип мероприятия *
                 </label>
                 <select
                   value={formData.event_type_id || ''}
-                  onChange={(e) => handleChange('event_type_id', e.target.value)}
+                  onChange={(e) => {
+                    const selectedTypeId = e.target.value;
+                    const selectedType = eventTypes.find(type => type.id === selectedTypeId);
+                    console.log('Выбран тип мероприятия:', selectedType);
+                    
+                    // Проверяем, является ли выбранный тип экзаменом кадрового резерва
+                    if (selectedType && (selectedType.name === 'exam_talent_reserve' || selectedType.name_ru === 'Экзамен кадрового резерва')) {
+                      console.log('Выбран экзамен кадрового резерва, устанавливаем eventType: exam');
+                      setEventType('exam');
+                      setFormData({
+                        ...formData,
+                        event_type_id: selectedTypeId,
+                        title: "Экзамен кадрового резерва",
+                        description: "Комплексная оценка кандидатов в кадровый резерв",
+                        status: "draft",
+                        points: 0,
+                      });
+                      // Сброс данных экзамена
+                      setExamData({
+                        talentCategory: null,
+                        groupName: '',
+                        expertEmails: [],
+                        experts: [],
+                      });
+                    } else {
+                      // Сброс eventType для других типов мероприятий
+                      setEventType(null);
+                      handleChange('event_type_id', selectedTypeId);
+                    }
+                  }}
                   className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-sns-500 focus:border-transparent ${
                     errors.event_type_id ? 'border-red-300' : 'border-gray-300'
                   }`}
                 >
                   <option value="">Выберите тип мероприятия</option>
-                  {eventTypes.map((type) => (
-                    <option key={type.id} value={type.id}>
-                      {type.name_ru || type.name}
-                    </option>
-                  ))}
+                  {/* Активные типы мероприятий */}
+                  <option value={eventTypes.find(type => type.name === 'offline_training' || type.name_ru === 'Очный тренинг')?.id || ''}>
+                    Очный тренинг
+                  </option>
+                  <option value={eventTypes.find(type => type.name === 'exam_talent_reserve' || type.name_ru === 'Экзамен кадрового резерва')?.id || ''}>
+                    Экзамен кадрового резерва
+                  </option>
+                  {/* Разделитель */}
+                  <option disabled>──────────────</option>
+                  {/* Неактивные типы мероприятий */}
+                  {eventTypes
+                    .filter(type => 
+                      type.name !== 'offline_training' && 
+                      type.name !== 'exam_talent_reserve' &&
+                      type.name_ru !== 'Очный тренинг' &&
+                      type.name_ru !== 'Экзамен кадрового резерва'
+                    )
+                    .map((type) => (
+                      <option key={type.id} value="" disabled style={{ color: '#9CA3AF' }}>
+                        {type.name_ru || type.name} • в разработке
+                      </option>
+                    ))}
                 </select>
                 {errors.event_type_id && <p className="mt-1 text-sm text-red-600">{errors.event_type_id}</p>}
               </div>
               )}
             
               {/* Название и описание в одной строке */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Название */}
                 <div className="flex flex-col">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                    <Star className="w-4 h-4 text-[#06A478] mr-2" />
                     Название мероприятия *
                   </label>
-                  <div className="flex-1 min-h-[80px] flex flex-col">
-                    <input
-                      type="text"
-                      value={formData.title}
-                      onChange={(e) => handleChange('title', e.target.value)}
-                      disabled={userProfile?.role === 'trainer' && eventType !== null}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-sns-500 focus:border-transparent flex-1 ${
-                        errors.title ? 'border-red-300' : 'border-gray-300'
-                      } ${
-                        userProfile?.role === 'trainer' && eventType !== null 
-                          ? 'bg-gray-100 text-gray-600 cursor-not-allowed' 
-                          : ''
-                      }`}
-                      placeholder={userProfile?.role === 'trainer' && eventType !== null 
-                        ? "Название автоматически установлено" 
-                        : "Введите название мероприятия"
-                      }
-                      required
-                    />
-                    {errors.title && <p className="mt-1 text-sm text-red-600">{errors.title}</p>}
+                  <div className="flex-1 min-h-[100px] flex flex-col">
+                    <div className="relative group">
+                      <input
+                        type="text"
+                        value={formData.title}
+                        onChange={(e) => handleChange('title', e.target.value)}
+                        disabled={userProfile?.role === 'trainer' && eventType !== null || eventType === 'exam'}
+                        className={`w-full px-4 py-4 border-2 rounded-xl focus:ring-4 focus:ring-[#06A478]/20 focus:border-[#06A478] transition-all duration-200 flex-1 text-gray-800 font-medium ${
+                          errors.title ? 'border-red-400 bg-red-50' : 'border-gray-200 hover:border-gray-300'
+                        } ${
+                          (userProfile?.role === 'trainer' && eventType !== null) || eventType === 'exam'
+                            ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-gray-700 cursor-not-allowed border-blue-200' 
+                            : 'bg-white shadow-sm hover:shadow-md'
+                        }`}
+                        placeholder={(userProfile?.role === 'trainer' && eventType !== null) || eventType === 'exam'
+                          ? "Название автоматически установлено" 
+                          : "Введите название мероприятия"
+                        }
+                        required
+                      />
+                      {(userProfile?.role === 'trainer' && eventType !== null) || eventType === 'exam' ? (
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                          <Check className="w-5 h-5 text-[#06A478]" />
+                        </div>
+                      ) : null}
+                    </div>
+                    {errors.title && (
+                      <p className="mt-2 text-sm text-red-600 flex items-center">
+                        <AlertOctagon className="w-4 h-4 mr-1" />
+                        {errors.title}
+                      </p>
+                    )}
                   </div>
                 </div>
 
                 {/* Описание */}
                 <div className="flex flex-col">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                    <FileSpreadsheet className="w-4 h-4 text-[#06A478] mr-2" />
                     Описание
                   </label>
-                  <div className="flex-1 min-h-[80px] flex flex-col">
-                    <textarea
-                      value={formData.description}
-                      onChange={(e) => handleChange('description', e.target.value)}
-                      disabled={userProfile?.role === 'trainer' && eventType !== null}
-                      rows={2}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-sns-500 focus:border-transparent flex-1 resize-none ${
-                        userProfile?.role === 'trainer' && eventType !== null 
-                          ? 'bg-gray-100 text-gray-600 cursor-not-allowed' 
-                          : 'border-gray-300'
-                      }`}
-                      placeholder={userProfile?.role === 'trainer' && eventType !== null 
-                        ? "Описание автоматически установлено" 
-                        : "Опишите цели и содержание мероприятия"
-                      }
-                    />
+                  <div className="flex-1 min-h-[100px] flex flex-col">
+                    <div className="relative group">
+                      <textarea
+                        value={formData.description}
+                        onChange={(e) => handleChange('description', e.target.value)}
+                        disabled={userProfile?.role === 'trainer' && eventType !== null || eventType === 'exam'}
+                        rows={3}
+                        className={`w-full px-4 py-4 border-2 rounded-xl focus:ring-4 focus:ring-[#06A478]/20 focus:border-[#06A478] transition-all duration-200 flex-1 resize-none text-gray-700 leading-relaxed ${
+                          (userProfile?.role === 'trainer' && eventType !== null) || eventType === 'exam'
+                            ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-gray-600 cursor-not-allowed border-blue-200' 
+                            : 'bg-white shadow-sm hover:shadow-md border-gray-200 hover:border-gray-300'
+                        }`}
+                        placeholder={(userProfile?.role === 'trainer' && eventType !== null) || eventType === 'exam'
+                          ? "Описание автоматически установлено" 
+                          : "Опишите цели и содержание мероприятия"
+                        }
+                      />
+                      {(userProfile?.role === 'trainer' && eventType !== null) || eventType === 'exam' ? (
+                        <div className="absolute right-3 top-3">
+                          <Check className="w-5 h-5 text-[#06A478]" />
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               </div>
               
               {/* Информационные сообщения для тренеров */}
-              {userProfile?.role === 'trainer' && eventType !== null && (
-                <div className="text-xs text-gray-500 bg-gray-50 px-3 py-2 rounded-lg">
-                  Название и описание автоматически установлены при выборе типа мероприятия
+              {userProfile?.role === 'trainer' && eventType !== null && eventType !== 'exam' && (
+                <div className="flex items-center p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl">
+                  <Check className="w-5 h-5 text-green-600 mr-3 flex-shrink-0" />
+                  <p className="text-sm text-green-700 font-medium">
+                    Название и описание автоматически установлены при выборе типа мероприятия
+                  </p>
+                </div>
+              )}
+
+              {/* Информационное сообщение для экзамена */}
+              {eventType === 'exam' && (
+                <div className="flex items-center p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
+                  <Sparkles className="w-5 h-5 text-blue-600 mr-3 flex-shrink-0" />
+                  <p className="text-sm text-blue-700 font-medium">
+                    Название и описание автоматически генерируются на основе выбранной категории талантов и группы
+                  </p>
+                </div>
+              )}
+
+              {/* Форма экзамена кадрового резерва */}
+              {eventType === 'exam' && (
+                <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-200 rounded-2xl p-6 shadow-lg">
+                  <div className="flex items-center mb-6">
+                    <div className="p-3 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl mr-4">
+                      <Target className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-800 mb-1">
+                        Настройки экзамена кадрового резерва
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Выберите категорию талантов и настройте параметры экзамена
+                      </p>
+                    </div>
+                  </div>
+                  {console.log('CreateEventModal: Отображается форма экзамена, eventType:', eventType)}
+                  <ExamTypeSelector
+                    onCategorySelect={(category) => setExamData(prev => ({ ...prev, talentCategory: category }))}
+                    onGroupNameChange={(groupName) => setExamData(prev => ({ ...prev, groupName }))}
+                    onExpertEmailsChange={(emails) => setExamData(prev => ({ ...prev, expertEmails: emails }))}
+                    onExpertsChange={(experts) => setExamData(prev => ({ ...prev, experts }))}
+                    onTitleUpdate={(title) => setFormData(prev => ({ ...prev, title }))}
+                    onDescriptionUpdate={(description) => setFormData(prev => ({ ...prev, description }))}
+                    selectedCategory={examData.talentCategory}
+                    groupName={examData.groupName}
+                    expertEmails={examData.expertEmails}
+                    experts={examData.experts}
+                  />
+                  
+                  {/* Отображение ошибок валидации для экзамена */}
+                  {errors.talentCategory && (
+                    <p className="mt-2 text-sm text-red-600">{errors.talentCategory}</p>
+                  )}
+                  {errors.groupName && (
+                    <p className="mt-2 text-sm text-red-600">{errors.groupName}</p>
+                  )}
+                  {errors.expertEmails && (
+                    <p className="mt-2 text-sm text-red-600">{errors.expertEmails}</p>
+                  )}
                 </div>
               )}
 
@@ -2587,21 +3045,40 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent }: C
                 )}
               </div>
               
+              {/* Отображение ошибок валидации */}
+              {Object.keys(errors).length > 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <h4 className="text-sm font-medium text-red-800 mb-2">Ошибки валидации:</h4>
+                  <ul className="text-sm text-red-600 space-y-1">
+                    {Object.entries(errors).map(([key, message]) => (
+                      <li key={key}>• {message}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {/* Кнопка для перехода к следующему шагу */}
               <div className="flex justify-end items-center pt-6 border-t border-gray-200">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-6 py-2.5 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors mr-3 font-medium"
+                  className="px-6 py-3 text-gray-600 border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-200 mr-3 font-medium"
                 >
                   Отмена
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-sns-600 text-white rounded-lg hover:bg-sns-700 transition-colors font-medium flex items-center space-x-2"
+                  onClick={(e) => {
+                    console.log('Кнопка "Далее: Участники" нажата');
+                    console.log('Текущий step:', step);
+                    console.log('formData:', formData);
+                    console.log('eventType:', eventType);
+                    console.log('examData:', examData);
+                  }}
+                  className="px-6 py-3 bg-[#06A478] text-white rounded-xl hover:bg-[#05976b] transition-all duration-200 font-medium flex items-center gap-2 shadow-lg"
                 >
                   <span>Далее: Участники</span>
-                  <ArrowRight size={16} />
+                  <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -3027,23 +3504,24 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent }: C
                 <button
                   type="button"
                   onClick={prevStep}
-                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-300 font-medium"
+                  className="px-6 py-3 text-gray-600 border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-200 font-medium flex items-center gap-2"
                 >
-                  ← Назад
+                  <ChevronLeft className="w-4 h-4" />
+                  Назад
                 </button>
                 
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center gap-3">
                   <button
                     type="button"
                     onClick={onClose}
-                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-300 font-medium"
+                    className="px-6 py-3 text-gray-600 border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-200 font-medium"
                   >
                     Отмена
                   </button>
                   <button
                     type="submit"
                     disabled={loading}
-                    className="px-4 py-2 bg-sns-600 text-white rounded-xl hover:bg-sns-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 font-medium"
+                    className="px-6 py-3 bg-[#06A478] text-white rounded-xl hover:bg-[#05976b] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium shadow-lg"
                   >
                     {loading ? (
                       <>
@@ -3052,7 +3530,7 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent }: C
                       </>
                     ) : (
                       <>
-                        <Save size={16} />
+                        <Save className="w-4 h-4" />
                         <span>{editingEvent ? 'Сохранить' : 'Создать'}</span>
                       </>
                     )}
@@ -3073,15 +3551,15 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent }: C
       </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-gray-200 bg-white/50">
+        <div className="p-4 border-t border-gray-200 bg-gray-50/50">
           <div className="flex justify-between items-center">
-            <div className="text-xs text-gray-500 space-y-1">
+            <div className="text-xs text-gray-600 space-y-1">
               <p><strong>Создатель:</strong> {userProfile?.full_name || user?.email}</p>
               <p><strong>Дата создания:</strong> {new Date().toLocaleDateString('ru')}</p>
               {editingEvent && (
                 <p><strong>ID события:</strong> {editingEvent.id}</p>
               )}
-      </div>
+            </div>
           </div>
         </div>
       </motion.div>

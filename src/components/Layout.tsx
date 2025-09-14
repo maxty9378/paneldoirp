@@ -72,6 +72,7 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
       case 'representatives': navigate('/representatives'); break;
       case 'supervisors': navigate('/supervisors'); break;
       case 'expert-events': navigate('/expert-events'); break;
+      case 'exam-management': navigate('/exam-reserve'); break;
       case 'analytics': navigate('/analytics'); break;
       case 'tasks': navigate('/tasks'); break;
       case 'testing': navigate('/testing'); break;
@@ -95,6 +96,7 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
       case 'representatives': return 'Торговые представители';
       case 'supervisors': return 'Супервайзеры';
       case 'expert-events': return 'Экспертные мероприятия';
+      case 'exam-management': return 'Экзамен кадрового резерва';
       case 'analytics': return 'Аналитика';
       case 'tasks': return 'Горящие задачи';
       case 'admin': return 'Администрирование';

@@ -1,74 +1,173 @@
-import React from 'react';
-import { Calendar, Users, BookOpen, TrendingUp, Award, Shield, MapPin, Link as LinkIcon } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Calendar, Users, BookOpen, TrendingUp, Award, Shield, MapPin, Link as LinkIcon, Video, CalendarDays, Users2, CheckCircle2, Info, Play, Pause, Loader2, XCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { getDeclension, formatExperienceWithDeclension } from '../utils/textUtils';
+import { getDeclension } from '../utils/textUtils';
 import { Event, USER_ROLE_LABELS } from '../types';
+import { supabase } from '../lib/supabase';
+// import { AchievementSection } from './achievements';
 
-// Мок-данные мероприятий
-const mockUpcomingEvents: Event[] = [
-  {
-    id: '1',
-    title: 'Продажи в розничной торговле - базовый курс',
-    type: 'online_training',
-    description: 'Комплексное обучение основам продаж для новых сотрудников',
-    date_time: '2024-12-20T10:00:00Z',
-    location: 'Онлайн',
-    link: 'https://zoom.us/j/123456789',
-    points: 50,
-    status: 'active',
-    creator_id: 'user1',
-    created_at: '2024-12-15T09:00:00Z',
-    updated_at: '2024-12-15T09:00:00Z'
-  },
-  {
-    id: '2',
-    title: 'Работа с возражениями клиентов',
-    type: 'in_person_training',
-    description: 'Практический тренинг по технике работы с возражениями',
-    date_time: '2024-12-22T14:00:00Z',
-    location: 'Конференц-зал, офис Москва',
-    points: 75,
-    status: 'active',
-    creator_id: 'user1',
-    created_at: '2024-12-15T09:00:00Z',
-    updated_at: '2024-12-15T09:00:00Z'
-  }
-];
+// Интерфейс для мероприятия с дополнительной информацией
+interface EventWithDetails extends Event {
+  event_type?: {
+    id: string;
+    name: string;
+    name_ru: string;
+  };
+  participants_count?: number;
+}
 
-// Карточка мероприятия
-function EventCard({ event }: { event: Event }) {
-  const date = new Date(event.date_time);
+// Карточка мероприятия (как в EventsView)
+function EventCard({ event }: { event: EventWithDetails }) {
+  // Парсинг даты
+  const parseDate = (event: EventWithDetails) => {
+    const base = event.start_date || event.date_time || event.created_at || '';
+    const d = new Date(base);
+    return isNaN(d.getTime()) ? null : d;
+  };
+  
+  const d = parseDate(event);
+  
+  // Статус мероприятия
+  const STATUS_MAP = {
+    draft: { label: '', tone: 'text-white bg-slate-500', ring: 'ring-slate-500', dot: 'bg-slate-500', Icon: Pause },
+    published: { label: '', tone: 'text-white bg-emerald-500', ring: 'ring-emerald-500', dot: 'bg-emerald-500', Icon: Play },
+    active: { label: 'Активно', tone: 'text-emerald-700 bg-emerald-50', ring: 'ring-emerald-200', dot: 'bg-emerald-500', Icon: () => <div className="h-3.5 w-3.5 rounded bg-emerald-500" /> },
+    ongoing: { label: 'Идёт', tone: 'text-indigo-700 bg-indigo-50', ring: 'ring-indigo-200', dot: 'bg-indigo-500', Icon: Loader2 },
+    completed: { label: '', tone: 'text-white bg-blue-500', ring: 'ring-blue-500', dot: 'bg-blue-500', Icon: CheckCircle2 },
+    cancelled: { label: '', tone: 'text-white bg-rose-500', ring: 'ring-rose-500', dot: 'bg-rose-500', Icon: XCircle },
+  };
+  
+  const status = STATUS_MAP[event.status as keyof typeof STATUS_MAP] || STATUS_MAP.draft;
+  const { label, tone: statusTone, ring, Icon: StatusIcon } = status;
+  
+  // Тип мероприятия
+  const TYPE_LABELS = {
+    training: { label: 'Онлайн тренинг', icon: Video },
+    webinar: { label: 'Вебинар', icon: CalendarDays },
+    workshop: { label: 'Мастер-класс', icon: Users2 },
+    exam: { label: 'Экзамен', icon: CheckCircle2 },
+    other: { label: 'Другое', icon: Info },
+  };
+  
+  const typeInfo = event.type
+    ? TYPE_LABELS[event.type as keyof typeof TYPE_LABELS] || { label: event.event_type?.name_ru || 'Мероприятие', icon: Info }
+    : { label: event.event_type?.name_ru || 'Мероприятие', icon: Info };
+  
+  const TypeIcon = typeInfo.icon;
+  
+  // Цветовые классы для типа
+  const getTypeChipClasses = (type: string) => {
+    const typeColors = {
+      training: 'bg-blue-500 text-white ring-blue-500',
+      webinar: 'bg-blue-100 text-blue-700 ring-blue-200',
+      workshop: 'bg-purple-100 text-purple-700 ring-purple-200',
+      exam: 'bg-rose-100 text-rose-700 ring-rose-200',
+      other: 'bg-amber-100 text-amber-700 ring-amber-200',
+    };
+    return typeColors[type as keyof typeof typeColors] || 'bg-slate-100 text-slate-700 ring-slate-200';
+  };
+  
+  // Акцент даты
+  const DateAccent = ({ date }: { date: Date | null }) => {
+    if (!date) {
+      return (
+        <div className="rounded-xl bg-slate-50 px-4 py-3 text-center ring-1 ring-slate-200">
+          <div className="text-[11px] text-slate-500">Дата</div>
+          <div className="text-sm font-semibold text-slate-700">Не указана</div>
+        </div>
+      );
+    }
+
+    const day = date.toLocaleDateString('ru-RU', { day: '2-digit' });
+    const month = date.toLocaleDateString('ru-RU', { month: 'long' });
+    const time = new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit' }).format(date);
+    
+    // Исправляем окончания месяцев
+    const monthWithCorrectEnding = month.endsWith('ь') ? month.slice(0, -1) + 'я' : month;
+
+    return (
+      <div className="rounded-2xl ring-1 px-4 py-3 bg-gradient-to-br from-emerald-50 to-emerald-100 ring-emerald-200 shadow-sm text-center relative">
+        <div className="flex items-end justify-center gap-1 leading-none">
+          <span className="text-3xl md:text-4xl font-extrabold text-slate-900">{day}</span>
+        </div>
+        <div className="mt-1 text-[14px] font-medium text-slate-500">{monthWithCorrectEnding}</div>
+        <div className="mt-2 text-[12px] font-semibold text-slate-900">
+          {time}
+        </div>
+      </div>
+    );
+  };
+  
   return (
-    <div className="bg-white rounded-2xl shadow-md p-4 flex flex-col gap-2 transition hover:shadow-lg">
-      <div className="flex items-center justify-between">
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-sns-100 text-sns-600">
-          {event.type === 'online_training' ? 'Онлайн' : 'Очно'}
-        </span>
-        <span className="flex items-center gap-1 text-xs text-gray-500">
-          <Calendar size={14} /> {date.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-        </span>
-      </div>
-      <h3 className="text-lg font-semibold text-gray-900">{event.title}</h3>
-      <p className="text-gray-600 text-sm line-clamp-2">{event.description}</p>
-      <div className="flex items-center gap-3 mt-2 flex-wrap">
-        <span className="flex items-center gap-1 text-xs text-gray-500">
-          <MapPin size={14} /> {event.location}
-        </span>
-        {event.link && (
-          <a
-            href={event.link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 text-xs text-sns-500 hover:underline"
-          >
-            <LinkIcon size={14} /> Ссылка
-          </a>
+    <article
+      className="group relative overflow-hidden rounded-2xl bg-white border border-white/60 p-4 shadow-[0_1px_2px_rgba(2,8,23,0.06)] hover:shadow-[0_10px_30px_rgba(2,8,23,0.08)] transition-all flex flex-col h-full"
+    >
+      {/* Верх: дата-время + статус/тип */}
+      <header className="mb-3 flex items-start justify-between gap-3 flex-shrink-0">
+        <div className="flex flex-col gap-2 min-w-0">
+          <div className="flex flex-col gap-2">
+            {/* Статус */}
+            <div className="flex flex-wrap items-center gap-2">
+              {(() => {
+                const isIconOnly = !label;
+                const badgeClass = `inline-flex items-center gap-1 text-[10px] font-semibold ring-1 shadow-sm ${
+                  isIconOnly ? 'h-7 w-7 justify-center rounded-lg p-0' : 'rounded-full px-2 py-0.5'
+                } ${statusTone} ${ring}`;
+                const iconSize = isIconOnly ? 'h-4 w-4' : 'h-3.5 w-3.5';
+
+                return (
+                  <span className={badgeClass}>
+                    <StatusIcon className={`${iconSize} ${event.status === 'ongoing' && 'animate-spin'}`} />
+                    {!isIconOnly && <span>{label}</span>}
+                  </span>
+                );
+              })()}
+            </div>
+            
+            {/* Тип мероприятия */}
+            <div className="flex items-center gap-2">
+              <span className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1 text-[11px] font-semibold ring-1 shadow-sm ${getTypeChipClasses(event.type || 'other')}`}>
+                <TypeIcon className="h-3.5 w-3.5" />
+                {typeInfo.label}
+              </span>
+            </div>
+          </div>
+
+          {/* Название */}
+          <h3 className="line-clamp-2 text-lg font-bold leading-tight text-slate-900">
+            {event.title}
+          </h3>
+        </div>
+
+        {/* Правый – акцент на дате/времени */}
+        <div className="shrink-0 w-[112px]">
+          <DateAccent date={d} />
+        </div>
+      </header>
+
+      {/* Описание */}
+      <div className="flex-1">
+        {event.description && (
+          <div className="mb-4 rounded-xl bg-slate-50/70 p-3 ring-1 ring-slate-200">
+            <p className="line-clamp-3 text-sm leading-relaxed text-slate-700">
+              {event.description}
+            </p>
+          </div>
         )}
-        <span className="flex items-center gap-1 text-xs text-yellow-600 ml-auto">
-          <Award size={14} /> {event.points} баллов
-        </span>
       </div>
-    </div>
+      
+      {/* Низ: действия */}
+      <footer className="mt-auto flex-shrink-0">
+        <button 
+          onClick={() => window.location.href = `/event/${event.id}`}
+          className="w-full justify-center relative overflow-hidden bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-600 hover:via-teal-600 hover:to-emerald-700 text-white font-medium py-2.5 px-4 rounded-lg transition-all duration-300 shadow-sm hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+          title="Открыть"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-[shimmer_3s_ease-in-out_infinite]"></div>
+          <span className="text-sm font-medium relative z-10">Открыть</span>
+        </button>
+      </footer>
+    </article>
   );
 }
 
@@ -102,6 +201,15 @@ function StatsCard({
 
 export function DashboardView() {
   const { user, userProfile, loading } = useAuth();
+  const [upcomingEvents, setUpcomingEvents] = useState<EventWithDetails[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
+  const [eventsError, setEventsError] = useState<string | null>(null);
+  const [stats, setStats] = useState({
+    activeEvents: 0,
+    totalParticipants: 0,
+    completedCourses: 0,
+    averageRating: 0
+  });
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -125,6 +233,142 @@ export function DashboardView() {
     ];
     return messages[Math.floor(Math.random() * messages.length)];
   };
+
+  // Загрузка мероприятий пользователя
+  const fetchUserEvents = async () => {
+    if (!user?.id) return;
+    
+    try {
+      setEventsLoading(true);
+      setEventsError(null);
+
+      const isAdmin = userProfile?.role && ['administrator', 'moderator', 'trainer'].includes(userProfile.role);
+      
+      // Сначала проверим, есть ли вообще мероприятия в базе
+      const { data: allEvents, error: allEventsError } = await supabase
+        .from('events')
+        .select('id, title, status, start_date')
+        .limit(5);
+      
+      console.log('All events check - data:', allEvents, 'error:', allEventsError);
+      
+      let query;
+      
+      if (isAdmin) {
+        // Администраторы видят все мероприятия (как в EventsView)
+        query = supabase
+          .from('events')
+          .select(`
+            *,
+            event_type:event_types(id, name, name_ru),
+            event_participants(id)
+          `)
+          .order('start_date', { ascending: false })
+          .limit(6);
+      } else {
+        // Обычные пользователи видят только свои мероприятия
+        query = supabase
+          .from('events')
+          .select(`
+            *,
+            event_type:event_types(id, name, name_ru),
+            event_participants!inner(user_id)
+          `)
+          .eq('status', 'active')
+          .gte('start_date', new Date().toISOString())
+          .eq('event_participants.user_id', user.id)
+          .order('start_date', { ascending: true })
+          .limit(6);
+      }
+
+      const { data, error } = await query;
+
+      console.log('Dashboard fetchEvents - isAdmin:', isAdmin, 'user:', user?.id, 'userProfile:', userProfile?.role);
+      console.log('Dashboard fetchEvents - data length:', data?.length, 'data:', data, 'error:', error);
+      
+      if (data && data.length > 0) {
+        console.log('First event sample:', data[0]);
+      }
+
+      if (error) {
+        console.error('Error fetching events:', error);
+        setEventsError('Ошибка загрузки мероприятий');
+        return;
+      }
+
+      if (data) {
+        // Для inner join нужно получить уникальные события
+        const uniqueEvents = data.reduce((acc, event) => {
+          if (!acc.find(e => e.id === event.id)) {
+            acc.push(event);
+          }
+          return acc;
+        }, [] as any[]);
+
+        const eventsWithDetails = uniqueEvents.map(event => ({
+          ...event,
+          participants_count: 0 // Пока не показываем количество участников для простоты
+        }));
+        setUpcomingEvents(eventsWithDetails);
+      }
+    } catch (error) {
+      console.error('Error fetching events:', error);
+      setEventsError('Ошибка загрузки мероприятий');
+    } finally {
+      setEventsLoading(false);
+    }
+  };
+
+  // Загрузка статистики
+  const fetchStats = async () => {
+    if (!user?.id) return;
+
+    try {
+      const isAdmin = userProfile?.role && ['administrator', 'moderator', 'trainer'].includes(userProfile.role);
+      
+      if (isAdmin) {
+        // Для администраторов - общая статистика
+        const { data: eventsData } = await supabase
+          .from('events')
+          .select('id, status')
+          .eq('status', 'active');
+
+        const { data: participantsData } = await supabase
+          .from('event_participants')
+          .select('id');
+
+        setStats({
+          activeEvents: eventsData?.length || 0,
+          totalParticipants: participantsData?.length || 0,
+          completedCourses: 0, // TODO: реализовать подсчет завершенных курсов
+          averageRating: 4.8 // TODO: реализовать подсчет средней оценки
+        });
+      } else {
+        // Для обычных пользователей - их статистика
+        const { data: userEventsData } = await supabase
+          .from('events')
+          .select('id, status')
+          .eq('status', 'active')
+          .eq('event_participants.user_id', user.id);
+
+        setStats({
+          activeEvents: userEventsData?.length || 0,
+          totalParticipants: 0, // Не показываем общее количество участников для обычных пользователей
+          completedCourses: 0, // TODO: реализовать подсчет завершенных курсов пользователя
+          averageRating: 0 // Не показываем среднюю оценку для обычных пользователей
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (user && userProfile) {
+      fetchUserEvents();
+      fetchStats();
+    }
+  }, [user, userProfile]);
 
   if (loading) {
     return (
@@ -158,10 +402,6 @@ export function DashboardView() {
           </div>
           <div className="flex flex-wrap gap-4 mt-2 sm:mt-0">
             <div className="flex items-center space-x-2">
-              <Award size={20} />
-              <span className="font-semibold">1,247 баллов</span>
-            </div>
-            <div className="flex items-center space-x-2">
               <Calendar size={20} />
               <span>
                 {new Date().toLocaleDateString('ru-RU', {
@@ -171,12 +411,6 @@ export function DashboardView() {
                 })}
               </span>
             </div>
-            {user?.work_experience_days && user.work_experience_days > 0 && (
-              <div className="flex items-center space-x-2">
-                <Users size={20} />
-                <span>{formatExperienceWithDeclension(user.work_experience_days)}</span>
-              </div>
-            )}
           </div>
         </div>
         {/* Декоративный круг для красоты */}
@@ -187,33 +421,32 @@ export function DashboardView() {
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6">
         <StatsCard
           title="Активные мероприятия"
-          value={8}
-          change="+2 за неделю"
-          changeType="positive"
+          value={stats.activeEvents}
           icon={<BookOpen size={22} />}
         />
-        <StatsCard
-          title="Участники"
-          value={142}
-          change="+12 за месяц"
-          changeType="positive"
-          icon={<Users size={22} />}
-        />
+        {userProfile?.role && ['administrator', 'moderator', 'trainer'].includes(userProfile.role) && (
+          <StatsCard
+            title="Участники"
+            value={stats.totalParticipants}
+            icon={<Users size={22} />}
+          />
+        )}
         <StatsCard
           title="Завершенные курсы"
-          value={24}
-          change="+6 за месяц"
-          changeType="positive"
+          value={stats.completedCourses}
           icon={<Award size={22} />}
         />
-        <StatsCard
-          title="Средняя оценка"
-          value="4.8"
-          change="+0.2 за месяц"
-          changeType="positive"
-          icon={<TrendingUp size={22} />}
-        />
+        {userProfile?.role && ['administrator', 'moderator', 'trainer'].includes(userProfile.role) && (
+          <StatsCard
+            title="Средняя оценка"
+            value={stats.averageRating > 0 ? stats.averageRating.toFixed(1) : '—'}
+            icon={<TrendingUp size={22} />}
+          />
+        )}
       </section>
+
+      {/* Achievements Section - временно отключено */}
+      {/* <AchievementSection /> */}
 
       {/* Upcoming Events as Cards */}
       <section>
@@ -225,11 +458,37 @@ export function DashboardView() {
             Смотреть все
           </button>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {mockUpcomingEvents.map((event) => (
-            <EventCard key={event.id} event={event} />
-          ))}
-        </div>
+        
+        {eventsLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="flex flex-col items-center">
+              <div className="w-8 h-8 border-4 border-sns-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+              <p className="text-gray-600">Загрузка мероприятий...</p>
+            </div>
+          </div>
+        ) : eventsError ? (
+          <div className="text-center py-8">
+            <p className="text-red-600 mb-4">{eventsError}</p>
+            <button 
+              onClick={fetchUserEvents}
+              className="text-sns-500 hover:text-sns-600 transition-colors text-sm font-medium"
+            >
+              Попробовать снова
+            </button>
+          </div>
+        ) : upcomingEvents.length === 0 ? (
+          <div className="text-center py-8">
+            <BookOpen size={48} className="mx-auto text-gray-400 mb-4" />
+            <p className="text-gray-600 mb-2">У вас пока нет предстоящих мероприятий</p>
+            <p className="text-sm text-gray-500">Обратитесь к администратору для записи на мероприятия</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {upcomingEvents.map((event) => (
+              <EventCard key={event.id} event={event} />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Bottom Navigation для мобильных */}

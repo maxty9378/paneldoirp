@@ -20,6 +20,70 @@ interface PasswordResetResult {
   password?: string;
 }
 
+interface UserSearchResult {
+  success: boolean;
+  user?: any;
+  message?: string;
+}
+
+/**
+ * Ищет пользователя по email
+ */
+export async function findUserByEmail(email: string): Promise<UserSearchResult> {
+  try {
+    
+    // Используем RPC функцию для поиска пользователя, чтобы обойти RLS
+    const { data, error } = await supabase.rpc('find_user_by_email', {
+      p_email: email
+    });
+    
+    if (error) {
+      
+      // Fallback - прямой запрос (может не работать из-за RLS)
+      const { data: directData, error: directError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .single();
+      
+      if (directError) {
+        if (directError.code === 'PGRST116') {
+          return {
+            success: false,
+            message: 'Пользователь не найден'
+          };
+        }
+        throw directError;
+      }
+      
+      return {
+        success: true,
+        user: directData,
+        message: 'Пользователь найден'
+      };
+    }
+    
+    if (data && data.length > 0) {
+      return {
+        success: true,
+        user: data[0],
+        message: 'Пользователь найден'
+      };
+    } else {
+      return {
+        success: false,
+        message: 'Пользователь не найден'
+      };
+    }
+  } catch (error) {
+    console.error('❌ Ошибка поиска пользователя:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Ошибка поиска пользователя'
+    };
+  }
+}
+
 /**
  * Создает нового пользователя без автоматической авторизации
  * 
@@ -41,7 +105,6 @@ export async function createRegularUser(
   } = {}
 ): Promise<UserCreationResult> {
   try {
-    console.log(`📝 Создание пользователя через Edge Function: ${email}, роль: ${role}`);
     
     // Ensure sap_number is null if it's empty string to avoid unique constraint issues
     const sanitizedSapNumber = additionalData.sap_number && additionalData.sap_number.trim() !== '' 
@@ -72,13 +135,25 @@ export async function createRegularUser(
     
     if (!response.ok) {
       const errorData = await response.json();
-      console.error("❌ Edge Function ошибка:", errorData);
+      // Обработка ошибки уже существующего пользователя
+      if (errorData.error && (
+        errorData.error.includes('already registered') || 
+        errorData.error.includes('already exists') ||
+        errorData.error.includes('A user with this email address has already been registered')
+      )) {
+        return {
+          success: true,
+          message: 'Пользователь с таким email уже существует',
+          email,
+          password: customPassword
+        };
+      }
+      
       throw new Error(errorData.error || `Ошибка HTTP ${response.status}`);
     }
     
     const result = await response.json();
     
-    console.log("✅ Результат создания пользователя:", result);
     
     if (result.success) {
       return {
@@ -89,6 +164,20 @@ export async function createRegularUser(
         user: result.user
       };
     } else {
+      // Обработка ошибки уже существующего пользователя в результате
+      if (result.error && (
+        result.error.includes('already registered') || 
+        result.error.includes('already exists') ||
+        result.error.includes('A user with this email address has already been registered')
+      )) {
+        return {
+          success: true,
+          message: 'Пользователь с таким email уже существует',
+          email,
+          password: customPassword
+        };
+      }
+      
       return {
         success: false,
         message: result.message || result.error || 'Неизвестная ошибка при создании пользователя',
@@ -96,12 +185,13 @@ export async function createRegularUser(
       };
     }
   } catch (error) {
-    console.error('❌ Ошибка создания пользователя:', error);
     
     // Обработка специфических ошибок
     if (error instanceof Error) {
       // Ошибка уже существующего пользователя
-      if (error.message.includes('already registered') || error.message.includes('already exists')) {
+      if (error.message.includes('already registered') || 
+          error.message.includes('already exists') ||
+          error.message.includes('A user with this email address has already been registered')) {
         return {
           success: true,
           message: 'Пользователь с таким email уже существует',

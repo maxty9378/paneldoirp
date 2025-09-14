@@ -17,6 +17,7 @@ import { ExpertEventsView } from './components/ExpertEventsView';
 import { TasksView } from './components/TasksView'; 
 import { TestingView } from './components/admin/TestingView';
 import { TrainerTerritoriesView } from './components/TrainerTerritoriesView';
+import { ExamManagementPage, ExamReservePage, ExamDetailsPage } from './components/exam';
 import { Loader2, RefreshCw, AlertOctagon } from 'lucide-react';
 import TakeTestPage from './pages/TakeTestPage';
 import TestResultsPage from './pages/TestResultsPage';
@@ -127,6 +128,8 @@ function AppContent() {
     if (location.pathname.startsWith('/admin')) return 'admin';
     if (location.pathname.startsWith('/employees')) return 'employees';
     if (location.pathname.startsWith('/create-event')) return 'create-event';
+    if (location.pathname.startsWith('/exam-management')) return 'exam-reserve';
+    if (location.pathname.startsWith('/exam-reserve')) return 'exam-reserve';
     return 'dashboard';
   };
   const currentView = getCurrentView();
@@ -311,6 +314,9 @@ function AppContent() {
         <Route path="/trainer-territories" element={<TrainerTerritoriesView />} />
         <Route path="/admin" element={<AdminView />} />
         <Route path="/employees" element={<EmployeesView />} />
+        <Route path="/exam-management" element={<ExamManagementPage />} />
+            <Route path="/exam-reserve" element={<ExamReservePage />} />
+            <Route path="/exam-details/:id" element={<ExamDetailsPage />} />
         <Route path="/create-event" element={
           <div className="space-y-6">
             <div className="flex items-center">

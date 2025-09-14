@@ -89,7 +89,7 @@ export default function TestResultsPage() {
       // Проверяем права доступа
       console.log('User profile:', userProfile);
       console.log('User role:', userProfile?.role);
-      const isAdmin = userProfile?.role === 'admin' || userProfile?.role === 'super_admin';
+      const isAdmin = userProfile?.role === 'administrator' || userProfile?.role === 'moderator';
       console.log('Is admin check:', isAdmin);
       
       // Загружаем результат теста

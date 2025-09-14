@@ -85,6 +85,14 @@ const navigationItems: NavItem[] = [
     disabledReason: 'В разработке'
   },
   { 
+    id: 'exam-management', 
+    label: 'Экзамен кадрового резерва', 
+    icon: <GraduationCap />, 
+    href: '/exam-reserve', 
+    description: 'Управление экзаменами',
+    roles: ['moderator', 'administrator']
+  },
+  { 
     id: 'analytics', 
     label: 'Аналитика', 
     icon: <BarChart3 />, 
