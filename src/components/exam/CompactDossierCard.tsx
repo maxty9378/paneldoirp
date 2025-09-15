@@ -79,12 +79,13 @@ export const CompactDossierCard: React.FC<DossierCardProps> = ({
         bg-white border border-gray-100/80
         shadow-[0_8px_32px_rgba(0,0,0,0.08)]
         hover:shadow-[0_12px_48px_rgba(0,0,0,0.12)]
-        p-4 md:p-5
+        p-5 md:p-6
         h-fit
         group
         transition-all duration-300 ease-out
         hover:scale-[1.02]
         backdrop-blur-sm
+        min-h-[200px]
       "
       role="group"
     >
@@ -92,7 +93,7 @@ export const CompactDossierCard: React.FC<DossierCardProps> = ({
       <div className="flex gap-4">
         {/* фото как на макете: вертикальный прямоугольник с мягкими углами */}
         <div className="relative shrink-0">
-          <div className="h-[136px] w-[112px] rounded-2xl bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200/60 overflow-hidden shadow-sm group-hover:shadow-md transition-all duration-300">
+          <div className="h-[160px] w-[130px] rounded-2xl bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200/60 overflow-hidden shadow-sm group-hover:shadow-md transition-all duration-300">
             {dossier?.photo_url ? (
               <img
                 src={dossier.photo_url}
@@ -104,7 +105,7 @@ export const CompactDossierCard: React.FC<DossierCardProps> = ({
               <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
                 {initials ? (
                   <span 
-                    className="text-2xl font-bold group-hover:scale-110 transition-transform duration-300" 
+                    className="text-3xl font-bold group-hover:scale-110 transition-transform duration-300" 
                     style={{ 
                       color: '#06A478',
                       fontFamily: 'SNS, sans-serif'
