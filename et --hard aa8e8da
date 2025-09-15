@@ -1,0 +1,10 @@
+[33m261fef9[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Complete redesign of exam page with modern UI and error handling
+[33m45980a7[m Add comprehensive debug logging to track detailed card state
+[33m32b98eb[m Fix mobile responsiveness and add debug logs for detailed card
+[33m902f1d3[m Add detailed dossier card with menu hiding functionality
+[33maa8e8da[m Update CompactDossierCard with improved design and UX
+[33mfe24cec[m Fix React 19 compatibility issues
+[33mc2b0640[m feat: add compact dossier cards with full-width layout
+[33m6355bf8[m fix: resolve build errors and linting issues
+[33m0fb9f6a[m fix: исправлена загрузка мероприятий для экспертов
+[33m8e4453f[m feat: improve expert exam page with timeline design and mobile navigation
