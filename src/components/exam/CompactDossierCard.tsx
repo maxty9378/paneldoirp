@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Star, Info, Calendar, MapPin, User as UserIcon } from 'lucide-react';
+import { Star, Calendar, User as UserIcon } from 'lucide-react';
 
 type Edu = { level?: string; institution?: string; specialty?: string };
 interface DossierData {
@@ -17,7 +17,6 @@ interface DossierData {
   created_at?: string;
   updated_at?: string;
 }
-
 interface DossierCardProps {
   participant: {
     id: string;
@@ -40,7 +39,6 @@ function splitName(full: string) {
   if (!full) return { top: '', bottom: '' };
   const parts = full.trim().split(/\s+/);
   if (parts.length === 1) return { top: parts[0], bottom: '' };
-  // первая строка — фамилия ПРОПИСНЫМИ, вторая — имя
   return { top: parts[0], bottom: parts.slice(1).join(' ') };
 }
 
@@ -51,15 +49,14 @@ function calcExperienceText(days?: number, fallback?: string) {
   const months = Math.floor((days % 365) / 30);
   const y = years > 0 ? `${years} ${years === 1 ? 'год' : years < 5 ? 'года' : 'лет'}` : '';
   const m = months > 0 ? `${months} ${months === 1 ? 'месяц' : months < 5 ? 'месяца' : 'месяцев'}` : '';
-  const pieces = [y, m].filter(Boolean).join(' ');
-  return pieces;
+  return [y, m].filter(Boolean).join(' ');
 }
 
 export const CompactDossierCard: React.FC<DossierCardProps> = ({
   participant,
   dossier,
   onDetails,
-  onRate,
+  onRate
 }) => {
   const nameParts = useMemo(() => splitName(participant?.user?.full_name || ''), [participant]);
   const position = dossier?.position || participant?.user?.position?.name || 'Должность';
@@ -67,7 +64,6 @@ export const CompactDossierCard: React.FC<DossierCardProps> = ({
   const age = dossier?.age;
   const exp = calcExperienceText(participant?.user?.work_experience_days, dossier?.experience_in_position);
 
-  // аватарка или инициалы
   const initials = useMemo(() => {
     const [a, b] = (participant?.user?.full_name || '')
       .split(/\s+/)
@@ -79,92 +75,91 @@ export const CompactDossierCard: React.FC<DossierCardProps> = ({
   return (
     <div
       className="
-        relative overflow-hidden rounded-[24px]
-        bg-white/80 backdrop-blur-xl
-        border border-emerald-600/10 shadow-[0_8px_30px_rgba(0,0,0,0.06)]
-        p-4
-        md:p-5
+        relative overflow-hidden rounded-[28px]
+        bg-white border border-black/5
+        shadow-[0_6px_24px_rgba(0,0,0,0.06)]
+        p-4 md:p-5
       "
-      style={{
-        // лёгкое стекло
-        background:
-          'linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.86) 100%)',
-      }}
+      role="group"
     >
-      {/* Контентная зона */}
+      {/* верх: фото + текст */}
       <div className="flex gap-4">
-        {/* Фото */}
-        <div className="relative">
-          {dossier?.photo_url ? (
-            <img
-              src={dossier.photo_url}
-              alt={participant?.user?.full_name || 'Фото'}
-              className="h-[120px] w-[120px] object-cover object-center rounded-2xl border border-emerald-600/15 bg-emerald-50"
-            />
-          ) : (
-            <div className="h-[120px] w-[120px] rounded-2xl border border-emerald-600/15 bg-emerald-50 flex items-center justify-center">
-              {initials ? (
-                <span className="text-2xl font-bold text-emerald-700">{initials}</span>
-              ) : (
-                <UserIcon className="w-7 h-7 text-emerald-600/60" />
-              )}
-            </div>
-          )}
+        {/* фото как на макете: вертикальный прямоугольник с мягкими углами */}
+        <div className="relative shrink-0">
+          <div className="h-[136px] w-[112px] rounded-2xl bg-gray-100 border border-black/10 overflow-hidden">
+            {dossier?.photo_url ? (
+              <img
+                src={dossier.photo_url}
+                alt={participant?.user?.full_name || 'Фото'}
+                loading="lazy"
+                className="h-full w-full object-cover object-center"
+              />
+            ) : (
+              <div className="h-full w-full flex items-center justify-center">
+                {initials ? (
+                  <span className="text-2xl font-bold text-emerald-700">{initials}</span>
+                ) : (
+                  <UserIcon className="w-7 h-7 text-emerald-600/60" />
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Текст */}
-        <div className="min-w-0">
-          {/* Имя в 2 строки */}
-          <div className="leading-none mb-2">
-            <div className="text-[22px] md:text-[24px] font-extrabold tracking-wide text-emerald-700 uppercase truncate">
+        {/* текстовая колонка */}
+        <div className="min-w-0 flex-1">
+          {/* ФИО: две строки, капслок, фирменный зелёный */}
+          <div className="mb-1 leading-none">
+            <div className="text-[24px] font-extrabold tracking-wide text-emerald-700 uppercase truncate">
               {nameParts.top}
             </div>
             {nameParts.bottom ? (
-              <div className="text-[22px] md:text-[24px] font-extrabold tracking-wide text-emerald-700 uppercase truncate">
+              <div className="text-[24px] font-extrabold tracking-wide text-emerald-700 uppercase truncate">
                 {nameParts.bottom}
               </div>
             ) : null}
           </div>
 
-          {/* Должность */}
-          <div className="text-[15px] md:text-[16px] font-medium text-gray-900 truncate">
+          {/* должность и филиал — как две строки без иконок, читаемая межстрочка */}
+          <div className="text-[16px] text-gray-900 leading-tight truncate">
             {position}
           </div>
-
-          {/* Территория */}
           {territory ? (
-            <div className="mt-0.5 flex items-center text-[15px] text-gray-700">
-              <span className="truncate">{territory}</span>
+            <div className="text-[16px] text-gray-900 leading-tight truncate">
+              {territory}
             </div>
           ) : null}
 
-          {/* Возраст + опыт в 1 строке */}
-          <div className="mt-2 flex items-center gap-2 flex-wrap">
+          {/* возраст-пилюля и стаж в должности серым */}
+          <div className="mt-2 flex items-center gap-8 flex-wrap">
             {typeof age === 'number' && age > 0 ? (
-              <span className="inline-flex items-center px-3 py-1 rounded-xl bg-emerald-600 text-white text-[14px] font-semibold">
+              <span className="inline-flex items-center px-3 py-[6px] rounded-full bg-emerald-600 text-white text-[14px] font-semibold">
                 {age} лет
               </span>
             ) : null}
-
             {exp ? (
-              <span className="inline-flex items-center text-[14px] text-gray-700">
+              <span className="inline-flex items-center text-[16px] text-gray-500">
                 <Calendar className="w-4 h-4 mr-1 opacity-70" />
-                {exp ? `${exp} в должности` : ''}
+                {exp} в должности {position.toLowerCase().includes('супервайзер') ? 'СНС-Зеленоград' : ''}
               </span>
             ) : null}
           </div>
         </div>
       </div>
 
-      {/* Подвал с кнопками */}
-      <div className="mt-4 flex gap-3">
+      {/* кнопки как на макете: широкие пилюли одна над другой с равными отступами */}
+      <div className="mt-4 space-y-3">
         <button
           onClick={() => onDetails?.(participant.user.id)}
           className="
-            flex-1 h-11 rounded-2xl bg-gray-900/90 text-white
-            text-[16px] font-semibold
-            hover:opacity-95 active:opacity-90 transition
+            w-full h-12 rounded-[20px]
+            bg-neutral-800 text-white text-[16px] font-semibold
+            shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]
+            hover:opacity-95 active:opacity-90
+            focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60
+            transition
           "
+          aria-label="Подробнее"
         >
           Подробнее
         </button>
@@ -172,19 +167,21 @@ export const CompactDossierCard: React.FC<DossierCardProps> = ({
         <button
           onClick={() => onRate?.(participant.user.id)}
           className="
-            flex-1 h-11 rounded-2xl bg-emerald-600 text-white
-            text-[16px] font-semibold
-            hover:bg-emerald-700 active:bg-emerald-800 transition
-            inline-flex items-center justify-center gap-2
+            w-full h-12 rounded-[20px]
+            bg-emerald-600 text-white text-[16px] font-semibold
+            hover:bg-emerald-700 active:bg-emerald-800
+            focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60
+            transition inline-flex items-center justify-center gap-2
           "
+          aria-label="Поставить оценку"
         >
           Поставить оценку
           <Star className="w-5 h-5 fill-white" />
         </button>
       </div>
 
-      {/* Лёгкий декоративный блик справа внизу */}
-      <div className="pointer-events-none absolute -bottom-10 -right-14 h-36 w-36 rounded-full bg-emerald-200/30 blur-2xl" />
+      {/* мягкие круглые углы у всей карточки и лёгкий блик для объёма */}
+      <div className="pointer-events-none absolute -bottom-12 -right-12 h-40 w-40 rounded-full bg-emerald-200/30 blur-2xl" />
     </div>
   );
 };
