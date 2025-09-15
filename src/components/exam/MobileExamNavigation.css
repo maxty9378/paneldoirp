@@ -1,0 +1,96 @@
+/* Мобильная навигация для экзамена */
+.mobile-exam-nav {
+  position: relative;
+  overflow: hidden;
+}
+
+.mobile-exam-nav::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.1) 0%, 
+    rgba(255, 255, 255, 0.05) 100%);
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.mobile-exam-nav button {
+  position: relative;
+  z-index: 2;
+}
+
+.mobile-exam-nav button:hover {
+  background: rgba(6, 164, 120, 0.1) !important;
+  color: #06A478 !important;
+}
+
+.mobile-exam-nav button:active {
+  transform: scale(0.95);
+}
+
+/* Анимация для активной кнопки */
+.mobile-exam-nav button[style*="background: #06A478"] {
+  box-shadow: 0 4px 12px rgba(6, 164, 120, 0.3);
+}
+
+/* Адаптивность */
+@media screen and (max-width: 375px) {
+  .mobile-exam-nav {
+    padding: 6px 8px 10px 8px !important;
+  }
+  
+  .mobile-exam-nav button {
+    min-height: 40px !important;
+    padding: 4px 1px !important;
+  }
+  
+  .mobile-exam-nav button span {
+    font-size: 8px !important;
+  }
+}
+
+@media screen and (max-height: 600px) {
+  .mobile-exam-nav {
+    bottom: 8px !important;
+  }
+}
+
+/* Поддержка safe-area для устройств с вырезами */
+@supports (padding: max(0px)) {
+  .mobile-exam-nav {
+    bottom: max(16px, env(safe-area-inset-bottom, 16px)) !important;
+  }
+}
+
+/* Отступ для контента на мобильных устройствах */
+@media screen and (max-width: 768px) {
+  .mobile-exam-nav {
+    height: 64px; /* Фиксированная высота меню */
+  }
+  
+  /* Добавляем отступ для контента */
+  .mobile-content-spacer {
+    padding-bottom: 80px; /* Высота меню + отступ */
+  }
+}
+
+/* Темная тема (если потребуется) */
+@media (prefers-color-scheme: dark) {
+  .mobile-exam-nav {
+    background: rgba(31, 41, 55, 0.95) !important;
+    border-color: rgba(6, 164, 120, 0.3) !important;
+  }
+  
+  .mobile-exam-nav button {
+    color: #9ca3af !important;
+  }
+  
+  .mobile-exam-nav button[style*="background: #06A478"] {
+    color: #ffffff !important;
+  }
+}

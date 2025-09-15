@@ -29,7 +29,8 @@ import {
   Copy,
   Send,
   MoreVertical,
-  Loader2
+  Loader2,
+  Star
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -92,7 +93,10 @@ export function EventsList({ onCreateEvent }: EventsListProps) {
         // Администраторы видят все мероприятия
         const result = await supabase
           .from('events')
-          .select('*')
+          .select(`
+            *,
+            event_types (*)
+          `)
           .order('start_date', { ascending: false });
         data = result.data;
         error = result.error;
@@ -102,6 +106,7 @@ export function EventsList({ onCreateEvent }: EventsListProps) {
           .from('events')
           .select(`
             *,
+            event_types (*),
             event_participants!inner(user_id)
           `)
           .eq('event_participants.user_id', user?.id)
@@ -734,9 +739,38 @@ export function EventsList({ onCreateEvent }: EventsListProps) {
                   </div>
                   <div className="flex items-center space-x-2">
                     {/* Кнопки управления с анимацией и тултипами */}
-                    <button className="btn-outline flex items-center px-3 py-2 rounded-xl transition-all duration-300 hover:bg-primary hover:text-white" title="Просмотр">
-                      <Eye size={16} />
-                    </button>
+                    {(() => {
+                      const isExpert = userProfile?.role === 'expert';
+                      const isAdmin = userProfile?.role === 'administrator';
+                      const isExamTalentReserve = event.event_types?.name === 'exam_talent_reserve';
+                      const isExpertForThisExam = (isExpert || isAdmin) && isExamTalentReserve && (event.expert_emails?.includes(userProfile?.email || '') || isAdmin);
+                      
+                      // Отладка
+                      console.log('EventsList - Event:', event.title, 'Type:', event.event_types?.name, 'IsExpert:', isExpert, 'IsAdmin:', isAdmin, 'IsExam:', isExamTalentReserve, 'IsExpertForThisExam:', isExpertForThisExam);
+                      
+                      if (isExpertForThisExam) {
+                        return (
+                          <button 
+                            onClick={() => window.location.href = `/expert-exam/${event.id}`}
+                            className="btn-primary flex items-center px-3 py-2 rounded-xl transition-all duration-300 hover:bg-[#059669] text-white" 
+                            title="Перейти к оценке"
+                          >
+                            <Star size={16} className="mr-1" />
+                            <span className="text-sm font-medium">Оценить</span>
+                          </button>
+                        );
+                      }
+                      
+                      return (
+                        <button 
+                          onClick={() => window.location.href = `/event/${event.id}`}
+                          className="btn-outline flex items-center px-3 py-2 rounded-xl transition-all duration-300 hover:bg-primary hover:text-white" 
+                          title="Просмотр"
+                        >
+                          <Eye size={16} />
+                        </button>
+                      );
+                    })()}
                     {canCreateEvents && (
                       <>
                         <button className="btn-outline flex items-center px-3 py-2 rounded-xl transition-all duration-300 hover:bg-primary/80 hover:text-white" title="Редактировать">

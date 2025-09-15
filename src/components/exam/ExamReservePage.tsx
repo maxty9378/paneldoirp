@@ -42,6 +42,7 @@ export function ExamReservePage() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingExam, setEditingExam] = useState<ExamEvent | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   // Загрузка экзаменов
   const fetchExams = async () => {
@@ -74,6 +75,15 @@ export function ExamReservePage() {
           ),
           creator: creator_id (
             full_name
+          ),
+          event_participants (
+            user_id,
+            users (
+              id,
+              full_name,
+              email,
+              sap_number
+            )
           )
         `)
         .eq('event_types.name', 'exam_talent_reserve')
@@ -97,6 +107,20 @@ export function ExamReservePage() {
     fetchExams();
   }, []);
 
+  // Закрытие меню при клике вне его
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (openMenuId) {
+        setOpenMenuId(null);
+      }
+    };
+
+    if (openMenuId) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [openMenuId]);
+
   // Обработчики для модального окна
   const handleCreateExam = () => {
     console.log('Создание экзамена, устанавливаем defaultEventType: exam');
@@ -106,10 +130,49 @@ export function ExamReservePage() {
     console.log('showCreateModal после:', true);
   };
 
-  const handleEditExam = (exam: ExamEvent) => {
+  const handleEditExam = async (exam: ExamEvent) => {
     console.log('Редактирование экзамена:', exam);
-    setEditingExam(exam);
-    setShowCreateModal(true);
+    
+    try {
+      // Загружаем полные данные экзамена включая участников
+      const { data: fullExamData, error } = await supabase
+        .from('events')
+        .select(`
+          *,
+          event_types (*),
+          event_participants (
+            user_id,
+            users (
+              id,
+              full_name,
+              email,
+              sap_number
+            )
+          ),
+          talent_category: talent_categories (*),
+          creator: creator_id (
+            id,
+            full_name,
+            email
+          )
+        `)
+        .eq('id', exam.id)
+        .single();
+
+      if (error) {
+        console.error('Ошибка загрузки данных экзамена:', error);
+        throw error;
+      }
+
+      console.log('Полные данные экзамена с участниками:', fullExamData);
+      setEditingExam(fullExamData);
+      setShowCreateModal(true);
+    } catch (error) {
+      console.error('Ошибка при загрузке экзамена для редактирования:', error);
+      // Fallback: используем базовые данные
+      setEditingExam(exam);
+      setShowCreateModal(true);
+    }
   };
 
   const handleModalClose = () => {
@@ -121,6 +184,39 @@ export function ExamReservePage() {
     setShowCreateModal(false);
     setEditingExam(null);
     fetchExams(); // Обновляем список экзаменов
+  };
+
+  // Обновление статуса экзамена
+  const updateExamStatus = async (examId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('events')
+        .update({
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', examId);
+
+      if (error) throw error;
+      fetchExams();
+    } catch (err) {
+      console.error('Error updating exam status:', err);
+    }
+  };
+
+  // Удаление экзамена
+  const deleteExam = async (examId: string) => {
+    try {
+      const { error } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', examId);
+
+      if (error) throw error;
+      fetchExams();
+    } catch (err) {
+      console.error('Error deleting exam:', err);
+    }
   };
 
   // Фильтрация экзаменов
@@ -280,9 +376,113 @@ export function ExamReservePage() {
                   </span>
                 </div>
               </div>
-              <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
-                <MoreVertical className="w-4 h-4" />
-              </button>
+              <div className="relative">
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenMenuId(openMenuId === exam.id ? null : exam.id);
+                  }}
+                  className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+                
+                {/* Выпадающее меню */}
+                {openMenuId === exam.id && (
+                  <div 
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute right-0 top-8 bg-white border border-gray-200 rounded-lg shadow-lg py-2 z-10 min-w-[200px]"
+                  >
+                    {/* Пункты меню для смены статуса */}
+                    {exam.status === 'draft' && (
+                      <button
+                        onClick={() => {
+                          if (confirm('Активировать экзамен? После активации он станет доступен участникам.')) {
+                            updateExamStatus(exam.id, 'published');
+                            setOpenMenuId(null);
+                          }
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"
+                      >
+                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        Активировать экзамен
+                      </button>
+                    )}
+                    
+                    {exam.status === 'published' && (
+                      <>
+                        <button
+                          onClick={() => {
+                            if (confirm('Завершить экзамен? Это действие нельзя будет отменить.')) {
+                              updateExamStatus(exam.id, 'completed');
+                              setOpenMenuId(null);
+                            }
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 flex items-center gap-2"
+                        >
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          Завершить экзамен
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm('Вернуть экзамен в черновик? Участники потеряют доступ к экзамену.')) {
+                              updateExamStatus(exam.id, 'draft');
+                              setOpenMenuId(null);
+                            }
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-yellow-50 hover:text-yellow-600 flex items-center gap-2"
+                        >
+                          <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                          Вернуть в черновик
+                        </button>
+                      </>
+                    )}
+                    
+                    {exam.status === 'completed' && (
+                      <button
+                        onClick={() => {
+                          if (confirm('Вернуть экзамен в активное состояние?')) {
+                            updateExamStatus(exam.id, 'published');
+                            setOpenMenuId(null);
+                          }
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"
+                      >
+                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        Реактивировать экзамен
+                      </button>
+                    )}
+                    
+                    <div className="border-t border-gray-100 my-1"></div>
+                    
+                    {/* Дополнительные действия */}
+                    <button
+                      onClick={() => {
+                        setEditingExam(exam);
+                        setShowCreateModal(true);
+                        setOpenMenuId(null);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                    >
+                      <Edit className="w-4 h-4" />
+                      Редактировать
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        if (confirm('Вы уверены, что хотите удалить этот экзамен?')) {
+                          deleteExam(exam.id);
+                          setOpenMenuId(null);
+                        }
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Удалить
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Категория и группа */}
@@ -300,6 +500,12 @@ export function ExamReservePage() {
                 <div className="flex items-center gap-2">
                   <Users className="w-4 h-4 text-gray-400" />
                   <span className="text-sm text-gray-600">Группа: {exam.group_name}</span>
+                </div>
+              )}
+              {exam.event_participants && (
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-gray-400" />
+                  <span className="text-sm text-gray-600">Участников: {exam.event_participants.length}</span>
                 </div>
               )}
             </div>
@@ -341,6 +547,7 @@ export function ExamReservePage() {
                 </div>
               </div>
             )}
+
 
             {/* Действия */}
             <div className="flex items-center gap-2 pt-4 border-t border-gray-100">

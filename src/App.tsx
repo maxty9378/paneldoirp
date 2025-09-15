@@ -17,7 +17,7 @@ import { ExpertEventsView } from './components/ExpertEventsView';
 import { TasksView } from './components/TasksView'; 
 import { TestingView } from './components/admin/TestingView';
 import { TrainerTerritoriesView } from './components/TrainerTerritoriesView';
-import { ExamManagementPage, ExamReservePage, ExamDetailsPage } from './components/exam';
+import { ExamReservePage, ExamDetailsPage, ExpertExamPage } from './components/exam';
 import { Loader2, RefreshCw, AlertOctagon } from 'lucide-react';
 import TakeTestPage from './pages/TakeTestPage';
 import TestResultsPage from './pages/TestResultsPage';
@@ -314,9 +314,9 @@ function AppContent() {
         <Route path="/trainer-territories" element={<TrainerTerritoriesView />} />
         <Route path="/admin" element={<AdminView />} />
         <Route path="/employees" element={<EmployeesView />} />
-        <Route path="/exam-management" element={<ExamManagementPage />} />
-            <Route path="/exam-reserve" element={<ExamReservePage />} />
-            <Route path="/exam-details/:id" element={<ExamDetailsPage />} />
+        <Route path="/exam-reserve" element={<ExamReservePage />} />
+        <Route path="/exam-details/:id" element={<ExamDetailsPage />} />
+        <Route path="/expert-exam/:id" element={<ExpertExamPage />} />
         <Route path="/create-event" element={
           <div className="space-y-6">
             <div className="flex items-center">

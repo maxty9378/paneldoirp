@@ -83,3 +83,4 @@ export function AchievementCard({ achievement, onClick }: AchievementCardProps) 
     </div>
   );
 }
+

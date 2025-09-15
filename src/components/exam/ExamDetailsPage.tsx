@@ -1071,10 +1071,18 @@ const ExamDetailsPage: React.FC = () => {
                           <p className="font-semibold text-gray-900 mb-1">{expert.fullName}</p>
                           <p className="text-sm text-gray-600">{expert.position}</p>
                         </div>
-                        <div className="flex items-center text-gray-500">
+                        <div className="flex items-center text-gray-500 mr-4">
                           <Mail className="w-4 h-4 mr-2" />
                           <span className="text-sm font-medium">{expert.email}</span>
                         </div>
+                        {(userProfile?.role === 'expert' && expert.email === userProfile?.email) || userProfile?.role === 'administrator' ? (
+                          <button
+                            onClick={() => navigate(`/expert-exam/${id}`)}
+                            className="px-3 py-1 bg-[#06A478] text-white text-sm rounded-lg hover:bg-[#059669] transition-colors"
+                          >
+                            {userProfile?.role === 'administrator' ? 'Управление экзаменом' : 'Перейти к оценке'}
+                          </button>
+                        ) : null}
                       </div>
                     ))
                   ) : (

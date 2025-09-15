@@ -95,6 +95,11 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent, def
   console.log('CreateEventModal: Рендер с eventType:', eventType, 'eventTypes:', eventTypes);
   console.log('CreateEventModal: isOpen:', isOpen, 'defaultEventType:', defaultEventType, 'editingEvent:', editingEvent);
 
+  // Загружаем типы мероприятий при монтировании компонента
+  useEffect(() => {
+    fetchEventTypes();
+  }, []);
+
   // Устанавливаем тип мероприятия по умолчанию
   useEffect(() => {
     if (isOpen && defaultEventType && !editingEvent && eventTypes.length > 0) {
@@ -211,6 +216,7 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent, def
         }
 
         // Загружаем участников мероприятия
+        console.log('🔄 Загружаем участников для редактирования...');
         console.log('editingEvent.event_participants:', editingEvent.event_participants);
         if (editingEvent.event_participants && editingEvent.event_participants.length > 0) {
           const participantsData = editingEvent.event_participants.map((ep: any) => ({
@@ -221,7 +227,7 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent, def
             position: '', // Будет загружено отдельно
             territory: '' // Будет загружено отдельно
           }));
-          console.log('participantsData:', participantsData);
+          console.log('✅ Участники загружены:', participantsData);
           setParticipants(participantsData);
           
           // Загружаем должности и территории участников отдельно
@@ -229,7 +235,7 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent, def
             await loadParticipantDetails(participantsData);
           }
         } else {
-          console.log('Нет участников или пустой массив');
+          console.log('⚠️ Нет участников или пустой массив');
           setParticipants([]);
         }
 
@@ -305,14 +311,19 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent, def
   // Загрузка типов мероприятий
   const fetchEventTypes = async () => {
     try {
+      console.log('🔄 Загружаем типы мероприятий...');
       const { data, error } = await supabase
         .from('event_types')
         .select('*')
         .order('name_ru');
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Ошибка загрузки типов мероприятий:', error);
+        throw error;
+      }
+      
       setEventTypes(data || []);
-      console.log('Загружены типы мероприятий:', data);
+      console.log('✅ Загружены типы мероприятий:', data);
       
       // Проверяем наличие экзамена кадрового резерва
       const examType = data?.find(type => 

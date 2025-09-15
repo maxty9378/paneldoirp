@@ -13,6 +13,8 @@ export function ExamManagementPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'schedule' | 'dossiers' | 'evaluations'>('schedule');
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editingExam, setEditingExam] = useState<ExamEvent | null>(null);
 
   // Загрузка экзаменов
   const fetchExamEvents = async () => {
@@ -75,6 +77,50 @@ export function ExamManagementPage() {
     } catch (err) {
       console.error('Error creating exam event:', err);
       setError('Ошибка создания экзамена');
+    }
+  };
+
+  // Редактирование экзамена
+  const editExamEvent = async (examData: Partial<ExamEvent>) => {
+    if (!examData.id) return;
+
+    try {
+      const { error } = await supabase
+        .from('events')
+        .update({
+          title: examData.title,
+          description: examData.description,
+          location: examData.location,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', examData.id);
+
+      if (error) throw error;
+      fetchExamEvents();
+      setShowEditForm(false);
+      setEditingExam(null);
+    } catch (err) {
+      console.error('Error updating exam event:', err);
+      setError('Ошибка обновления экзамена');
+    }
+  };
+
+  // Обновление статуса экзамена
+  const updateExamStatus = async (examId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('events')
+        .update({
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', examId);
+
+      if (error) throw error;
+      fetchExamEvents();
+    } catch (err) {
+      console.error('Error updating exam status:', err);
+      setError('Ошибка обновления статуса экзамена');
     }
   };
 
@@ -146,12 +192,24 @@ export function ExamManagementPage() {
                 <button
                   onClick={() => setSelectedExam(exam)}
                   className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  title="Просмотреть"
                 >
                   <Eye className="h-4 w-4" />
                 </button>
                 <button
+                  onClick={() => {
+                    setEditingExam(exam);
+                    setShowEditForm(true);
+                  }}
+                  className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                  title="Редактировать"
+                >
+                  <Edit className="h-4 w-4" />
+                </button>
+                <button
                   onClick={() => deleteExamEvent(exam.id)}
                   className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Удалить"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -169,24 +227,81 @@ export function ExamManagementPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                exam.status === 'completed' ? 'bg-green-100 text-green-800' :
-                exam.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                exam.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                'bg-yellow-100 text-yellow-800'
-              }`}>
-                {exam.status === 'completed' ? 'Завершен' :
-                 exam.status === 'in_progress' ? 'В процессе' :
-                 exam.status === 'cancelled' ? 'Отменен' :
-                 'Черновик'}
-              </span>
-              <button
-                onClick={() => setSelectedExam(exam)}
-                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-              >
-                Управлять
-              </button>
+            <div className="space-y-3">
+              {/* Статус и управление */}
+              <div className="flex items-center justify-between">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  exam.status === 'completed' ? 'bg-green-100 text-green-800' :
+                  exam.status === 'published' ? 'bg-blue-100 text-blue-800' :
+                  exam.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                  'bg-yellow-100 text-yellow-800'
+                }`}>
+                  {exam.status === 'completed' ? 'Завершен' :
+                   exam.status === 'published' ? 'Активное' :
+                   exam.status === 'cancelled' ? 'Отменен' :
+                   'Черновик'}
+                </span>
+                <button
+                  onClick={() => setSelectedExam(exam)}
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                >
+                  Управлять
+                </button>
+              </div>
+
+              {/* Кнопки изменения статуса */}
+              <div className="flex flex-wrap gap-2">
+                {exam.status === 'draft' && (
+                  <button
+                    onClick={() => {
+                      if (confirm('Активировать экзамен? После активации он станет доступен участникам.')) {
+                        updateExamStatus(exam.id, 'published');
+                      }
+                    }}
+                    className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600 transition-colors"
+                  >
+                    Активировать
+                  </button>
+                )}
+                
+                {exam.status === 'published' && (
+                  <>
+                    <button
+                      onClick={() => {
+                        if (confirm('Завершить экзамен? Это действие нельзя будет отменить.')) {
+                          updateExamStatus(exam.id, 'completed');
+                        }
+                      }}
+                      className="px-3 py-1 bg-green-500 text-white text-xs rounded-lg hover:bg-green-600 transition-colors"
+                    >
+                      Завершить
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm('Вернуть экзамен в черновик? Участники потеряют доступ к экзамену.')) {
+                          updateExamStatus(exam.id, 'draft');
+                        }
+                      }}
+                      className="px-3 py-1 bg-yellow-500 text-white text-xs rounded-lg hover:bg-yellow-600 transition-colors"
+                    >
+                      В черновик
+                    </button>
+                  </>
+                )}
+                
+                {exam.status === 'completed' && (
+                  <button
+                    onClick={() => {
+                      if (confirm('Вернуть экзамен в активное состояние?')) {
+                        updateExamStatus(exam.id, 'published');
+                      }
+                    }}
+                    className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600 transition-colors"
+                  >
+                    Реактивировать
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         ))}
@@ -272,6 +387,18 @@ export function ExamManagementPage() {
         <CreateExamForm
           onSave={createExamEvent}
           onCancel={() => setShowCreateForm(false)}
+        />
+      )}
+
+      {/* Форма редактирования экзамена */}
+      {showEditForm && editingExam && (
+        <EditExamForm
+          exam={editingExam}
+          onSave={editExamEvent}
+          onCancel={() => {
+            setShowEditForm(false);
+            setEditingExam(null);
+          }}
         />
       )}
 
@@ -409,3 +536,117 @@ function CreateExamForm({ onSave, onCancel }: CreateExamFormProps) {
     </div>
   );
 }
+
+// Компонент формы редактирования экзамена
+interface EditExamFormProps {
+  exam: ExamEvent;
+  onSave: (examData: Partial<ExamEvent>) => void;
+  onCancel: () => void;
+}
+
+function EditExamForm({ exam, onSave, onCancel }: EditExamFormProps) {
+  const [formData, setFormData] = useState({
+    title: exam.title || '',
+    description: exam.description || '',
+    location: exam.location || '',
+  });
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.title || !formData.description || !formData.location) {
+      alert('Заполните все обязательные поля');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await onSave({
+        id: exam.id,
+        ...formData,
+      });
+    } catch (err) {
+      console.error('Error updating exam:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-semibold text-gray-900">Редактирование экзамена</h2>
+        <button
+          onClick={onCancel}
+          className="text-gray-400 hover:text-gray-600"
+        >
+          ×
+        </button>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Название экзамена *
+          </label>
+          <input
+            type="text"
+            value={formData.title}
+            onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Введите название экзамена"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Описание *
+          </label>
+          <textarea
+            value={formData.description}
+            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            rows={3}
+            placeholder="Введите описание экзамена"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Место проведения *
+          </label>
+          <input
+            type="text"
+            value={formData.location}
+            onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Введите место проведения"
+            required
+          />
+        </div>
+
+        <div className="flex justify-end space-x-3 pt-4">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+            disabled={loading}
+          >
+            Отмена
+          </button>
+          <button
+            type="submit"
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50"
+            disabled={loading}
+          >
+            {loading ? 'Сохранение...' : 'Сохранить изменения'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
