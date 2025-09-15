@@ -636,6 +636,15 @@ const ExpertExamPage: React.FC = () => {
                       {getStatusText(exam.status)}
                     </span>
                   </div>
+                  
+                  {/* Кнопка оценки резервистов */}
+                  <button
+                    onClick={() => navigate(`/reservist-evaluation/${id}`)}
+                    className="mt-4 px-4 py-2 bg-white/20 backdrop-blur-sm text-white rounded-xl font-medium text-sm hover:bg-white/30 transition-all duration-200 border border-white/30 hover:border-white/50 flex items-center gap-2"
+                  >
+                    <Target className="w-4 h-4" />
+                    Оценить резервистов
+                  </button>
                 </div>
               </div>
             </div>
