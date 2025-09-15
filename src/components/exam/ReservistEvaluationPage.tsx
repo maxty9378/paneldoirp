@@ -73,7 +73,7 @@ interface CompetencyEvaluation {
 
 // Компонент карточки участника для оценки кейсов
 interface ParticipantCaseCardProps {
-  participant: ParticipantWithCases;
+  participant: Participant;
   index: number;
   onEvaluationChange: (caseId: string, field: keyof CaseEvaluation, value: any) => void;
 }
@@ -82,13 +82,42 @@ const ParticipantCaseCard: React.FC<ParticipantCaseCardProps> = ({ participant, 
   const corporateColor = '#06A478';
   
   // Назначенные кейсы или пустой массив для демонстрации
-  const cases = participant.assigned_cases.length > 0 
-    ? participant.assigned_cases 
-    : [
-        // Демо кейсы, если не назначены
-        { id: `demo-1-${participant.id}`, exam_case: { id: '1', case_number: 8, title: 'Кейс "Стратегическое планирование"', description: null, correct_answer: null } },
-        { id: `demo-2-${participant.id}`, exam_case: { id: '2', case_number: 11, title: 'Кейс "Инновационное развитие"', description: null, correct_answer: null } }
-      ];
+  // Временно используем демо данные, пока не реализована загрузка из БД
+  const cases = [
+    // Демо кейсы
+    { 
+      id: `demo-1-${participant.id}`, 
+      event_participant_id: participant.id,
+      exam_case_id: '1',
+      assigned_at: new Date().toISOString(),
+      assigned_by: null,
+      exam_case: { 
+        id: '1', 
+        case_number: 8, 
+        title: 'Кейс "Стратегическое планирование"', 
+        description: 'Выход на новый рынок', 
+        correct_answer: 'Вариант A: Исследование рынка и конкурентов',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      } 
+    },
+    { 
+      id: `demo-2-${participant.id}`, 
+      event_participant_id: participant.id,
+      exam_case_id: '2',
+      assigned_at: new Date().toISOString(),
+      assigned_by: null,
+      exam_case: { 
+        id: '2', 
+        case_number: 11, 
+        title: 'Кейс "Инновационное развитие"', 
+        description: 'Разработка новых продуктов', 
+        correct_answer: 'Вариант A: Создание инновационной лаборатории',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      } 
+    }
+  ];
 
   return (
     <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-2xl">
@@ -264,7 +293,7 @@ const ReservistEvaluationPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [event, setEvent] = useState<ExamEvent | null>(null);
-  const [participants, setParticipants] = useState<ParticipantWithCases[]>([]);
+  const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'cases' | 'project' | 'competencies'>('cases');
