@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, MapPin, Target, User, FileText, Presentation, Gamepad2, Save, Sparkles, MessageSquare, Award, CheckCircle2, Clock } from 'lucide-react';
+import { ArrowLeft, User, FileText, Presentation, Gamepad2, Save, MessageSquare } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import MobileExamNavigation from './MobileExamNavigation';
@@ -588,83 +588,17 @@ const ReservistEvaluationPage: React.FC = () => {
 
       {/* Основной контент */}
       <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Заголовок с градиентом */}
-        <div className="mb-8">
+        {/* Простая навигация */}
+        <div className="mb-6">
           <button
             onClick={() => navigate('/exam')}
-            className="group flex items-center gap-3 text-gray-600 hover:text-gray-900 mb-6 transition-all duration-200 hover:translate-x-1"
+            className="group flex items-center gap-3 text-gray-600 hover:text-gray-900 transition-all duration-200 hover:translate-x-1"
           >
             <div className="p-2 rounded-xl bg-white/60 backdrop-blur-sm group-hover:bg-white/80 transition-all duration-200">
               <ArrowLeft className="w-5 h-5" />
             </div>
             <span className="font-medium">Назад к экзаменам</span>
           </button>
-          
-          <div className="relative overflow-hidden bg-gradient-to-br from-white via-white to-blue-50/50 rounded-3xl shadow-lg border border-white/50 backdrop-blur-sm">
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-blue-500/5"></div>
-            <div className="relative p-8">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="p-3 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg">
-                      <Target className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                        {event.title}
-                      </h1>
-                      <div className="flex items-center gap-4 mt-2">
-                        <div className="flex items-center gap-1">
-                          <Sparkles className="w-4 h-4 text-emerald-500" />
-                          <span className="text-sm font-medium text-emerald-600">Экспертная оценка</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Target className="w-4 h-4 text-blue-500" />
-                          <span className="text-sm font-medium text-blue-600">Потенциал ГДФ</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <p className="text-gray-600 mb-6 text-lg">{event.description}</p>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-white/60 backdrop-blur-sm border border-white/30">
-                      <div className="p-2 rounded-xl bg-blue-500/10 text-blue-600">
-                        <Calendar className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">Период</div>
-                        <div className="text-sm text-gray-600">
-                          {formatDate(event.start_date)} - {formatDate(event.end_date)}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-white/60 backdrop-blur-sm border border-white/30">
-                      <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600">
-                        <MapPin className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">Локация</div>
-                        <div className="text-sm text-gray-600">{event.location}</div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-white/60 backdrop-blur-sm border border-white/30">
-                      <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600">
-                        <Award className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">Статус</div>
-                        <div className="text-sm text-gray-600">Экспертная оценка</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Современные табы с глассморфизмом */}
