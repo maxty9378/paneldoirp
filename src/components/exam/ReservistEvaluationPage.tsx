@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, MapPin, Users, Target, User, FileText, Presentation, Gamepad2, Save, Sparkles, MessageSquare, Award, CheckCircle2, Clock } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Target, User, FileText, Presentation, Gamepad2, Save, Sparkles, MessageSquare, Award, CheckCircle2, Clock } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import MobileExamNavigation from './MobileExamNavigation';
@@ -613,10 +613,14 @@ const ReservistEvaluationPage: React.FC = () => {
                       <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                         {event.title}
                       </h1>
-                      <div className="flex items-center gap-2 mt-1">
+                      <div className="flex items-center gap-4 mt-2">
                         <div className="flex items-center gap-1">
                           <Sparkles className="w-4 h-4 text-emerald-500" />
                           <span className="text-sm font-medium text-emerald-600">Экспертная оценка</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Target className="w-4 h-4 text-blue-500" />
+                          <span className="text-sm font-medium text-blue-600">Потенциал ГДФ</span>
                         </div>
                       </div>
                     </div>
@@ -649,11 +653,11 @@ const ReservistEvaluationPage: React.FC = () => {
                     
                     <div className="flex items-center gap-3 p-4 rounded-2xl bg-white/60 backdrop-blur-sm border border-white/30">
                       <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600">
-                        <Users className="w-5 h-5" />
+                        <Award className="w-5 h-5" />
                       </div>
                       <div>
-                        <div className="text-sm font-medium text-gray-900">Участники</div>
-                        <div className="text-sm text-gray-600">{participants.length} резервистов</div>
+                        <div className="text-sm font-medium text-gray-900">Статус</div>
+                        <div className="text-sm text-gray-600">Экспертная оценка</div>
                       </div>
                     </div>
                   </div>
