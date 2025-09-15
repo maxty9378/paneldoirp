@@ -792,9 +792,8 @@ const ExpertExamPage: React.FC = () => {
                         key={participant.id}
                         participant={participant}
                         dossier={participant.dossier ? { ...participant.dossier, user_id: participant.user.id } : undefined}
-                        onRate={(participantId) => {
-                          console.log('Оценка участника:', participantId);
-                          // Здесь можно открыть форму оценки
+                        onRate={() => {
+                          navigate(`/reservist-evaluation/${id}`);
                         }}
                         onViewDossier={(participantId) => {
                           setSelectedParticipantId(participantId);
@@ -984,9 +983,8 @@ const ExpertExamPage: React.FC = () => {
                         key={participant.id}
                         participant={participant}
                         dossier={participant.dossier ? { ...participant.dossier, user_id: participant.user.id } : undefined}
-                        onRate={(participantId) => {
-                          console.log('Оценка участника:', participantId);
-                          // Здесь можно открыть форму оценки
+                        onRate={() => {
+                          navigate(`/reservist-evaluation/${id}`);
                         }}
                         onViewDossier={(participantId) => {
                           setSelectedParticipantId(participantId);
