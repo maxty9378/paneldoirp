@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, MapPin, Users, Target, User, Star, Award, FileText, Presentation, Gamepad2 } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, Target, User, FileText, Presentation, Gamepad2, Save, Sparkles } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import MobileExamNavigation from './MobileExamNavigation';
@@ -276,41 +276,166 @@ const ReservistEvaluationPage: React.FC = () => {
     );
   }
 
+  // Вычисляем прогресс оценки
+  const evaluationProgress = useMemo(() => {
+    const totalFields = participants.length * 3; // 3 этапа на каждого участника
+    let completedFields = 0;
+    
+    participants.forEach(participant => {
+      // Проверяем кейсы (2 кейса * 3 критерия)
+      for (let caseNum = 1; caseNum <= 2; caseNum++) {
+        const caseEval = caseEvaluations.find(e => 
+          e.participant_id === participant.user.id && e.case_number === caseNum
+        );
+        if (caseEval?.correctness && caseEval?.clarity && caseEval?.independence) {
+          completedFields += 0.33; // 1/3 от одного этапа
+        }
+      }
+      
+      // Проверяем проект
+      const projectEval = projectEvaluations.find(e => e.participant_id === participant.user.id);
+      if (projectEval?.presentation_quality && projectEval?.project_innovation && 
+          projectEval?.technical_implementation && projectEval?.business_value) {
+        completedFields += 1;
+      }
+      
+      // Проверяем компетенции
+      const competencyEval = competencyEvaluations.find(e => e.participant_id === participant.user.id);
+      if (competencyEval?.results_orientation && competencyEval?.effective_communication && 
+          competencyEval?.teamwork_skills && competencyEval?.systemic_thinking) {
+        completedFields += 1;
+      }
+    });
+    
+    return Math.round((completedFields / totalFields) * 100);
+  }, [participants, caseEvaluations, projectEvaluations, competencyEvaluations]);
+
+  const saveEvaluations = useCallback(async () => {
+    try {
+      // Автосохранение логика
+      console.log('Сохранение оценок...');
+      // TODO: Реализовать сохранение в Supabase
+    } catch (error) {
+      console.error('Ошибка сохранения:', error);
+    }
+  }, [caseEvaluations, projectEvaluations, competencyEvaluations]);
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40">
       {/* Мобильная навигация */}
-      <MobileExamNavigation />
+      <MobileExamNavigation activeTab="evaluation" onTabChange={() => {}} />
+
+      {/* Floating Progress Indicator */}
+      <div className="fixed top-4 right-4 z-50">
+        <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-4 shadow-lg border border-white/20">
+          <div className="flex items-center gap-3">
+            <div className="relative w-12 h-12">
+              <svg className="w-12 h-12 transform -rotate-90" viewBox="0 0 36 36">
+                <path
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                  stroke="#e5e7eb"
+                  strokeWidth="2"
+                />
+                <path
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                  stroke="#06A478"
+                  strokeWidth="2"
+                  strokeDasharray={`${evaluationProgress}, 100`}
+                  className="transition-all duration-1000 ease-out"
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-xs font-bold text-gray-700">{evaluationProgress}%</span>
+              </div>
+            </div>
+            <div className="text-sm">
+              <div className="font-medium text-gray-900">Прогресс</div>
+              <div className="text-gray-500">оценки</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Floating Action Button */}
+      <button
+        onClick={saveEvaluations}
+        className="fixed bottom-6 right-6 z-50 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white p-4 rounded-2xl shadow-xl hover:shadow-2xl transform hover:scale-105 active:scale-95 transition-all duration-200 group"
+      >
+        <Save className="w-6 h-6 group-hover:scale-110 transition-transform" />
+      </button>
 
       {/* Основной контент */}
       <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Заголовок */}
-        <div className="mb-6">
+        {/* Заголовок с градиентом */}
+        <div className="mb-8">
           <button
             onClick={() => navigate('/exam')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+            className="group flex items-center gap-3 text-gray-600 hover:text-gray-900 mb-6 transition-all duration-200 hover:translate-x-1"
           >
-            <ArrowLeft className="w-5 h-5" />
-            <span>Назад к экзаменам</span>
+            <div className="p-2 rounded-xl bg-white/60 backdrop-blur-sm group-hover:bg-white/80 transition-all duration-200">
+              <ArrowLeft className="w-5 h-5" />
+            </div>
+            <span className="font-medium">Назад к экзаменам</span>
           </button>
           
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">{event.title}</h1>
-                <p className="text-gray-600 mb-4">{event.description}</p>
-                
-                <div className="flex flex-wrap gap-4 text-sm text-gray-500">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
-                    <span>{formatDate(event.start_date)} - {formatDate(event.end_date)}</span>
+          <div className="relative overflow-hidden bg-gradient-to-br from-white via-white to-blue-50/50 rounded-3xl shadow-lg border border-white/50 backdrop-blur-sm">
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-blue-500/5"></div>
+            <div className="relative p-8">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-3 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg">
+                      <Target className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                        {event.title}
+                      </h1>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="flex items-center gap-1">
+                          <Sparkles className="w-4 h-4 text-emerald-500" />
+                          <span className="text-sm font-medium text-emerald-600">Экспертная оценка</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4" />
-                    <span>{event.location}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4" />
-                    <span>{participants.length} участников</span>
+                  
+                  <p className="text-gray-600 mb-6 text-lg">{event.description}</p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-white/60 backdrop-blur-sm border border-white/30">
+                      <div className="p-2 rounded-xl bg-blue-500/10 text-blue-600">
+                        <Calendar className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">Период</div>
+                        <div className="text-sm text-gray-600">
+                          {formatDate(event.start_date)} - {formatDate(event.end_date)}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-white/60 backdrop-blur-sm border border-white/30">
+                      <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600">
+                        <MapPin className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">Локация</div>
+                        <div className="text-sm text-gray-600">{event.location}</div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-white/60 backdrop-blur-sm border border-white/30">
+                      <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600">
+                        <Users className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">Участники</div>
+                        <div className="text-sm text-gray-600">{participants.length} резервистов</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -318,61 +443,81 @@ const ReservistEvaluationPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Табы для этапов оценки */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="flex space-x-8 px-6">
-              <button
-                onClick={() => setActiveTab('cases')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === 'cases'
-                    ? 'border-emerald-500 text-emerald-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <FileText className="w-5 h-5" />
-                  Защита кейсов
-                </div>
-              </button>
-              <button
-                onClick={() => setActiveTab('project')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === 'project'
-                    ? 'border-emerald-500 text-emerald-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <Presentation className="w-5 h-5" />
-                  Защита проекта
-                </div>
-              </button>
-              <button
-                onClick={() => setActiveTab('competencies')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === 'competencies'
-                    ? 'border-emerald-500 text-emerald-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <Gamepad2 className="w-5 h-5" />
-                  Диагностическая игра
-                </div>
-              </button>
+        {/* Современные табы с глассморфизмом */}
+        <div className="relative mb-8">
+          <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-lg border border-white/30 overflow-hidden">
+            <nav className="flex">
+              {[
+                { id: 'cases', label: 'Защита кейсов', icon: FileText, color: 'emerald' },
+                { id: 'project', label: 'Защита проекта', icon: Presentation, color: 'blue' },
+                { id: 'competencies', label: 'Диагностическая игра', icon: Gamepad2, color: 'purple' }
+              ].map((tab, index) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex-1 relative py-6 px-6 font-medium text-sm transition-all duration-300 group ${
+                    activeTab === tab.id
+                      ? 'text-white'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  {activeTab === tab.id && (
+                    <div className={`absolute inset-0 bg-gradient-to-r ${
+                      tab.color === 'emerald' ? 'from-emerald-500 to-teal-600' :
+                      tab.color === 'blue' ? 'from-blue-500 to-indigo-600' :
+                      'from-purple-500 to-pink-600'
+                    } transition-all duration-300`} />
+                  )}
+                  <div className="relative flex items-center justify-center gap-3">
+                    <tab.icon className={`w-5 h-5 transition-all duration-200 ${
+                      activeTab === tab.id ? 'scale-110' : 'group-hover:scale-105'
+                    }`} />
+                    <span className="hidden md:inline">{tab.label}</span>
+                  </div>
+                  {activeTab === tab.id && (
+                    <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-white rounded-full opacity-80" />
+                  )}
+                </button>
+              ))}
             </nav>
           </div>
         </div>
 
         {/* Контент в зависимости от активного таба */}
         {activeTab === 'cases' && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="bg-emerald-600 text-white px-6 py-4">
-              <h2 className="text-lg font-semibold">Итоговые результаты решения кейсов для экспертов</h2>
-              <p className="text-emerald-100 text-sm mt-1">Критерии оценки от 1 до 5 баллов</p>
+          <div className="space-y-6">
+            {/* Заголовок секции */}
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center gap-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-6 py-3 rounded-2xl shadow-lg">
+                <FileText className="w-6 h-6" />
+                <div>
+                  <h2 className="text-xl font-bold">Защита кейсов</h2>
+                  <p className="text-emerald-100 text-sm">Оценка решения двух кейсов по 3 критериям</p>
+                </div>
+              </div>
             </div>
-            
+
+            {/* Сетка карточек участников */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {participants.map((participant, index) => (
+                <div key={participant.id} className="group">
+                  <div className="bg-white/70 backdrop-blur-sm rounded-3xl border border-white/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 p-6">
+                    <div className="text-center">
+                      <h3 className="text-lg font-bold text-gray-900">
+                        {participant.user.full_name}
+                      </h3>
+                      <p className="text-gray-600">Современная карточка участника в разработке...</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Старая версия для справки - будет удалена */}
+        {false && (
+          <div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
