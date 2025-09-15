@@ -2,7 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, ChevronDown, ChevronUp, Save, CheckCircle, AlarmClock, Percent, Edit, Copy, FileText as FileTextIcon } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { clsx } from 'clsx';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface Test {
   id?: string;
@@ -49,6 +52,75 @@ interface TestCreationModalProps {
   onSuccess: () => void;
 }
 
+// Sortable item component for @dnd-kit
+function SortableAnswerItem({ 
+  answer, 
+  answerIndex, 
+  questionIndex, 
+  onAnswerChange, 
+  onDeleteAnswer 
+}: {
+  answer: Answer;
+  answerIndex: number;
+  questionIndex: number;
+  onAnswerChange: (questionIndex: number, answerIndex: number, field: string, value: any) => void;
+  onDeleteAnswer: (questionIndex: number, answerIndex: number) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: `answer-${questionIndex}-${answerIndex}` });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={
+        'bg-gray-100 rounded px-4 py-2 flex items-center shadow ' +
+        (isDragging ? 'ring-2 ring-green-400' : '')
+      }
+    >
+      <span className="mr-2 text-gray-400">{answerIndex + 1}.</span>
+      <input
+        type="text"
+        value={answer.text}
+        onChange={(e) => onAnswerChange(questionIndex, answerIndex, 'text', e.target.value)}
+        className="flex-1 px-3 py-1.5 border border-gray-200 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
+        placeholder="Текст ответа"
+        required
+      />
+      <button
+        {...attributes}
+        {...listeners}
+        className="ml-2 p-1 text-gray-400 hover:text-blue-600 cursor-grab"
+        title="Перетащить для изменения порядка"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <button
+        onClick={() => onDeleteAnswer(questionIndex, answerIndex)}
+        className="ml-2 text-gray-400 hover:text-red-600 transition-colors"
+        title="Удалить ответ"
+      >
+        <Trash2 size={14} />
+      </button>
+    </li>
+  );
+}
+
 export function TestCreationModal({ isOpen, onClose, testId, onSuccess }: TestCreationModalProps) {
   const [test, setTest] = useState<Test>({
     title: '',
@@ -66,6 +138,33 @@ export function TestCreationModal({ isOpen, onClose, testId, onSuccess }: TestCr
   const [saveLoading, setSaveLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  // Sensors for @dnd-kit
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Handle drag end for @dnd-kit
+  const handleDragEnd = (event: any, questionIndex: number) => {
+    const { active, over } = event;
+
+    if (active.id !== over.id) {
+      const questionItem = questions[questionIndex];
+      const answers = questionItem.answers || [];
+      
+      const oldIndex = answers.findIndex((_, index) => `answer-${questionIndex}-${index}` === active.id);
+      const newIndex = answers.findIndex((_, index) => `answer-${questionIndex}-${index}` === over.id);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newAnswers = arrayMove(answers, oldIndex, newIndex);
+        const reordered = newAnswers.map((a, i) => ({ ...a, order: i + 1 }));
+        handleQuestionChange(questionIndex, 'answers', reordered);
+      }
+    }
+  };
   
   // Загрузка данных при открытии модального окна
   useEffect(() => {
@@ -847,88 +946,29 @@ export function TestCreationModal({ isOpen, onClose, testId, onSuccess }: TestCr
                                     </button>
                                   </div>
                                 ) : questionItem.question_type === 'sequence' ? (
-                                  <DragDropContext
-                                    onDragEnd={(result) => {
-                                      if (!result.destination) return;
-                                      const newAnswers = Array.from(questionItem.answers || []);
-                                      const [removed] = newAnswers.splice(result.source.index, 1);
-                                      newAnswers.splice(result.destination.index, 0, removed);
-                                      // Пересчитываем order
-                                      const reordered = newAnswers.map((a, i) => ({ ...a, order: i + 1 }));
-                                      handleQuestionChange(index, 'answers', reordered);
-                                    }}
+                                  <DndContext
+                                    sensors={sensors}
+                                    collisionDetection={closestCenter}
+                                    onDragEnd={(event) => handleDragEnd(event, index)}
                                   >
-                                    <Droppable droppableId={`sequence-list-${index}`}>
-                                      {(provided) => (
-                                        <ul {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
-                                          {(questionItem.answers || []).map((answer, answerIndex) => (
-                                            <Draggable key={answerIndex} draggableId={`answer-${index}-${answerIndex}`} index={answerIndex}>
-                                              {(provided, snapshot) => (
-                                                <li
-                                                  ref={provided.innerRef}
-                                                  {...provided.draggableProps}
-                                                  {...provided.dragHandleProps}
-                                                  className={
-                                                    'bg-gray-100 rounded px-4 py-2 flex items-center shadow ' +
-                                                    (snapshot.isDragging ? 'ring-2 ring-green-400' : '')
-                                                  }
-                                                >
-                                                  <span className="mr-2 text-gray-400">{answerIndex + 1}.</span>
-                                                  <input
-                                                    type="text"
-                                                    value={answer.text}
-                                                    onChange={(e) => handleAnswerChange(index, answerIndex, 'text', e.target.value)}
-                                                    className="flex-1 px-3 py-1.5 border border-gray-200 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                                                    placeholder="Текст ответа"
-                                                    required
-                                                  />
-                                                  {/* Кнопки вверх/вниз */}
-                                                  <button
-                                                    type="button"
-                                                    disabled={answerIndex === 0}
-                                                    onClick={() => {
-                                                      if (answerIndex === 0) return;
-                                                      const newAnswers = Array.from(questionItem.answers || []);
-                                                      [newAnswers[answerIndex - 1], newAnswers[answerIndex]] = [newAnswers[answerIndex], newAnswers[answerIndex - 1]];
-                                                      const reordered = newAnswers.map((a, i) => ({ ...a, order: i + 1 }));
-                                                      handleQuestionChange(index, 'answers', reordered);
-                                                    }}
-                                                    className="ml-2 text-gray-400 hover:text-blue-600 disabled:opacity-40"
-                                                    title="Переместить вверх"
-                                                  >
-                                                    <ChevronUp size={16} />
-                                                  </button>
-                                                  <button
-                                                    type="button"
-                                                    disabled={answerIndex === (questionItem.answers?.length || 0) - 1}
-                                                    onClick={() => {
-                                                      if (answerIndex === (questionItem.answers?.length || 0) - 1) return;
-                                                      const newAnswers = Array.from(questionItem.answers || []);
-                                                      [newAnswers[answerIndex], newAnswers[answerIndex + 1]] = [newAnswers[answerIndex + 1], newAnswers[answerIndex]];
-                                                      const reordered = newAnswers.map((a, i) => ({ ...a, order: i + 1 }));
-                                                      handleQuestionChange(index, 'answers', reordered);
-                                                    }}
-                                                    className="ml-1 text-gray-400 hover:text-blue-600 disabled:opacity-40"
-                                                    title="Переместить вниз"
-                                                  >
-                                                    <ChevronDown size={16} />
-                                                  </button>
-                                                  <button
-                                                    onClick={() => handleDeleteAnswer(index, answerIndex)}
-                                                    className="ml-2 text-gray-400 hover:text-red-600 transition-colors"
-                                                    title="Удалить ответ"
-                                                  >
-                                                    <Trash2 size={14} />
-                                                  </button>
-                                                </li>
-                                              )}
-                                            </Draggable>
-                                          ))}
-                                          {provided.placeholder}
-                                        </ul>
-                                      )}
-                                    </Droppable>
-                                  </DragDropContext>
+                                    <SortableContext
+                                      items={(questionItem.answers || []).map((_, answerIndex) => `answer-${index}-${answerIndex}`)}
+                                      strategy={verticalListSortingStrategy}
+                                    >
+                                      <ul className="space-y-2">
+                                        {(questionItem.answers || []).map((answer, answerIndex) => (
+                                          <SortableAnswerItem
+                                            key={answerIndex}
+                                            answer={answer}
+                                            answerIndex={answerIndex}
+                                            questionIndex={index}
+                                            onAnswerChange={handleAnswerChange}
+                                            onDeleteAnswer={handleDeleteAnswer}
+                                          />
+                                        ))}
+                                      </ul>
+                                    </SortableContext>
+                                  </DndContext>
                                 ) : (
                                   <div className="space-y-2">
                                     {questionItem.answers.map((answer, answerIndex) => (
