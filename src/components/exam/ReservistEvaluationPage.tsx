@@ -96,7 +96,7 @@ const ReservistEvaluationPage: React.FC = () => {
 
       // Загружаем данные события
       const { data: eventData, error: eventError } = await supabase
-        .from('exam_events')
+        .from('events')
         .select('*')
         .eq('id', id)
         .single();
