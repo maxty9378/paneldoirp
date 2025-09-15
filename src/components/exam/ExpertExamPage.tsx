@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, Clock, MapPin, Users, Target, User, Mail, Building2, Star, CheckCircle, AlertCircle, FileText, Award, ClipboardList } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, Target, User, Star, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import DossierCard from './DossierCard';
@@ -78,7 +78,7 @@ interface Evaluation {
   reservist_id: string;
   evaluator_id: string;
   stage: string;
-  scores: any;
+  scores: { total_score?: number };
   comments: string;
   recommendations?: string;
   created_at?: string;
@@ -275,45 +275,11 @@ const ExpertExamPage: React.FC = () => {
     }
   };
 
-  // Сохранение оценки
-  const saveEvaluation = async (participantId: string, stage: string, score: number, comments: string) => {
-    if (!id || !user?.id) return;
-
-    try {
-      const evaluationData = {
-        exam_event_id: id,
-        reservist_id: participantId,
-        evaluator_id: user.id,
-        stage,
-        scores: { total_score: score },
-        comments,
-      };
-
-      // Проверяем, есть ли уже оценка
-      const existingEvaluation = evaluations.find(
-        e => e.reservist_id === participantId && e.stage === stage && e.evaluator_id === user.id
-      );
-
-      let result;
-      if (existingEvaluation) {
-        // Обновляем существующую оценку
-        result = await supabase
-          .from('exam_evaluations')
-          .update(evaluationData)
-          .eq('id', existingEvaluation.id);
-      } else {
-        // Создаем новую оценку
-        result = await supabase
-          .from('exam_evaluations')
-          .insert([evaluationData]);
-      }
-
-      if (result.error) throw result.error;
-      await fetchEvaluations(); // Обновляем список оценок
-    } catch (err) {
-      console.error('Ошибка сохранения оценки:', err);
-    }
-  };
+  // Сохранение оценки (функция зарезервирована для будущего использования)
+  // const saveEvaluation = async (participantId: string, stage: string, score: number, comments: string) => {
+  //   if (!id || !user?.id) return;
+  //   // Реализация будет добавлена позже
+  // };
 
   // Функции для управления настройками обложки
   const toggleAdminControls = () => {
@@ -501,30 +467,24 @@ const ExpertExamPage: React.FC = () => {
     );
   }
 
-  const getEvaluation = (participantId: string, stage: string) => {
-    if (userProfile?.role === 'administrator') {
-      // Администратор видит все оценки всех экспертов
-      return evaluations.find(e => e.reservist_id === participantId && e.stage === stage);
-    } else {
-      // Эксперт видит только свои оценки
-      return evaluations.find(e => e.reservist_id === participantId && e.stage === stage && e.evaluator_id === user?.id);
-    }
-  };
+  // Функции зарезервированы для будущего использования
+  // const getEvaluation = (participantId: string, stage: string) => {
+  //   if (userProfile?.role === 'administrator') {
+  //     return evaluations.find(e => e.reservist_id === participantId && e.stage === stage);
+  //   } else {
+  //     return evaluations.find(e => e.reservist_id === participantId && e.stage === stage && e.evaluator_id === user?.id);
+  //   }
+  // };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'published':
-        return 'bg-green-100 text-green-800';
-      case 'draft':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'completed':
-        return 'bg-blue-100 text-blue-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
+  // const getStatusColor = (status: string) => {
+  //   switch (status) {
+  //     case 'published': return 'bg-green-100 text-green-800';
+  //     case 'draft': return 'bg-yellow-100 text-yellow-800';
+  //     case 'completed': return 'bg-blue-100 text-blue-800';
+  //     case 'cancelled': return 'bg-red-100 text-red-800';
+  //     default: return 'bg-gray-100 text-gray-800';
+  //   }
+  // };
 
   const getStatusText = (status: string) => {
     switch (status) {
@@ -843,7 +803,7 @@ const ExpertExamPage: React.FC = () => {
                             // Обновляем локальное состояние
                             setParticipants(prev => prev.map(p => 
                               p.user_id === participantId 
-                                ? { ...p, dossier: dossierData }
+                                ? { ...p, dossier: { ...dossierData, user_id: participantId } }
                                 : p
                             ));
 
@@ -1000,7 +960,7 @@ const ExpertExamPage: React.FC = () => {
                                   <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                                     <div 
                                       className="h-full bg-gradient-to-r from-[#06A478] to-[#059669] rounded-full transition-all duration-1000"
-                                      style={{ width: `${((index + 1) / exam.detailed_schedule.length) * 100}%` }}
+                                      style={{ width: `${((index + 1) / (exam.detailed_schedule?.length || 1)) * 100}%` }}
                                     ></div>
                                   </div>
                                 </div>
@@ -1060,7 +1020,7 @@ const ExpertExamPage: React.FC = () => {
                             // Обновляем локальное состояние
                             setParticipants(prev => prev.map(p => 
                               p.user_id === participantId 
-                                ? { ...p, dossier: { ...p.dossier, ...dossierData } }
+                                ? { ...p, dossier: { ...p.dossier, ...dossierData, user_id: participantId } }
                                 : p
                             ));
                           } catch (err) {
@@ -1207,7 +1167,7 @@ const ExpertExamPage: React.FC = () => {
                                   <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                                     <div 
                                       className="h-full bg-gradient-to-r from-[#06A478] to-[#059669] rounded-full transition-all duration-1000"
-                                      style={{ width: `${((index + 1) / exam.detailed_schedule.length) * 100}%` }}
+                                      style={{ width: `${((index + 1) / (exam.detailed_schedule?.length || 1)) * 100}%` }}
                                     ></div>
                                   </div>
                                 </div>

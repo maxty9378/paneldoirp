@@ -37,7 +37,7 @@ interface DossierCardProps {
   };
   dossier?: DossierData;
   groupName?: string;
-  onEdit: (participantId: string, dossierData: DossierData) => void;
+  onEdit?: (participantId: string, dossierData: DossierData) => void;
   onSave: (participantId: string, dossierData: DossierData) => void;
 }
 
@@ -136,7 +136,7 @@ const DossierCard: React.FC<DossierCardProps> = ({ participant, dossier, groupNa
       const filePath = `dossier-photos/${fileName}`;
 
       // Загружаем файл в Supabase Storage
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from('dossier-photos')
         .upload(filePath, file);
 
