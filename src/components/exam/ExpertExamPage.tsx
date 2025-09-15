@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Calendar, MapPin, Users, Target, User, Star, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
-import DossierCard from './DossierCard';
+// import DossierCard from './DossierCard';
+import { CompactDossierCard } from './CompactDossierCard';
 import MobileExamNavigation from './MobileExamNavigation';
 
 interface ExamEvent {
@@ -774,43 +775,19 @@ const ExpertExamPage: React.FC = () => {
                     <p className="text-gray-500">Резервисты не добавлены</p>
                   </div>
                 ) : (
-                  <div className="space-y-6">
+                  <div className="grid grid-cols-1 gap-4">
                     {participants.map((participant) => (
-                      <DossierCard
+                      <CompactDossierCard
                         key={participant.id}
                         participant={participant}
-                        dossier={participant.dossier}
-                        groupName={exam.group_name}
-                        onEdit={(participantId, dossierData) => {
-                          console.log('Редактирование досье:', participantId, dossierData);
+                        dossier={participant.dossier ? { ...participant.dossier, user_id: participant.user.id } : undefined}
+                        onDetails={(participantId) => {
+                          console.log('Просмотр деталей участника:', participantId);
+                          // Здесь можно открыть модальное окно с детальной информацией
                         }}
-                        onSave={async (participantId, dossierData) => {
-                          try {
-                            console.log('Сохранение досье:', participantId, dossierData);
-                            
-                            // Сохраняем досье в базу данных
-                            const { error } = await supabase
-                              .from('participant_dossiers')
-                              .upsert({
-                                user_id: participantId,
-                                event_id: id,
-                                ...dossierData,
-                                updated_at: new Date().toISOString()
-                              });
-
-                            if (error) throw error;
-
-                            // Обновляем локальное состояние
-                            setParticipants(prev => prev.map(p => 
-                              p.user_id === participantId 
-                                ? { ...p, dossier: { ...dossierData, user_id: participantId } }
-                                : p
-                            ));
-
-                            console.log('Досье успешно сохранено');
-                          } catch (err) {
-                            console.error('Ошибка сохранения досье:', err);
-                          }
+                        onRate={(participantId) => {
+                          console.log('Оценка участника:', participantId);
+                          // Здесь можно открыть форму оценки
                         }}
                       />
                     ))}
@@ -991,41 +968,19 @@ const ExpertExamPage: React.FC = () => {
                     <p className="text-gray-500">Резервисты не добавлены</p>
                   </div>
                 ) : (
-                  <div className="space-y-6">
+                  <div className="space-y-4">
                     {participants.map((participant) => (
-                      <DossierCard
+                      <CompactDossierCard
                         key={participant.id}
                         participant={participant}
-                        dossier={participant.dossier}
-                        groupName={exam.group_name}
-                        onEdit={(participantId, dossierData) => {
-                          console.log('Редактирование досье:', participantId, dossierData);
+                        dossier={participant.dossier ? { ...participant.dossier, user_id: participant.user.id } : undefined}
+                        onDetails={(participantId) => {
+                          console.log('Просмотр деталей участника:', participantId);
+                          // Здесь можно открыть модальное окно с детальной информацией
                         }}
-                        onSave={async (participantId, dossierData) => {
-                          console.log('Сохранение досье:', participantId, dossierData);
-                          
-                          if (!id) return;
-                          
-                          try {
-                            const { error } = await supabase
-                              .from('participant_dossiers')
-                              .upsert({
-                                user_id: participantId,
-                                event_id: id,
-                                ...dossierData
-                              });
-                            
-                            if (error) throw error;
-                            
-                            // Обновляем локальное состояние
-                            setParticipants(prev => prev.map(p => 
-                              p.user_id === participantId 
-                                ? { ...p, dossier: { ...p.dossier, ...dossierData, user_id: participantId } }
-                                : p
-                            ));
-                          } catch (err) {
-                            console.error('Ошибка сохранения досье:', err);
-                          }
+                        onRate={(participantId) => {
+                          console.log('Оценка участника:', participantId);
+                          // Здесь можно открыть форму оценки
                         }}
                       />
                     ))}

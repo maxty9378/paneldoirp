@@ -6,3 +6,4 @@ export { ExamReservePage } from './ExamReservePage';
 export { default as ExamDetailsPage } from './ExamDetailsPage';
 export { default as ExpertExamPage } from './ExpertExamPage';
 export { default as MobileExamNavigation } from './MobileExamNavigation';
+export { CompactDossierCard } from './CompactDossierCard';
