@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 // import DossierCard from './DossierCard';
 import { CompactDossierCard } from './CompactDossierCard';
+import DossierModal from './DossierModal';
 import MobileExamNavigation from './MobileExamNavigation';
 
 interface ExamEvent {
@@ -96,6 +97,7 @@ const ExpertExamPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'participants' | 'evaluations' | 'schedule'>('participants');
+  const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(null);
   const [bannerSettings, setBannerSettings] = useState({
     position: 'center bottom',
     showAdminControls: false,
@@ -775,19 +777,18 @@ const ExpertExamPage: React.FC = () => {
                     <p className="text-gray-500">Резервисты не добавлены</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 gap-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {participants.map((participant) => (
                       <CompactDossierCard
                         key={participant.id}
                         participant={participant}
                         dossier={participant.dossier ? { ...participant.dossier, user_id: participant.user.id } : undefined}
-                        onDetails={(participantId) => {
-                          console.log('Просмотр деталей участника:', participantId);
-                          // Здесь можно открыть модальное окно с детальной информацией
-                        }}
                         onRate={(participantId) => {
                           console.log('Оценка участника:', participantId);
                           // Здесь можно открыть форму оценки
+                        }}
+                        onViewDossier={(participantId) => {
+                          setSelectedParticipantId(participantId);
                         }}
                       />
                     ))}
@@ -974,13 +975,12 @@ const ExpertExamPage: React.FC = () => {
                         key={participant.id}
                         participant={participant}
                         dossier={participant.dossier ? { ...participant.dossier, user_id: participant.user.id } : undefined}
-                        onDetails={(participantId) => {
-                          console.log('Просмотр деталей участника:', participantId);
-                          // Здесь можно открыть модальное окно с детальной информацией
-                        }}
                         onRate={(participantId) => {
                           console.log('Оценка участника:', participantId);
                           // Здесь можно открыть форму оценки
+                        }}
+                        onViewDossier={(participantId) => {
+                          setSelectedParticipantId(participantId);
                         }}
                       />
                     ))}
@@ -1147,6 +1147,15 @@ const ExpertExamPage: React.FC = () => {
         onTabChange={setActiveTab}
         evaluationsCount={evaluations.length}
       />
+
+      {/* Модальное окно досье */}
+      {selectedParticipantId && (
+        <DossierModal
+          isOpen={!!selectedParticipantId}
+          onClose={() => setSelectedParticipantId(null)}
+          participantId={selectedParticipantId}
+        />
+      )}
     </div>
   );
 };
