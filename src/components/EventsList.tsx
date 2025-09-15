@@ -86,6 +86,7 @@ export function EventsList({ onCreateEvent }: EventsListProps) {
       
       // Проверяем роль пользователя
       const isAdmin = userProfile?.role && ['administrator', 'moderator', 'trainer'].includes(userProfile.role);
+      const isExpert = userProfile?.role === 'expert';
       
       let data, error;
       
@@ -97,6 +98,18 @@ export function EventsList({ onCreateEvent }: EventsListProps) {
             *,
             event_types (*)
           `)
+          .order('start_date', { ascending: false });
+        data = result.data;
+        error = result.error;
+      } else if (isExpert) {
+        // Эксперты видят мероприятия, где они указаны в expert_emails
+        const result = await supabase
+          .from('events')
+          .select(`
+            *,
+            event_types (*)
+          `)
+          .contains('expert_emails', [userProfile?.email])
           .order('start_date', { ascending: false });
         data = result.data;
         error = result.error;

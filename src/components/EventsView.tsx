@@ -79,6 +79,7 @@ export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: Ev
       const isAdmin =
         !!userProfile?.role &&
         ['administrator', 'moderator', 'trainer'].includes(userProfile.role);
+      const isExpert = userProfile?.role === 'expert';
 
       let data: any[] | null = null;
       let err: any = null;
@@ -87,6 +88,15 @@ export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: Ev
         const { data: d, error: e } = await supabase
           .from('events')
           .select('*, event_types(id, name, name_ru)')
+          .order('start_date', { ascending: false });
+        data = d;
+        err = e;
+      } else if (isExpert) {
+        // Эксперты видят мероприятия, где они указаны в expert_emails
+        const { data: d, error: e } = await supabase
+          .from('events')
+          .select('*, event_types(id, name, name_ru)')
+          .contains('expert_emails', [userProfile?.email])
           .order('start_date', { ascending: false });
         data = d;
         err = e;

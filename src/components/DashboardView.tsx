@@ -266,6 +266,7 @@ export function DashboardView() {
       setEventsError(null);
 
       const isAdmin = userProfile?.role && ['administrator', 'moderator', 'trainer'].includes(userProfile.role);
+      const isExpert = userProfile?.role === 'expert';
       
       // Сначала проверим, есть ли вообще мероприятия в базе
       const { data: allEvents, error: allEventsError } = await supabase
@@ -286,6 +287,18 @@ export function DashboardView() {
             event_type:event_types(id, name, name_ru),
             event_participants(id)
           `)
+          .order('start_date', { ascending: false })
+          .limit(6);
+      } else if (isExpert) {
+        // Эксперты видят мероприятия, где они указаны в expert_emails
+        query = supabase
+          .from('events')
+          .select(`
+            *,
+            event_type:event_types(id, name, name_ru),
+            event_participants(id)
+          `)
+          .contains('expert_emails', [userProfile?.email])
           .order('start_date', { ascending: false })
           .limit(6);
       } else {
@@ -348,6 +361,7 @@ export function DashboardView() {
 
     try {
       const isAdmin = userProfile?.role && ['administrator', 'moderator', 'trainer'].includes(userProfile.role);
+      const isExpert = userProfile?.role === 'expert';
       
       if (isAdmin) {
         // Для администраторов - общая статистика
@@ -365,6 +379,20 @@ export function DashboardView() {
           totalParticipants: participantsData?.length || 0,
           completedCourses: 0, // TODO: реализовать подсчет завершенных курсов
           averageRating: 4.8 // TODO: реализовать подсчет средней оценки
+        });
+      } else if (isExpert) {
+        // Для экспертов - статистика по их мероприятиям
+        const { data: expertEventsData } = await supabase
+          .from('events')
+          .select('id, status')
+          .contains('expert_emails', [userProfile?.email])
+          .eq('status', 'active');
+
+        setStats({
+          activeEvents: expertEventsData?.length || 0,
+          totalParticipants: 0, // Не показываем общее количество участников для экспертов
+          completedCourses: 0, // TODO: реализовать подсчет завершенных курсов эксперта
+          averageRating: 0 // Не показываем среднюю оценку для экспертов
         });
       } else {
         // Для обычных пользователей - их статистика
