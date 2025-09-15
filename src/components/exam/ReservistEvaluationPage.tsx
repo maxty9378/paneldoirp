@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, MapPin, Users, Target, User, FileText, Presentation, Gamepad2, Save, Sparkles } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, Target, User, FileText, Presentation, Gamepad2, Save, Sparkles, MessageSquare, Award, CheckCircle2, Clock } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import MobileExamNavigation from './MobileExamNavigation';
+import { ParticipantWithCases, CaseEvaluation, EVALUATION_CRITERIA, SCORE_LABELS, ScoreValue } from '../../types/evaluation';
 
 interface ExamEvent {
   id: string;
@@ -70,18 +71,252 @@ interface CompetencyEvaluation {
   comments: string;
 }
 
+// Компонент карточки участника для оценки кейсов
+interface ParticipantCaseCardProps {
+  participant: ParticipantWithCases;
+  index: number;
+  onEvaluationChange: (caseId: string, field: keyof CaseEvaluation, value: any) => void;
+}
+
+const ParticipantCaseCard: React.FC<ParticipantCaseCardProps> = ({ participant, index, onEvaluationChange }) => {
+  const corporateColor = '#06A478';
+  
+  // Назначенные кейсы или пустой массив для демонстрации
+  const cases = participant.assigned_cases.length > 0 
+    ? participant.assigned_cases 
+    : [
+        // Демо кейсы, если не назначены
+        { id: `demo-1-${participant.id}`, exam_case: { id: '1', case_number: 8, title: 'Кейс "Стратегическое планирование"', description: null, correct_answer: null } },
+        { id: `demo-2-${participant.id}`, exam_case: { id: '2', case_number: 11, title: 'Кейс "Инновационное развитие"', description: null, correct_answer: null } }
+      ];
+
+  return (
+    <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-2xl">
+      {/* Заголовок карточки */}
+      <div className="bg-gradient-to-r from-gray-50 to-gray-100/50 px-8 py-6 border-b border-gray-200">
+        <div className="flex items-center gap-6">
+          {/* Фото участника */}
+          <div className="relative">
+            <div className="w-20 h-20 rounded-2xl overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 ring-4 ring-white shadow-lg">
+              {participant.dossier?.photo_url ? (
+                <img
+                  src={participant.dossier.photo_url}
+                  alt={participant.user.full_name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <User className="w-10 h-10 text-gray-400" />
+                </div>
+              )}
+            </div>
+            {/* Номер участника */}
+            <div 
+              className="absolute -top-2 -right-2 w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-lg"
+              style={{ backgroundColor: corporateColor }}
+            >
+              {index + 1}
+            </div>
+          </div>
+          
+          {/* Информация об участнике */}
+          <div className="flex-1">
+            <h3 className="text-xl font-bold text-gray-900 mb-2" style={{ fontFamily: 'SNS, sans-serif' }}>
+              {participant.user.full_name}
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <div 
+                  className="w-2 h-2 rounded-full"
+                  style={{ backgroundColor: corporateColor }}
+                />
+                <span className="text-gray-600 font-medium">
+                  {participant.user.position?.name || 'Должность не указана'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div 
+                  className="w-2 h-2 rounded-full"
+                  style={{ backgroundColor: corporateColor }}
+                />
+                <span className="text-gray-600">
+                  {participant.user.territory?.name || 'Филиал не указан'}
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Индикатор прогресса */}
+          <div className="text-center">
+            <div className="text-sm text-gray-500 mb-1">Прогресс</div>
+            <div 
+              className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold shadow-lg"
+              style={{ backgroundColor: corporateColor }}
+            >
+              0%
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Кейсы для оценки */}
+      <div className="p-8 space-y-8">
+        {cases.map((assignedCase, caseIndex) => (
+          <CaseEvaluationBlock
+            key={assignedCase.id}
+            assignedCase={assignedCase}
+            caseIndex={caseIndex}
+            onEvaluationChange={onEvaluationChange}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// Компонент блока оценки одного кейса
+interface CaseEvaluationBlockProps {
+  assignedCase: any; // Типизируем позже
+  caseIndex: number;
+  onEvaluationChange: (caseId: string, field: keyof CaseEvaluation, value: any) => void;
+}
+
+const CaseEvaluationBlock: React.FC<CaseEvaluationBlockProps> = ({ assignedCase, caseIndex, onEvaluationChange }) => {
+  const corporateColor = '#06A478';
+  const examCase = assignedCase.exam_case;
+
+  return (
+    <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl border border-gray-200 p-6 space-y-6">
+      {/* Заголовок кейса */}
+      <div className="flex items-center gap-4">
+        <div 
+          className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold shadow-lg"
+          style={{ backgroundColor: corporateColor }}
+        >
+          {examCase.case_number}
+        </div>
+        <div className="flex-1">
+          <h4 className="text-lg font-bold text-gray-900 mb-1">
+            {examCase.title}
+          </h4>
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <FileText className="w-4 h-4" />
+            <span>Кейс #{examCase.case_number} • {caseIndex + 1} из 2</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Критерии оценки */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {EVALUATION_CRITERIA.map((criteria) => (
+          <div key={criteria.id} className="space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">{criteria.icon}</span>
+              <div>
+                <div className="font-semibold text-gray-900 text-sm">
+                  {criteria.name}
+                </div>
+                <div className="text-xs text-gray-500">
+                  {criteria.description}
+                </div>
+              </div>
+            </div>
+            
+            {/* Выбор оценки */}
+            <div className="space-y-2">
+              <select
+                className="w-full appearance-none bg-white border-2 border-gray-200 rounded-xl px-4 py-3 text-sm font-medium focus:border-[#06A478] focus:ring-2 focus:ring-[#06A478]/20 transition-all duration-200"
+                onChange={(e) => onEvaluationChange(assignedCase.id, criteria.id, parseInt(e.target.value) || null)}
+              >
+                <option value="">Выберите оценку</option>
+                {Object.entries(SCORE_LABELS).map(([score, data]) => (
+                  <option key={score} value={score}>
+                    {data.emoji} {data.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Общий комментарий */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <MessageSquare className="w-5 h-5 text-gray-600" />
+          <label className="font-semibold text-gray-900 text-sm">
+            Комментарий к кейсу
+          </label>
+        </div>
+        <textarea
+          className="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-3 text-sm focus:border-[#06A478] focus:ring-2 focus:ring-[#06A478]/20 transition-all duration-200 resize-none"
+          rows={3}
+          placeholder="Добавьте комментарий по решению кейса..."
+          onChange={(e) => onEvaluationChange(assignedCase.id, 'overall_comment', e.target.value)}
+        />
+      </div>
+    </div>
+  );
+};
+
 const ReservistEvaluationPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [event, setEvent] = useState<ExamEvent | null>(null);
-  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [participants, setParticipants] = useState<ParticipantWithCases[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'cases' | 'project' | 'competencies'>('cases');
   const [caseEvaluations, setCaseEvaluations] = useState<CaseEvaluation[]>([]);
-  const [projectEvaluations, setProjectEvaluations] = useState<ProjectEvaluation[]>([]);
-  const [competencyEvaluations, setCompetencyEvaluations] = useState<CompetencyEvaluation[]>([]);
+  
+  // Временно оставляем старые состояния для других табов
+  const [projectEvaluations, setProjectEvaluations] = useState<LegacyProjectEvaluation[]>([]);
+  const [competencyEvaluations, setCompetencyEvaluations] = useState<LegacyCompetencyEvaluation[]>([]);
+
+  // Вычисляем прогресс оценки
+  const evaluationProgress = useMemo(() => {
+    const totalFields = participants.length * 3; // 3 этапа на каждого участника
+    let completedFields = 0;
+    
+    participants.forEach(participant => {
+      // Проверяем кейсы (2 кейса * 3 критерия)
+      for (let caseNum = 1; caseNum <= 2; caseNum++) {
+        const caseEval = caseEvaluations.find(e => 
+          e.participant_id === participant.user.id && e.case_number === caseNum
+        );
+        if (caseEval?.correctness && caseEval?.clarity && caseEval?.independence) {
+          completedFields += 0.33; // 1/3 от одного этапа
+        }
+      }
+      
+      // Проверяем проект
+      const projectEval = projectEvaluations.find(e => e.participant_id === participant.user.id);
+      if (projectEval?.presentation_quality && projectEval?.project_innovation && 
+          projectEval?.technical_implementation && projectEval?.business_value) {
+        completedFields += 1;
+      }
+      
+      // Проверяем компетенции
+      const competencyEval = competencyEvaluations.find(e => e.participant_id === participant.user.id);
+      if (competencyEval?.results_orientation && competencyEval?.effective_communication && 
+          competencyEval?.teamwork_skills && competencyEval?.systemic_thinking) {
+        completedFields += 1;
+      }
+    });
+    
+    return Math.round((completedFields / totalFields) * 100);
+  }, [participants, caseEvaluations, projectEvaluations, competencyEvaluations]);
+
+  const saveEvaluations = useCallback(async () => {
+    try {
+      // Автосохранение логика
+      console.log('Сохранение оценок...');
+      // TODO: Реализовать сохранение в Supabase
+    } catch (error) {
+      console.error('Ошибка сохранения:', error);
+    }
+  }, [caseEvaluations, projectEvaluations, competencyEvaluations]);
 
   useEffect(() => {
     if (id) {
@@ -276,54 +511,10 @@ const ReservistEvaluationPage: React.FC = () => {
     );
   }
 
-  // Вычисляем прогресс оценки
-  const evaluationProgress = useMemo(() => {
-    const totalFields = participants.length * 3; // 3 этапа на каждого участника
-    let completedFields = 0;
-    
-    participants.forEach(participant => {
-      // Проверяем кейсы (2 кейса * 3 критерия)
-      for (let caseNum = 1; caseNum <= 2; caseNum++) {
-        const caseEval = caseEvaluations.find(e => 
-          e.participant_id === participant.user.id && e.case_number === caseNum
-        );
-        if (caseEval?.correctness && caseEval?.clarity && caseEval?.independence) {
-          completedFields += 0.33; // 1/3 от одного этапа
-        }
-      }
-      
-      // Проверяем проект
-      const projectEval = projectEvaluations.find(e => e.participant_id === participant.user.id);
-      if (projectEval?.presentation_quality && projectEval?.project_innovation && 
-          projectEval?.technical_implementation && projectEval?.business_value) {
-        completedFields += 1;
-      }
-      
-      // Проверяем компетенции
-      const competencyEval = competencyEvaluations.find(e => e.participant_id === participant.user.id);
-      if (competencyEval?.results_orientation && competencyEval?.effective_communication && 
-          competencyEval?.teamwork_skills && competencyEval?.systemic_thinking) {
-        completedFields += 1;
-      }
-    });
-    
-    return Math.round((completedFields / totalFields) * 100);
-  }, [participants, caseEvaluations, projectEvaluations, competencyEvaluations]);
-
-  const saveEvaluations = useCallback(async () => {
-    try {
-      // Автосохранение логика
-      console.log('Сохранение оценок...');
-      // TODO: Реализовать сохранение в Supabase
-    } catch (error) {
-      console.error('Ошибка сохранения:', error);
-    }
-  }, [caseEvaluations, projectEvaluations, competencyEvaluations]);
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40">
       {/* Мобильная навигация */}
-      <MobileExamNavigation activeTab="evaluation" onTabChange={() => {}} />
+      <MobileExamNavigation activeTab="evaluations" onTabChange={() => {}} />
 
       {/* Floating Progress Indicator */}
       <div className="fixed top-4 right-4 z-50">
@@ -497,19 +688,18 @@ const ReservistEvaluationPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Сетка карточек участников */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Карточки участников для оценки кейсов */}
+            <div className="space-y-8">
               {participants.map((participant, index) => (
-                <div key={participant.id} className="group">
-                  <div className="bg-white/70 backdrop-blur-sm rounded-3xl border border-white/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 p-6">
-                    <div className="text-center">
-                      <h3 className="text-lg font-bold text-gray-900">
-                        {participant.user.full_name}
-                      </h3>
-                      <p className="text-gray-600">Современная карточка участника в разработке...</p>
-                    </div>
-                  </div>
-                </div>
+                <ParticipantCaseCard
+                  key={participant.id}
+                  participant={participant}
+                  index={index}
+                  onEvaluationChange={(caseId, field, value) => {
+                    // TODO: Обновить оценку в состоянии
+                    console.log('Обновление оценки:', { caseId, field, value });
+                  }}
+                />
               ))}
             </div>
           </div>
