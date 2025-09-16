@@ -92,8 +92,21 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
         setTimeout(() => {
           // Проверяем, что элемент существует и видим
           const targetElement = document.querySelector('[data-tour="case-solving-card"]') as HTMLElement;
+          console.log('Target element found:', targetElement);
+          console.log('Element offsetParent:', targetElement?.offsetParent);
+          console.log('Element getBoundingClientRect:', targetElement?.getBoundingClientRect());
+          
           if (targetElement && targetElement.offsetParent !== null) {
             setTourOpen(true);
+          } else {
+            console.log('Element not ready, retrying...');
+            // Повторная попытка через 200ms
+            setTimeout(() => {
+              const retryElement = document.querySelector('[data-tour="case-solving-card"]') as HTMLElement;
+              if (retryElement && retryElement.offsetParent !== null) {
+                setTourOpen(true);
+              }
+            }, 200);
           }
         }, tourDelay);
       }, initialDelay);
@@ -560,7 +573,7 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = (props)
               </div>
             </div>
           ),
-          position: 'bottom',
+          position: 'top',
           padding: 8
         }
       ]}
@@ -598,12 +611,12 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = (props)
         arrow: (base) => ({
           ...base,
           display: 'block',
-          borderColor: 'transparent transparent #06A478 transparent',
-          borderWidth: '0 8px 8px 8px',
-          marginTop: '-8px',
+          borderColor: '#06A478 transparent transparent transparent',
+          borderWidth: '8px 8px 0 8px',
+          marginTop: '0px',
           filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
           position: 'absolute',
-          top: '-8px',
+          top: '100%',
           left: '50%',
           transform: 'translateX(-50%)'
         })
