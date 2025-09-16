@@ -536,9 +536,9 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = (props)
             <div className="flex items-start gap-2">
               <MousePointer className="w-4 h-4 mt-0.5" />
               <div>
-                <div className="font-semibold" style={{ fontFamily: 'Mabry, sans-serif' }}>Начни здесь</div>
+                <div className="font-semibold" style={{ fontFamily: 'Mabry, sans-serif' }}>Начните здесь</div>
                 <div className="text-sm text-gray-600" style={{ fontFamily: 'Mabry, sans-serif' }}>
-                  Нажми «Решение кейсов», чтобы выбрать и оценить кейс.
+                  Нажмите «Решение кейсов», чтобы выбрать и оценить кейс.
                 </div>
               </div>
             </div>
