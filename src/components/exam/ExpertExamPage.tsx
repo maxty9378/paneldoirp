@@ -531,7 +531,7 @@ const ExpertExamPage: React.FC = () => {
         </div>
 
         {/* Шапка мероприятия в стиле очного тренинга */}
-        <div className="w-full rounded-2xl shadow-lg overflow-hidden relative mb-4 sm:mb-6 font-mabry">
+        <div className="w-full rounded-2xl shadow-lg overflow-hidden relative mb-4 sm:mb-6 font-mabry hidden md:block">
           {/* Hero секция с фоновым изображением */}
           <div
             className={`relative min-h-[200px] sm:min-h-[240px] md:min-h-[280px] flex items-end ${
@@ -782,7 +782,7 @@ const ExpertExamPage: React.FC = () => {
             </nav>
           </div>
 
-          <div className="p-6 pb-20 md:pb-6">
+          <div className="p-3 pb-20 md:pb-6">
             {/* Содержимое вкладки "Резервисты" */}
             {activeTab === 'participants' && (
               <div className="space-y-6">
@@ -794,7 +794,7 @@ const ExpertExamPage: React.FC = () => {
                     <p className="text-gray-500">Резервисты не добавлены</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                     {participants.map((participant) => (
                       <CompactDossierCard
                         key={participant.id}
@@ -974,7 +974,7 @@ const ExpertExamPage: React.FC = () => {
 
         {/* Мобильный контент */}
         <div className="md:hidden bg-white rounded-2xl shadow-lg border border-gray-200 mb-8">
-          <div className="p-6 pb-20">
+          <div className="p-3 pb-20">
             {/* Содержимое вкладки "Резервисты" */}
             {activeTab === 'participants' && (
               <div className="space-y-6">
@@ -986,7 +986,7 @@ const ExpertExamPage: React.FC = () => {
                     <p className="text-gray-500">Резервисты не добавлены</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {participants.map((participant) => (
                       <CompactDossierCard
                         key={participant.id}
@@ -1203,6 +1203,7 @@ const ExpertExamPage: React.FC = () => {
           }
         }}
         participantName={selectedParticipantForEvaluation?.user.full_name || ''}
+        participantPhoto={selectedParticipantForEvaluation?.dossier?.photo_url}
         examId={id || ''}
         participantId={selectedParticipantForEvaluation?.user.id || ''}
         // Передаем загруженные оценки для отображения статуса завершенности

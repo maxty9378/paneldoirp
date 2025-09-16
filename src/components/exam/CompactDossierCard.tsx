@@ -90,10 +90,10 @@ export const CompactDossierCard: React.FC<DossierCardProps> = ({
       role="group"
     >
       {/* верх: фото + текст */}
-      <div className="flex gap-4">
+      <div className="flex gap-5">
         {/* фото как на макете: вертикальный прямоугольник с мягкими углами */}
         <div className="relative shrink-0">
-          <div className="h-[160px] w-[130px] rounded-2xl bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200/60 overflow-hidden shadow-sm group-hover:shadow-md transition-all duration-300">
+          <div className="h-[160px] w-[120px] rounded-2xl bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200/60 overflow-hidden shadow-sm group-hover:shadow-md transition-all duration-300">
             {dossier?.photo_url ? (
               <img
                 src={dossier.photo_url}
@@ -126,7 +126,7 @@ export const CompactDossierCard: React.FC<DossierCardProps> = ({
           {/* ФИО: две строки, капслок, фирменный зелёный */}
           <div className="mb-1 leading-none">
             <div 
-              className="text-[24px] font-extrabold tracking-wide uppercase truncate" 
+              className="text-[24px] font-extrabold tracking-wide uppercase break-words" 
               style={{ 
                 color: '#06A478',
                 fontFamily: 'SNS, sans-serif'
@@ -136,7 +136,7 @@ export const CompactDossierCard: React.FC<DossierCardProps> = ({
             </div>
             {nameParts.bottom ? (
               <div 
-                className="text-[24px] font-extrabold tracking-wide uppercase truncate" 
+                className="text-[24px] font-extrabold tracking-wide uppercase break-words" 
                 style={{ 
                   color: '#06A478',
                   fontFamily: 'SNS, sans-serif'

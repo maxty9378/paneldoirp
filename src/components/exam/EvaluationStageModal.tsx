@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { X, FileText, Users, Trophy, ArrowRight, Loader2 } from 'lucide-react';
+import { X, FileText, Users, Trophy, ArrowRight, Loader2, User, MousePointer } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { CaseEvaluationModal } from './CaseEvaluationModal';
+import Joyride, { CallBackProps, STATUS, Step } from 'react-joyride';
 
 interface EvaluationStageModalProps {
   isOpen: boolean;
   onClose: () => void;
   onStageSelect?: (stage: string, caseNumber?: number) => void;
   participantName: string;
+  participantPhoto?: string;
   examId: string;
   participantId: string;
   onCaseEvaluationOpen?: (caseNumber: number) => void;
@@ -21,6 +23,7 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = ({
   onClose,
   onStageSelect,
   participantName,
+  participantPhoto,
   examId,
   participantId,
   onCaseEvaluationComplete,
@@ -32,6 +35,67 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = ({
   const [loadingCases, setLoadingCases] = useState(false);
   const [showCaseEvaluation, setShowCaseEvaluation] = useState(false);
   const [selectedCaseNumber, setSelectedCaseNumber] = useState<number>(1);
+  const [highlightFirstButton, setHighlightFirstButton] = useState(false);
+  const [runTour, setRunTour] = useState(false);
+  const [hasShownTutorial, setHasShownTutorial] = useState(false);
+  const [tutorialLoading, setTutorialLoading] = useState(true);
+
+  // Шаги тура: подсветить первый блок и показать подсказку
+  const tourSteps: Step[] = [
+    {
+      target: '[data-tour="case-solving-card"]',
+      content: (
+        <>
+          <div className="flex items-start gap-2">
+            <MousePointer className="w-4 h-4 mt-0.5" />
+            <div>
+              <div className="font-semibold" style={{ fontFamily: 'Mabry, sans-serif' }}>Начни здесь</div>
+              <div className="text-sm text-gray-600" style={{ fontFamily: 'Mabry, sans-serif' }}>
+                Нажми «Решение кейсов», чтобы выбрать и оценить кейс.
+              </div>
+            </div>
+          </div>
+        </>
+      ),
+      placement: 'right',
+      disableBeacon: true,
+      spotlightPadding: 8,
+      hideFooter: false,
+      disableOverlayClose: false
+    }
+  ];
+
+  // Проверка, была ли показана подсказка
+  const checkTutorialShown = async () => {
+    try {
+      const { data, error } = await supabase
+        .rpc('has_tutorial_step_been_shown', { step_key: 'evaluation_modal_tour' });
+      
+      if (error) {
+        console.error('Ошибка проверки подсказки:', error);
+        return false;
+      }
+      
+      return data || false;
+    } catch (err) {
+      console.error('Ошибка проверки подсказки:', err);
+      return false;
+    }
+  };
+
+  // Отметка подсказки как показанной
+  const markTutorialAsShown = async () => {
+    try {
+      const { error } = await supabase
+        .rpc('mark_tutorial_step_as_shown', { step_key: 'evaluation_modal_tour' });
+      
+      if (error) {
+        console.error('Ошибка сохранения подсказки:', error);
+      }
+    } catch (err) {
+      console.error('Ошибка сохранения подсказки:', err);
+    }
+  };
 
   // Загрузка назначенных кейсов
   const fetchAssignedCases = async () => {
@@ -67,29 +131,78 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = ({
     }
   };
 
-  // Сброс состояний при открытии модального окна
+  // Проверка подсказки при открытии модалки
   useEffect(() => {
     if (isOpen) {
       setShowCaseSelection(false);
       setShowCaseEvaluation(false);
       setSelectedCaseNumber(1);
+      setTutorialLoading(true);
+
+      // Проверяем, была ли показана подсказка
+      checkTutorialShown().then((shown) => {
+        setHasShownTutorial(shown);
+        setTutorialLoading(false);
+
+        // Если подсказка не была показана, запускаем тур
+        if (!shown) {
+          const t1 = setTimeout(() => {
+            setHighlightFirstButton(true);
+            // Запускаем тур только после того, как элемент подсвечен
+            setTimeout(() => {
+              setRunTour(true);
+            }, 100);
+          }, 650);
+
+          // Убрать подсветку спустя время, но тур сам закроется по действию пользователя
+          const t2 = setTimeout(() => setHighlightFirstButton(false), 6000);
+
+          return () => {
+            clearTimeout(t1);
+            clearTimeout(t2);
+          };
+        }
+      });
+    } else {
+      setRunTour(false);
+      setHighlightFirstButton(false);
+      setTutorialLoading(false);
     }
   }, [isOpen]);
 
+  // Обработчик завершения тура
+  const onTourChange = (data: CallBackProps) => {
+    const { status } = data;
+    if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
+      setRunTour(false);
+      setHighlightFirstButton(false);
+      
+      // Отмечаем подсказку как показанную
+      markTutorialAsShown();
+      setHasShownTutorial(true);
+    }
+  };
+
   // Блокировка прокрутки фона при открытом модальном окне
   useEffect(() => {
-    if (isOpen && !showCaseEvaluation) {
+    if (isOpen) {
       // Блокируем прокрутку
       document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
       return () => {
         // Восстанавливаем прокрутку при закрытии
         document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.width = '';
       };
     } else {
-      // Восстанавливаем прокрутку если модальное окно закрыто или показывается CaseEvaluationModal
+      // Восстанавливаем прокрутку если модальное окно закрыто
       document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
     }
-  }, [isOpen, showCaseEvaluation]);
+  }, [isOpen]);
 
   // Загружаем кейсы при переключении на выбор кейсов
   useEffect(() => {
@@ -115,8 +228,8 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = ({
     
     if (!evaluation?.criteria_scores) return null;
     
-    const scores = Object.values(evaluation.criteria_scores);
-    const average = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+    const scores = Object.values(evaluation.criteria_scores) as number[];
+    const average = scores.reduce((sum: number, score: number) => sum + score, 0) / scores.length;
     return Math.round(average * 10) / 10; // Округляем до 1 знака после запятой
   };
 
@@ -165,45 +278,94 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = ({
   });
   
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-2 xs:p-4">
-      <div className={`relative max-w-2xl w-full max-h-[95vh] xs:max-h-[90vh] overflow-hidden rounded-2xl xs:rounded-3xl bg-white shadow-2xl transform transition-all duration-500 ease-out ${
+    <>
+      <style>
+        {`
+          @keyframes glowBorder {
+            0% { box-shadow: 0 0 0 0 rgba(6,164,120,0.28); }
+            50% { box-shadow: 0 0 0 8px rgba(6,164,120,0.12); }
+            100% { box-shadow: 0 0 0 0 rgba(6,164,120,0.28); }
+          }
+          .highlight-glow {
+            animation: glowBorder 2s ease-in-out infinite;
+            border-color: rgba(6,164,120,0.5) !important;
+            background: linear-gradient(135deg, rgba(6,164,120,0.02), rgba(6,164,120,0.05)) !important;
+          }
+          
+          /* Стили для Joyride */
+          .react-joyride__tooltip {
+            font-family: 'Mabry', sans-serif !important;
+          }
+          .react-joyride__tooltip h4 {
+            font-family: 'Mabry', sans-serif !important;
+          }
+          .react-joyride__tooltip p {
+            font-family: 'Mabry', sans-serif !important;
+          }
+          .react-joyride__tooltip button {
+            font-family: 'Mabry', sans-serif !important;
+          }
+        `}
+      </style>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-2 xs:p-4">
+      <div className={`relative max-w-lg w-full max-h-[70vh] overflow-hidden rounded-2xl bg-white shadow-2xl transform transition-all duration-500 ease-out ${
         isOpen && !showCaseEvaluation ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-full opacity-0 scale-95'
       }`}>
         {/* Заголовок */}
-        <div className="relative bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 p-4 xs:p-6 text-white">
+        <div className="relative bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 p-3 text-white">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl"></div>
           <div className="relative flex items-center justify-between">
-            <div className="flex-1 pr-2">
-              <h2 className="text-lg xs:text-2xl font-bold mb-1 leading-tight" style={{ fontFamily: 'SNS, sans-serif' }}>
-                Выбор этапа оценки
-              </h2>
-              <p className="text-emerald-100 text-xs xs:text-sm truncate">
-                {participantName}
-              </p>
+            <div className="flex items-center gap-3 flex-1 pr-2">
+              {/* Круглое фото */}
+              <div className="w-12 h-12 rounded-full bg-white/20 border-2 border-white/30 overflow-hidden flex-shrink-0">
+                {participantPhoto ? (
+                  <img
+                    src={participantPhoto}
+                    alt={participantName}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-white/10">
+                    <User className="w-6 h-6 text-white/80" />
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex-1 min-w-0">
+                <h2 className="text-base font-bold mb-1 leading-tight" style={{ fontFamily: 'SNS, sans-serif' }}>
+                  Выбор этапа оценки
+                </h2>
+                <p className="text-emerald-100 text-xs truncate">
+                  {participantName}
+                </p>
+              </div>
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-white/20 rounded-xl transition-colors duration-200 touch-target"
+              className="p-1.5 hover:bg-white/20 rounded-lg transition-colors duration-200 touch-target"
             >
-              <X className="w-5 h-5 xs:w-6 xs:h-6" />
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
         {/* Основной контент с прокруткой */}
-        <div className="p-4 xs:p-6 overflow-y-auto max-h-[calc(95vh-200px)] xs:max-h-[calc(90vh-180px)]">
+        <div className="p-3 overflow-y-auto max-h-[calc(70vh-120px)]">
           {!showCaseSelection ? (
             // Выбор этапа оценки
-            <div className="grid grid-cols-1 gap-4">
-              {stages.map((stage, index) => {
+            <div className="grid grid-cols-1 gap-3 relative">
+              {stages.map((stage) => {
                 const Icon = stage.icon;
+                const isFirst = stage.id === 'case-solving';
                 return (
                   <div
                     key={stage.id}
+                    data-tour={isFirst ? 'case-solving-card' : undefined}
                     className={`
-                      group cursor-pointer rounded-2xl p-4 border transition-all duration-300
+                      group cursor-pointer rounded-xl p-3 border transition-all duration-300
                       bg-gradient-to-br ${stage.bgGradient} ${stage.borderColor}
                       hover:scale-[1.02] hover:shadow-lg
+                      ${isFirst && highlightFirstButton ? 'highlight-glow' : ''}
                     `}
                     onClick={() => {
                       if (stage.id === 'case-solving') {
@@ -213,25 +375,25 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = ({
                       }
                     }}
                   >
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
                       {/* Иконка */}
-                      <div className={`w-12 h-12 ${stage.iconBg} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
-                        <Icon className="w-6 h-6 text-white" />
+                      <div className={`w-10 h-10 ${stage.iconBg} rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
+                        <Icon className="w-5 h-5 text-white" />
                       </div>
                       
                       {/* Контент */}
                       <div className="flex-1">
-                        <h3 className="text-lg font-bold text-gray-900 mb-1" style={{ fontFamily: 'SNS, sans-serif' }}>
+                        <h3 className="text-base font-bold text-gray-900 mb-1" style={{ fontFamily: 'SNS, sans-serif' }}>
                           {stage.title}
                         </h3>
-                        <p className="text-sm text-gray-600 leading-relaxed">
+                        <p className="text-xs text-gray-600 leading-relaxed">
                           {stage.description}
                         </p>
                       </div>
 
                       {/* Стрелка */}
-                      <div className="w-8 h-8 rounded-full bg-white/50 flex items-center justify-center group-hover:bg-white group-hover:shadow-md transition-all duration-300">
-                        <svg className="w-4 h-4 text-gray-600 group-hover:translate-x-0.5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="w-6 h-6 rounded-full bg-white/50 flex items-center justify-center group-hover:bg-white group-hover:shadow-md transition-all duration-300">
+                        <svg className="w-3 h-3 text-gray-600 group-hover:translate-x-0.5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
                       </div>
@@ -385,11 +547,56 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = ({
         </div>
 
         {/* Футер */}
-        <div className="border-t border-gray-100 p-4 bg-gray-50 rounded-b-3xl">
-          <div className="text-center text-sm text-gray-500">
+        <div className="border-t border-gray-100 p-2 bg-gray-50 rounded-b-2xl">
+          <div className="text-center text-xs text-gray-500">
             Выберите этап для оценки резервиста
           </div>
         </div>
+
+        {/* Joyride внутри модалки */}
+        <Joyride
+          steps={tourSteps}
+          run={runTour && !showCaseSelection && !hasShownTutorial && !tutorialLoading}
+          continuous={false}
+          showSkipButton
+          hideCloseButton={false}
+          disableOverlayClose={false}
+          disableCloseOnEsc={false}
+          scrollToFirstStep={false}
+          spotlightClicks={false}
+          hideBackButton={true}
+          disableScrolling={true}
+          styles={{
+            options: { zIndex: 10000, primaryColor: '#06A478' },
+            overlay: { 
+              mixBlendMode: 'unset',
+              backgroundColor: 'rgba(0, 0, 0, 0.1)'
+            },
+            spotlight: { 
+              borderRadius: 12,
+              boxShadow: '0 0 0 4px rgba(6, 164, 120, 0.3)',
+              backgroundColor: 'transparent'
+            },
+            tooltip: { 
+              borderRadius: 12,
+              fontSize: 14,
+              padding: 16,
+              fontFamily: 'Mabry, sans-serif'
+            },
+            tooltipContent: {
+              fontFamily: 'Mabry, sans-serif'
+            }
+          }}
+          locale={{
+            back: 'Назад',
+            close: 'Закрыть',
+            last: 'Понятно',
+            next: 'Дальше',
+            open: 'Открыть подсказку',
+            skip: 'Пропустить'
+          }}
+          callback={onTourChange}
+        />
       </div>
 
       {/* Модальное окно оценки кейса */}
@@ -416,5 +623,6 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = ({
         )}
       />
     </div>
+    </>
   );
 };
