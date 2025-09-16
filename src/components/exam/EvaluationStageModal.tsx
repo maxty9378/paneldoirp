@@ -539,6 +539,10 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = (props)
           padding: 8
         }
       ]}
+      showNavigation={false}
+      showBadge={false}
+      showCloseButton={false}
+      showPrevNextButtons={false}
       styles={{
         popover: (base) => ({
           ...base,
@@ -553,6 +557,14 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = (props)
         badge: (base) => ({
           ...base,
           backgroundColor: '#06A478'
+        }),
+        navigation: (base) => ({
+          ...base,
+          display: 'none'
+        }),
+        arrow: (base) => ({
+          ...base,
+          display: 'none'
         })
       }}
     >
