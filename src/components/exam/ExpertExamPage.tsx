@@ -8,6 +8,7 @@ import { CompactDossierCard } from './CompactDossierCard';
 import { DossierModal } from './DossierModal';
 import { EvaluationStageModal } from './EvaluationStageModal';
 import { CaseAssignmentModal } from './CaseAssignmentModal';
+import { CaseEvaluationModal } from './CaseEvaluationModal';
 import MobileExamNavigation from './MobileExamNavigation';
 
 interface ExamEvent {
@@ -103,6 +104,8 @@ const ExpertExamPage: React.FC = () => {
   const [showEvaluationModal, setShowEvaluationModal] = useState(false);
   const [selectedParticipantForEvaluation, setSelectedParticipantForEvaluation] = useState<Participant | null>(null);
   const [showCaseAssignmentModal, setShowCaseAssignmentModal] = useState(false);
+  const [showCaseEvaluation, setShowCaseEvaluation] = useState(false);
+  const [selectedCaseNumber, setSelectedCaseNumber] = useState<number | null>(null);
   const [bannerSettings, setBannerSettings] = useState({
     position: 'center bottom',
     showAdminControls: false,
@@ -260,8 +263,9 @@ const ExpertExamPage: React.FC = () => {
     try {
       console.log('Загружаем оценки для экзамена:', id, 'пользователь:', user.id);
       
+      // Загружаем оценки кейсов из case_evaluations
       let query = supabase
-        .from('exam_evaluations')
+        .from('case_evaluations')
         .select('*')
         .eq('exam_event_id', id);
 
@@ -272,14 +276,14 @@ const ExpertExamPage: React.FC = () => {
 
       const { data, error } = await query;
 
-      console.log('Результат запроса оценок:', { data, error });
+      console.log('Результат запроса оценок кейсов:', { data, error });
 
       if (error) throw error;
       
-      console.log('Загружены оценки:', data);
+      console.log('Загружены оценки кейсов:', data);
       setEvaluations(data || []);
     } catch (err) {
-      console.error('Ошибка загрузки оценок:', err);
+      console.error('Ошибка загрузки оценок кейсов:', err);
     }
   };
 
@@ -1197,21 +1201,20 @@ const ExpertExamPage: React.FC = () => {
         }}
         onStageSelect={(stage, caseNumber) => {
           console.log('Selected stage:', stage, 'case number:', caseNumber, 'for participant:', selectedParticipantForEvaluation?.user.full_name);
-          setShowEvaluationModal(false);
           
-          if (stage === 'case-solving' && caseNumber) {
-            // Переход к оценке кейса
-            navigate(`/case-evaluation/${id}?participantId=${selectedParticipantForEvaluation?.user.id}&caseNumber=${caseNumber}`);
-          } else {
-            // Переход к другим типам оценки (пока не реализованы)
+          // Для кейсов НЕ закрываем основное меню (обрабатывается внутри EvaluationStageModal)
+          // Для других этапов закрываем и переходим
+          if (stage !== 'case-solving') {
+            setShowEvaluationModal(false);
+            setSelectedParticipantForEvaluation(null);
             console.log('Переход к оценке этапа:', stage);
           }
-          
-          setSelectedParticipantForEvaluation(null);
         }}
         participantName={selectedParticipantForEvaluation?.user.full_name || ''}
         examId={id || ''}
         participantId={selectedParticipantForEvaluation?.user.id || ''}
+        // Передаем загруженные оценки для отображения статуса завершенности
+        evaluations={evaluations}
       />
 
       {/* Модальное окно назначения кейсов */}

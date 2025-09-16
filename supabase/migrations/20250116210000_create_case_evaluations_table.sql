@@ -70,3 +70,5 @@ COMMENT ON COLUMN case_evaluations.comments IS 'Дополнительные к�
 
 -- Уведомление об успешном создании
 NOTIFY pgrst, 'reload schema';
+
+

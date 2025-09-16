@@ -25,6 +25,8 @@ interface ReservistCardProps {
   };
   index?: number;
   onEvaluate?: (participantId: string) => void;
+  assignedCases?: number[];
+  completedCases?: Set<number>;
 }
 
 function splitName(full: string) {
@@ -46,8 +48,9 @@ function calcExperienceText(days?: number, fallback?: string) {
 
 export const ReservistCard: React.FC<ReservistCardProps> = ({
   participant,
-  index,
-  onEvaluate
+  onEvaluate,
+  assignedCases = [8, 11, 15], // Значения по умолчанию
+  completedCases = new Set()
 }) => {
   const [showDossier, setShowDossier] = useState(false);
   
@@ -184,68 +187,91 @@ export const ReservistCard: React.FC<ReservistCardProps> = ({
       <div className="mt-4 space-y-3">
         {/* Защита кейсов - заголовок */}
         <div className="text-center">
-          <h3 className="text-lg font-bold text-gray-900 mb-1">Защита кейсов</h3>
-          <p className="text-sm text-gray-500">Оценка решения двух кейсов</p>
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <h3 className="text-lg font-bold text-gray-900">Защита кейсов</h3>
+            {completedCases.size > 0 && (
+              <div className="flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                {completedCases.size}/{assignedCases.length}
+              </div>
+            )}
+          </div>
+          <p className="text-sm text-gray-500">
+            {completedCases.size === 0 
+              ? 'Оценка решения кейсов' 
+              : completedCases.size === assignedCases.length
+                ? 'Все кейсы оценены'
+                : `Оценено ${completedCases.size} из ${assignedCases.length} кейсов`
+            }
+          </p>
         </div>
 
-        {/* Два кейса в ряд */}
+        {/* Кейсы в ряд */}
         <div className="flex gap-3">
-          {/* Кейс 1 */}
-          <div className="
-            flex-1 rounded-[20px] border border-gray-200 p-4
-            hover:border-emerald-300 hover:bg-emerald-50/30
-            transition-all duration-200 cursor-pointer
-            bg-white
-          ">
-            <div className="text-center">
-              <div className="w-8 h-8 mx-auto mb-2 rounded-lg bg-emerald-100 flex items-center justify-center">
-                <span className="text-emerald-600 font-bold text-sm">8</span>
+          {assignedCases.map((caseNumber) => {
+            const isCompleted = completedCases.has(caseNumber);
+            return (
+              <div
+                key={caseNumber}
+                className={`
+                  flex-1 rounded-[20px] border-2 p-4 transition-all duration-200 cursor-pointer relative
+                  ${isCompleted 
+                    ? 'border-green-300 bg-green-50 shadow-sm' 
+                    : 'border-gray-200 hover:border-emerald-300 hover:bg-emerald-50/30 bg-white hover:shadow-md'
+                  }
+                `}
+              >
+                {/* Индикатор завершения */}
+                {isCompleted && (
+                  <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center shadow-lg">
+                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                )}
+                
+                <div className="text-center">
+                  <div className={`w-10 h-10 mx-auto mb-3 rounded-xl flex items-center justify-center ${
+                    isCompleted ? 'bg-green-200' : 'bg-emerald-100'
+                  }`}>
+                    <span className={`font-bold text-lg ${
+                      isCompleted ? 'text-green-700' : 'text-emerald-600'
+                    }`}>
+                      {caseNumber}
+                    </span>
+                  </div>
+                  <div className={`text-sm font-semibold mb-2 ${
+                    isCompleted ? 'text-green-700' : 'text-gray-700'
+                  }`}>
+                    Кейс #{caseNumber}
+                  </div>
+                  
+                  {/* Статус */}
+                  <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${
+                    isCompleted 
+                      ? 'bg-green-100 text-green-700' 
+                      : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    {isCompleted ? (
+                      <>
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        Оценка выставлена
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                        Оценить решение
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div className="text-xs text-gray-600 font-medium">Кейс #8</div>
-              <div className="mt-2 space-y-1">
-                <input type="checkbox" className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500" />
-                <div className="text-xs text-gray-400">Оценить решения двух кейсов</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Кейс 2 */}
-          <div className="
-            flex-1 rounded-[20px] border border-gray-200 p-4
-            hover:border-emerald-300 hover:bg-emerald-50/30
-            transition-all duration-200 cursor-pointer
-            bg-white
-          ">
-            <div className="text-center">
-              <div className="w-8 h-8 mx-auto mb-2 rounded-lg bg-emerald-100 flex items-center justify-center">
-                <span className="text-emerald-600 font-bold text-sm">11</span>
-              </div>
-              <div className="text-xs text-gray-600 font-medium">Кейс #11</div>
-              <div className="mt-2 space-y-1">
-                <input type="checkbox" className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500" />
-                <div className="text-xs text-gray-400">Оценить решения двух кейсов</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Кейс 3 */}
-          <div className="
-            flex-1 rounded-[20px] border border-gray-200 p-4
-            hover:border-emerald-300 hover:bg-emerald-50/30
-            transition-all duration-200 cursor-pointer
-            bg-white
-          ">
-            <div className="text-center">
-              <div className="w-8 h-8 mx-auto mb-2 rounded-lg bg-emerald-100 flex items-center justify-center">
-                <span className="text-emerald-600 font-bold text-sm">15</span>
-              </div>
-              <div className="text-xs text-gray-600 font-medium">Кейс #15</div>
-              <div className="mt-2 space-y-1">
-                <input type="checkbox" className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500" />
-                <div className="text-xs text-gray-400">Оценить решения двух кейсов</div>
-              </div>
-            </div>
-          </div>
+            );
+          })}
         </div>
 
         {/* Кнопки действий */}
@@ -295,7 +321,10 @@ export const ReservistCard: React.FC<ReservistCardProps> = ({
         isOpen={showDossier}
         onClose={() => setShowDossier(false)}
         user={participant.user}
-        dossier={participant.dossier}
+        dossier={participant.dossier ? {
+          ...participant.dossier,
+          user_id: participant.user.id
+        } : undefined}
       />
 
       {/* мягкие круглые углы у всей карточки и лёгкий блик для объёма */}

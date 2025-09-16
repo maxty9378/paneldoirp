@@ -217,7 +217,10 @@ const CaseEvaluationPage: React.FC = () => {
 
   const getTotalScore = () => {
     const { correctness, clarity, independence } = evaluation.criteria_scores;
-    return correctness + clarity + independence;
+    const validScores = [correctness, clarity, independence].filter(score => score > 0);
+    if (validScores.length === 0) return 0;
+    const average = validScores.reduce((sum, score) => sum + score, 0) / validScores.length;
+    return Math.round(average * 10) / 10; // Округление до 1 знака после запятой
   };
 
   const getScoreColor = (score: number) => {
@@ -316,9 +319,9 @@ const CaseEvaluationPage: React.FC = () => {
             </div>
             <div className="text-right">
               <div className="text-2xl font-bold text-emerald-600">
-                {getTotalScore()}<span className="text-gray-400">/15</span>
+                {getTotalScore()}<span className="text-gray-400">/5</span>
               </div>
-              <div className="text-sm text-gray-500">Общий балл</div>
+              <div className="text-sm text-gray-500">Средний балл</div>
             </div>
           </div>
         </div>
@@ -359,20 +362,41 @@ const CaseEvaluationPage: React.FC = () => {
                   </div>
                   
                   {/* Оценочная шкала */}
-                  <div className="flex gap-2">
-                    {[1, 2, 3, 4, 5].map((score) => (
-                      <button
-                        key={score}
-                        onClick={() => handleScoreChange(criterion.key, score)}
-                        className={`flex-1 h-12 rounded-xl border-2 transition-all duration-200 font-semibold ${
-                          currentScore === score
-                            ? 'border-emerald-500 bg-emerald-500 text-white shadow-lg'
-                            : 'border-gray-200 bg-white text-gray-600 hover:border-emerald-300 hover:bg-emerald-50'
-                        }`}
-                      >
-                        {score}
-                      </button>
-                    ))}
+                  <div className="space-y-2">
+                    {/* Первый ряд - целые числа */}
+                    <div className="flex gap-2">
+                      {[1, 2, 3, 4, 5].map((score) => (
+                        <button
+                          key={score}
+                          onClick={() => handleScoreChange(criterion.key, score)}
+                          className={`flex-1 h-12 rounded-xl border-2 transition-all duration-200 font-semibold ${
+                            currentScore === score
+                              ? 'border-emerald-500 bg-emerald-500 text-white shadow-lg'
+                              : 'border-gray-200 bg-white text-gray-600 hover:border-emerald-300 hover:bg-emerald-50'
+                          }`}
+                        >
+                          {score}
+                        </button>
+                      ))}
+                    </div>
+                    {/* Второй ряд - дробные числа */}
+                    <div className="flex gap-2">
+                      {[1.5, 2.5, 3.5, 4.5].map((score) => (
+                        <button
+                          key={score}
+                          onClick={() => handleScoreChange(criterion.key, score)}
+                          className={`flex-1 h-12 rounded-xl border-2 transition-all duration-200 font-semibold ${
+                            currentScore === score
+                              ? 'border-emerald-300 bg-emerald-100 text-emerald-700 shadow-sm'
+                              : 'border-gray-200 bg-gray-25 text-gray-400 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-500'
+                          }`}
+                        >
+                          {score}
+                        </button>
+                      ))}
+                      {/* Пустая кнопка для выравнивания */}
+                      <div className="flex-1"></div>
+                    </div>
                   </div>
                 </div>
               );

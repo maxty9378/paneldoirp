@@ -2,8 +2,10 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, FileText, Save } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../hooks/useAuth';
 import MobileExamNavigation from './MobileExamNavigation';
 import { ReservistCard } from './ReservistCard';
+import { EvaluationStageModal } from './EvaluationStageModal';
 
 interface ExamEvent {
   id: string;
@@ -82,6 +84,7 @@ interface CaseAssignment {
 const ReservistEvaluationPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [event, setEvent] = useState<ExamEvent | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,6 +96,13 @@ const ReservistEvaluationPage: React.FC = () => {
   // Временно оставляем старые состояния для других табов
   const [projectEvaluations, setProjectEvaluations] = useState<ProjectEvaluation[]>([]);
   const [competencyEvaluations, setCompetencyEvaluations] = useState<CompetencyEvaluation[]>([]);
+
+  // Состояние для модального окна оценки
+  const [showEvaluationModal, setShowEvaluationModal] = useState(false);
+  const [selectedParticipant, setSelectedParticipant] = useState<Participant | null>(null);
+  
+  // Состояние для отслеживания завершенных оценок
+  const [completedEvaluations, setCompletedEvaluations] = useState<Set<string>>(new Set());
 
   // Вычисляем прогресс оценки
   const evaluationProgress = useMemo(() => {
@@ -139,10 +149,41 @@ const ReservistEvaluationPage: React.FC = () => {
   }, [caseEvaluations, projectEvaluations, competencyEvaluations]);
 
   useEffect(() => {
+    console.log('🔄 useEffect [id] сработал:', { id, hasUser: !!user?.id });
     if (id) {
       loadEventData();
+      // НЕ вызываем loadExistingEvaluations здесь, так как user может быть еще не загружен
+      console.log('📝 Загружаем данные события, но НЕ оценки (пользователь может быть не готов)');
     }
   }, [id]);
+
+  // Отладочный лог при изменении user
+  useEffect(() => {
+    console.log('👤 Пользователь изменился:', { 
+      userId: user?.id, 
+      userEmail: user?.email,
+      hasUser: !!user,
+      examId: id
+    });
+    
+    // Перезагружаем оценки когда пользователь загрузился
+    if (user?.id && id) {
+      console.log('🔄 Перезагружаем оценки после загрузки пользователя');
+      loadExistingEvaluations();
+    } else {
+      console.log('❌ Не перезагружаем оценки:', { hasUser: !!user?.id, hasExamId: !!id });
+    }
+  }, [user?.id, id]);
+
+  // Дополнительное логирование при первом рендере
+  useEffect(() => {
+    console.log('🏁 Первый рендер ReservistEvaluationPage:', {
+      userId: user?.id,
+      examId: id,
+      loading,
+      participants: participants?.length
+    });
+  }, []);
 
   const loadEventData = async () => {
     try {
@@ -221,10 +262,14 @@ const ReservistEvaluationPage: React.FC = () => {
     if (!id) return;
     
     try {
+      console.log('📋 Загружаем назначения кейсов для exam_event_id:', id);
+      
       const { data, error } = await supabase
         .from('case_assignments')
         .select('*')
         .eq('exam_event_id', id);
+
+      console.log('📋 Ответ case_assignments:', { data, error });
 
       if (error) {
         console.error('Ошибка загрузки назначений кейсов:', error);
@@ -232,15 +277,106 @@ const ReservistEvaluationPage: React.FC = () => {
       }
 
       setCaseAssignments(data || []);
+      console.log('✅ Назначения кейсов загружены:', data);
     } catch (err) {
       console.error('Ошибка загрузки назначений кейсов:', err);
+    }
+  };
+
+  const loadExistingEvaluations = async () => {
+    console.log('🚀 Вызов loadExistingEvaluations:', { 
+      hasId: !!id, 
+      hasUserId: !!user?.id,
+      id, 
+      userId: user?.id,
+      userEmail: user?.email
+    });
+    
+    if (!id || !user?.id) {
+      console.log('❌ Не загружаем оценки - нет ID экзамена или пользователя');
+      return;
+    }
+    
+    console.log('🔍 Загрузка оценок для:', { 
+      examId: id, 
+      evaluatorId: user.id, 
+      userEmail: user.email 
+    });
+    
+    try {
+      console.log('📡 Выполняем запрос к Supabase...');
+      
+      // Загружаем существующие оценки кейсов из таблицы case_evaluations
+      const { data, error } = await supabase
+        .from('case_evaluations')
+        .select('reservist_id, case_number, evaluator_id, criteria_scores')
+        .eq('exam_event_id', id)
+        .eq('evaluator_id', user.id);
+
+      console.log('📡 Ответ от Supabase:', { data, error });
+
+      if (error && error.code !== 'PGRST116') {
+        console.warn('Ошибка загрузки существующих оценок кейсов:', error);
+        return;
+      }
+
+      console.log('📊 Найденные оценки в БД:', data);
+
+      if (data && data.length > 0) {
+        const evaluationKeys = data.map(evaluation => 
+          `${evaluation.reservist_id}-case-${evaluation.case_number}`
+        );
+        
+        console.log('🔑 Формируем ключи оценок:', evaluationKeys);
+        setCompletedEvaluations(new Set(evaluationKeys));
+        console.log('✅ Ключи завершенных оценок установлены:', evaluationKeys);
+      } else {
+        console.log('❌ Оценки не найдены для текущего пользователя');
+        setCompletedEvaluations(new Set());
+      }
+    } catch (err) {
+      console.error('❌ Ошибка при загрузке существующих оценок кейсов:', err);
     }
   };
 
   // Функция для получения назначенных кейсов участника
   const getAssignedCases = (participantId: string): number[] => {
     const assignment = caseAssignments.find(a => a.participant_id === participantId);
-    return assignment?.case_numbers || [];
+    const cases = assignment?.case_numbers || [];
+    console.log('🎯 getAssignedCases для участника', participantId, ':', cases);
+    return cases;
+  };
+
+  // Функция для проверки, завершена ли оценка кейса
+  const isCaseEvaluationCompleted = (participantId: string, caseNumber: number): boolean => {
+    const evaluationKey = `${participantId}-case-${caseNumber}`;
+    const isCompleted = completedEvaluations.has(evaluationKey);
+    console.log(`🔍 Проверка завершения: ${evaluationKey} = ${isCompleted}`, {
+      allCompletedKeys: Array.from(completedEvaluations)
+    });
+    return isCompleted;
+  };
+
+  // Функция для отметки оценки как завершенной
+  const markEvaluationAsCompleted = async (participantId: string, caseNumber: number) => {
+    const evaluationKey = `${participantId}-case-${caseNumber}`;
+    
+    // Обновляем локальное состояние
+    setCompletedEvaluations(prev => new Set([...prev, evaluationKey]));
+    console.log('Оценка отмечена как завершенная:', evaluationKey);
+  };
+
+  // Функция для удаления завершенной оценки (если эксперт изменил решение)
+  const removeCompletedEvaluation = async (participantId: string, caseNumber: number) => {
+    const evaluationKey = `${participantId}-case-${caseNumber}`;
+    
+    // Обновляем локальное состояние
+    setCompletedEvaluations(prev => {
+      const newSet = new Set([...prev]);
+      newSet.delete(evaluationKey);
+      return newSet;
+    });
+    console.log('Статус оценки сброшен:', evaluationKey);
   };
 
   const handleCaseEvaluationChange = (participantId: string, caseNumber: number, field: keyof Omit<CaseEvaluation, 'participant_id' | 'case_number'>, value: string | number) => {
@@ -395,6 +531,11 @@ const ReservistEvaluationPage: React.FC = () => {
             <div className="text-sm">
               <div className="font-medium text-gray-900">Прогресс</div>
               <div className="text-gray-500">оценки</div>
+              {completedEvaluations.size > 0 && (
+                <div className="text-xs text-green-600 font-medium mt-1">
+                  ✓ {completedEvaluations.size} оценок
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -406,6 +547,41 @@ const ReservistEvaluationPage: React.FC = () => {
         className="fixed bottom-6 right-6 z-50 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white p-4 rounded-2xl shadow-xl hover:shadow-2xl transform hover:scale-105 active:scale-95 transition-all duration-200 group"
       >
         <Save className="w-6 h-6 group-hover:scale-110 transition-transform" />
+      </button>
+
+      {/* Отладочная кнопка */}
+      <button
+        onClick={() => {
+          console.log('🔧 Принудительная перезагрузка оценок');
+          loadExistingEvaluations();
+        }}
+        className="fixed bottom-6 right-24 z-50 bg-red-500 hover:bg-red-600 text-white p-3 rounded-xl shadow-lg text-sm"
+      >
+        🔧 DEBUG
+      </button>
+
+      {/* Отладочная кнопка для проверки данных */}
+      <button
+        onClick={() => {
+          console.log('🔍 ОТЛАДКА ДАННЫХ:');
+          console.log('👤 Пользователь:', { id: user?.id, email: user?.email });
+          console.log('📋 Назначения кейсов:', caseAssignments);
+          console.log('✅ Завершенные оценки:', Array.from(completedEvaluations));
+          console.log('👥 Участники:', participants?.length);
+          
+          // Проверим конкретного участника
+          const participantId = '32e35a41-faf3-4566-9dda-c050bcd068ec';
+          const assignedCases = getAssignedCases(participantId);
+          console.log('🎯 Назначенные кейсы для участника', participantId, ':', assignedCases);
+          
+          assignedCases.forEach(caseNum => {
+            const isCompleted = isCaseEvaluationCompleted(participantId, caseNum);
+            console.log(`📊 Кейс ${caseNum}: завершен = ${isCompleted}`);
+          });
+        }}
+        className="fixed bottom-6 right-40 z-50 bg-blue-500 hover:bg-blue-600 text-white p-3 rounded-xl shadow-lg text-sm"
+      >
+        🔍 DATA
       </button>
 
       {/* Основной контент */}
@@ -565,17 +741,30 @@ const ReservistEvaluationPage: React.FC = () => {
                   <p className="text-gray-500">Участники не найдены</p>
                 </div>
               )}
-              {participants.map((participant, index) => (
-                <ReservistCard
-                  key={participant.id}
-                  participant={participant}
-                  index={index}
-                  onEvaluate={(participantId) => {
-                    // TODO: Открыть детальную форму оценки кейсов
-                    console.log('Оценка участника:', participantId);
-                  }}
-                />
-              ))}
+              {participants.map((participant) => {
+                const assignedCases = getAssignedCases(participant.user.id);
+                const completedCases = new Set(
+                  assignedCases.filter(caseNumber => 
+                    isCaseEvaluationCompleted(participant.user.id, caseNumber)
+                  )
+                );
+                
+                return (
+                  <ReservistCard
+                    key={participant.id}
+                    participant={participant}
+                    assignedCases={assignedCases}
+                    completedCases={completedCases}
+                    onEvaluate={(participantId) => {
+                      const participant = participants.find(p => p.user.id === participantId);
+                      if (participant) {
+                        setSelectedParticipant(participant);
+                        setShowEvaluationModal(true);
+                      }
+                    }}
+                  />
+                );
+              })}
             </div>
           </div>
         )}
@@ -644,11 +833,11 @@ const ReservistEvaluationPage: React.FC = () => {
                             <td className="px-4 py-4 whitespace-nowrap text-center">
                               <select
                                 value={getEvaluationValue(participant.id, caseNumber, 'correctness')}
-                                onChange={(e) => handleCaseEvaluationChange(participant.id, caseNumber, 'correctness', parseInt(e.target.value) || 0)}
+                                onChange={(e) => handleCaseEvaluationChange(participant.id, caseNumber, 'correctness', parseFloat(e.target.value) || 0)}
                                 className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                               >
                                 <option value="">-</option>
-                                {[1, 2, 3, 4, 5].map(score => (
+                                {[1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map(score => (
                                   <option key={score} value={score}>{score}</option>
                                 ))}
                               </select>
@@ -656,11 +845,11 @@ const ReservistEvaluationPage: React.FC = () => {
                             <td className="px-4 py-4 whitespace-nowrap text-center">
                               <select
                                 value={getEvaluationValue(participant.id, caseNumber, 'clarity')}
-                                onChange={(e) => handleCaseEvaluationChange(participant.id, caseNumber, 'clarity', parseInt(e.target.value) || 0)}
+                                onChange={(e) => handleCaseEvaluationChange(participant.id, caseNumber, 'clarity', parseFloat(e.target.value) || 0)}
                                 className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                               >
                                 <option value="">-</option>
-                                {[1, 2, 3, 4, 5].map(score => (
+                                {[1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map(score => (
                                   <option key={score} value={score}>{score}</option>
                                 ))}
                               </select>
@@ -668,11 +857,11 @@ const ReservistEvaluationPage: React.FC = () => {
                             <td className="px-4 py-4 whitespace-nowrap text-center">
                               <select
                                 value={getEvaluationValue(participant.id, caseNumber, 'independence')}
-                                onChange={(e) => handleCaseEvaluationChange(participant.id, caseNumber, 'independence', parseInt(e.target.value) || 0)}
+                                onChange={(e) => handleCaseEvaluationChange(participant.id, caseNumber, 'independence', parseFloat(e.target.value) || 0)}
                                 className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                               >
                                 <option value="">-</option>
-                                {[1, 2, 3, 4, 5].map(score => (
+                                {[1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map(score => (
                                   <option key={score} value={score}>{score}</option>
                                 ))}
                               </select>
@@ -791,11 +980,11 @@ const ReservistEvaluationPage: React.FC = () => {
                       <td className="px-4 py-4 whitespace-nowrap text-center">
                         <select
                           value={getProjectEvaluationValue(participant.id, 'presentation_quality')}
-                          onChange={(e) => handleProjectEvaluationChange(participant.id, 'presentation_quality', parseInt(e.target.value) || 0)}
+                          onChange={(e) => handleProjectEvaluationChange(participant.id, 'presentation_quality', parseFloat(e.target.value) || 0)}
                           className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         >
                           <option value="">-</option>
-                          {[1, 2, 3, 4, 5].map(score => (
+                          {[1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map(score => (
                             <option key={score} value={score}>{score}</option>
                           ))}
                         </select>
@@ -803,11 +992,11 @@ const ReservistEvaluationPage: React.FC = () => {
                       <td className="px-4 py-4 whitespace-nowrap text-center">
                         <select
                           value={getProjectEvaluationValue(participant.id, 'project_innovation')}
-                          onChange={(e) => handleProjectEvaluationChange(participant.id, 'project_innovation', parseInt(e.target.value) || 0)}
+                          onChange={(e) => handleProjectEvaluationChange(participant.id, 'project_innovation', parseFloat(e.target.value) || 0)}
                           className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         >
                           <option value="">-</option>
-                          {[1, 2, 3, 4, 5].map(score => (
+                          {[1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map(score => (
                             <option key={score} value={score}>{score}</option>
                           ))}
                         </select>
@@ -815,11 +1004,11 @@ const ReservistEvaluationPage: React.FC = () => {
                       <td className="px-4 py-4 whitespace-nowrap text-center">
                         <select
                           value={getProjectEvaluationValue(participant.id, 'technical_implementation')}
-                          onChange={(e) => handleProjectEvaluationChange(participant.id, 'technical_implementation', parseInt(e.target.value) || 0)}
+                          onChange={(e) => handleProjectEvaluationChange(participant.id, 'technical_implementation', parseFloat(e.target.value) || 0)}
                           className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         >
                           <option value="">-</option>
-                          {[1, 2, 3, 4, 5].map(score => (
+                          {[1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map(score => (
                             <option key={score} value={score}>{score}</option>
                           ))}
                         </select>
@@ -827,11 +1016,11 @@ const ReservistEvaluationPage: React.FC = () => {
                       <td className="px-4 py-4 whitespace-nowrap text-center">
                         <select
                           value={getProjectEvaluationValue(participant.id, 'business_value')}
-                          onChange={(e) => handleProjectEvaluationChange(participant.id, 'business_value', parseInt(e.target.value) || 0)}
+                          onChange={(e) => handleProjectEvaluationChange(participant.id, 'business_value', parseFloat(e.target.value) || 0)}
                           className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         >
                           <option value="">-</option>
-                          {[1, 2, 3, 4, 5].map(score => (
+                          {[1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map(score => (
                             <option key={score} value={score}>{score}</option>
                           ))}
                         </select>
@@ -903,7 +1092,7 @@ const ReservistEvaluationPage: React.FC = () => {
                       <td className="px-4 py-4 whitespace-nowrap text-center">
                         <select
                           value={getCompetencyEvaluationValue(participant.id, 'results_orientation')}
-                          onChange={(e) => handleCompetencyEvaluationChange(participant.id, 'results_orientation', parseInt(e.target.value) || 0)}
+                          onChange={(e) => handleCompetencyEvaluationChange(participant.id, 'results_orientation', parseFloat(e.target.value) || 0)}
                           className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         >
                           <option value="">-</option>
@@ -915,7 +1104,7 @@ const ReservistEvaluationPage: React.FC = () => {
                       <td className="px-4 py-4 whitespace-nowrap text-center">
                         <select
                           value={getCompetencyEvaluationValue(participant.id, 'effective_communication')}
-                          onChange={(e) => handleCompetencyEvaluationChange(participant.id, 'effective_communication', parseInt(e.target.value) || 0)}
+                          onChange={(e) => handleCompetencyEvaluationChange(participant.id, 'effective_communication', parseFloat(e.target.value) || 0)}
                           className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         >
                           <option value="">-</option>
@@ -927,7 +1116,7 @@ const ReservistEvaluationPage: React.FC = () => {
                       <td className="px-4 py-4 whitespace-nowrap text-center">
                         <select
                           value={getCompetencyEvaluationValue(participant.id, 'teamwork_skills')}
-                          onChange={(e) => handleCompetencyEvaluationChange(participant.id, 'teamwork_skills', parseInt(e.target.value) || 0)}
+                          onChange={(e) => handleCompetencyEvaluationChange(participant.id, 'teamwork_skills', parseFloat(e.target.value) || 0)}
                           className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         >
                           <option value="">-</option>
@@ -939,7 +1128,7 @@ const ReservistEvaluationPage: React.FC = () => {
                       <td className="px-4 py-4 whitespace-nowrap text-center">
                         <select
                           value={getCompetencyEvaluationValue(participant.id, 'systemic_thinking')}
-                          onChange={(e) => handleCompetencyEvaluationChange(participant.id, 'systemic_thinking', parseInt(e.target.value) || 0)}
+                          onChange={(e) => handleCompetencyEvaluationChange(participant.id, 'systemic_thinking', parseFloat(e.target.value) || 0)}
                           className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         >
                           <option value="">-</option>
@@ -978,6 +1167,24 @@ const ReservistEvaluationPage: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Модальное окно выбора этапа оценки */}
+      {selectedParticipant && (
+        <EvaluationStageModal
+          isOpen={showEvaluationModal}
+          onClose={() => {
+            setShowEvaluationModal(false);
+            setSelectedParticipant(null);
+          }}
+          participantName={selectedParticipant.user.full_name}
+          examId={id || ''}
+          participantId={selectedParticipant.user.id}
+          onCaseEvaluationComplete={async (caseNumber) => {
+            await markEvaluationAsCompleted(selectedParticipant.user.id, caseNumber);
+          }}
+          onRemoveEvaluation={removeCompletedEvaluation}
+        />
+      )}
     </div>
   );
 };
