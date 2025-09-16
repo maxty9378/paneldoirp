@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, FileText, Presentation, Gamepad2, Save, MessageSquare } from 'lucide-react';
+import { ArrowLeft, User, FileText, Save } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../hooks/useAuth';
 import MobileExamNavigation from './MobileExamNavigation';
-import { ParticipantWithCases, CaseEvaluation, EVALUATION_CRITERIA, SCORE_LABELS, ScoreValue } from '../../types/evaluation';
+import { ReservistCard } from './ReservistCard';
 
 interface ExamEvent {
   id: string;
@@ -71,227 +70,10 @@ interface CompetencyEvaluation {
   comments: string;
 }
 
-// Компонент карточки участника для оценки кейсов
-interface ParticipantCaseCardProps {
-  participant: Participant;
-  index: number;
-  onEvaluationChange: (caseId: string, field: keyof CaseEvaluation, value: any) => void;
-}
-
-const ParticipantCaseCard: React.FC<ParticipantCaseCardProps> = ({ participant, index, onEvaluationChange }) => {
-  const corporateColor = '#06A478';
-  
-  // Назначенные кейсы или пустой массив для демонстрации
-  // Временно используем демо данные, пока не реализована загрузка из БД
-  const cases = [
-    // Демо кейсы
-    { 
-      id: `demo-1-${participant.id}`, 
-      event_participant_id: participant.id,
-      exam_case_id: '1',
-      assigned_at: new Date().toISOString(),
-      assigned_by: null,
-      exam_case: { 
-        id: '1', 
-        case_number: 8, 
-        title: 'Кейс "Стратегическое планирование"', 
-        description: 'Выход на новый рынок', 
-        correct_answer: 'Вариант A: Исследование рынка и конкурентов',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      } 
-    },
-    { 
-      id: `demo-2-${participant.id}`, 
-      event_participant_id: participant.id,
-      exam_case_id: '2',
-      assigned_at: new Date().toISOString(),
-      assigned_by: null,
-      exam_case: { 
-        id: '2', 
-        case_number: 11, 
-        title: 'Кейс "Инновационное развитие"', 
-        description: 'Разработка новых продуктов', 
-        correct_answer: 'Вариант A: Создание инновационной лаборатории',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      } 
-    }
-  ];
-
-  return (
-    <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-2xl">
-      {/* Заголовок карточки */}
-      <div className="bg-gradient-to-r from-gray-50 to-gray-100/50 px-8 py-6 border-b border-gray-200">
-        <div className="flex items-center gap-6">
-          {/* Фото участника */}
-          <div className="relative">
-            <div className="w-20 h-20 rounded-2xl overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 ring-4 ring-white shadow-lg">
-              {participant.dossier?.photo_url ? (
-                <img
-                  src={participant.dossier.photo_url}
-                  alt={participant.user.full_name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <User className="w-10 h-10 text-gray-400" />
-                </div>
-              )}
-            </div>
-            {/* Номер участника */}
-            <div 
-              className="absolute -top-2 -right-2 w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-lg"
-              style={{ backgroundColor: corporateColor }}
-            >
-              {index + 1}
-            </div>
-          </div>
-          
-          {/* Информация об участнике */}
-          <div className="flex-1">
-            <h3 className="text-xl font-bold text-gray-900 mb-2" style={{ fontFamily: 'SNS, sans-serif' }}>
-              {participant.user.full_name}
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <div 
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: corporateColor }}
-                />
-                <span className="text-gray-600 font-medium">
-                  {participant.user.position?.name || 'Должность не указана'}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div 
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: corporateColor }}
-                />
-                <span className="text-gray-600">
-                  {participant.user.territory?.name || 'Филиал не указан'}
-                </span>
-              </div>
-            </div>
-          </div>
-          
-          {/* Индикатор прогресса */}
-          <div className="text-center">
-            <div className="text-sm text-gray-500 mb-1">Прогресс</div>
-            <div 
-              className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold shadow-lg"
-              style={{ backgroundColor: corporateColor }}
-            >
-              0%
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Кейсы для оценки */}
-      <div className="p-8 space-y-8">
-        {cases.map((assignedCase, caseIndex) => (
-          <CaseEvaluationBlock
-            key={assignedCase.id}
-            assignedCase={assignedCase}
-            caseIndex={caseIndex}
-            onEvaluationChange={onEvaluationChange}
-          />
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// Компонент блока оценки одного кейса
-interface CaseEvaluationBlockProps {
-  assignedCase: any; // Типизируем позже
-  caseIndex: number;
-  onEvaluationChange: (caseId: string, field: keyof CaseEvaluation, value: any) => void;
-}
-
-const CaseEvaluationBlock: React.FC<CaseEvaluationBlockProps> = ({ assignedCase, caseIndex, onEvaluationChange }) => {
-  const corporateColor = '#06A478';
-  const examCase = assignedCase.exam_case;
-
-  return (
-    <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl border border-gray-200 p-6 space-y-6">
-      {/* Заголовок кейса */}
-      <div className="flex items-center gap-4">
-        <div 
-          className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold shadow-lg"
-          style={{ backgroundColor: corporateColor }}
-        >
-          {examCase.case_number}
-        </div>
-        <div className="flex-1">
-          <h4 className="text-lg font-bold text-gray-900 mb-1">
-            {examCase.title}
-          </h4>
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <FileText className="w-4 h-4" />
-            <span>Кейс #{examCase.case_number} • {caseIndex + 1} из 2</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Критерии оценки */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {EVALUATION_CRITERIA.map((criteria) => (
-          <div key={criteria.id} className="space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">{criteria.icon}</span>
-              <div>
-                <div className="font-semibold text-gray-900 text-sm">
-                  {criteria.name}
-                </div>
-                <div className="text-xs text-gray-500">
-                  {criteria.description}
-                </div>
-              </div>
-            </div>
-            
-            {/* Выбор оценки */}
-            <div className="space-y-2">
-              <select
-                className="w-full appearance-none bg-white border-2 border-gray-200 rounded-xl px-4 py-3 text-sm font-medium focus:border-[#06A478] focus:ring-2 focus:ring-[#06A478]/20 transition-all duration-200"
-                onChange={(e) => onEvaluationChange(assignedCase.id, criteria.id, parseInt(e.target.value) || null)}
-              >
-                <option value="">Выберите оценку</option>
-                {Object.entries(SCORE_LABELS).map(([score, data]) => (
-                  <option key={score} value={score}>
-                    {data.emoji} {data.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Общий комментарий */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <MessageSquare className="w-5 h-5 text-gray-600" />
-          <label className="font-semibold text-gray-900 text-sm">
-            Комментарий к кейсу
-          </label>
-        </div>
-        <textarea
-          className="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-3 text-sm focus:border-[#06A478] focus:ring-2 focus:ring-[#06A478]/20 transition-all duration-200 resize-none"
-          rows={3}
-          placeholder="Добавьте комментарий по решению кейса..."
-          onChange={(e) => onEvaluationChange(assignedCase.id, 'overall_comment', e.target.value)}
-        />
-      </div>
-    </div>
-  );
-};
 
 const ReservistEvaluationPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [event, setEvent] = useState<ExamEvent | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(true);
@@ -300,8 +82,8 @@ const ReservistEvaluationPage: React.FC = () => {
   const [caseEvaluations, setCaseEvaluations] = useState<CaseEvaluation[]>([]);
   
   // Временно оставляем старые состояния для других табов
-  const [projectEvaluations, setProjectEvaluations] = useState<LegacyProjectEvaluation[]>([]);
-  const [competencyEvaluations, setCompetencyEvaluations] = useState<LegacyCompetencyEvaluation[]>([]);
+  const [projectEvaluations, setProjectEvaluations] = useState<ProjectEvaluation[]>([]);
+  const [competencyEvaluations, setCompetencyEvaluations] = useState<CompetencyEvaluation[]>([]);
 
   // Вычисляем прогресс оценки
   const evaluationProgress = useMemo(() => {
@@ -414,6 +196,8 @@ const ReservistEvaluationPage: React.FC = () => {
       );
 
       setParticipants(participantsWithDossiers);
+      
+      
     } catch (err) {
       console.error('Ошибка загрузки данных:', err);
       setError('Не удалось загрузить данные события');
@@ -503,15 +287,16 @@ const ReservistEvaluationPage: React.FC = () => {
     return evaluation?.[field] || '';
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  // Функция форматирования даты (закомментирована, так как не используется)
+  // const formatDate = (dateString: string) => {
+  //   return new Date(dateString).toLocaleDateString('ru-RU', {
+  //     day: '2-digit',
+  //     month: '2-digit',
+  //     year: 'numeric',
+  //     hour: '2-digit',
+  //     minute: '2-digit'
+  //   });
+  // };
 
   if (loading) {
     return (
@@ -601,43 +386,124 @@ const ReservistEvaluationPage: React.FC = () => {
           </button>
         </div>
 
-        {/* Современные табы с глассморфизмом */}
-        <div className="relative mb-8">
-          <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-lg border border-white/30 overflow-hidden">
-            <nav className="flex">
-              {[
-                { id: 'cases', label: 'Защита кейсов', icon: FileText, color: 'emerald' },
-                { id: 'project', label: 'Защита проекта', icon: Presentation, color: 'blue' },
-                { id: 'competencies', label: 'Диагностическая игра', icon: Gamepad2, color: 'purple' }
-              ].map((tab, index) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex-1 relative py-6 px-6 font-medium text-sm transition-all duration-300 group ${
-                    activeTab === tab.id
-                      ? 'text-white'
-                      : 'text-gray-600 hover:text-gray-900'
+        {/* Современные табы в стиле Material Design 3 */}
+        <div className="mb-8">
+          <div className="relative">
+            {/* Скроллируемый контейнер для мобильных */}
+            <div className="overflow-x-auto scrollbar-hide pb-2">
+              <div className="flex gap-3 min-w-max md:min-w-0 px-1">
+                {[
+                  { 
+                    id: 'cases', 
+                    label: 'Защита кейсов', 
+                    description: 'Оценка решения двух кейсов', 
+                    icon: '📋',
+                    count: '2 кейса'
+                  },
+                  { 
+                    id: 'project', 
+                    label: 'Защита проекта', 
+                    description: 'Презентация и защита проекта', 
+                    icon: '🎯',
+                    count: '1 проект'
+                  },
+                  { 
+                    id: 'competencies', 
+                    label: 'Диагностическая игра', 
+                    description: 'Оценка soft skills компетенций', 
+                    icon: '🎮',
+                    count: '4 навыка'
+                  }
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className={`
+                      relative min-w-[300px] md:flex-1 p-5 rounded-2xl text-left
+                      transition-all duration-300 ease-out transform
+                      hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]
+                      ${activeTab === tab.id
+                        ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 text-white shadow-2xl shadow-emerald-500/25'
+                        : 'bg-white border border-gray-200 text-gray-700 hover:border-emerald-200 hover:shadow-md'
+                      }
+                    `}
+                  >
+                    {/* Активный индикатор */}
+                    {activeTab === tab.id && (
+                      <div className="absolute top-3 right-3">
+                        <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
+                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Содержимое карточки */}
+                    <div className="space-y-3">
+                      {/* Иконка и заголовок */}
+                      <div className="flex items-start gap-3">
+                        <div className={`
+                          text-2xl w-12 h-12 rounded-xl flex items-center justify-center
+                          ${activeTab === tab.id 
+                            ? 'bg-white/15 backdrop-blur-sm' 
+                            : 'bg-gray-50'
+                          }
+                        `}>
+                          {tab.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className={`
+                            font-bold text-lg leading-tight
+                            ${activeTab === tab.id ? 'text-white' : 'text-gray-900'}
+                          `}>
+                            {tab.label}
+                          </h3>
+                          <p className={`
+                            text-sm mt-1 leading-relaxed
+                            ${activeTab === tab.id ? 'text-white/80' : 'text-gray-500'}
+                          `}>
+                            {tab.description}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Метрика */}
+                      <div className={`
+                        inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium
+                        ${activeTab === tab.id
+                          ? 'bg-white/20 text-white backdrop-blur-sm'
+                          : 'bg-emerald-50 text-emerald-700'
+                        }
+                      `}>
+                        <div className={`w-2 h-2 rounded-full ${
+                          activeTab === tab.id ? 'bg-white' : 'bg-emerald-500'
+                        }`} />
+                        {tab.count}
+                      </div>
+                    </div>
+                    
+                    {/* Hover эффект */}
+                    <div className={`
+                      absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-300
+                      ${activeTab === tab.id ? '' : 'hover:opacity-100 bg-gradient-to-br from-emerald-50/50 to-teal-50/50'}
+                    `} />
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            {/* Мобильные индикаторы прокрутки */}
+            <div className="md:hidden flex justify-center mt-4 gap-1">
+              {[0, 1, 2].map((index) => (
+                <div
+                  key={index}
+                  className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                    index === 0 ? 'bg-emerald-500' : 'bg-gray-300'
                   }`}
-                >
-                  {activeTab === tab.id && (
-                    <div className={`absolute inset-0 bg-gradient-to-r ${
-                      tab.color === 'emerald' ? 'from-emerald-500 to-teal-600' :
-                      tab.color === 'blue' ? 'from-blue-500 to-indigo-600' :
-                      'from-purple-500 to-pink-600'
-                    } transition-all duration-300`} />
-                  )}
-                  <div className="relative flex items-center justify-center gap-3">
-                    <tab.icon className={`w-5 h-5 transition-all duration-200 ${
-                      activeTab === tab.id ? 'scale-110' : 'group-hover:scale-105'
-                    }`} />
-                    <span className="hidden md:inline">{tab.label}</span>
-                  </div>
-                  {activeTab === tab.id && (
-                    <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-white rounded-full opacity-80" />
-                  )}
-                </button>
+                />
               ))}
-            </nav>
+            </div>
           </div>
         </div>
 
@@ -655,16 +521,21 @@ const ReservistEvaluationPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Карточки участников для оценки кейсов */}
-            <div className="space-y-8">
+            {/* Карточки резервистов для оценки кейсов */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {participants.length === 0 && (
+                <div className="col-span-full text-center py-8">
+                  <p className="text-gray-500">Участники не найдены</p>
+                </div>
+              )}
               {participants.map((participant, index) => (
-                <ParticipantCaseCard
+                <ReservistCard
                   key={participant.id}
                   participant={participant}
                   index={index}
-                  onEvaluationChange={(caseId, field, value) => {
-                    // TODO: Обновить оценку в состоянии
-                    console.log('Обновление оценки:', { caseId, field, value });
+                  onEvaluate={(participantId) => {
+                    // TODO: Открыть детальную форму оценки кейсов
+                    console.log('Оценка участника:', participantId);
                   }}
                 />
               ))}

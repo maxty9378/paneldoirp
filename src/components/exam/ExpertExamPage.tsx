@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 // import DossierCard from './DossierCard';
 import { CompactDossierCard } from './CompactDossierCard';
-import DossierModal from './DossierModal';
+import { DossierModal } from './DossierModal';
 import MobileExamNavigation from './MobileExamNavigation';
 
 interface ExamEvent {
@@ -1156,13 +1156,17 @@ const ExpertExamPage: React.FC = () => {
       />
 
       {/* Модальное окно досье */}
-      {selectedParticipantId && (
-        <DossierModal
-          isOpen={!!selectedParticipantId}
-          onClose={() => setSelectedParticipantId(null)}
-          participantId={selectedParticipantId}
-        />
-      )}
+      {selectedParticipantId && (() => {
+        const selectedParticipant = participants.find(p => p.user.id === selectedParticipantId);
+        return selectedParticipant ? (
+          <DossierModal
+            isOpen={!!selectedParticipantId}
+            onClose={() => setSelectedParticipantId(null)}
+            user={selectedParticipant.user}
+            dossier={selectedParticipant.dossier}
+          />
+        ) : null;
+      })()}
     </div>
   );
 };

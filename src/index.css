@@ -6,6 +6,16 @@
   font-display: swap;
 }
 
+/* Анимация для скелетонов загрузки */
+@keyframes shimmer {
+  0% { 
+    background-position: -200% 0; 
+  }
+  100% { 
+    background-position: 200% 0; 
+  }
+}
+
 @font-face {
   font-family: 'Mabry';
   src: url('./assets/fonts/MABRYPRO-REGULAR.TTF') format('truetype');
@@ -80,6 +90,15 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Скрытие скроллбара для мобильных табов */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* Internet Explorer 10+ */
+  scrollbar-width: none;  /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Safari and Chrome */
+}
 
 /* Safe area support for mobile devices */
 @supports (padding: max(0px)) {
