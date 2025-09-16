@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, FileText, Users, Trophy, ArrowRight, Loader2, User, MousePointer } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { CaseEvaluationModal } from './CaseEvaluationModal';
-import { TourProvider, useTour } from '@reactour/tour';
+import Joyride, { CallBackProps, STATUS, Step } from 'react-joyride';
 
 interface EvaluationStageModalProps {
   isOpen: boolean;
@@ -18,8 +18,7 @@ interface EvaluationStageModalProps {
   evaluations?: any[]; // Загруженные оценки для определения статуса завершенности
 }
 
-// Внутренний компонент, который использует хук useTour
-const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
+export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = ({
   isOpen,
   onClose,
   onStageSelect,
@@ -31,15 +30,72 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
   onRemoveEvaluation,
   evaluations = []
 }) => {
-  const { setIsOpen: setTourOpen, isOpen: isTourOpen } = useTour();
   const [showCaseSelection, setShowCaseSelection] = useState(false);
   const [assignedCases, setAssignedCases] = useState<number[]>([]);
   const [loadingCases, setLoadingCases] = useState(false);
   const [showCaseEvaluation, setShowCaseEvaluation] = useState(false);
   const [selectedCaseNumber, setSelectedCaseNumber] = useState<number>(1);
   const [highlightFirstButton, setHighlightFirstButton] = useState(false);
+  const [runTour, setRunTour] = useState(false);
+  const [hasShownTutorial, setHasShownTutorial] = useState(false);
+  const [tutorialLoading, setTutorialLoading] = useState(true);
 
+  // Шаги тура: подсветить первый блок и показать подсказку
+  const tourSteps: Step[] = [
+    {
+      target: '[data-tour="case-solving-card"]',
+      content: (
+        <>
+          <div className="flex items-start gap-2">
+            <MousePointer className="w-4 h-4 mt-0.5" />
+            <div>
+              <div className="font-semibold" style={{ fontFamily: 'Mabry, sans-serif' }}>Начни здесь</div>
+              <div className="text-sm text-gray-600" style={{ fontFamily: 'Mabry, sans-serif' }}>
+                Нажми «Решение кейсов», чтобы выбрать и оценить кейс.
+              </div>
+            </div>
+          </div>
+        </>
+      ),
+      placement: 'right',
+      disableBeacon: true,
+      spotlightPadding: 8,
+      hideFooter: false,
+      disableOverlayClose: false
+    }
+  ];
 
+  // Проверка, была ли показана подсказка
+  const checkTutorialShown = async () => {
+    try {
+      const { data, error } = await supabase
+        .rpc('has_tutorial_step_been_shown', { step_key: 'evaluation_modal_tour' });
+      
+      if (error) {
+        console.error('Ошибка проверки подсказки:', error);
+        return false;
+      }
+      
+      return data || false;
+    } catch (err) {
+      console.error('Ошибка проверки подсказки:', err);
+      return false;
+    }
+  };
+
+  // Отметка подсказки как показанной
+  const markTutorialAsShown = async () => {
+    try {
+      const { error } = await supabase
+        .rpc('mark_tutorial_step_as_shown', { step_key: 'evaluation_modal_tour' });
+      
+      if (error) {
+        console.error('Ошибка сохранения подсказки:', error);
+      }
+    } catch (err) {
+      console.error('Ошибка сохранения подсказки:', err);
+    }
+  };
 
   // Загрузка назначенных кейсов
   const fetchAssignedCases = async () => {
@@ -75,42 +131,57 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
     }
   };
 
-  // Запуск тура при открытии модалки
+  // Проверка подсказки при открытии модалки
   useEffect(() => {
     if (isOpen) {
       setShowCaseSelection(false);
       setShowCaseEvaluation(false);
       setSelectedCaseNumber(1);
+      setTutorialLoading(true);
 
-      // Запускаем тур через небольшую задержку
-      const t1 = setTimeout(() => {
-        setHighlightFirstButton(true);
-        // Запускаем тур только после того, как элемент подсвечен
-        setTimeout(() => {
-          setTourOpen(true);
-        }, 100);
-      }, 650);
+      // Проверяем, была ли показана подсказка
+      checkTutorialShown().then((shown) => {
+        setHasShownTutorial(shown);
+        setTutorialLoading(false);
 
-      // Убрать подсветку спустя время, но тур сам закроется по действию пользователя
-      const t2 = setTimeout(() => setHighlightFirstButton(false), 6000);
+        // Если подсказка не была показана, запускаем тур
+        if (!shown) {
+          const t1 = setTimeout(() => {
+            setHighlightFirstButton(true);
+            // Запускаем тур только после того, как элемент подсвечен
+            setTimeout(() => {
+              setRunTour(true);
+            }, 100);
+          }, 650);
 
-      return () => {
-        clearTimeout(t1);
-        clearTimeout(t2);
-      };
+          // Убрать подсветку спустя время, но тур сам закроется по действию пользователя
+          const t2 = setTimeout(() => setHighlightFirstButton(false), 6000);
+
+          return () => {
+            clearTimeout(t1);
+            clearTimeout(t2);
+          };
+        }
+      });
     } else {
-      setTourOpen(false);
+      setRunTour(false);
       setHighlightFirstButton(false);
+      setTutorialLoading(false);
     }
   }, [isOpen]);
 
   // Обработчик завершения тура
-  useEffect(() => {
-    if (!isTourOpen && isOpen) {
-      // Тур закрылся
+  const onTourChange = (data: CallBackProps) => {
+    const { status } = data;
+    if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
+      setRunTour(false);
       setHighlightFirstButton(false);
+      
+      // Отмечаем подсказку как показанную
+      markTutorialAsShown();
+      setHasShownTutorial(true);
     }
-  }, [isTourOpen, isOpen]);
+  };
 
   // Блокировка прокрутки фона при открытом модальном окне
   useEffect(() => {
@@ -482,6 +553,50 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
           </div>
         </div>
 
+        {/* Joyride внутри модалки */}
+        <Joyride
+          steps={tourSteps}
+          run={runTour && !showCaseSelection && !hasShownTutorial && !tutorialLoading}
+          continuous={false}
+          showSkipButton
+          hideCloseButton={false}
+          disableOverlayClose={false}
+          disableCloseOnEsc={false}
+          scrollToFirstStep={false}
+          spotlightClicks={false}
+          hideBackButton={true}
+          disableScrolling={true}
+          styles={{
+            options: { zIndex: 10000, primaryColor: '#06A478' },
+            overlay: { 
+              mixBlendMode: 'unset',
+              backgroundColor: 'rgba(0, 0, 0, 0.1)'
+            },
+            spotlight: { 
+              borderRadius: 12,
+              boxShadow: '0 0 0 4px rgba(6, 164, 120, 0.3)',
+              backgroundColor: 'transparent'
+            },
+            tooltip: { 
+              borderRadius: 12,
+              fontSize: 14,
+              padding: 16,
+              fontFamily: 'Mabry, sans-serif'
+            },
+            tooltipContent: {
+              fontFamily: 'Mabry, sans-serif'
+            }
+          }}
+          locale={{
+            back: 'Назад',
+            close: 'Закрыть',
+            last: 'Понятно',
+            next: 'Дальше',
+            open: 'Открыть подсказку',
+            skip: 'Пропустить'
+          }}
+          callback={onTourChange}
+        />
       </div>
 
       {/* Модальное окно оценки кейса */}
@@ -512,46 +627,3 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
   );
 };
 
-// Основной компонент с TourProvider
-export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = (props) => {
-  return (
-    <TourProvider
-      steps={[
-        {
-          selector: '[data-tour="case-solving-card"]',
-          content: (
-            <div className="flex items-start gap-2">
-              <MousePointer className="w-4 h-4 mt-0.5" />
-              <div>
-                <div className="font-semibold" style={{ fontFamily: 'Mabry, sans-serif' }}>Начни здесь</div>
-                <div className="text-sm text-gray-600" style={{ fontFamily: 'Mabry, sans-serif' }}>
-                  Нажми «Решение кейсов», чтобы выбрать и оценить кейс.
-                </div>
-              </div>
-            </div>
-          ),
-          position: 'right',
-          padding: 8
-        }
-      ]}
-      styles={{
-        popover: (base) => ({
-          ...base,
-          fontFamily: 'Mabry, sans-serif',
-          borderRadius: 12,
-          padding: 16
-        }),
-        maskArea: (base) => ({
-          ...base,
-          rx: 12
-        }),
-        badge: (base) => ({
-          ...base,
-          backgroundColor: '#06A478'
-        })
-      }}
-    >
-      <EvaluationStageModalContent {...props} />
-    </TourProvider>
-  );
-};
