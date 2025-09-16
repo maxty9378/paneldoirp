@@ -81,14 +81,13 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
       setShowCaseEvaluation(false);
       setSelectedCaseNumber(1);
 
-      // Сначала показываем подсветку
+      // Запускаем тур через небольшую задержку
       const t1 = setTimeout(() => {
         setHighlightFirstButton(true);
-        
-        // Затем запускаем анимацию стрелки через небольшую задержку
+        // Запускаем тур только после того, как элемент подсвечен
         setTimeout(() => {
           setTourOpen(true);
-        }, 300);
+        }, 100);
       }, 650);
 
       // Убрать подсветку спустя время, но тур сам закроется по действию пользователя
@@ -226,32 +225,6 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
             0% { box-shadow: 0 0 0 0 rgba(6,164,120,0.28); }
             50% { box-shadow: 0 0 0 8px rgba(6,164,120,0.12); }
             100% { box-shadow: 0 0 0 0 rgba(6,164,120,0.28); }
-          }
-          
-          @keyframes arrowFlyIn {
-            0% {
-              opacity: 0;
-              transform: translateY(-50%) translateX(-20px) scale(0.5);
-            }
-            50% {
-              opacity: 0.7;
-              transform: translateY(-50%) translateX(-10px) scale(0.8);
-            }
-            100% {
-              opacity: 1;
-              transform: translateY(-50%) translateX(0) scale(1);
-            }
-          }
-          
-          @keyframes tooltipFlyIn {
-            0% {
-              opacity: 0;
-              transform: translateY(10px) scale(0.9);
-            }
-            100% {
-              opacity: 1;
-              transform: translateY(0) scale(1);
-            }
           }
           .highlight-glow {
             animation: glowBorder 2s ease-in-out infinite;
@@ -562,8 +535,8 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = (props)
               </div>
             </div>
           ),
-          position: 'right',
-          padding: 8
+            position: 'right',
+            padding: 8
         }
       ]}
       showNavigation={false}
@@ -575,8 +548,7 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = (props)
           ...base,
           fontFamily: 'Mabry, sans-serif',
           borderRadius: 12,
-          padding: 16,
-          animation: 'tooltipFlyIn 0.6s ease-out forwards'
+          padding: 16
         }),
         maskArea: (base) => ({
           ...base,
@@ -600,8 +572,7 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = (props)
           position: 'absolute',
           top: '50%',
           left: '-8px',
-          transform: 'translateY(-50%)',
-          animation: 'arrowFlyIn 0.8s ease-out forwards'
+          transform: 'translateY(-50%)'
         })
       }}
     >
