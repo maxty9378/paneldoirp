@@ -81,14 +81,22 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
       setShowCaseEvaluation(false);
       setSelectedCaseNumber(1);
 
-      // Запускаем тур через небольшую задержку
+      // Сначала выравниваем модалку, затем показываем подсказку
+      const isMobile = window.innerWidth <= 768;
+      const initialDelay = isMobile ? 1500 : 1000; // Больше времени для мобильных
+      const tourDelay = isMobile ? 800 : 500; // Больше времени для позиционирования на мобильных
+      
       const t1 = setTimeout(() => {
         setHighlightFirstButton(true);
-        // Запускаем тур только после того, как элемент подсвечен
+        // Даем время модалке выровняться перед показом тултипа
         setTimeout(() => {
-          setTourOpen(true);
-        }, 100);
-      }, 650);
+          // Проверяем, что элемент существует и видим
+          const targetElement = document.querySelector('[data-tour="case-solving-card"]') as HTMLElement;
+          if (targetElement && targetElement.offsetParent !== null) {
+            setTourOpen(true);
+          }
+        }, tourDelay);
+      }, initialDelay);
 
       // Убрать подсветку спустя время, но тур сам закроется по действию пользователя
       const t2 = setTimeout(() => setHighlightFirstButton(false), 6000);
@@ -237,6 +245,15 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
             [data-tour="case-solving-card"] {
               position: relative !important;
               z-index: 1000 !important;
+              transform: translateZ(0) !important; /* Принудительное создание слоя для GPU */
+              will-change: transform !important;
+            }
+            
+            /* Дополнительная стабилизация для тултипа на мобильных */
+            .reactour__popover {
+              position: fixed !important;
+              transform: translateZ(0) !important;
+              backface-visibility: hidden !important;
             }
           }
           
@@ -559,7 +576,11 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = (props)
           padding: 16,
           maxWidth: '280px',
           fontSize: '14px',
-          lineHeight: '1.4'
+          lineHeight: '1.4',
+          position: 'fixed',
+          zIndex: 10001,
+          transform: 'translateZ(0)',
+          backfaceVisibility: 'hidden'
         }),
         maskArea: (base) => ({
           ...base,
