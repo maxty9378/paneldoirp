@@ -2,7 +2,115 @@ import React, { useState, useEffect } from 'react';
 import { X, FileText, Users, Trophy, ArrowRight, Loader2, User, MousePointer } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { CaseEvaluationModal } from './CaseEvaluationModal';
-import { TourProvider, useTour } from '@reactour/tour';
+// Убираем @reactour/tour, создаем собственное решение
+
+// Собственный компонент тултипа для мобильных устройств
+const MobileTooltip: React.FC<{
+  isVisible: boolean;
+  targetRef: React.RefObject<HTMLElement | null>;
+  onClose: () => void;
+}> = ({ isVisible, targetRef, onClose }) => {
+  const [position, setPosition] = useState({ top: 0, left: 0, arrowPosition: 'left' });
+
+  useEffect(() => {
+    if (isVisible && targetRef.current) {
+      const updatePosition = () => {
+        const target = targetRef.current;
+        if (!target) return;
+
+        const rect = target.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        // Размеры тултипа
+        const tooltipWidth = 280;
+        const tooltipHeight = 80;
+        const padding = 16;
+
+        let top = rect.top + rect.height / 2 - tooltipHeight / 2;
+        let left = rect.right + padding;
+        let arrowPosition = 'left';
+
+        // Проверяем, помещается ли справа
+        if (left + tooltipWidth > viewportWidth - padding) {
+          // Пробуем слева
+          left = rect.left - tooltipWidth - padding;
+          arrowPosition = 'right';
+          
+          // Если не помещается слева, размещаем сверху
+          if (left < padding) {
+            left = Math.max(padding, rect.left + rect.width / 2 - tooltipWidth / 2);
+            top = rect.top - tooltipHeight - padding;
+            arrowPosition = 'bottom';
+          }
+        }
+
+        // Проверяем вертикальные границы
+        if (top < padding) {
+          top = padding;
+        } else if (top + tooltipHeight > viewportHeight - padding) {
+          top = viewportHeight - tooltipHeight - padding;
+        }
+
+        setPosition({ top, left, arrowPosition });
+      };
+
+      updatePosition();
+      
+      // Обновляем позицию при изменении размера окна
+      window.addEventListener('resize', updatePosition);
+      window.addEventListener('scroll', updatePosition);
+      
+      return () => {
+        window.removeEventListener('resize', updatePosition);
+        window.removeEventListener('scroll', updatePosition);
+      };
+    }
+  }, [isVisible, targetRef]);
+
+  if (!isVisible) return null;
+
+  return (
+    <>
+      {/* Затемнение фона */}
+      <div 
+        className="fixed inset-0 bg-black/20 z-[9998]"
+        onClick={onClose}
+      />
+      
+      {/* Тултип */}
+      <div
+        className="fixed z-[9999] bg-white rounded-xl shadow-2xl p-4 max-w-[280px]"
+        style={{
+          top: `${position.top}px`,
+          left: `${position.left}px`,
+          fontFamily: 'Mabry, sans-serif'
+        }}
+      >
+        <div className="flex items-start gap-2">
+          <MousePointer className="w-4 h-4 mt-0.5 text-emerald-600" />
+          <div className="flex-1">
+            <div className="font-semibold text-gray-900 text-sm">Начните здесь</div>
+            <div className="text-xs text-gray-600 mt-1">
+              Нажмите «Решение кейсов», чтобы выбрать и оценить кейс.
+            </div>
+          </div>
+        </div>
+        
+        {/* Стрелка */}
+        <div
+          className={`absolute w-0 h-0 ${
+            position.arrowPosition === 'left' 
+              ? 'border-t-[8px] border-b-[8px] border-l-[8px] border-t-transparent border-b-transparent border-l-emerald-600 -left-2 top-1/2 -translate-y-1/2'
+              : position.arrowPosition === 'right'
+              ? 'border-t-[8px] border-b-[8px] border-r-[8px] border-t-transparent border-b-transparent border-r-emerald-600 -right-2 top-1/2 -translate-y-1/2'
+              : 'border-l-[8px] border-r-[8px] border-b-[8px] border-l-transparent border-r-transparent border-b-emerald-600 -bottom-2 left-1/2 -translate-x-1/2'
+          }`}
+        />
+      </div>
+    </>
+  );
+};
 
 interface EvaluationStageModalProps {
   isOpen: boolean;
@@ -31,7 +139,8 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
   onRemoveEvaluation,
   evaluations = []
 }) => {
-  const { setIsOpen: setTourOpen, isOpen: isTourOpen } = useTour();
+  const [showTooltip, setShowTooltip] = useState(false);
+  const targetRef = React.useRef<HTMLElement>(null);
   const [showCaseSelection, setShowCaseSelection] = useState(false);
   const [assignedCases, setAssignedCases] = useState<number[]>([]);
   const [loadingCases, setLoadingCases] = useState(false);
@@ -91,31 +200,14 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
         // Даем время модалке выровняться перед показом тултипа
         setTimeout(() => {
           // Проверяем, что элемент существует и видим
-          const targetElement = document.querySelector('[data-tour="case-solving-card"]') as HTMLElement;
-          console.log('Target element found:', targetElement);
-          console.log('Element offsetParent:', targetElement?.offsetParent);
-          console.log('Element getBoundingClientRect:', targetElement?.getBoundingClientRect());
-          
-          if (targetElement && targetElement.offsetParent !== null) {
+          if (targetRef.current) {
             // Принудительно прокручиваем к элементу
-            targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            targetRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
             
             // Небольшая задержка для завершения прокрутки
             setTimeout(() => {
-              setTourOpen(true);
+              setShowTooltip(true);
             }, 300);
-          } else {
-            console.log('Element not ready, retrying...');
-            // Повторная попытка через 200ms
-            setTimeout(() => {
-              const retryElement = document.querySelector('[data-tour="case-solving-card"]') as HTMLElement;
-              if (retryElement && retryElement.offsetParent !== null) {
-                retryElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                setTimeout(() => {
-                  setTourOpen(true);
-                }, 300);
-              }
-            }, 200);
           }
         }, tourDelay);
       }, initialDelay);
@@ -128,22 +220,20 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
         clearTimeout(t2);
       };
     } else {
-      setTourOpen(false);
+      setShowTooltip(false);
       setHighlightFirstButton(false);
     }
   }, [isOpen]);
 
-  // Обработчик завершения тура
-  useEffect(() => {
-    if (!isTourOpen && isOpen) {
-      // Тур закрылся
-      setHighlightFirstButton(false);
-    }
-  }, [isTourOpen, isOpen]);
+  // Обработчик закрытия тултипа
+  const handleTooltipClose = () => {
+    setShowTooltip(false);
+    setHighlightFirstButton(false);
+  };
 
-  // Обработчик клика по любой карточке - закрываем тур
+  // Обработчик клика по любой карточке - закрываем тултип
   const handleStageClick = (stageId: string) => {
-    setTourOpen(false); // Закрываем тур
+    setShowTooltip(false); // Закрываем тултип
     setHighlightFirstButton(false); // Убираем подсветку
     
     if (stageId === 'case-solving') {
@@ -347,7 +437,7 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
                 return (
                   <div
                     key={stage.id}
-                    data-tour={isFirst ? 'case-solving-card' : undefined}
+                    ref={isFirst ? (targetRef as React.RefObject<HTMLDivElement>) : undefined}
                     className={`
                       group cursor-pointer rounded-xl p-3 border transition-all duration-300
                       bg-gradient-to-br ${stage.bgGradient} ${stage.borderColor}
@@ -559,80 +649,20 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
           evaluation.case_number === selectedCaseNumber
         )}
       />
+      
+      {/* Наш собственный тултип */}
+      <MobileTooltip 
+        isVisible={showTooltip}
+        targetRef={targetRef}
+        onClose={handleTooltipClose}
+      />
     </div>
     </>
   );
 };
 
-// Основной компонент с TourProvider
+// Основной компонент - просто экспортируем наш компонент
 export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = (props) => {
-  return (
-    <TourProvider
-      steps={[
-        {
-          selector: '[data-tour="case-solving-card"]',
-          content: (
-            <div className="flex items-start gap-2">
-              <MousePointer className="w-4 h-4 mt-0.5" />
-              <div>
-                <div className="font-semibold" style={{ fontFamily: 'Mabry, sans-serif' }}>Начните здесь</div>
-                <div className="text-sm text-gray-600" style={{ fontFamily: 'Mabry, sans-serif' }}>
-                  Нажмите «Решение кейсов», чтобы выбрать и оценить кейс.
-                </div>
-              </div>
-            </div>
-          ),
-          position: 'right',
-          padding: 8
-        }
-      ]}
-      showNavigation={false}
-      showBadge={false}
-      showCloseButton={false}
-      showPrevNextButtons={false}
-      styles={{
-        popover: (base) => ({
-          ...base,
-          fontFamily: 'Mabry, sans-serif',
-          borderRadius: 12,
-          padding: 16,
-          maxWidth: '280px',
-          fontSize: '14px',
-          lineHeight: '1.4',
-          position: 'absolute',
-          zIndex: 10001,
-          transform: 'translateZ(0)',
-          backfaceVisibility: 'hidden'
-        }),
-        maskArea: (base) => ({
-          ...base,
-          rx: 12,
-          padding: 8
-        }),
-        badge: (base) => ({
-          ...base,
-          backgroundColor: '#06A478'
-        }),
-        navigation: (base) => ({
-          ...base,
-          display: 'none'
-        }),
-        arrow: (base) => ({
-          ...base,
-          display: 'block',
-          borderColor: 'transparent transparent transparent #06A478',
-          borderWidth: '8px 0 8px 8px',
-          marginTop: '-8px',
-          filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
-          position: 'absolute',
-          top: '50%',
-          left: '-8px',
-          transform: 'translateY(-50%)'
-        })
-      }}
-    >
-      <EvaluationStageModalContent {...props} />
-    </TourProvider>
-  );
+  return <EvaluationStageModalContent {...props} />;
 };
 
