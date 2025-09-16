@@ -232,6 +232,14 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
             background: linear-gradient(135deg, rgba(6,164,120,0.02), rgba(6,164,120,0.05)) !important;
           }
           
+          /* Адаптивные стили для мобильных устройств */
+          @media (max-width: 768px) {
+            [data-tour="case-solving-card"] {
+              position: relative !important;
+              z-index: 1000 !important;
+            }
+          }
+          
           /* Стили для Joyride */
           .react-joyride__tooltip {
             font-family: 'Mabry', sans-serif !important;
@@ -535,8 +543,8 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = (props)
               </div>
             </div>
           ),
-            position: 'right',
-            padding: 8
+          position: 'bottom',
+          padding: 8
         }
       ]}
       showNavigation={false}
@@ -548,11 +556,15 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = (props)
           ...base,
           fontFamily: 'Mabry, sans-serif',
           borderRadius: 12,
-          padding: 16
+          padding: 16,
+          maxWidth: '280px',
+          fontSize: '14px',
+          lineHeight: '1.4'
         }),
         maskArea: (base) => ({
           ...base,
-          rx: 12
+          rx: 12,
+          padding: 8
         }),
         badge: (base) => ({
           ...base,
@@ -566,13 +578,13 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = (props)
           ...base,
           display: 'block',
           borderColor: 'transparent transparent #06A478 transparent',
-          borderWidth: '8px 8px 8px 0',
+          borderWidth: '0 8px 8px 8px',
           marginTop: '-8px',
           filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
           position: 'absolute',
-          top: '50%',
-          left: '-8px',
-          transform: 'translateY(-50%)'
+          top: '-8px',
+          left: '50%',
+          transform: 'translateX(-50%)'
         })
       }}
     >
