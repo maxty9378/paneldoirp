@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, MapPin, Users, Target, User, Star, AlertCircle, FileText, Settings } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, Target, User, Star, AlertCircle, Settings } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 // import DossierCard from './DossierCard';
 import { CompactDossierCard } from './CompactDossierCard';
 import { DossierModal } from './DossierModal';
 import { EvaluationStageModal } from './EvaluationStageModal';
-import { CaseAssignmentModal } from './CaseAssignmentModal';
 import { CaseEvaluationModal } from './CaseEvaluationModal';
+import { ProjectDefenseModal } from './ProjectDefenseModal';
+import { DiagnosticGameModal } from './DiagnosticGameModal';
 import MobileExamNavigation from './MobileExamNavigation';
 
 interface ExamEvent {
@@ -103,9 +104,10 @@ const ExpertExamPage: React.FC = () => {
   const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(null);
   const [showEvaluationModal, setShowEvaluationModal] = useState(false);
   const [selectedParticipantForEvaluation, setSelectedParticipantForEvaluation] = useState<Participant | null>(null);
-  const [showCaseAssignmentModal, setShowCaseAssignmentModal] = useState(false);
   const [showCaseEvaluation, setShowCaseEvaluation] = useState(false);
   const [selectedCaseNumber, setSelectedCaseNumber] = useState<number | null>(null);
+  const [showProjectDefenseModal, setShowProjectDefenseModal] = useState(false);
+  const [showDiagnosticGameModal, setShowDiagnosticGameModal] = useState(false);
   const [bannerSettings, setBannerSettings] = useState({
     position: 'center bottom',
     showAdminControls: false,
@@ -648,24 +650,8 @@ const ExpertExamPage: React.FC = () => {
                   
                   {/* Кнопки действий */}
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <button
-                      onClick={() => navigate(`/reservist-evaluation/${id}`)}
-                      className="px-4 py-2 bg-white/20 backdrop-blur-sm text-white rounded-xl font-medium text-sm hover:bg-white/30 transition-all duration-200 border border-white/30 hover:border-white/50 flex items-center gap-2"
-                    >
-                      <Target className="w-4 h-4" />
-                      Оценить резервистов
-                    </button>
                     
-                    {/* Кнопка назначения кейсов для администраторов */}
-                    {userProfile?.role === 'administrator' && (
-                      <button
-                        onClick={() => setShowCaseAssignmentModal(true)}
-                        className="px-4 py-2 bg-white/20 backdrop-blur-sm text-white rounded-xl font-medium text-sm hover:bg-white/30 transition-all duration-200 border border-white/30 hover:border-white/50 flex items-center gap-2"
-                      >
-                        <FileText className="w-4 h-4" />
-                        Назначить кейсы
-                      </button>
-                    )}
+                    {/* Кнопки для администраторов */}
                   </div>
                 </div>
               </div>
@@ -1203,11 +1189,17 @@ const ExpertExamPage: React.FC = () => {
           console.log('Selected stage:', stage, 'case number:', caseNumber, 'for participant:', selectedParticipantForEvaluation?.user.full_name);
           
           // Для кейсов НЕ закрываем основное меню (обрабатывается внутри EvaluationStageModal)
-          // Для других этапов закрываем и переходим
+          // Для других этапов закрываем и переходим к соответствующему модальному окну
           if (stage !== 'case-solving') {
             setShowEvaluationModal(false);
-            setSelectedParticipantForEvaluation(null);
             console.log('Переход к оценке этапа:', stage);
+            
+            // Открываем соответствующее модальное окно
+            if (stage === 'project-defense') {
+              setShowProjectDefenseModal(true);
+            } else if (stage === 'diagnostic-game') {
+              setShowDiagnosticGameModal(true);
+            }
           }
         }}
         participantName={selectedParticipantForEvaluation?.user.full_name || ''}
@@ -1217,17 +1209,51 @@ const ExpertExamPage: React.FC = () => {
         evaluations={evaluations}
       />
 
-      {/* Модальное окно назначения кейсов */}
-      <CaseAssignmentModal
-        isOpen={showCaseAssignmentModal}
-        onClose={() => setShowCaseAssignmentModal(false)}
-        examId={id || ''}
-        participants={participants}
-        onAssignmentSaved={() => {
-          setShowCaseAssignmentModal(false);
-          // Можно добавить перезагрузку данных если нужно
-        }}
-      />
+
+      {/* Модальное окно защиты проекта */}
+      {selectedParticipantForEvaluation && (
+        <ProjectDefenseModal
+          isOpen={showProjectDefenseModal}
+          onClose={() => {
+            setShowProjectDefenseModal(false);
+            setSelectedParticipantForEvaluation(null);
+          }}
+          participantId={selectedParticipantForEvaluation.user.id}
+          participantName={selectedParticipantForEvaluation.user.full_name}
+          examId={id || ''}
+          onEvaluationComplete={async () => {
+            // Перезагружаем данные после завершения оценки
+            await fetchExamData();
+          }}
+          onRemoveEvaluation={async (participantId) => {
+            // Перезагружаем данные после удаления оценки
+            await fetchExamData();
+          }}
+        />
+      )}
+
+      {/* Модальное окно диагностической игры */}
+      {selectedParticipantForEvaluation && (
+        <DiagnosticGameModal
+          isOpen={showDiagnosticGameModal}
+          onClose={() => {
+            setShowDiagnosticGameModal(false);
+            setSelectedParticipantForEvaluation(null);
+          }}
+          participantId={selectedParticipantForEvaluation.user.id}
+          participantName={selectedParticipantForEvaluation.user.full_name}
+          examId={id || ''}
+          onEvaluationComplete={async () => {
+            // Перезагружаем данные после завершения оценки
+            await fetchExamData();
+          }}
+          onRemoveEvaluation={async (participantId) => {
+            // Перезагружаем данные после удаления оценки
+            await fetchExamData();
+          }}
+        />
+      )}
+
     </div>
   );
 };

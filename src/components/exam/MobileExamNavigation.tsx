@@ -41,20 +41,14 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
     {
       id: 'participants' as const,
       icon: Users,
-      label: 'Досье',
-      count: 0 // Убираем счетчик для Досье
+      label: 'Оценка',
+      count: 0 // Убираем счетчик для Оценки
     },
     {
       id: 'schedule' as const,
       icon: Calendar,
       label: 'Расписание',
       count: 0
-    },
-    {
-      id: 'evaluations' as const,
-      icon: Star,
-      label: 'Оценка',
-      count: evaluationsCount
     }
   ];
 
@@ -72,26 +66,41 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
       <nav 
         className="mobile-exam-nav"
         style={{ 
-          borderRadius: '20px',
-          padding: '8px 12px 12px 12px',
+          borderRadius: '24px',
+          padding: '8px',
           boxSizing: 'border-box',
-          maxWidth: '450px',
+          maxWidth: '400px',
           width: '100%',
           position: 'relative',
-          background: 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          border: '1px solid rgba(6, 164, 120, 0.2)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+          background: 'rgba(255, 255, 255, 0.5)',
+          backdropFilter: 'blur(30px) saturate(120%)',
+          WebkitBackdropFilter: 'blur(30px) saturate(120%)',
+          border: '1px solid rgba(255, 255, 255, 0.3)',
+          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
+          overflow: 'hidden'
         }}
       >
+        {/* Глянцевый эффект */}
+        <div style={{
+          position: 'absolute',
+          top: '0',
+          left: '0',
+          right: '0',
+          height: '40%',
+          background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 70%, transparent 100%)',
+          borderRadius: '24px 24px 0 0',
+          pointerEvents: 'none'
+        }} />
+        
         <div 
           style={{
             display: 'flex',
-            justifyContent: 'space-around',
-            alignItems: 'center',
+            justifyContent: 'space-between',
+            alignItems: 'stretch',
             gap: '4px',
-            minWidth: 0
+            minWidth: 0,
+            position: 'relative',
+            zIndex: 1
           }}
         >
           {navItems.map((item) => {
@@ -102,18 +111,35 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
               <button
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
+                onMouseEnter={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  } else {
+                    // Убеждаемся, что активная кнопка остается корпоративного цвета
+                    e.currentTarget.style.backgroundColor = '#06A478';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }
+                }}
                 style={{
                   flex: 1,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  minHeight: '44px',
-                  padding: '5px 2px',
+                  minHeight: '48px',
+                  padding: '4px 8px',
                   borderRadius: '16px',
-                  background: isActive ? '#06A478' : 'transparent',
+                  backgroundColor: isActive ? '#06A478' : 'rgba(255, 255, 255, 0.1)',
+                  boxShadow: isActive ? '0 2px 8px rgba(6, 164, 120, 0.3)' : 'none',
                   border: 'none',
-                  color: isActive ? '#ffffff' : '#6b7280',
+                  color: isActive ? '#ffffff' : '#374151',
                   cursor: 'pointer',
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                   outline: 'none',
@@ -123,14 +149,13 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
                 }}
               >
                 <div style={{
-                  width: '18px',
-                  height: '18px',
+                  width: '20px',
+                  height: '20px',
                   marginBottom: '2px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  position: 'relative',
-                  zIndex: 2
+                  position: 'relative'
                 }}>
                   <IconComponent size={18} />
                   {item.count > 0 && (
@@ -156,11 +181,9 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
                   )}
                 </div>
                 <span style={{
-                  fontSize: '9px',
+                  fontSize: '11px',
                   fontWeight: 500,
-                  lineHeight: '1.1',
-                  position: 'relative',
-                  zIndex: 2,
+                  lineHeight: '1.2',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',

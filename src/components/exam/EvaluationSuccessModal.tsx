@@ -6,8 +6,9 @@ interface EvaluationSuccessModalProps {
   onClose: () => void;
   onEdit: () => void;
   participantName: string;
-  caseNumber: number;
+  caseNumber?: number | null;
   totalScore: number;
+  evaluationType?: string;
   onRemoveEvaluation?: () => Promise<void>;
 }
 
@@ -18,6 +19,7 @@ export const EvaluationSuccessModal: React.FC<EvaluationSuccessModalProps> = ({
   participantName,
   caseNumber,
   totalScore,
+  evaluationType = 'Решение кейса',
   onRemoveEvaluation
 }) => {
   if (!isOpen) return null;
@@ -51,7 +53,10 @@ export const EvaluationSuccessModal: React.FC<EvaluationSuccessModalProps> = ({
             Оценка успешно отправлена
           </h2>
           <p className="text-gray-600">
-            Решение кейса #{caseNumber} от <span className="font-semibold">{participantName}</span>
+            {caseNumber 
+              ? `Решение кейса #${caseNumber} от` 
+              : `${evaluationType} от`
+            } <span className="font-semibold">{participantName}</span>
           </p>
         </div>
 

@@ -18,7 +18,6 @@ import { TasksView } from './components/TasksView';
 import { TestingView } from './components/admin/TestingView';
 import { TrainerTerritoriesView } from './components/TrainerTerritoriesView';
 import { ExamReservePage, ExamDetailsPage, ExpertExamPage } from './components/exam';
-import ReservistEvaluationPage from './components/exam/ReservistEvaluationPage';
 import CaseEvaluationPage from './components/exam/CaseEvaluationPage';
 import { Loader2, RefreshCw, AlertOctagon } from 'lucide-react';
 import TakeTestPage from './pages/TakeTestPage';
@@ -319,7 +318,6 @@ function AppContent() {
         <Route path="/exam-reserve" element={<ExamReservePage />} />
         <Route path="/exam-details/:id" element={<ExamDetailsPage />} />
         <Route path="/expert-exam/:id" element={<ExpertExamPage />} />
-        <Route path="/reservist-evaluation/:id" element={<ReservistEvaluationPage />} />
         <Route path="/case-evaluation/:examId" element={<CaseEvaluationPage />} />
         <Route path="/create-event" element={
           <div className="space-y-6">

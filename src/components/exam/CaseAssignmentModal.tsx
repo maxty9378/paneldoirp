@@ -238,23 +238,39 @@ export const CaseAssignmentModal: React.FC<CaseAssignmentModalProps> = ({
                       </div>
                     </div>
 
-                    {/* Кнопки добавления кейсов */}
-                    <div className="flex gap-2">
-                      {[1, 2, 3, 4, 5].map(caseNumber => (
-                        <button
-                          key={caseNumber}
-                          onClick={() => addCaseNumber(participant.user.id, caseNumber)}
-                          disabled={caseNumbers.includes(caseNumber)}
-                          className={`flex items-center gap-1 px-3 py-1 rounded-lg text-sm font-medium transition-all ${
-                            caseNumbers.includes(caseNumber)
-                              ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                              : 'bg-emerald-500 text-white hover:bg-emerald-600'
-                          }`}
-                        >
-                          <Plus className="w-3 h-3" />
-                          Кейс {caseNumber}
-                        </button>
-                      ))}
+                    {/* Добавление кейсов */}
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="number"
+                        min="1"
+                        max="999"
+                        placeholder="№ кейса"
+                        className="w-24 px-3 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            const input = e.target as HTMLInputElement;
+                            const caseNumber = parseInt(input.value);
+                            if (caseNumber && !caseNumbers.includes(caseNumber)) {
+                              addCaseNumber(participant.user.id, caseNumber);
+                              input.value = '';
+                            }
+                          }
+                        }}
+                      />
+                      <button
+                        onClick={(e) => {
+                          const input = e.currentTarget.parentElement?.querySelector('input') as HTMLInputElement;
+                          const caseNumber = parseInt(input.value);
+                          if (caseNumber && !caseNumbers.includes(caseNumber)) {
+                            addCaseNumber(participant.user.id, caseNumber);
+                            input.value = '';
+                          }
+                        }}
+                        className="flex items-center gap-1 px-3 py-1 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600 transition-all"
+                      >
+                        <Plus className="w-3 h-3" />
+                        Добавить
+                      </button>
                     </div>
                   </div>
                 );
