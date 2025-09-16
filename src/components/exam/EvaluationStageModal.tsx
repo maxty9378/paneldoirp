@@ -97,14 +97,23 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
           console.log('Element getBoundingClientRect:', targetElement?.getBoundingClientRect());
           
           if (targetElement && targetElement.offsetParent !== null) {
-            setTourOpen(true);
+            // Принудительно прокручиваем к элементу
+            targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // Небольшая задержка для завершения прокрутки
+            setTimeout(() => {
+              setTourOpen(true);
+            }, 300);
           } else {
             console.log('Element not ready, retrying...');
             // Повторная попытка через 200ms
             setTimeout(() => {
               const retryElement = document.querySelector('[data-tour="case-solving-card"]') as HTMLElement;
               if (retryElement && retryElement.offsetParent !== null) {
-                setTourOpen(true);
+                retryElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => {
+                  setTourOpen(true);
+                }, 300);
               }
             }, 200);
           }
@@ -573,7 +582,7 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = (props)
               </div>
             </div>
           ),
-          position: 'top',
+          position: 'right',
           padding: 8
         }
       ]}
@@ -590,7 +599,7 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = (props)
           maxWidth: '280px',
           fontSize: '14px',
           lineHeight: '1.4',
-          position: 'fixed',
+          position: 'absolute',
           zIndex: 10001,
           transform: 'translateZ(0)',
           backfaceVisibility: 'hidden'
@@ -611,14 +620,14 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = (props)
         arrow: (base) => ({
           ...base,
           display: 'block',
-          borderColor: '#06A478 transparent transparent transparent',
-          borderWidth: '8px 8px 0 8px',
-          marginTop: '0px',
+          borderColor: 'transparent transparent transparent #06A478',
+          borderWidth: '8px 0 8px 8px',
+          marginTop: '-8px',
           filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
           position: 'absolute',
-          top: '100%',
-          left: '50%',
-          transform: 'translateX(-50%)'
+          top: '50%',
+          left: '-8px',
+          transform: 'translateY(-50%)'
         })
       }}
     >
