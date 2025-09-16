@@ -111,6 +111,18 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
     }
   }, [isTourOpen, isOpen]);
 
+  // Обработчик клика по любой карточке - закрываем тур
+  const handleStageClick = (stageId: string) => {
+    setTourOpen(false); // Закрываем тур
+    setHighlightFirstButton(false); // Убираем подсветку
+    
+    if (stageId === 'case-solving') {
+      setShowCaseSelection(true);
+    } else {
+      onStageSelect?.(stageId);
+    }
+  };
+
   // Блокировка прокрутки фона при открытом модальном окне
   useEffect(() => {
     if (isOpen) {
@@ -295,13 +307,7 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
                       hover:scale-[1.02] hover:shadow-lg
                       ${isFirst && highlightFirstButton ? 'highlight-glow' : ''}
                     `}
-                    onClick={() => {
-                      if (stage.id === 'case-solving') {
-                        setShowCaseSelection(true);
-                      } else {
-                        onStageSelect?.(stage.id);
-                      }
-                    }}
+                    onClick={() => handleStageClick(stage.id)}
                   >
                     <div className="flex items-center gap-3">
                       {/* Иконка */}
