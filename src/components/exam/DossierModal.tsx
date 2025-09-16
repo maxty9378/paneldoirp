@@ -110,6 +110,18 @@ export const DossierModal: React.FC<DossierModalProps> = ({
     }
   }, [dossier?.photo_url]);
 
+  // Блокировка прокрутки фона при открытом модальном окне
+  useEffect(() => {
+    if (isOpen) {
+      // Блокируем прокрутку
+      document.body.style.overflow = 'hidden';
+      return () => {
+        // Восстанавливаем прокрутку при закрытии
+        document.body.style.overflow = '';
+      };
+    }
+  }, [isOpen]);
+
   // Анимация появления контента
   useEffect(() => {
     if (isOpen && !loading) {

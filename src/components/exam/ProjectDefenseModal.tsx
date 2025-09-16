@@ -66,6 +66,21 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
     }
   }, [isOpen, participantId, examId, user?.id]);
 
+  // Блокировка прокрутки фона при открытом модальном окне
+  useEffect(() => {
+    if (isOpen && !showSuccessModal) {
+      // Блокируем прокрутку
+      document.body.style.overflow = 'hidden';
+      return () => {
+        // Восстанавливаем прокрутку при закрытии
+        document.body.style.overflow = '';
+      };
+    } else {
+      // Восстанавливаем прокрутку если модальное окно закрыто или показывается SuccessModal
+      document.body.style.overflow = '';
+    }
+  }, [isOpen, showSuccessModal]);
+
   const loadAssignedPresentationNumber = async () => {
     try {
       const { data, error } = await supabase

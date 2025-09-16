@@ -84,6 +84,21 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
     setLoading(false);
   }, [isOpen, existingEvaluation, examId, participantId, user?.id, caseNumber]);
 
+  // Блокировка прокрутки фона при открытом модальном окне
+  useEffect(() => {
+    if (isOpen && !showSuccessModal) {
+      // Блокируем прокрутку
+      document.body.style.overflow = 'hidden';
+      return () => {
+        // Восстанавливаем прокрутку при закрытии
+        document.body.style.overflow = '';
+      };
+    } else {
+      // Восстанавливаем прокрутку если модальное окно закрыто или показывается SuccessModal
+      document.body.style.overflow = '';
+    }
+  }, [isOpen, showSuccessModal]);
+
 
   const handleScoreChange = (criterion: keyof CaseEvaluation['criteria_scores'], score: number) => {
     setEvaluation(prev => ({

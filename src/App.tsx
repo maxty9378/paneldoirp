@@ -28,8 +28,6 @@ import EventTPEvaluation from './pages/EventTPEvaluation';
 import AuthCallback from './pages/AuthCallback';
 import QRAuthPage from './pages/QRAuthPage';
 import { LoadingOverlay } from './components/LoadingOverlay';
-import { AnimatedBackground } from './components/LoginPage/AnimatedBackground';
-import { NeuralNetworkBackground } from './components/LoginPage/NeuralNetworkBackground';
 
 function EventDetailPage({ onStartTest }: { onStartTest: (testId: string, eventId: string, attemptId: string) => void }) {
   const { eventId } = useParams();
@@ -213,74 +211,65 @@ function AppContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-blue-50 via-green-50 to-emerald-100">
-        {/* Нейросеть фон */}
-        <NeuralNetworkBackground />
-        
-        {/* Анимированные частицы */}
-        <AnimatedBackground />
-        
-        {/* Фоновые эффекты */}
-        <div className="absolute inset-0">
-          <div className="absolute -top-40 -right-32 h-[420px] w-[420px] rounded-full blur-3xl opacity-20 bg-gradient-to-br from-[#06A478] to-[#4ade80]" />
-          <div className="absolute -bottom-40 -left-32 h-[420px] w-[420px] rounded-full blur-3xl opacity-20 bg-gradient-to-br from-[#4ade80] to-[#86efac]" />
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-[300px] w-[300px] rounded-full blur-3xl opacity-15 bg-gradient-to-br from-[#06A478] to-[#22c55e]" />
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex items-center justify-center p-4">
+        {/* Простые фоновые элементы */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-40 -right-32 h-96 w-96 rounded-full bg-gradient-to-br from-[#06A478]/10 to-[#4ade80]/10" />
+          <div className="absolute -bottom-40 -left-32 h-96 w-96 rounded-full bg-gradient-to-br from-[#4ade80]/10 to-[#86efac]/10" />
         </div>
         
-        <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
-          <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/20 max-w-md mx-auto animate-fade-in">
-            <div className="text-center">
-              <div className="mb-6">
-                <Loader2 className="h-12 w-12 text-[#06A478] animate-spin mx-auto" />
-              </div>
-              
-              <h2 className="text-xl font-semibold text-gray-800 mb-2">Загрузка приложения</h2>
-              <p className="text-gray-600 mb-4">
-                {loadingPhase === 'initializing' && 'Инициализация...'}
-                {loadingPhase === 'session-fetch' && 'Проверка сессии...'}
-                {loadingPhase === 'profile-fetch' && 'Загрузка профиля...'}
-                {loadingPhase === 'auth-change' && 'Обработка авторизации...'}
-                {!['initializing', 'session-fetch', 'profile-fetch', 'auth-change'].includes(loadingPhase) && 'Подготовка интерфейса...'}
+        <div className="relative z-10 bg-white rounded-2xl p-8 shadow-lg border max-w-md mx-auto">
+          <div className="text-center">
+            <div className="mb-6">
+              <Loader2 className="h-12 w-12 text-[#06A478] animate-spin mx-auto" />
+            </div>
+            
+            <h2 className="text-xl font-semibold text-gray-800 mb-2">Загрузка приложения</h2>
+            <p className="text-gray-600 mb-4">
+              {loadingPhase === 'initializing' && 'Инициализация...'}
+              {loadingPhase === 'session-fetch' && 'Проверка сессии...'}
+              {loadingPhase === 'profile-fetch' && 'Загрузка профиля...'}
+              {loadingPhase === 'auth-change' && 'Обработка авторизации...'}
+              {!['initializing', 'session-fetch', 'profile-fetch', 'auth-change'].includes(loadingPhase) && 'Подготовка интерфейса...'}
+            </p>
+            
+            {loadingSeconds > 3 && (
+              <p className="text-sm text-gray-500 mb-4">
+                Время загрузки: {loadingSeconds} сек.
               </p>
-              
-              {loadingSeconds > 3 && (
-                <p className="text-sm text-gray-500 mb-4">
-                  Время загрузки: {loadingSeconds} сек.
-                </p>
-              )}
-              
-              {authError && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 text-left animate-slide-in">
-                  <div className="flex items-start">
-                    <AlertOctagon className="h-5 w-5 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-red-800 font-medium text-sm">Ошибка загрузки</p>
-                      <p className="text-red-700 text-sm mt-1">{authError}</p>
-                    </div>
+            )}
+            
+            {authError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 text-left">
+                <div className="flex items-start">
+                  <AlertOctagon className="h-5 w-5 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-red-800 font-medium text-sm">Ошибка загрузки</p>
+                    <p className="text-red-700 text-sm mt-1">{authError}</p>
                   </div>
                 </div>
-              )}
-              
-              {loadingSeconds > 5 && (
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  {authError && retryFetchProfile && (
-                    <button
-                      onClick={retryFetchProfile}
-                      className="inline-flex items-center justify-center px-4 py-2 bg-[#06A478] hover:bg-[#05976b] text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
-                    >
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Повторить попытку
-                    </button>
-                  )}
+              </div>
+            )}
+            
+            {loadingSeconds > 5 && (
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                {authError && retryFetchProfile && (
                   <button
-                    onClick={resetAuth}
-                    className="inline-flex items-center justify-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+                    onClick={retryFetchProfile}
+                    className="inline-flex items-center justify-center px-4 py-2 bg-[#06A478] hover:bg-[#05976b] text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
                   >
-                    🧹 Очистить кэш и сбросить
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Повторить попытку
                   </button>
-                </div>
-              )}
-            </div>
+                )}
+                <button
+                  onClick={resetAuth}
+                  className="inline-flex items-center justify-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+                >
+                  🧹 Очистить кэш и сбросить
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

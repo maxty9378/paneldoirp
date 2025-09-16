@@ -66,6 +66,21 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
     }
   }, [isOpen, participantId, examId, user?.id]);
 
+  // Блокировка прокрутки фона при открытом модальном окне
+  useEffect(() => {
+    if (isOpen && !showSuccessModal && !showCriteriaModal) {
+      // Блокируем прокрутку
+      document.body.style.overflow = 'hidden';
+      return () => {
+        // Восстанавливаем прокрутку при закрытии
+        document.body.style.overflow = '';
+      };
+    } else {
+      // Восстанавливаем прокрутку если модальное окно закрыто или показывается другое модальное окно
+      document.body.style.overflow = '';
+    }
+  }, [isOpen, showSuccessModal, showCriteriaModal]);
+
   const loadExistingEvaluation = async () => {
     if (!user?.id) return;
     

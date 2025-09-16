@@ -76,6 +76,21 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = ({
     }
   }, [isOpen]);
 
+  // Блокировка прокрутки фона при открытом модальном окне
+  useEffect(() => {
+    if (isOpen && !showCaseEvaluation) {
+      // Блокируем прокрутку
+      document.body.style.overflow = 'hidden';
+      return () => {
+        // Восстанавливаем прокрутку при закрытии
+        document.body.style.overflow = '';
+      };
+    } else {
+      // Восстанавливаем прокрутку если модальное окно закрыто или показывается CaseEvaluationModal
+      document.body.style.overflow = '';
+    }
+  }, [isOpen, showCaseEvaluation]);
+
   // Загружаем кейсы при переключении на выбор кейсов
   useEffect(() => {
     if (showCaseSelection && isOpen) {
@@ -150,35 +165,33 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = ({
   });
   
   return (
-    <div 
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 pb-20"
-    >
-      <div className={`relative max-w-2xl w-full max-h-[90vh] overflow-hidden rounded-3xl bg-white shadow-2xl transform transition-all duration-500 ease-out ${
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-2 xs:p-4">
+      <div className={`relative max-w-2xl w-full max-h-[95vh] xs:max-h-[90vh] overflow-hidden rounded-2xl xs:rounded-3xl bg-white shadow-2xl transform transition-all duration-500 ease-out ${
         isOpen && !showCaseEvaluation ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-full opacity-0 scale-95'
       }`}>
         {/* Заголовок */}
-        <div className="relative bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 p-6 text-white">
+        <div className="relative bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 p-4 xs:p-6 text-white">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl"></div>
           <div className="relative flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: 'SNS, sans-serif' }}>
+            <div className="flex-1 pr-2">
+              <h2 className="text-lg xs:text-2xl font-bold mb-1 leading-tight" style={{ fontFamily: 'SNS, sans-serif' }}>
                 Выбор этапа оценки
               </h2>
-              <p className="text-emerald-100 text-sm">
+              <p className="text-emerald-100 text-xs xs:text-sm truncate">
                 {participantName}
               </p>
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-white/20 rounded-xl transition-colors duration-200"
+              className="p-2 hover:bg-white/20 rounded-xl transition-colors duration-200 touch-target"
             >
-              <X className="w-6 h-6" />
+              <X className="w-5 h-5 xs:w-6 xs:h-6" />
             </button>
           </div>
         </div>
 
-        {/* Контент */}
-        <div className="p-6">
+        {/* Основной контент с прокруткой */}
+        <div className="p-4 xs:p-6 overflow-y-auto max-h-[calc(95vh-200px)] xs:max-h-[calc(90vh-180px)]">
           {!showCaseSelection ? (
             // Выбор этапа оценки
             <div className="grid grid-cols-1 gap-4">
@@ -188,15 +201,10 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = ({
                   <div
                     key={stage.id}
                     className={`
-                      group cursor-pointer rounded-2xl p-6 border transition-all duration-300
+                      group cursor-pointer rounded-2xl p-4 border transition-all duration-300
                       bg-gradient-to-br ${stage.bgGradient} ${stage.borderColor}
-                      hover:scale-105 hover:shadow-lg
-                      transform animate-[slideUp_0.5s_ease-out] opacity-0
+                      hover:scale-[1.02] hover:shadow-lg
                     `}
-                    style={{
-                      animationDelay: `${index * 150}ms`,
-                      animationFillMode: 'forwards'
-                    }}
                     onClick={() => {
                       if (stage.id === 'case-solving') {
                         setShowCaseSelection(true);
@@ -207,8 +215,8 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = ({
                   >
                     <div className="flex items-center gap-4">
                       {/* Иконка */}
-                      <div className={`w-14 h-14 ${stage.iconBg} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
-                        <Icon className="w-7 h-7 text-white" />
+                      <div className={`w-12 h-12 ${stage.iconBg} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
+                        <Icon className="w-6 h-6 text-white" />
                       </div>
                       
                       {/* Контент */}
@@ -293,17 +301,17 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = ({
                   </p>
                 </div>
               ) : (
-                <div className={`grid gap-4 ${assignedCases.length === 1 ? 'grid-cols-1 max-w-xs mx-auto' : assignedCases.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                <div className={`grid gap-3 ${assignedCases.length === 1 ? 'grid-cols-1 max-w-xs mx-auto' : assignedCases.length === 2 ? 'grid-cols-1 xs:grid-cols-2' : 'grid-cols-1 xs:grid-cols-2 sm:grid-cols-3'}`}>
                   {assignedCases.map((caseNumber) => {
                     const isCompleted = isCaseEvaluationCompleted(caseNumber);
                     const averageScore = getCaseAverageScore(caseNumber);
                     return (
                       <div
                         key={caseNumber}
-                        className={`group cursor-pointer rounded-2xl p-6 border transition-all duration-300 relative ${
+                        className={`group cursor-pointer rounded-2xl p-4 border transition-all duration-300 relative ${
                           isCompleted 
-                            ? 'border-green-300 bg-gradient-to-br from-green-50 to-emerald-50 hover:scale-105 hover:shadow-lg' 
-                            : 'border-emerald-100 bg-gradient-to-br from-emerald-50 to-teal-50 hover:scale-105 hover:shadow-lg'
+                            ? 'border-green-300 bg-gradient-to-br from-green-50 to-emerald-50 hover:scale-[1.02] hover:shadow-lg' 
+                            : 'border-emerald-100 bg-gradient-to-br from-emerald-50 to-teal-50 hover:scale-[1.02] hover:shadow-lg'
                         }`}
                         onClick={() => {
                           console.log('Клик по кейсу:', caseNumber);
@@ -322,14 +330,14 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = ({
                         )}
                         
                         <div className="text-center">
-                          <div className={`w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform duration-300 ${
+                          <div className={`w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform duration-300 ${
                             isCompleted ? 'bg-green-500' : 'bg-emerald-500'
                           }`}>
-                            <span className="text-2xl font-bold text-white">
+                            <span className="text-xl font-bold text-white">
                               {caseNumber}
                             </span>
                           </div>
-                          <h4 className={`text-lg font-bold mb-1 ${
+                          <h4 className={`text-base font-bold mb-1 ${
                             isCompleted ? 'text-green-700' : 'text-gray-900'
                           }`}>
                             Кейс #{caseNumber}
@@ -338,12 +346,12 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = ({
                           {/* Средний балл */}
                           {isCompleted && averageScore !== null && (
                             <div className="mb-2">
-                              <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold ${
+                              <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${
                                 averageScore >= 4 ? 'bg-green-100 text-green-700' :
                                 averageScore >= 3 ? 'bg-yellow-100 text-yellow-700' :
                                 'bg-red-100 text-red-700'
                               }`}>
-                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                   <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                                 </svg>
                                 {averageScore}/5
@@ -351,7 +359,7 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = ({
                             </div>
                           )}
                           
-                          <p className={`text-sm ${
+                          <p className={`text-xs ${
                             isCompleted ? 'text-green-600' : 'text-gray-600'
                           }`}>
                             {isCompleted ? 'Оценка выставлена' : 'Оценить решение кейса'}
@@ -363,7 +371,7 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = ({
                 </div>
               )}
               
-              <div className="flex justify-center">
+              <div className="flex justify-center pt-4">
                 <button
                   onClick={() => setShowCaseSelection(false)}
                   className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
@@ -377,7 +385,7 @@ export const EvaluationStageModal: React.FC<EvaluationStageModalProps> = ({
         </div>
 
         {/* Футер */}
-        <div className="sticky bottom-0 border-t border-gray-100 p-4 bg-gray-50 rounded-b-3xl">
+        <div className="border-t border-gray-100 p-4 bg-gray-50 rounded-b-3xl">
           <div className="text-center text-sm text-gray-500">
             Выберите этап для оценки резервиста
           </div>

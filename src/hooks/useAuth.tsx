@@ -94,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [session?.user, userProfile]);
 
-  // безопасный sleep
+  // Оптимизированный delay с проверкой прерывания
   const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
   // Utility function to create fallback user
@@ -127,20 +127,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } as User;
   };
 
-  // 1) мягкий таймаут: не кидаем ошибку, просто логируем и продолжаем без сессии
-  const getSessionSoft = async (timeoutMs = 45000) => {
-    let timedOut = false;
-    const timer = setTimeout(() => { timedOut = true; }, timeoutMs);
-
+  // Оптимизированный getSession с разумным таймаутом
+  const getSessionSoft = async (timeoutMs = 15000) => {
     try {
-      const res = await supabase.auth.getSession(); // пусть доедет столько, сколько надо
+      const res = await withTimeout(() => supabase.auth.getSession(), timeoutMs);
       return res;
     } catch (e) {
-      console.warn('[Auth] getSession error:', (e as any)?.message || e);
+      console.warn('[Auth] getSession error/timeout:', (e as any)?.message || e);
       return { data: { session: null }, error: e as any };
-    } finally {
-      clearTimeout(timer);
-      if (timedOut) console.warn('[Auth] getSession soft-timeout (UI не блокируем)');
     }
   };
 
@@ -266,20 +260,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setLoading(false);
             setLoadingPhase('complete');
 
-            (async () => {
-              try {
-                console.log('🔄 Background profile refresh (single shot)');
-                const row = await withTimeout(() => tryFetchProfileRow(userId), 15000);
-                if (row) {
-                  const fresh = { ...row, position: row.position || 'Должность не указана' } as User;
-                  setUser(fresh);
-                  setUserProfile(fresh);
-                  cacheUserProfile(fresh);
+              // Фоновое обновление профиля
+              (async () => {
+                try {
+                  console.log('🔄 Background profile refresh');
+                  const row = await withTimeout(() => tryFetchProfileRow(userId), 8000);
+                  if (row) {
+                    const fresh = { ...row, position: row.position || 'Должность не указана' } as User;
+                    setUser(fresh);
+                    setUserProfile(fresh);
+                    cacheUserProfile(fresh);
+                  }
+                } catch (e: any) {
+                  console.warn('Background refresh failed:', e.message || e);
                 }
-              } catch (e: any) {
-                console.warn('Background refresh failed:', e.message || e);
-              }
-            })();
+              })();
 
             return cachedUser;
           }
@@ -288,24 +283,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Продолжим ниже и попробуем сетевой запрос (без нового таймера).
         }
 
-        // 2) сет с ретраями (быстрые таймауты)
-        for (let attempt = 1; attempt <= 1; attempt++) {
-          try {
-            const row = await withTimeout(() => tryFetchProfileRow(userId), 15000);
-            if (row) {
-              const u = { ...row, position: row.position || 'Должность не указана' } as User;
-              setUser(u);
-              setUserProfile(u);
-              cacheUserProfile(u);
-              if (foreground) {
-                setLoading(false);
-                setLoadingPhase('complete');
-              }
-              return u;
-            }
-            // строки нет — создаём
-            const created = await withTimeout(() => ensureProfile(userId), 15000);
-            const u = { ...created, position: created.position || 'Должность не указана' } as User;
+        // 2) Сетевой запрос с оптимизированным таймаутом
+        try {
+          const row = await withTimeout(() => tryFetchProfileRow(userId), 10000);
+          if (row) {
+            const u = { ...row, position: row.position || 'Должность не указана' } as User;
             setUser(u);
             setUserProfile(u);
             cacheUserProfile(u);
@@ -314,10 +296,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setLoadingPhase('complete');
             }
             return u;
-          } catch (e: any) {
-            console.warn(`🔁 Profile attempt ${attempt} failed:`, e.message || e);
-            await delay(250); // быстрый backoff
           }
+          // строки нет — создаём
+          const created = await withTimeout(() => ensureProfile(userId), 10000);
+          const u = { ...created, position: created.position || 'Должность не указана' } as User;
+          setUser(u);
+          setUserProfile(u);
+          cacheUserProfile(u);
+          if (foreground) {
+            setLoading(false);
+            setLoadingPhase('complete');
+          }
+          return u;
+        } catch (e: any) {
+          console.warn('🔁 Profile fetch failed:', e.message || e);
         }
 
         // 3) окончательный мягкий фолбэк
@@ -397,118 +389,97 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signIn = async (identifier: string, password: string): Promise<{ data: any; error: any }> => {
-    try {
-      console.log(`🔑 Attempting to sign in with identifier: ${identifier}`);
-      
-      if (identifier === 'doirp@sns.ru' && password === '123456') {
-        console.log('Using admin credentials - special handling');
-      }
-      
-      setAuthError(null); // Clear any previous errors
-      setLoading(true); // Set loading state
+    console.log(`🔑 Attempting to sign in with identifier: ${identifier}`);
+    
+    setAuthError(null);
+    setLoading(true);
+    setLoadingPhase('auth-change');
 
+    try {
       const isEmail = identifier.includes('@');
       console.log(`🔑 Login type: ${isEmail ? 'email' : 'SAP'}`);
       
       if (isEmail) {
-        const result = await supabase.auth.signInWithPassword({
-          email: identifier,
-          password,
-        });
+        // Email авторизация
+        const result = await withTimeout(
+          () => supabase.auth.signInWithPassword({ email: identifier, password }),
+          10000
+        );
         
-        // Enhanced error handling for better user experience
         if (result.error) {
-          let errorMessage = result.error.message;
-          
-          if (result.error.message.includes('Invalid login credentials')) {
-            errorMessage = 'Неверные учетные данные. Проверьте email и пароль или создайте администратора.';
-          } else if (result.error.message.includes('Email not confirmed')) {
-            errorMessage = 'Email не подтвержден. Проверьте почту для подтверждения аккаунта.';
-          } else if (result.error.message.includes('Too many requests')) {
-            errorMessage = 'Слишком много попыток входа. Попробуйте позже.';
-          } else if (result.error.message.includes('User not found')) {
-            errorMessage = 'Пользователь не найден. Возможно, нужно создать учетную запись администратора.';
-          }
-          
-          // Set the auth error state so the UI can react to it
+          const errorMessage = getAuthErrorMessage(result.error.message);
           setAuthError(errorMessage);
           setLoading(false);
+          setLoadingPhase('error');
           console.log('📝 Sign in error:', errorMessage);
           return { data: result.data, error: { message: errorMessage } };
         }
         
-        console.log('✅ Sign in success:', result.data?.session ? 'Session obtained' : 'No session');
-          
-        // Clear any previous errors on successful sign in
+        console.log('✅ Email sign in success');
         setAuthError(null);
-        
-        // Не сбрасываем loading сразу - пусть onAuthStateChange обработает это
-        // setLoading(false) будет вызван в onAuthStateChange когда пользователь загрузится
-        
         return result;
       } else {
-        // Handle SAP number login
-        try {
-          const { data: userData, error: userError } = await supabase
+        // SAP авторизация
+        const { data: userData, error: userError } = await withTimeout(
+          () => supabase
             .from('users')
             .select('email')
             .eq('sap_number', identifier.trim())
-            .maybeSingle();
+            .maybeSingle(),
+          8000
+        );
 
-          if (userError || !userData?.email) {
-            const errorMsg = 'Пользователь с таким SAP номером не найден';
-            setAuthError(errorMsg);
-            setLoading(false);
-            return { 
-              data: null, 
-              error: { message: errorMsg } 
-            };
-          }
-
-          const result = await supabase.auth.signInWithPassword({
-            email: userData.email,
-            password,
-          });
-          
-          if (result.error) {
-            const errorMessage = result.error.message.includes('Invalid login credentials') 
-              ? 'Неверный пароль для данного SAP номера'
-              : result.error.message;
-            setAuthError(errorMessage);
-            setLoading(false);
-            return { data: result.data, error: { message: errorMessage } };
-          }
-          
-          // Clear any previous errors on successful sign in
-          setAuthError(null);
-          
-          // Не сбрасываем loading сразу - пусть onAuthStateChange обработает это
-          console.log('SignIn result for SAP user:', result);
-          return result;
-        } catch (error: any) {
-          console.error('❌ Error finding user by SAP:', error);
-          const errorMsg = `Ошибка при поиске пользователя: ${error.message || 'Неизвестная ошибка'}`;
+        if (userError || !userData?.email) {
+          const errorMsg = 'Пользователь с таким SAP номером не найден';
           setAuthError(errorMsg);
           setLoading(false);
-          return { 
-            data: null, 
-            error: { message: errorMsg } 
-          };
+          setLoadingPhase('error');
+          return { data: null, error: { message: errorMsg } };
         }
+
+        const result = await withTimeout(
+          () => supabase.auth.signInWithPassword({ email: userData.email, password }),
+          10000
+        );
+        
+        if (result.error) {
+          const errorMessage = result.error.message.includes('Invalid login credentials') 
+            ? 'Неверный пароль для данного SAP номера'
+            : getAuthErrorMessage(result.error.message);
+          setAuthError(errorMessage);
+          setLoading(false);
+          setLoadingPhase('error');
+          return { data: result.data, error: { message: errorMessage } };
+        }
+        
+        console.log('✅ SAP sign in success');
+        setAuthError(null);
+        return result;
       }
     } catch (error: any) {
       console.error('❌ Error in signIn:', error);
-      const errorMsg = `Ошибка авторизации: ${error.message || 'Неизвестная ошибка'}`;
+      const errorMsg = error.message === 'timeout' 
+        ? 'Время ожидания истекло. Проверьте подключение к интернету.'
+        : `Ошибка авторизации: ${error.message || 'Неизвестная ошибка'}`;
       setAuthError(errorMsg);
       setLoading(false);
-      return { 
-        data: null, 
-        error: { message: errorMsg } 
-      };
-    } finally {
-      // Ensure loading is set to false in all cases
-      setLoading(false);
+      setLoadingPhase('error');
+      return { data: null, error: { message: errorMsg } };
     }
+  };
+
+  // Функция для обработки сообщений об ошибках
+  const getAuthErrorMessage = (errorMessage: string): string => {
+    if (errorMessage.includes('Invalid login credentials')) {
+      return 'Неверные учетные данные. Проверьте логин и пароль.';
+    } else if (errorMessage.includes('Email not confirmed')) {
+      return 'Email не подтвержден. Проверьте почту для подтверждения аккаунта.';
+    } else if (errorMessage.includes('Too many requests')) {
+      return 'Слишком много попыток входа. Попробуйте позже.';
+    } else if (errorMessage.includes('User not found')) {
+      return 'Пользователь не найден. Возможно, нужно создать учетную запись администратора.';
+    }
+    return errorMessage;
   };
 
   const signOut = async () => {
@@ -555,24 +526,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('📥 Starting session fetch');
       
       try {
-        // Get initial session with soft timeout
-        const sessionResult = await getSessionSoft(45000);
+        // Получаем сессию с оптимизированным таймаутом
+        const sessionResult = await getSessionSoft(15000);
         if (!isMounted) return;
-        
-        // Soft timeout doesn't throw errors, just returns null session
         
         const session = sessionResult.data.session;
         setSession(session);
         
         if (session?.user) {
-          console.log('✅ Initial session found, fetching profile');
+          console.log('✅ Initial session found');
           
           if (isAuthFlowPath() || window.authCallbackProcessing) {
             console.log('⏸ Skip initial profile fetch during auth flow');
             setLoadingPhase('ready');
             setLoading(false);
           } else {
-            // Look for cached profile first
+            // Проверяем кэш профиля
             const cachedUser = getUserFromCache();
             if (cachedUser && cachedUser.id === session.user.id) {
               console.log('✅ Using cached user profile');
@@ -580,11 +549,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setUserProfile(cachedUser);
               setLoadingPhase('complete');
               setLoading(false);
-            } else {
-              setLoadingPhase('complete');
-              setLoading(false);
+              
+              // Тихо обновляем профиль в фоне
               fetchUserProfile(session.user.id, { foreground: false })
-                .catch(e => console.warn('bg profile fetch failed', e));
+                .catch(e => console.warn('bg profile update failed', e));
+            } else {
+              // Загружаем профиль
+              setLoadingPhase('profile-fetch');
+              fetchUserProfile(session.user.id, { foreground: true })
+                .catch(e => {
+                  console.warn('initial profile fetch failed', e);
+                  setLoadingPhase('complete');
+                  setLoading(false);
+                });
             }
           }
         } else {
@@ -597,10 +574,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         if (!isMounted) return;
         
-        // Don't show error immediately on timeout, just complete loading
-        // User can still try to login
         console.warn('⚠️ Auth initialization failed:', error.message);
-        
         setLoadingPhase('ready');
         setLoading(false);
       }

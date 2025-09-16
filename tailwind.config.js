@@ -2,6 +2,17 @@
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
+    screens: {
+      'xs': '375px',      // iPhone SE, small phones
+      'sm': '640px',      // Default sm
+      'md': '768px',      // Default md, tablets
+      'lg': '1024px',     // Default lg, small laptops
+      'xl': '1280px',     // Default xl, large laptops
+      '2xl': '1536px',    // Default 2xl, desktops
+      'mobile': '430px',  // iPhone 15 Pro Max width
+      'tablet': '834px',  // iPad width
+      'desktop': '1440px', // Common desktop resolution
+    },
     extend: {
       fontFamily: {
         sans: ['Mabry', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
@@ -87,7 +98,46 @@ export default {
           '60%': { transform: 'translateY(-5px)' },
         },
       },
+      spacing: {
+        'safe-top': 'env(safe-area-inset-top)',
+        'safe-bottom': 'env(safe-area-inset-bottom)',
+        'safe-left': 'env(safe-area-inset-left)',
+        'safe-right': 'env(safe-area-inset-right)',
+      },
+      minHeight: {
+        'touch': '44px',
+        'touch-lg': '48px',
+      },
+      minWidth: {
+        'touch': '44px',
+        'touch-lg': '48px',
+      },
     },
   },
-  plugins: [],
+  plugins: [
+    // Кастомный плагин для мобильных утилит
+    function({ addUtilities }) {
+      const newUtilities = {
+        '.touch-manipulation': {
+          'touch-action': 'manipulation',
+        },
+        '.prevent-zoom': {
+          'touch-action': 'manipulation',
+          'user-select': 'none',
+          '-webkit-user-select': 'none',
+          '-webkit-touch-callout': 'none',
+        },
+        '.ios-momentum-scroll': {
+          '-webkit-overflow-scrolling': 'touch',
+        },
+        '.safe-area-full': {
+          'padding-top': 'env(safe-area-inset-top)',
+          'padding-bottom': 'env(safe-area-inset-bottom)',
+          'padding-left': 'env(safe-area-inset-left)',
+          'padding-right': 'env(safe-area-inset-right)',
+        },
+      };
+      addUtilities(newUtilities);
+    },
+  ],
 };
