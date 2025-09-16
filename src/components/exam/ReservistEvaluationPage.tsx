@@ -70,6 +70,14 @@ interface CompetencyEvaluation {
   comments: string;
 }
 
+interface CaseAssignment {
+  id?: string;
+  exam_event_id: string;
+  participant_id: string;
+  case_numbers: number[];
+  assigned_by: string;
+}
+
 
 const ReservistEvaluationPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -80,6 +88,7 @@ const ReservistEvaluationPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'cases' | 'project' | 'competencies'>('cases');
   const [caseEvaluations, setCaseEvaluations] = useState<CaseEvaluation[]>([]);
+  const [caseAssignments, setCaseAssignments] = useState<CaseAssignment[]>([]);
   
   // Временно оставляем старые состояния для других табов
   const [projectEvaluations, setProjectEvaluations] = useState<ProjectEvaluation[]>([]);
@@ -197,6 +206,8 @@ const ReservistEvaluationPage: React.FC = () => {
 
       setParticipants(participantsWithDossiers);
       
+      // Загружаем назначения кейсов
+      await loadCaseAssignments();
       
     } catch (err) {
       console.error('Ошибка загрузки данных:', err);
@@ -204,6 +215,32 @@ const ReservistEvaluationPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadCaseAssignments = async () => {
+    if (!id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('case_assignments')
+        .select('*')
+        .eq('exam_event_id', id);
+
+      if (error) {
+        console.error('Ошибка загрузки назначений кейсов:', error);
+        return;
+      }
+
+      setCaseAssignments(data || []);
+    } catch (err) {
+      console.error('Ошибка загрузки назначений кейсов:', err);
+    }
+  };
+
+  // Функция для получения назначенных кейсов участника
+  const getAssignedCases = (participantId: string): number[] => {
+    const assignment = caseAssignments.find(a => a.participant_id === participantId);
+    return assignment?.case_numbers || [];
   };
 
   const handleCaseEvaluationChange = (participantId: string, caseNumber: number, field: keyof Omit<CaseEvaluation, 'participant_id' | 'case_number'>, value: string | number) => {
@@ -562,146 +599,142 @@ const ReservistEvaluationPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {participants.map((participant, index) => (
-                    <React.Fragment key={participant.id}>
-                      {/* Первый кейс */}
-                      <tr className="hover:bg-gray-50">
-                        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {index + 1}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
-                            {participant.dossier?.photo_url ? (
-                              <img
-                                src={participant.dossier.photo_url}
-                                alt={participant.user.full_name}
-                                className="w-full h-full object-cover"
+                  {participants.map((participant, index) => {
+                    const assignedCases = getAssignedCases(participant.user.id);
+                    
+                    return (
+                      <React.Fragment key={participant.id}>
+                        {assignedCases.length > 0 ? assignedCases.map((caseNumber, caseIndex) => (
+                          <tr key={`${participant.id}-case-${caseNumber}`} className={caseIndex === 0 ? "hover:bg-gray-50" : "hover:bg-gray-50 bg-gray-25"}>
+                            <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {caseIndex === 0 ? index + 1 : ''}
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              {caseIndex === 0 ? (
+                                <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
+                                  {participant.dossier?.photo_url ? (
+                                    <img
+                                      src={participant.dossier.photo_url}
+                                      alt={participant.user.full_name}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                                      <User className="w-8 h-8 text-gray-400" />
+                                    </div>
+                                  )}
+                                </div>
+                              ) : null}
+                            </td>
+                            <td className="px-4 py-4 text-sm text-gray-900">
+                              {caseIndex === 0 ? (
+                                <div>
+                                  <div className="font-medium">{participant.user.full_name}</div>
+                                  <div className="text-gray-500">{participant.user.position?.name || 'Должность не указана'}</div>
+                                  <div className="text-gray-500">{participant.user.territory?.name || 'Филиал не указан'}</div>
+                                </div>
+                              ) : null}
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                              {caseIndex === 0 ? index + 1 : ''}
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap text-sm text-emerald-600 font-medium text-center">
+                              {caseNumber}
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap text-center">
+                              <select
+                                value={getEvaluationValue(participant.id, caseNumber, 'correctness')}
+                                onChange={(e) => handleCaseEvaluationChange(participant.id, caseNumber, 'correctness', parseInt(e.target.value) || 0)}
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                              >
+                                <option value="">-</option>
+                                {[1, 2, 3, 4, 5].map(score => (
+                                  <option key={score} value={score}>{score}</option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap text-center">
+                              <select
+                                value={getEvaluationValue(participant.id, caseNumber, 'clarity')}
+                                onChange={(e) => handleCaseEvaluationChange(participant.id, caseNumber, 'clarity', parseInt(e.target.value) || 0)}
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                              >
+                                <option value="">-</option>
+                                {[1, 2, 3, 4, 5].map(score => (
+                                  <option key={score} value={score}>{score}</option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap text-center">
+                              <select
+                                value={getEvaluationValue(participant.id, caseNumber, 'independence')}
+                                onChange={(e) => handleCaseEvaluationChange(participant.id, caseNumber, 'independence', parseInt(e.target.value) || 0)}
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                              >
+                                <option value="">-</option>
+                                {[1, 2, 3, 4, 5].map(score => (
+                                  <option key={score} value={score}>{score}</option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="px-4 py-4">
+                              <textarea
+                                value={getEvaluationValue(participant.id, caseNumber, 'comments')}
+                                onChange={(e) => handleCaseEvaluationChange(participant.id, caseNumber, 'comments', e.target.value)}
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                rows={2}
+                                placeholder="Комментарии..."
                               />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                                <User className="w-8 h-8 text-gray-400" />
+                            </td>
+                          </tr>
+                        )) : (
+                          <tr key={`${participant.id}-no-cases`} className="hover:bg-gray-50">
+                            <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {index + 1}
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
+                                {participant.dossier?.photo_url ? (
+                                  <img
+                                    src={participant.dossier.photo_url}
+                                    alt={participant.user.full_name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                                    <User className="w-8 h-8 text-gray-400" />
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 text-sm text-gray-900">
-                          <div className="font-medium">{participant.user.full_name}</div>
-                          <div className="text-gray-500">{participant.user.position?.name || 'Должность не указана'}</div>
-                          <div className="text-gray-500">{participant.user.territory?.name || 'Филиал не указан'}</div>
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                          {index + 1}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-emerald-600 font-medium text-center">
-                          {Math.floor(Math.random() * 20) + 1}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-center">
-                          <select
-                            value={getEvaluationValue(participant.id, 1, 'correctness')}
-                            onChange={(e) => handleCaseEvaluationChange(participant.id, 1, 'correctness', parseInt(e.target.value) || 0)}
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                          >
-                            <option value="">-</option>
-                            {[1, 2, 3, 4, 5].map(score => (
-                              <option key={score} value={score}>{score}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-center">
-                          <select
-                            value={getEvaluationValue(participant.id, 1, 'clarity')}
-                            onChange={(e) => handleCaseEvaluationChange(participant.id, 1, 'clarity', parseInt(e.target.value) || 0)}
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                          >
-                            <option value="">-</option>
-                            {[1, 2, 3, 4, 5].map(score => (
-                              <option key={score} value={score}>{score}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-center">
-                          <select
-                            value={getEvaluationValue(participant.id, 1, 'independence')}
-                            onChange={(e) => handleCaseEvaluationChange(participant.id, 1, 'independence', parseInt(e.target.value) || 0)}
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                          >
-                            <option value="">-</option>
-                            {[1, 2, 3, 4, 5].map(score => (
-                              <option key={score} value={score}>{score}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="px-4 py-4">
-                          <textarea
-                            value={getEvaluationValue(participant.id, 1, 'comments')}
-                            onChange={(e) => handleCaseEvaluationChange(participant.id, 1, 'comments', e.target.value)}
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            rows={2}
-                            placeholder="Комментарии..."
-                          />
-                        </td>
-                      </tr>
-                      {/* Второй кейс */}
-                      <tr className="hover:bg-gray-50 bg-gray-25">
-                        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
-                        </td>
-                        <td className="px-4 py-4 text-sm text-gray-900">
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-emerald-600 font-medium text-center">
-                          {Math.floor(Math.random() * 20) + 1}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-center">
-                          <select
-                            value={getEvaluationValue(participant.id, 2, 'correctness')}
-                            onChange={(e) => handleCaseEvaluationChange(participant.id, 2, 'correctness', parseInt(e.target.value) || 0)}
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                          >
-                            <option value="">-</option>
-                            {[1, 2, 3, 4, 5].map(score => (
-                              <option key={score} value={score}>{score}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-center">
-                          <select
-                            value={getEvaluationValue(participant.id, 2, 'clarity')}
-                            onChange={(e) => handleCaseEvaluationChange(participant.id, 2, 'clarity', parseInt(e.target.value) || 0)}
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                          >
-                            <option value="">-</option>
-                            {[1, 2, 3, 4, 5].map(score => (
-                              <option key={score} value={score}>{score}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-center">
-                          <select
-                            value={getEvaluationValue(participant.id, 2, 'independence')}
-                            onChange={(e) => handleCaseEvaluationChange(participant.id, 2, 'independence', parseInt(e.target.value) || 0)}
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                          >
-                            <option value="">-</option>
-                            {[1, 2, 3, 4, 5].map(score => (
-                              <option key={score} value={score}>{score}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="px-4 py-4">
-                          <textarea
-                            value={getEvaluationValue(participant.id, 2, 'comments')}
-                            onChange={(e) => handleCaseEvaluationChange(participant.id, 2, 'comments', e.target.value)}
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            rows={2}
-                            placeholder="Комментарии..."
-                          />
-                        </td>
-                      </tr>
-                    </React.Fragment>
-                  ))}
+                            </td>
+                            <td className="px-4 py-4 text-sm text-gray-900">
+                              <div className="font-medium">{participant.user.full_name}</div>
+                              <div className="text-gray-500">{participant.user.position?.name || 'Должность не указана'}</div>
+                              <div className="text-gray-500">{participant.user.territory?.name || 'Филиал не указан'}</div>
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                              {index + 1}
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 font-medium text-center">
+                              Кейсы не назначены
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap text-center">
+                              <span className="text-gray-400">-</span>
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap text-center">
+                              <span className="text-gray-400">-</span>
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap text-center">
+                              <span className="text-gray-400">-</span>
+                            </td>
+                            <td className="px-4 py-4">
+                              <span className="text-gray-400">-</span>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

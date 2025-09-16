@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, MapPin, Users, Target, User, Star, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, Target, User, Star, AlertCircle, FileText, Settings } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 // import DossierCard from './DossierCard';
 import { CompactDossierCard } from './CompactDossierCard';
 import { DossierModal } from './DossierModal';
+import { EvaluationStageModal } from './EvaluationStageModal';
+import { CaseAssignmentModal } from './CaseAssignmentModal';
 import MobileExamNavigation from './MobileExamNavigation';
 
 interface ExamEvent {
@@ -98,6 +100,9 @@ const ExpertExamPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'participants' | 'evaluations' | 'schedule'>('participants');
   const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(null);
+  const [showEvaluationModal, setShowEvaluationModal] = useState(false);
+  const [selectedParticipantForEvaluation, setSelectedParticipantForEvaluation] = useState<Participant | null>(null);
+  const [showCaseAssignmentModal, setShowCaseAssignmentModal] = useState(false);
   const [bannerSettings, setBannerSettings] = useState({
     position: 'center bottom',
     showAdminControls: false,
@@ -637,14 +642,27 @@ const ExpertExamPage: React.FC = () => {
                     </span>
                   </div>
                   
-                  {/* Кнопка оценки резервистов */}
-                  <button
-                    onClick={() => navigate(`/reservist-evaluation/${id}`)}
-                    className="mt-4 px-4 py-2 bg-white/20 backdrop-blur-sm text-white rounded-xl font-medium text-sm hover:bg-white/30 transition-all duration-200 border border-white/30 hover:border-white/50 flex items-center gap-2"
-                  >
-                    <Target className="w-4 h-4" />
-                    Оценить резервистов
-                  </button>
+                  {/* Кнопки действий */}
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      onClick={() => navigate(`/reservist-evaluation/${id}`)}
+                      className="px-4 py-2 bg-white/20 backdrop-blur-sm text-white rounded-xl font-medium text-sm hover:bg-white/30 transition-all duration-200 border border-white/30 hover:border-white/50 flex items-center gap-2"
+                    >
+                      <Target className="w-4 h-4" />
+                      Оценить резервистов
+                    </button>
+                    
+                    {/* Кнопка назначения кейсов для администраторов */}
+                    {userProfile?.role === 'administrator' && (
+                      <button
+                        onClick={() => setShowCaseAssignmentModal(true)}
+                        className="px-4 py-2 bg-white/20 backdrop-blur-sm text-white rounded-xl font-medium text-sm hover:bg-white/30 transition-all duration-200 border border-white/30 hover:border-white/50 flex items-center gap-2"
+                      >
+                        <FileText className="w-4 h-4" />
+                        Назначить кейсы
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -793,7 +811,8 @@ const ExpertExamPage: React.FC = () => {
                         participant={participant}
                         dossier={participant.dossier ? { ...participant.dossier, user_id: participant.user.id } : undefined}
                         onRate={() => {
-                          navigate(`/reservist-evaluation/${id}`);
+                          setSelectedParticipantForEvaluation(participant);
+                          setShowEvaluationModal(true);
                         }}
                         onViewDossier={(participantId) => {
                           setSelectedParticipantId(participantId);
@@ -984,7 +1003,8 @@ const ExpertExamPage: React.FC = () => {
                         participant={participant}
                         dossier={participant.dossier ? { ...participant.dossier, user_id: participant.user.id } : undefined}
                         onRate={() => {
-                          navigate(`/reservist-evaluation/${id}`);
+                          setSelectedParticipantForEvaluation(participant);
+                          setShowEvaluationModal(true);
                         }}
                         onViewDossier={(participantId) => {
                           setSelectedParticipantId(participantId);
@@ -1167,6 +1187,44 @@ const ExpertExamPage: React.FC = () => {
           />
         ) : null;
       })()}
+
+      {/* Модальное окно выбора этапа оценки */}
+      <EvaluationStageModal
+        isOpen={showEvaluationModal}
+        onClose={() => {
+          setShowEvaluationModal(false);
+          setSelectedParticipantForEvaluation(null);
+        }}
+        onStageSelect={(stage, caseNumber) => {
+          console.log('Selected stage:', stage, 'case number:', caseNumber, 'for participant:', selectedParticipantForEvaluation?.user.full_name);
+          setShowEvaluationModal(false);
+          
+          if (stage === 'case-solving' && caseNumber) {
+            // Переход к оценке кейса
+            navigate(`/case-evaluation/${id}?participantId=${selectedParticipantForEvaluation?.user.id}&caseNumber=${caseNumber}`);
+          } else {
+            // Переход к другим типам оценки (пока не реализованы)
+            console.log('Переход к оценке этапа:', stage);
+          }
+          
+          setSelectedParticipantForEvaluation(null);
+        }}
+        participantName={selectedParticipantForEvaluation?.user.full_name || ''}
+        examId={id || ''}
+        participantId={selectedParticipantForEvaluation?.user.id || ''}
+      />
+
+      {/* Модальное окно назначения кейсов */}
+      <CaseAssignmentModal
+        isOpen={showCaseAssignmentModal}
+        onClose={() => setShowCaseAssignmentModal(false)}
+        examId={id || ''}
+        participants={participants}
+        onAssignmentSaved={() => {
+          setShowCaseAssignmentModal(false);
+          // Можно добавить перезагрузку данных если нужно
+        }}
+      />
     </div>
   );
 };
