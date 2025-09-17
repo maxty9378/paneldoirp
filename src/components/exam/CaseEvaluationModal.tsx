@@ -195,24 +195,28 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
       // Сначала проверяем, есть ли данные в existingEvaluation (переданные извне)
       if (existingEvaluation) {
         console.log('🔄 Загружаем данные из existingEvaluation:', existingEvaluation);
-        // Используем данные из props (старая структура)
+        console.log('📊 criteria_scores из existingEvaluation:', (existingEvaluation as any).criteria_scores);
+        // Используем данные из новой структуры БД
         setEvaluation({
           id: existingEvaluation.id,
           exam_event_id: examId,
           reservist_id: participantId,
           evaluator_id: existingEvaluation.evaluator_id || user.id,
           case_number: caseNumber,
-          criteria_scores: {
-            correctness: existingEvaluation.correctness_score || 0,
-            clarity: existingEvaluation.clarity_score || 0,
-            independence: existingEvaluation.independence_score || 0,
+          criteria_scores: (existingEvaluation as any).criteria_scores || {
+            correctness: 0,
+            clarity: 0,
+            independence: 0,
           },
-          comments: existingEvaluation.overall_comment || '',
+          comments: (existingEvaluation as any).comments || '',
         });
         setSaved(true);
         setHasExistingEvaluation(true);
         setLoading(false);
-        console.log('✅ Данные установлены из existingEvaluation');
+        console.log('✅ Данные установлены из existingEvaluation:', {
+          criteria_scores: (existingEvaluation as any).criteria_scores,
+          comments: (existingEvaluation as any).comments
+        });
         return;
       }
 
