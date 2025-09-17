@@ -26,22 +26,42 @@ const MobileTooltip: React.FC<{
         const tooltipWidth = 280;
         const tooltipHeight = 80;
         const padding = 16;
+        const arrowSize = 8;
 
-        let top = rect.top + rect.height / 2 - tooltipHeight / 2;
-        let left = rect.right + padding;
-        let arrowPosition = 'left';
+        // Определяем, мобильное ли устройство
+        const isMobile = viewportWidth <= 768;
+        
+        let top, left, arrowPosition;
 
-        // Проверяем, помещается ли справа
-        if (left + tooltipWidth > viewportWidth - padding) {
-          // Пробуем слева
-          left = rect.left - tooltipWidth - padding;
-          arrowPosition = 'right';
+        if (isMobile) {
+          // Для мобильных устройств размещаем тултип сверху карточки
+          left = Math.max(padding, rect.left + rect.width / 2 - tooltipWidth / 2);
+          top = rect.top - tooltipHeight - padding - arrowSize;
+          arrowPosition = 'bottom';
           
-          // Если не помещается слева, размещаем сверху
-          if (left < padding) {
-            left = Math.max(padding, rect.left + rect.width / 2 - tooltipWidth / 2);
-            top = rect.top - tooltipHeight - padding;
-            arrowPosition = 'bottom';
+          // Если не помещается сверху, размещаем снизу
+          if (top < padding) {
+            top = rect.bottom + padding + arrowSize;
+            arrowPosition = 'top';
+          }
+        } else {
+          // Для десктопа размещаем справа от карточки
+          left = rect.right + padding;
+          top = rect.top + rect.height / 2 - tooltipHeight / 2;
+          arrowPosition = 'left';
+
+          // Проверяем, помещается ли справа
+          if (left + tooltipWidth > viewportWidth - padding) {
+            // Пробуем слева
+            left = rect.left - tooltipWidth - padding;
+            arrowPosition = 'right';
+            
+            // Если не помещается слева, размещаем сверху
+            if (left < padding) {
+              left = Math.max(padding, rect.left + rect.width / 2 - tooltipWidth / 2);
+              top = rect.top - tooltipHeight - padding;
+              arrowPosition = 'bottom';
+            }
           }
         }
 
@@ -50,6 +70,13 @@ const MobileTooltip: React.FC<{
           top = padding;
         } else if (top + tooltipHeight > viewportHeight - padding) {
           top = viewportHeight - tooltipHeight - padding;
+        }
+
+        // Проверяем горизонтальные границы
+        if (left < padding) {
+          left = padding;
+        } else if (left + tooltipWidth > viewportWidth - padding) {
+          left = viewportWidth - tooltipWidth - padding;
         }
 
         setPosition({ top, left, arrowPosition });
@@ -104,7 +131,9 @@ const MobileTooltip: React.FC<{
               ? 'border-t-[8px] border-b-[8px] border-l-[8px] border-t-transparent border-b-transparent border-l-emerald-600 -left-2 top-1/2 -translate-y-1/2'
               : position.arrowPosition === 'right'
               ? 'border-t-[8px] border-b-[8px] border-r-[8px] border-t-transparent border-b-transparent border-r-emerald-600 -right-2 top-1/2 -translate-y-1/2'
-              : 'border-l-[8px] border-r-[8px] border-b-[8px] border-l-transparent border-r-transparent border-b-emerald-600 -bottom-2 left-1/2 -translate-x-1/2'
+              : position.arrowPosition === 'bottom'
+              ? 'border-l-[8px] border-r-[8px] border-b-[8px] border-l-transparent border-r-transparent border-b-emerald-600 -bottom-2 left-1/2 -translate-x-1/2'
+              : 'border-l-[8px] border-r-[8px] border-t-[8px] border-l-transparent border-r-transparent border-t-emerald-600 -top-2 left-1/2 -translate-x-1/2'
           }`}
         />
       </div>
@@ -192,8 +221,8 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
 
       // Сначала выравниваем модалку, затем показываем подсказку
       const isMobile = window.innerWidth <= 768;
-      const initialDelay = isMobile ? 1500 : 1000; // Больше времени для мобильных
-      const tourDelay = isMobile ? 800 : 500; // Больше времени для позиционирования на мобильных
+      const initialDelay = isMobile ? 2000 : 1000; // Больше времени для мобильных
+      const tourDelay = isMobile ? 1000 : 500; // Больше времени для позиционирования на мобильных
       
       const t1 = setTimeout(() => {
         setHighlightFirstButton(true);
@@ -207,7 +236,7 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
             // Небольшая задержка для завершения прокрутки
             setTimeout(() => {
               setShowTooltip(true);
-            }, 300);
+            }, isMobile ? 500 : 300);
           }
         }, tourDelay);
       }, initialDelay);
