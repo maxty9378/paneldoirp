@@ -1,8 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { X, FileText, Users, Trophy, ArrowRight, Loader2, User, MousePointer } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { CaseEvaluationModal } from './CaseEvaluationModal';
 // Убираем @reactour/tour, создаем собственное решение
+
+// Компонент портала для модалок
+const ModalPortal: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const elRef = useRef<HTMLElement | null>(null);
+  
+  if (!elRef.current) {
+    elRef.current = document.createElement('div');
+  }
+  
+  useEffect(() => {
+    const el = elRef.current!;
+    document.body.appendChild(el);
+    return () => { 
+      if (document.body.contains(el)) {
+        document.body.removeChild(el); 
+      }
+    };
+  }, []);
+  
+  return createPortal(children, elRef.current!);
+};
 
 // Собственный компонент тултипа для мобильных устройств
 const MobileTooltip: React.FC<{
@@ -129,15 +151,15 @@ const MobileTooltip: React.FC<{
           fontFamily: 'Mabry, sans-serif'
         }}
       >
-        <div className="flex items-start gap-2">
-          <MousePointer className="w-4 h-4 mt-0.5 text-emerald-600" />
+      <div className="flex items-start gap-2">
+        <MousePointer className="w-4 h-4 mt-0.5 text-emerald-600" />
           <div className="flex-1">
             <div className="font-semibold text-gray-900 text-sm">Начните здесь</div>
             <div className="text-xs text-gray-600 mt-1">
-              Нажмите «Решение кейсов», чтобы выбрать и оценить кейс.
-            </div>
+            Нажмите «Решение кейсов», чтобы выбрать и оценить кейс.
           </div>
         </div>
+      </div>
         
         {/* Стрелка */}
         <div
@@ -191,7 +213,23 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
   const [showCaseEvaluation, setShowCaseEvaluation] = useState(false);
   const [selectedCaseNumber, setSelectedCaseNumber] = useState<number>(1);
   const [highlightCaseSolving, setHighlightCaseSolving] = useState(false);
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
 
+  // Оптимизированный индекс оценок для O(1) доступа
+  const evalIndex = useMemo(() => {
+    const m = new Map<string, { avg: number | null; raw: any }>();
+    for (const e of evaluations ?? []) {
+      const k = `${e.reservist_id}:${e.case_number}`;
+      const scores = Object.values(e.criteria_scores ?? {}) as number[];
+      const avg = scores.length ? Math.round((scores.reduce((s, x) => s + x, 0) / scores.length) * 10) / 10 : null;
+      m.set(k, { avg, raw: e });
+    }
+    return m;
+  }, [evaluations, participantId]);
+
+  const getEval = useCallback((caseNumber: number) => {
+    return evalIndex.get(`${participantId}:${caseNumber}`);
+  }, [evalIndex, participantId]);
 
   // Загрузка назначенных кейсов
   const fetchAssignedCases = async () => {
@@ -226,6 +264,13 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
       setLoadingCases(false);
     }
   };
+
+  // Автофокус на кнопку закрытия при открытии модалки
+  useEffect(() => {
+    if (isOpen) {
+      closeBtnRef.current?.focus();
+    }
+  }, [isOpen]);
 
   // Запуск тура при открытии модалки
   useEffect(() => {
@@ -312,26 +357,14 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
   }, [showCaseSelection, isOpen, examId, participantId]);
 
   // Функция для проверки, завершена ли оценка кейса
-  const isCaseEvaluationCompleted = (caseNumber: number): boolean => {
-    return evaluations.some(evaluation => 
-      evaluation.reservist_id === participantId && 
-      evaluation.case_number === caseNumber
-    );
-  };
+  // Оптимизированные функции через индекс
+  const isCaseEvaluationCompleted = useCallback((caseNumber: number): boolean => {
+    return !!getEval(caseNumber);
+  }, [getEval]);
 
-  // Функция для получения средней оценки кейса
-  const getCaseAverageScore = (caseNumber: number): number | null => {
-    const evaluation = evaluations.find(evaluation => 
-      evaluation.reservist_id === participantId && 
-      evaluation.case_number === caseNumber
-    );
-    
-    if (!evaluation?.criteria_scores) return null;
-    
-    const scores = Object.values(evaluation.criteria_scores) as number[];
-    const average = scores.reduce((sum: number, score: number) => sum + score, 0) / scores.length;
-    return Math.round(average * 10) / 10; // Округляем до 1 знака после запятой
-  };
+  const getCaseAverageScore = useCallback((caseNumber: number): number | null => {
+    return getEval(caseNumber)?.avg ?? null;
+  }, [getEval]);
 
   if (!isOpen) return null;
 
@@ -441,9 +474,16 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
         `}
       </style>
       <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-2 xs:p-4">
-      <div className={`relative max-w-lg w-full max-h-[70vh] overflow-hidden rounded-2xl bg-white shadow-2xl transform transition-all duration-500 ease-out ${
+      <div 
+        className={`relative max-w-lg w-full max-h-[70vh] overflow-hidden rounded-2xl bg-white shadow-2xl transform transition-all duration-500 ease-out ${
         isOpen && !showCaseEvaluation ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-full opacity-0 scale-95'
-      }`}>
+        }`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="evaluation-stage-title"
+        onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
+        tabIndex={-1}
+      >
         {/* Заголовок */}
         <div className="relative bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 p-3 text-white">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl"></div>
@@ -465,7 +505,7 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
               </div>
               
               <div className="flex-1 min-w-0">
-                <h2 className="text-base font-bold mb-1 leading-tight" style={{ fontFamily: 'SNS, sans-serif' }}>
+                <h2 id="evaluation-stage-title" className="text-base font-bold mb-1 leading-tight" style={{ fontFamily: 'SNS, sans-serif' }}>
                   Выбор этапа оценки
                 </h2>
                 <p className="text-emerald-100 text-xs truncate">
@@ -474,8 +514,10 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
               </div>
             </div>
             <button
+              ref={closeBtnRef}
               onClick={onClose}
               className="p-1.5 hover:bg-white/20 rounded-lg transition-colors duration-200 touch-target"
+              aria-label="Закрыть модальное окно"
             >
               <X className="w-4 h-4" />
             </button>
