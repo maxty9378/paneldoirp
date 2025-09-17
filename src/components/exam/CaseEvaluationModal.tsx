@@ -300,16 +300,34 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
     }
     
     /* Стабилизация для мобильных устройств */
+    .fixed-bottom-menu {
+      position: fixed !important;
+      bottom: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      z-index: 10003 !important;
+      transform: translateZ(0) !important;
+      backface-visibility: hidden !important;
+      will-change: transform !important;
+      -webkit-transform: translateZ(0) !important;
+      -webkit-backface-visibility: hidden !important;
+    }
+    
+    /* Дополнительная стабилизация для мобильных */
     @media (max-width: 768px) {
       .fixed-bottom-menu {
         position: fixed !important;
         bottom: 0 !important;
         left: 0 !important;
         right: 0 !important;
-        z-index: 1000 !important;
-        transform: translateZ(0) !important;
+        z-index: 10003 !important;
+        transform: translate3d(0, 0, 0) !important;
         backface-visibility: hidden !important;
         will-change: transform !important;
+        -webkit-transform: translate3d(0, 0, 0) !important;
+        -webkit-backface-visibility: hidden !important;
+        -webkit-perspective: 1000px !important;
+        perspective: 1000px !important;
       }
     }
   `;
@@ -397,42 +415,43 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
           </div>
         </main>
 
-        {/* Футер (fixed bottom, safe area) */}
-        <footer
-          className="fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white z-10 fixed-bottom-menu"
-          style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 12px)' }}
-        >
-          <div className="px-4 py-3">
-            <button
-              onClick={saveEvaluation}
-              disabled={!canSave}
-              className={
-                'w-full h-12 rounded-xl font-semibold flex items-center justify-center gap-2 ' +
-                (canSave
-                  ? 'bg-emerald-500 text-white hover:bg-emerald-600 shadow'
-                  : 'bg-gray-200 text-gray-500')
-              }
-            >
-              {saving ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
-                  Сохраняю…
-                </>
-              ) : saved ? (
-                <>
-                  <CheckCircle className="w-5 h-5" />
-                  Сохранено
-                </>
-              ) : (
-                <>
-                  <Save className="w-5 h-5" />
-                  Отправить
-                </>
-              )}
-            </button>
-          </div>
-        </footer>
       </div>
+
+      {/* Футер (полностью независимый, зафиксированный) */}
+      <footer
+        className="fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white z-[10003] fixed-bottom-menu"
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 12px)' }}
+      >
+        <div className="px-4 py-3">
+          <button
+            onClick={saveEvaluation}
+            disabled={!canSave}
+            className={
+              'w-full h-12 rounded-xl font-semibold flex items-center justify-center gap-2 ' +
+              (canSave
+                ? 'bg-emerald-500 text-white hover:bg-emerald-600 shadow'
+                : 'bg-gray-200 text-gray-500')
+            }
+          >
+            {saving ? (
+              <>
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+                Сохраняю…
+              </>
+            ) : saved ? (
+              <>
+                <CheckCircle className="w-5 h-5" />
+                Сохранено
+              </>
+            ) : (
+              <>
+                <Save className="w-5 h-5" />
+                Отправить
+              </>
+            )}
+          </button>
+        </div>
+      </footer>
 
       {/* Success modal */}
       <EvaluationSuccessModal
