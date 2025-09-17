@@ -98,7 +98,6 @@ const ExpertExamPage: React.FC = () => {
   const [exam, setExam] = useState<ExamEvent | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
-  const [diagnosticGameEvaluations, setDiagnosticGameEvaluations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'participants' | 'evaluations' | 'schedule'>('participants');
@@ -295,39 +294,11 @@ const ExpertExamPage: React.FC = () => {
       
       console.log('Загружены оценки кейсов:', data);
       setEvaluations(data || []);
-
-      // Загружаем оценки диагностической игры
-      let diagnosticQuery = supabase
-        .from('diagnostic_game_evaluations')
-        .select('*')
-        .eq('exam_event_id', id);
-
-      // Если не администратор, показываем только свои оценки
-      if (userProfile?.role !== 'administrator') {
-        diagnosticQuery = diagnosticQuery.eq('evaluator_id', user.id);
-      }
-
-      const { data: diagnosticData, error: diagnosticError } = await diagnosticQuery;
-
-      console.log('Результат запроса оценок диагностической игры:', { diagnosticData, diagnosticError });
-
-      if (diagnosticError) {
-        console.error('Ошибка загрузки оценок диагностической игры:', diagnosticError);
-      } else {
-        console.log('Загружены оценки диагностической игры:', diagnosticData);
-        setDiagnosticGameEvaluations(diagnosticData || []);
-      }
     } catch (err) {
       console.error('Ошибка загрузки оценок кейсов:', err);
     }
   };
 
-  // Функция для поиска существующей оценки диагностической игры
-  const getExistingDiagnosticGameEvaluation = (participantId: string) => {
-    return diagnosticGameEvaluations.find(
-      evaluation => evaluation.reservist_id === participantId && evaluation.evaluator_id === user?.id
-    );
-  };
 
   // Сохранение оценки (функция зарезервирована для будущего использования)
   // const saveEvaluation = async (participantId: string, stage: string, score: number, comments: string) => {
@@ -1300,7 +1271,6 @@ const ExpertExamPage: React.FC = () => {
           participantId={selectedParticipantForEvaluation.user.id}
           participantName={selectedParticipantForEvaluation.user.full_name}
           examId={id || ''}
-          existingEvaluation={getExistingDiagnosticGameEvaluation(selectedParticipantForEvaluation.user.id)}
           onEvaluationComplete={async () => {
             // Перезагружаем данные после завершения оценки
             await fetchExamData();

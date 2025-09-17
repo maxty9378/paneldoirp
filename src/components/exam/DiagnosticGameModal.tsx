@@ -64,22 +64,15 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
   useEffect(() => {
     if (isOpen && participantId && examId && user?.id) {
       if (!dataLoaded) {
-        // Если есть переданная оценка, используем её как начальные данные
-        if (existingEvaluation) {
-          console.log('✅ Используем переданную оценку как начальные данные:', existingEvaluation);
-          setEvaluation(existingEvaluation);
-          setSaved(true);
-        }
-        
-        // ВСЕГДА загружаем актуальные данные из базы для синхронизации
-        console.log('🔄 Загружаем актуальные данные из Supabase для синхронизации');
+        // ВСЕГДА загружаем актуальные данные из Supabase
+        console.log('🔄 Загружаем актуальные данные из Supabase');
         loadExistingEvaluation();
       }
     } else if (!isOpen) {
       // Сбрасываем состояние при закрытии модального окна
       setDataLoaded(false);
     }
-  }, [isOpen, participantId, examId, user?.id, dataLoaded, existingEvaluation]);
+  }, [isOpen, participantId, examId, user?.id, dataLoaded]);
 
   // Блокировка прокрутки фона при открытом модальном окне
   useEffect(() => {
@@ -126,7 +119,7 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
     
     setLoading(true);
     try {
-      console.log('🔄 Загружаем актуальные данные диагностической игры для синхронизации:', { examId, participantId, userId: user.id });
+      console.log('🔄 Загружаем данные диагностической игры из Supabase:', { examId, participantId, userId: user.id });
       
       const { data, error } = await supabase
         .from('diagnostic_game_evaluations')
@@ -138,28 +131,25 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
 
       if (error && error.code !== 'PGRST116') {
         console.error('Ошибка загрузки существующей оценки:', error);
-        // Если нет данных в БД и нет переданной оценки, создаем новую
-        if (!existingEvaluation) {
-          setEvaluation({
-            exam_event_id: examId,
-            reservist_id: participantId,
-            evaluator_id: user.id,
-            competency_scores: {
-              results_orientation: 0,
-              effective_communication: 0,
-              teamwork_skills: 0,
-              systemic_thinking: 0,
-            }
-          });
-          setSaved(false);
-        }
+        // Создаем новую оценку при ошибке
+        setEvaluation({
+          exam_event_id: examId,
+          reservist_id: participantId,
+          evaluator_id: user.id,
+          competency_scores: {
+            results_orientation: 0,
+            effective_communication: 0,
+            teamwork_skills: 0,
+            systemic_thinking: 0,
+          }
+        });
+        setSaved(false);
         setDataLoaded(true);
         return;
       }
 
       if (data) {
-        console.log('✅ Загружены актуальные данные из Supabase:', data);
-        // Обновляем данные актуальными из БД
+        console.log('✅ Загружена существующая оценка из Supabase:', data);
         setEvaluation({
           id: data.id,
           exam_event_id: data.exam_event_id,
@@ -169,28 +159,8 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
         });
         setSaved(true);
       } else {
-        console.log('📝 Нет данных в БД, используем переданные или создаем новые');
-        // Если нет данных в БД и нет переданной оценки, создаем новую
-        if (!existingEvaluation) {
-          setEvaluation({
-            exam_event_id: examId,
-            reservist_id: participantId,
-            evaluator_id: user.id,
-            competency_scores: {
-              results_orientation: 0,
-              effective_communication: 0,
-              teamwork_skills: 0,
-              systemic_thinking: 0,
-            }
-          });
-          setSaved(false);
-        }
-      }
-      setDataLoaded(true);
-    } catch (error) {
-      console.error('❌ Ошибка загрузки существующей оценки:', error);
-      // Если ошибка и нет переданной оценки, создаем новую
-      if (!existingEvaluation) {
+        console.log('📝 Создаем новую оценку диагностической игры');
+        // Нет существующей оценки - создаем новую
         setEvaluation({
           exam_event_id: examId,
           reservist_id: participantId,
@@ -204,6 +174,22 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
         });
         setSaved(false);
       }
+      setDataLoaded(true);
+    } catch (error) {
+      console.error('❌ Ошибка загрузки существующей оценки:', error);
+      // Создаем новую оценку при ошибке
+      setEvaluation({
+        exam_event_id: examId,
+        reservist_id: participantId,
+        evaluator_id: user.id,
+        competency_scores: {
+          results_orientation: 0,
+          effective_communication: 0,
+          teamwork_skills: 0,
+          systemic_thinking: 0,
+        }
+      });
+      setSaved(false);
       setDataLoaded(true);
     } finally {
       setLoading(false);
