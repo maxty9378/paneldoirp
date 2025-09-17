@@ -68,8 +68,8 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
           border: '1px solid rgba(255, 255, 255, 0.3)',
           boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
           overflow: 'hidden',
-          // Возвращаем анимацию
-          transform: isHidden ? 'translateY(120%)' : 'translateY(0)',
+          // Анимация скрытия - не утекает под системную панель
+          transform: isHidden ? 'translateY(100%)' : 'translateY(0)',
           transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
         }}
       >

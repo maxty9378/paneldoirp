@@ -62,7 +62,7 @@ const MobileLayout: React.FC = () => {
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      height: '100dvh',       // вместо position: fixed + inset: 0
+      height: '100dvh',
       width: '100vw',
       background: '#f8fafc'
     }}>
@@ -73,8 +73,8 @@ const MobileLayout: React.FC = () => {
         minHeight: 0,
         overflowY: 'auto',
         WebkitOverflowScrolling: 'touch',
-        // 64 (высота меню) + 16 (верхний паддинг футера) + 16 (нижний паддинг футера) + safe-area + дополнительный отступ для iPhone
-        paddingBottom: 'calc(64px + 16px + 16px + max(env(safe-area-inset-bottom, 0px), 20px))'
+        // 64 (высота меню) + 16 (верхний паддинг футера) + 16 (нижний паддинг футера) + safe-area
+        paddingBottom: 'calc(64px + 16px + 16px + env(safe-area-inset-bottom, 0px))'
       }}>
         {/* React Router будет рендерить здесь нужную страницу (ExpertExamPage и т.д.) */}
         <Outlet context={{ setIsNavHidden }} />
@@ -82,15 +82,21 @@ const MobileLayout: React.FC = () => {
 
       {/* 2. ОБЛАСТЬ НАВИГАЦИИ (ФИКСИРОВАНА) - только на мобильных */}
       {isMobile && (
-        <footer style={{
-          flexShrink: 0,
-          position: 'relative',
-          width: '100%',
-          backgroundColor: '#f8fafc',
-          height: '64px',
-          padding: '8px 0',
-          paddingBottom: 'calc(8px + max(env(safe-area-inset-bottom, 0px), 20px))'
-        }}>
+        <footer
+          style={{
+            // ДЕЛАЕМ ФИКСИРОВАННЫМ, чтобы быть НАД браузерным UI
+            position: 'fixed',
+            left: 0,
+            right: 0,
+            bottom: 0,                   // ключ
+            zIndex: 9999,               // поверх всего
+            backgroundColor: 'transparent',
+            // геометрия футера
+            height: '64px',
+            paddingTop: 8,
+            paddingBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))'
+          }}
+        >
           <MobileExamNavigation
             activeTab={activeTab}
             onTabChange={handleTabChange}
