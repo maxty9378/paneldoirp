@@ -166,10 +166,23 @@ export const DossierModal: React.FC<DossierModalProps> = ({
   if (!user) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className={`relative max-w-4xl w-full max-h-[90vh] overflow-hidden rounded-3xl bg-white shadow-2xl transform transition-all duration-700 ease-out ${
-        isOpen ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-full opacity-0 scale-95'
-      }`}>
+    <>
+      <style>{`
+        @media screen and (max-width: 768px) {
+          .dossier-modal-container {
+            align-items: flex-start !important;
+            padding-top: env(safe-area-inset-top, 16px) !important;
+          }
+          .dossier-modal-content {
+            max-height: calc(100vh - env(safe-area-inset-top, 16px) - 32px) !important;
+            margin-top: 0 !important;
+          }
+        }
+      `}</style>
+      <div className="fixed inset-0 z-[9999] flex items-start sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4 pt-safe-top sm:pt-4 dossier-modal-container">
+        <div className={`relative max-w-4xl w-full max-h-[90vh] sm:max-h-[90vh] overflow-hidden rounded-3xl bg-white shadow-2xl transform transition-all duration-700 ease-out dossier-modal-content ${
+          isOpen ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-full opacity-0 scale-95'
+        }`}>
         {/* Заголовок с кнопкой закрытия */}
         <div className="relative bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 p-6 text-white">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl"></div>
@@ -192,7 +205,7 @@ export const DossierModal: React.FC<DossierModalProps> = ({
         </div>
 
         {/* Основной контент */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)] sm:max-h-[calc(90vh-120px)]">
           {loading ? (
             // Скелетон загрузки
             <div className="space-y-6">
@@ -432,5 +445,6 @@ export const DossierModal: React.FC<DossierModalProps> = ({
         </div>
       </div>
     </div>
+    </>
   );
 };
