@@ -532,7 +532,14 @@ const ExpertExamPage: React.FC = () => {
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Ошибка</h2>
           <p className="text-gray-600 mb-4">{error || 'Экзамен не найден'}</p>
           <button
-            onClick={() => navigate('/exam-reserve')}
+            onClick={() => {
+              // Для экспертов ведем на страницу эксперта, для админов - на exam-reserve
+              if (userProfile?.role === 'expert') {
+                navigate('/expert-exam/36520f72-c191-4e32-ba02-aa17c482c50b');
+              } else {
+                navigate('/exam-reserve');
+              }
+            }}
             className="inline-flex items-center gap-2 px-4 py-2 bg-[#06A478] text-white rounded-lg hover:bg-[#059669] transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
