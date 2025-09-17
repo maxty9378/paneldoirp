@@ -34,14 +34,15 @@ const MobileTooltip: React.FC<{
         let top, left, arrowPosition;
 
         if (isMobile) {
-          // Для мобильных устройств размещаем тултип справа от карточки
+          // Для мобильных устройств размещаем тултип справа от карточки, опускаем ниже
           left = rect.right + padding;
-          top = rect.top + rect.height / 2 - tooltipHeight / 2;
+          top = rect.top + rect.height * 0.7 - tooltipHeight / 2; // Опускаем на 70% высоты карточки
           arrowPosition = 'left';
           
           // Если не помещается справа, пробуем слева
           if (left + tooltipWidth > viewportWidth - padding) {
             left = rect.left - tooltipWidth - padding;
+            top = rect.top + rect.height * 0.7 - tooltipHeight / 2; // Опускаем на 70% высоты карточки
             arrowPosition = 'right';
             
             // Если не помещается слева, размещаем сверху по центру
@@ -52,15 +53,16 @@ const MobileTooltip: React.FC<{
             }
           }
         } else {
-          // Для десктопа размещаем справа от карточки
+          // Для десктопа размещаем справа от карточки, опускаем ниже
           left = rect.right + padding;
-          top = rect.top + rect.height / 2 - tooltipHeight / 2;
+          top = rect.top + rect.height * 0.7 - tooltipHeight / 2; // Опускаем на 70% высоты карточки
           arrowPosition = 'left';
 
           // Проверяем, помещается ли справа
           if (left + tooltipWidth > viewportWidth - padding) {
             // Пробуем слева
             left = rect.left - tooltipWidth - padding;
+            top = rect.top + rect.height * 0.7 - tooltipHeight / 2; // Опускаем на 70% высоты карточки
             arrowPosition = 'right';
             
             // Если не помещается слева, размещаем сверху
