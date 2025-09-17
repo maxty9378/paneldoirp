@@ -258,6 +258,7 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
   const [highlightCaseSolving, setHighlightCaseSolving] = useState(false);
   const [currentEvaluations, setCurrentEvaluations] = useState<any[]>([]);
   const [hasInitialized, setHasInitialized] = useState(false);
+  const [evaluationsLoading, setEvaluationsLoading] = useState(false);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
   
   // Уведомляем родительский компонент о состоянии модальных окон
@@ -270,6 +271,7 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
   const fetchCurrentEvaluations = async () => {
     if (!examId || !user?.id) return;
     
+    setEvaluationsLoading(true);
     try {
       const { data, error } = await supabase
         .from('case_evaluations')
@@ -281,6 +283,8 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
       setCurrentEvaluations(data || []);
     } catch (err) {
       console.error('Ошибка загрузки актуальных оценок:', err);
+    } finally {
+      setEvaluationsLoading(false);
     }
   };
 
@@ -721,11 +725,25 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
                         className={`group cursor-pointer rounded-2xl p-4 border transition-all duration-300 relative ${
                           isCompleted 
                             ? 'border-green-300 bg-gradient-to-br from-green-50 to-emerald-50 hover:scale-[1.02] hover:shadow-lg' 
+                            : evaluationsLoading
+                            ? 'border-gray-200 bg-gray-50 cursor-wait'
                             : 'border-emerald-100 bg-gradient-to-br from-emerald-50 to-teal-50 hover:scale-[1.02] hover:shadow-lg'
                         }`}
-                        onClick={() => {
+                        onClick={async () => {
                           console.log('Клик по кейсу:', caseNumber);
                           setSelectedCaseNumber(caseNumber);
+                          
+                          // Загружаем данные перед открытием модального окна
+                          if (evaluationsLoading) {
+                            console.log('Данные еще загружаются, ждем...');
+                            return;
+                          }
+                          
+                          // Если данные еще не загружены, загружаем их
+                          if (currentEvaluations.length === 0 && !evaluationsLoading) {
+                            await fetchCurrentEvaluations();
+                          }
+                          
                           setShowCaseEvaluation(true);
                           console.log('Состояние после клика:', { selectedCaseNumber: caseNumber, showCaseEvaluation: true });
                         }}
@@ -741,11 +759,15 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
                         
                         <div className="text-center">
                           <div className={`w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform duration-300 ${
-                            isCompleted ? 'bg-green-500' : 'bg-emerald-500'
+                            isCompleted ? 'bg-green-500' : evaluationsLoading ? 'bg-gray-400' : 'bg-emerald-500'
                           }`}>
-                            <span className="text-xl font-bold text-white">
-                              {caseNumber}
-                            </span>
+                            {evaluationsLoading ? (
+                              <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent" />
+                            ) : (
+                              <span className="text-xl font-bold text-white">
+                                {caseNumber}
+                              </span>
+                            )}
                           </div>
                           <h4 className={`text-base font-bold mb-1 ${
                             isCompleted ? 'text-green-700' : 'text-gray-900'
@@ -770,9 +792,11 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
                           )}
                           
                           <p className={`text-xs ${
-                            isCompleted ? 'text-green-600' : 'text-gray-600'
+                            isCompleted ? 'text-green-600' : 
+                            evaluationsLoading ? 'text-gray-500' : 'text-gray-600'
                           }`}>
-                            {isCompleted ? 'Оценка выставлена' : 'Оценить решение кейса'}
+                            {isCompleted ? 'Оценка выставлена' : 
+                             evaluationsLoading ? 'Загрузка данных...' : 'Оценить решение кейса'}
                           </p>
                         </div>
                       </div>
