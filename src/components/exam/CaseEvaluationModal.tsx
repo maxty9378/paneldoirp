@@ -171,6 +171,15 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
 
   /* Загрузка данных при открытии модала */
   useEffect(() => {
+    console.log('🚀 CaseEvaluationModal useEffect triggered:', {
+      isOpen,
+      participantId,
+      examId,
+      userId: user?.id,
+      caseNumber,
+      hasExistingEvaluation: !!existingEvaluation
+    });
+    
     if (isOpen && participantId && examId && user?.id) {
       loadExistingEvaluation();
     }
@@ -178,7 +187,18 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
 
   /* Загрузка существующих оценок */
   const loadExistingEvaluation = async () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      console.log('❌ Нет user.id, пропускаем загрузку');
+      return;
+    }
+    
+    console.log('🔄 Начинаем загрузку данных для:', {
+      examId,
+      participantId,
+      userId: user.id,
+      caseNumber,
+      hasExistingEvaluation: !!existingEvaluation
+    });
     
     setLoading(true);
     setError(null); // Сбрасываем ошибку при новой загрузке
@@ -207,7 +227,13 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
       }
 
       // Если нет existingEvaluation, загружаем из базы данных
-      console.log('🔄 Загружаем данные из базы данных...');
+      console.log('🔄 Загружаем данные из базы данных с параметрами:', {
+        exam_event_id: examId,
+        reservist_id: participantId,
+        evaluator_id: user.id,
+        case_number: caseNumber
+      });
+      
       const { data, error } = await supabase
         .from('case_evaluations')
         .select('*')
@@ -216,6 +242,8 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
         .eq('evaluator_id', user.id)
         .eq('case_number', caseNumber)
         .single();
+
+      console.log('📊 Результат запроса к БД:', { data, error });
 
       if (error && error.code !== 'PGRST116') {
         console.error('❌ Ошибка загрузки существующей оценки:', error);

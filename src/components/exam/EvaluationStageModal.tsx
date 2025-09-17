@@ -269,7 +269,15 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
 
   // Загрузка актуальных оценок при открытии модального окна
   const fetchCurrentEvaluations = async () => {
-    if (!examId || !user?.id) return;
+    if (!examId || !user?.id) {
+      console.log('❌ EvaluationStageModal: Нет examId или userId для загрузки оценок');
+      return;
+    }
+    
+    console.log('🔄 EvaluationStageModal: Загружаем актуальные оценки для:', {
+      examId,
+      userId: user.id
+    });
     
     setEvaluationsLoading(true);
     try {
@@ -279,10 +287,15 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
         .eq('exam_event_id', examId)
         .eq('evaluator_id', user.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ EvaluationStageModal: Ошибка загрузки оценок:', error);
+        throw error;
+      }
+      
+      console.log('✅ EvaluationStageModal: Загружено оценок:', data?.length || 0, data);
       setCurrentEvaluations(data || []);
     } catch (err) {
-      console.error('Ошибка загрузки актуальных оценок:', err);
+      console.error('❌ EvaluationStageModal: Ошибка загрузки актуальных оценок:', err);
     } finally {
       setEvaluationsLoading(false);
     }
@@ -831,10 +844,19 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
         }}
         onRemoveEvaluation={onRemoveEvaluation}
         // Передаем существующую оценку для загрузки (используем актуальные оценки)
-        existingEvaluation={currentEvaluations.find(evaluation => 
-          evaluation.reservist_id === participantId && 
-          evaluation.case_number === selectedCaseNumber
-        )}
+        existingEvaluation={(() => {
+          const found = currentEvaluations.find(evaluation => 
+            evaluation.reservist_id === participantId && 
+            evaluation.case_number === selectedCaseNumber
+          );
+          console.log('🔍 EvaluationStageModal: Ищем existingEvaluation для:', {
+            participantId,
+            selectedCaseNumber,
+            currentEvaluationsLength: currentEvaluations.length,
+            found
+          });
+          return found;
+        })()}
         onModalStateChange={(isOpen) => {
           // Уведомляем родительский компонент о состоянии полноэкранного модального окна
           onModalStateChange?.(isOpen);
