@@ -135,7 +135,7 @@ const MobileLayout: React.FC = () => {
             position: 'fixed',
             left: 0,
             right: 0,
-            bottom: 0,                   // ключ
+            bottom: 8,                   // поднимаем меню на 8px выше
             zIndex: 1000,               // ниже модальных окон
             backgroundColor: 'transparent',
             // геометрия футера

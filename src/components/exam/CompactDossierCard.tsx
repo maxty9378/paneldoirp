@@ -126,7 +126,7 @@ export const CompactDossierCard: React.FC<DossierCardProps> = ({
           {/* ФИО: две строки, капслок, фирменный зелёный */}
           <div className="mb-1 leading-none">
             <div 
-              className="text-[24px] font-extrabold tracking-wide uppercase break-words" 
+              className="text-[20px] font-extrabold tracking-wide uppercase break-words" 
               style={{ 
                 color: '#06A478',
                 fontFamily: 'SNS, sans-serif'
@@ -136,7 +136,7 @@ export const CompactDossierCard: React.FC<DossierCardProps> = ({
             </div>
             {nameParts.bottom ? (
               <div 
-                className="text-[24px] font-extrabold tracking-wide uppercase break-words" 
+                className="text-[20px] font-extrabold tracking-wide uppercase break-words" 
                 style={{ 
                   color: '#06A478',
                   fontFamily: 'SNS, sans-serif'
