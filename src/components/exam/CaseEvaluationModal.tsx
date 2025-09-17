@@ -275,6 +275,20 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
       background: var(--thumb-color, #10B981);
       border: 3px solid #fff; box-shadow: 0 0 5px rgba(0,0,0,.15);
     }
+    
+    /* Стабилизация для мобильных устройств */
+    @media (max-width: 768px) {
+      .fixed-bottom-menu {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 1000 !important;
+        transform: translateZ(0) !important;
+        backface-visibility: hidden !important;
+        will-change: transform !important;
+      }
+    }
   `;
 
   return (
@@ -282,7 +296,12 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
       <style>{sliderStyles}</style>
 
       {/* Фуллскрин слой */}
-      <div className="fixed inset-0 z-[10002] flex flex-col bg-white" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+      <div className="fixed inset-0 z-[10002] flex flex-col bg-white" style={{ 
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        transform: 'translateZ(0)',
+        backfaceVisibility: 'hidden',
+        willChange: 'transform'
+      }}>
         {/* Шапка (sticky top) */}
         <header className="sticky top-0 z-10 border-b border-gray-100 bg-white">
           <div className="px-4 py-3 flex items-center justify-between">
@@ -317,7 +336,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
         </header>
 
         {/* Контент (скролл) */}
-        <main ref={scrollRootRef} className="flex-1 overflow-y-auto px-4 pt-3 pb-24">
+        <main ref={scrollRootRef} className="flex-1 overflow-y-auto px-4 pt-3 pb-32">
           <div className="space-y-3">
             {CRITERIA.map(c => {
               const Icon = c.icon;
@@ -349,9 +368,9 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
           </div>
         </main>
 
-        {/* Футер (sticky bottom, safe area) */}
+        {/* Футер (fixed bottom, safe area) */}
         <footer
-          className="sticky bottom-0 border-t border-gray-100 bg-white"
+          className="fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white z-10 fixed-bottom-menu"
           style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 12px)' }}
         >
           <div className="px-4 py-3">
