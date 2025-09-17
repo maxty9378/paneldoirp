@@ -416,10 +416,6 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
     @supports (-webkit-touch-callout: none) {
       .case-evaluation-modal {
         -webkit-overflow-scrolling: touch !important;
-        -webkit-transform: translate3d(0, 0, 0) !important;
-        transform: translate3d(0, 0, 0) !important;
-        backface-visibility: hidden !important;
-        will-change: transform !important;
       }
       
       .case-evaluation-modal footer button {
@@ -449,11 +445,6 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
           paddingTop: 'env(safe-area-inset-top, 0px)',
           paddingLeft: 'env(safe-area-inset-left, 0px)',
           paddingRight: 'env(safe-area-inset-right, 0px)',
-          transform: 'translate3d(0, 0, 0)',
-          backfaceVisibility: 'hidden',
-          willChange: 'transform',
-          WebkitTransform: 'translate3d(0, 0, 0)',
-          WebkitBackfaceVisibility: 'hidden',
           WebkitOverflowScrolling: 'touch',
           pointerEvents: 'auto'
         }}
@@ -481,23 +472,15 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
                 <div className="text-[11px] text-gray-400">средний балл</div>
               </div>
               <button
-                onClick={onClose}
-                onTouchEnd={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onClose();
-                }}
-                className="p-2 rounded-lg hover:bg-gray-50 active:bg-gray-100 touch-manipulation"
+                onPointerUp={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }}
+                className="p-2 rounded-lg hover:bg-gray-50 active:bg-gray-100"
                 aria-label="Закрыть"
                 style={{
                   minWidth: '44px',
                   minHeight: '44px',
-                  zIndex: 1000,
-                  position: 'relative',
                   WebkitTapHighlightColor: 'transparent',
-                  WebkitTouchCallout: 'none',
-                  WebkitUserSelect: 'none',
-                  userSelect: 'none'
+                  userSelect: 'none',
+                  touchAction: 'manipulation'
                 }}
               >
                 <X className="w-6 h-6 text-gray-700 pointer-events-none" />
@@ -507,7 +490,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
         </header>
 
         {/* Контент (скролл) */}
-        <main ref={scrollRootRef} className="flex-1 overflow-y-auto px-4 pt-3 pb-24">
+        <main ref={scrollRootRef} className="flex-1 overflow-y-auto px-4 pt-3 pb-28">
           <div className="space-y-3">
             {loading ? (
               <div className="flex items-center justify-center py-8">
@@ -562,35 +545,21 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
           
           <div className="flex gap-2">
             <button
-              onClick={onClose}
-              onTouchEnd={(e) => { e.preventDefault(); onClose(); }}
-              className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
-              style={{
-                WebkitTapHighlightColor: 'transparent',
-                userSelect: 'none',
-                touchAction: 'manipulation',
-                minHeight: '48px',
-                paddingBottom: '8px'
-              }}
+              onPointerUp={onClose}
+              className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium"
+              style={{ minHeight: '48px', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
             >
               ← Назад
             </button>
             <button
-              onClick={saveEvaluation}
-              onTouchEnd={(e) => { if (canSave) { e.preventDefault(); saveEvaluation(); } }}
+              onPointerUp={() => { if (canSave) saveEvaluation(); }}
               disabled={!canSave}
-              className={`flex-1 px-4 py-2.5 rounded-lg font-semibold transition-all text-sm ${
+              className={`flex-1 px-4 py-2.5 rounded-lg font-semibold text-sm ${
                 !canSave
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg hover:shadow-xl'
               }`}
-              style={{
-                WebkitTapHighlightColor: 'transparent',
-                userSelect: 'none',
-                touchAction: 'manipulation',
-                minHeight: '48px',
-                paddingBottom: '8px'
-              }}
+              style={{ minHeight: '48px', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
             >
               {saving ? (
                 <div className="flex items-center justify-center gap-2">
