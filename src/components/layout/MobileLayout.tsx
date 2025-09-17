@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import MobileExamNavigation from '../exam/MobileExamNavigation';
 
@@ -12,10 +12,24 @@ const getActiveTabFromPathname = (pathname: string) => {
 const MobileLayout: React.FC = () => {
   // Состояние для скрытия меню (например, при открытии модалок)
   const [isNavHidden, setIsNavHidden] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   const location = useLocation();
   const navigate = useNavigate();
   const activeTab = getActiveTabFromPathname(location.pathname);
+
+  // Определяем, мобильное ли устройство
+  useEffect(() => {
+    const checkDevice = () => setIsMobile(window.matchMedia('(max-width: 767.98px)').matches);
+    checkDevice();
+    const onOrientation = () => setTimeout(checkDevice, 200);
+    window.addEventListener('resize', checkDevice);
+    window.addEventListener('orientationchange', onOrientation);
+    return () => {
+      window.removeEventListener('resize', checkDevice);
+      window.removeEventListener('orientationchange', onOrientation);
+    };
+  }, []);
 
   // Функция для изменения вкладки через URL
   const handleTabChange = (tab: 'participants' | 'schedule' | 'evaluations') => {
@@ -29,41 +43,48 @@ const MobileLayout: React.FC = () => {
 
   return (
     <div style={{
-      position: 'fixed', // Прибиваем каркас к окну
-      inset: '0', // Растягиваем на весь экран (top: 0, left: 0, right: 0, bottom: 0)
+      // Применяем position: fixed только на мобильных устройствах
+      ...(isMobile ? {
+        position: 'fixed',
+        inset: '0',
+      } : {
+        height: '100vh',
+        width: '100vw',
+      }),
       display: 'flex',
       flexDirection: 'column',
       background: '#f8fafc',
-      // overflow: 'hidden' здесь больше не нужен, так как inset: 0 уже фиксирует размер
+      overflow: isMobile ? 'hidden' : 'auto', // На десктопе разрешаем скролл
     }}>
       
       {/* 1. ОБЛАСТЬ КОНТЕНТА (СКРОЛЛИТСЯ) */}
       <main style={{
         flex: '1 1 auto', // Позволяем расти и сжиматься
-        overflowY: 'auto', // Включаем скролл ТОЛЬКО для этой области
+        overflowY: isMobile ? 'auto' : 'visible', // На мобильных скролл внутри, на десктопе обычный
         WebkitOverflowScrolling: 'touch', // Плавный скролл на iOS
-        // Отступ снизу нужен, чтобы контент не прятался ЗА меню
-        // Высота меню (64px) + его нижний отступ (16px) = 80px
-        paddingBottom: '80px',
+        // Отступ снизу нужен только на мобильных, чтобы контент не прятался ЗА меню
+        paddingBottom: isMobile ? '80px' : '0',
       }}>
         {/* React Router будет рендерить здесь нужную страницу (ExpertExamPage и т.д.) */}
         <Outlet context={{ setIsNavHidden }} />
       </main>
 
-      {/* 2. ОБЛАСТЬ НАВИГАЦИИ (ФИКСИРОВАНА) */}
-      <footer style={{
-        flexShrink: 0, // Запрещаем сжиматься
-        width: '100%',
-        // Добавляем фон, чтобы контент при скролле не просвечивал
-        backgroundColor: '#f8fafc', 
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)' // Safe area для iPhone
-      }}>
-        <MobileExamNavigation
-          activeTab={activeTab}
-          onTabChange={handleTabChange}
-          isHidden={isNavHidden}
-        />
-      </footer>
+      {/* 2. ОБЛАСТЬ НАВИГАЦИИ (ФИКСИРОВАНА) - только на мобильных */}
+      {isMobile && (
+        <footer style={{
+          flexShrink: 0, // Запрещаем сжиматься
+          width: '100%',
+          // Добавляем фон, чтобы контент при скролле не просвечивал
+          backgroundColor: '#f8fafc', 
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)' // Safe area для iPhone
+        }}>
+          <MobileExamNavigation
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+            isHidden={isNavHidden}
+          />
+        </footer>
+      )}
     </div>
   );
 };
