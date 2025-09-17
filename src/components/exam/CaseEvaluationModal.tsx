@@ -16,6 +16,7 @@ interface CaseEvaluationModalProps {
   onEvaluationComplete?: () => Promise<void>;
   onRemoveEvaluation?: (participantId: string, caseNumber: number) => Promise<void>;
   existingEvaluation?: CaseEvaluation;
+  onModalStateChange?: (isOpen: boolean) => void;
 }
 interface CaseEvaluation {
   id?: string;
@@ -142,7 +143,8 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
   examId,
   onEvaluationComplete,
   onRemoveEvaluation,
-  existingEvaluation
+  existingEvaluation,
+  onModalStateChange
 }) => {
   const { user } = useAuth();
 
@@ -159,6 +161,12 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const scrollRootRef = useRef<HTMLDivElement>(null);
+
+  /* Уведомляем родительский компонент о состоянии модального окна */
+  useEffect(() => {
+    console.log('CaseEvaluationModal state changed:', { isOpen, participantName, caseNumber });
+    onModalStateChange?.(isOpen);
+  }, [isOpen, onModalStateChange, participantName, caseNumber]);
 
   /* Инициализация из props */
   useEffect(() => {

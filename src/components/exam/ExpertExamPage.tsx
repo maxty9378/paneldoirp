@@ -134,6 +134,13 @@ const ExpertExamPage: React.FC = () => {
     const anyModalOpen = showEvaluationModal || showCaseEvaluation || showProjectDefenseModal || showDiagnosticGameModal;
     setIsAnyModalOpen(anyModalOpen);
   }, [showEvaluationModal, showCaseEvaluation, showProjectDefenseModal, showDiagnosticGameModal]);
+
+  // Дополнительная защита: сбрасываем состояние при закрытии всех модальных окон
+  useEffect(() => {
+    if (!showEvaluationModal && !showCaseEvaluation && !showProjectDefenseModal && !showDiagnosticGameModal) {
+      setIsAnyModalOpen(false);
+    }
+  }, [showEvaluationModal, showCaseEvaluation, showProjectDefenseModal, showDiagnosticGameModal]);
   
   const [bannerSettings, setBannerSettings] = useState({
     position: 'center bottom',
@@ -1182,6 +1189,27 @@ const ExpertExamPage: React.FC = () => {
         evaluationsCount={evaluations.length}
         isHidden={isAnyModalOpen}
       />
+      
+      {/* Отладочная информация */}
+      {process.env.NODE_ENV === 'development' && (
+        <div style={{
+          position: 'fixed',
+          top: '10px',
+          right: '10px',
+          background: 'rgba(0,0,0,0.8)',
+          color: 'white',
+          padding: '8px',
+          borderRadius: '4px',
+          fontSize: '12px',
+          zIndex: 9999
+        }}>
+          <div>isAnyModalOpen: {isAnyModalOpen.toString()}</div>
+          <div>showEvaluationModal: {showEvaluationModal.toString()}</div>
+          <div>showCaseEvaluation: {showCaseEvaluation.toString()}</div>
+          <div>showProjectDefenseModal: {showProjectDefenseModal.toString()}</div>
+          <div>showDiagnosticGameModal: {showDiagnosticGameModal.toString()}</div>
+        </div>
+      )}
 
       {/* Модальное окно досье */}
       {selectedParticipantId && (() => {
@@ -1193,9 +1221,7 @@ const ExpertExamPage: React.FC = () => {
             user={selectedParticipant.user}
             dossier={selectedParticipant.dossier}
             onModalStateChange={(isOpen) => {
-              if (isOpen) {
-                setIsAnyModalOpen(true);
-              }
+              setIsAnyModalOpen(isOpen);
             }}
           />
         ) : null;
@@ -1210,9 +1236,7 @@ const ExpertExamPage: React.FC = () => {
         }}
         onModalStateChange={(isOpen) => {
           // Обновляем состояние модальных окон
-          if (isOpen) {
-            setIsAnyModalOpen(true);
-          }
+          setIsAnyModalOpen(isOpen);
         }}
         onStageSelect={(stage, caseNumber) => {
           console.log('Selected stage:', stage, 'case number:', caseNumber, 'for participant:', selectedParticipantForEvaluation?.user.full_name);
@@ -1260,9 +1284,7 @@ const ExpertExamPage: React.FC = () => {
             await fetchExamData();
           }}
           onModalStateChange={(isOpen) => {
-            if (isOpen) {
-              setIsAnyModalOpen(true);
-            }
+            setIsAnyModalOpen(isOpen);
           }}
           onRemoveEvaluation={async (participantId) => {
             // Перезагружаем данные после удаления оценки
@@ -1287,9 +1309,7 @@ const ExpertExamPage: React.FC = () => {
             await fetchExamData();
           }}
           onModalStateChange={(isOpen) => {
-            if (isOpen) {
-              setIsAnyModalOpen(true);
-            }
+            setIsAnyModalOpen(isOpen);
           }}
           onRemoveEvaluation={async (participantId) => {
             // Перезагружаем данные после удаления оценки

@@ -24,18 +24,20 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
 
   useEffect(() => {
     const checkDevice = () => {
-      setIsMobile(window.innerWidth < 768);
+      const isMobileDevice = window.innerWidth < 768;
+      setIsMobile(isMobileDevice);
     };
 
     checkDevice();
     
     window.addEventListener('resize', checkDevice);
     window.addEventListener('orientationchange', () => {
-      setTimeout(checkDevice, 100);
+      setTimeout(checkDevice, 200); // Увеличиваем задержку для стабильности
     });
 
     return () => {
       window.removeEventListener('resize', checkDevice);
+      window.removeEventListener('orientationchange', checkDevice);
     };
   }, []);
 
@@ -204,6 +206,14 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
     </div>
   );
 
+  // Отладочная информация
+  console.log('MobileExamNavigation render:', { 
+    isMobile, 
+    isHidden, 
+    activeTab, 
+    willRender: isMobile && !isHidden 
+  });
+  
   // Рендерим через портал в body только на мобильных устройствах и когда не скрыто
   if (!isMobile || isHidden) return null;
   

@@ -846,6 +846,10 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
           evaluation.reservist_id === participantId && 
           evaluation.case_number === selectedCaseNumber
         )}
+        onModalStateChange={(isOpen) => {
+          // Уведомляем родительский компонент о состоянии полноэкранного модального окна
+          onModalStateChange?.(isOpen);
+        }}
       />
       
       {/* Наш собственный тултип */}
