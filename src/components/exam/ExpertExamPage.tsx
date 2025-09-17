@@ -529,17 +529,6 @@ const ExpertExamPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
       <div className="container mx-auto px-0 md:px-4 pt-4 pb-8 md:pb-8 pb-20">
-        {/* Кнопка "Назад" над шапкой */}
-        <div className="mb-3 sm:mb-4 px-4 md:px-0">
-          <button
-            onClick={() => navigate('/events')}
-            className="group flex items-center gap-2 text-gray-600 hover:text-[#06A478] transition-all duration-200"
-            aria-label="Назад к мероприятиям"
-          >
-            <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform duration-200" strokeWidth={2.5} />
-            <span className="font-medium">Назад к мероприятиям</span>
-          </button>
-        </div>
 
         {/* Шапка мероприятия в стиле очного тренинга */}
         <div className="w-full rounded-2xl shadow-lg overflow-hidden relative mb-4 sm:mb-6 font-mabry hidden md:block">
