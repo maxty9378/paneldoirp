@@ -64,16 +64,14 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
   ];
 
   const mobileNav = (
-    <div style={{
-      display: 'flex',
-      justifyContent: 'center',
-      padding: '0 16px', // Боковые отступы для контейнера
-      // Полностью скрываем меню при открытии модального окна
-      opacity: isHidden ? 0 : 1,
-      visibility: isHidden ? 'hidden' : 'visible',
-      pointerEvents: isHidden ? 'none' : 'auto',
-      transition: 'opacity 0.3s, visibility 0.3s, pointer-events 0.3s'
-    }}>
+    <div className={`mobile-exam-nav-container ${isHidden ? 'hidden' : 'visible'}`}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        padding: '0 16px', // Боковые отступы для контейнера
+        // Дополнительные отступы для safe zone
+        paddingBottom: isHidden ? '0' : 'env(safe-area-inset-bottom, 8px)',
+      }}>
       <nav 
         className="mobile-exam-nav"
         style={{ 
@@ -94,10 +92,8 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
           boxShadow: isDarkMode 
             ? '0 4px 16px rgba(0, 0, 0, 0.3)' 
             : '0 4px 16px rgba(0, 0, 0, 0.08)',
-          overflow: 'hidden',
-          // Анимация скрытия - не утекает под системную панель
-          transform: isHidden ? 'translateY(100%)' : 'translateY(0)',
-          transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+          overflow: 'hidden'
+          // Убираем transform отсюда, так как он теперь на родительском элементе
         }}
       >
         {/* Глянцевый эффект */}
@@ -234,6 +230,7 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
           })}
         </div>
       </nav>
+      </div>
     </div>
   );
 

@@ -67,6 +67,52 @@
   border-radius: 24px;
 }
 
+/* Контейнер мобильного меню с поддержкой safe zone */
+.mobile-exam-nav-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  /* Учитываем safe zone для iPhone */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  /* Плавная анимация скрытия */
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+              opacity 0.3s ease-in-out,
+              visibility 0.3s ease-in-out;
+}
+
+/* Скрытое состояние - полностью за экраном */
+.mobile-exam-nav-container.hidden {
+  transform: translateY(100%);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Видимое состояние */
+.mobile-exam-nav-container.visible {
+  transform: translateY(0);
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/* Дополнительная поддержка для iPhone с вырезами */
+@supports (padding: max(0px)) {
+  .mobile-exam-nav-container {
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px);
+  }
+}
+
+/* Улучшенная анимация для iOS */
+@supports (-webkit-backdrop-filter: blur(10px)) {
+  .mobile-exam-nav-container {
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+}
+
 @media screen and (max-width: 768px) {
   .mobile-exam-nav {
     height: 64px; /* Фиксированная высота меню */
