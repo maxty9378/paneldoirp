@@ -134,14 +134,14 @@ const ExpertExamPage: React.FC = () => {
   const [showProjectDefenseModal, setShowProjectDefenseModal] = useState(false);
   const [showDiagnosticGameModal, setShowDiagnosticGameModal] = useState(false);
   
+  // Вычисляем состояние открытых модалок
+  const isAnyModalOpen = showEvaluationModal || showProjectDefenseModal || showDiagnosticGameModal || !!selectedParticipantId;
   
   // Отслеживание открытых модальных окон
   useEffect(() => {
-    const anyModalOpen = showEvaluationModal || showProjectDefenseModal || showDiagnosticGameModal || !!selectedParticipantId;
-    
     // Сообщаем родительскому layout, нужно ли скрыть меню
-    setIsNavHidden(anyModalOpen);
-  }, [showEvaluationModal, showProjectDefenseModal, showDiagnosticGameModal, selectedParticipantId, setIsNavHidden]);
+    setIsNavHidden(isAnyModalOpen);
+  }, [isAnyModalOpen, setIsNavHidden]);
 
   // Сброс скрытия меню на размонтировании
   useEffect(() => {
@@ -535,7 +535,9 @@ const ExpertExamPage: React.FC = () => {
       <div className="container mx-auto px-0 md:px-4 pt-4 pb-8 md:pb-8">
 
         {/* Шапка мероприятия в стиле очного тренинга */}
-        <div className="w-full rounded-2xl shadow-lg overflow-hidden relative mb-4 sm:mb-6 font-mabry hidden md:block">
+        <div className={`w-full rounded-2xl shadow-lg overflow-hidden relative mb-4 sm:mb-6 font-mabry hidden md:block transition-all duration-300 ${
+          isAnyModalOpen ? 'opacity-0 pointer-events-none transform scale-95' : 'opacity-100'
+        }`}>
           {/* Hero секция с фоновым изображением */}
           <div
             className={`relative min-h-[200px] sm:min-h-[240px] md:min-h-[280px] flex items-end ${
@@ -747,7 +749,9 @@ const ExpertExamPage: React.FC = () => {
         )}
 
         {/* Десктопные вкладки */}
-        <div className="hidden md:block bg-white rounded-2xl shadow-lg border border-gray-200 mb-8">
+        <div className={`hidden md:block bg-white rounded-2xl shadow-lg border border-gray-200 mb-8 transition-all duration-300 ${
+          isAnyModalOpen ? 'opacity-0 pointer-events-none transform scale-95' : 'opacity-100'
+        }`}>
           <div className="border-b border-gray-200">
             <nav className="flex space-x-8 px-6">
               <button
