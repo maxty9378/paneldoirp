@@ -190,7 +190,6 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
   const [loadingCases, setLoadingCases] = useState(false);
   const [showCaseEvaluation, setShowCaseEvaluation] = useState(false);
   const [selectedCaseNumber, setSelectedCaseNumber] = useState<number>(1);
-  const [highlightFirstButton, setHighlightFirstButton] = useState(false);
 
 
   // Загрузка назначенных кейсов
@@ -236,11 +235,10 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
 
       // Сначала выравниваем модалку, затем показываем подсказку
       const isMobile = window.innerWidth <= 768;
-      const initialDelay = isMobile ? 2000 : 1000; // Больше времени для мобильных
-      const tourDelay = isMobile ? 1000 : 500; // Больше времени для позиционирования на мобильных
+      const initialDelay = isMobile ? 800 : 500; // Уменьшены задержки
+      const tourDelay = isMobile ? 300 : 200; // Уменьшены задержки
       
       const t1 = setTimeout(() => {
-        setHighlightFirstButton(true);
         // Даем время модалке выровняться перед показом тултипа
         setTimeout(() => {
           // Проверяем, что элемент существует и видим
@@ -251,34 +249,27 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
             // Небольшая задержка для завершения прокрутки
             setTimeout(() => {
               setShowTooltip(true);
-            }, isMobile ? 500 : 300);
+            }, isMobile ? 200 : 100);
           }
         }, tourDelay);
       }, initialDelay);
 
-      // Убрать подсветку спустя время, но тур сам закроется по действию пользователя
-      const t2 = setTimeout(() => setHighlightFirstButton(false), 6000);
-
       return () => {
         clearTimeout(t1);
-        clearTimeout(t2);
       };
     } else {
       setShowTooltip(false);
-      setHighlightFirstButton(false);
     }
   }, [isOpen]);
 
   // Обработчик закрытия тултипа
   const handleTooltipClose = () => {
     setShowTooltip(false);
-    setHighlightFirstButton(false);
   };
 
   // Обработчик клика по любой карточке - закрываем тултип
   const handleStageClick = (stageId: string) => {
     setShowTooltip(false); // Закрываем тултип
-    setHighlightFirstButton(false); // Убираем подсветку
     
     if (stageId === 'case-solving') {
       setShowCaseSelection(true);
@@ -385,16 +376,6 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
     <>
       <style>
         {`
-          @keyframes glowBorder {
-            0% { box-shadow: 0 0 0 0 rgba(6,164,120,0.28); }
-            50% { box-shadow: 0 0 0 8px rgba(6,164,120,0.12); }
-            100% { box-shadow: 0 0 0 0 rgba(6,164,120,0.28); }
-          }
-          .highlight-glow {
-            animation: glowBorder 2s ease-in-out infinite;
-            border-color: rgba(6,164,120,0.5) !important;
-            background: linear-gradient(135deg, rgba(6,164,120,0.02), rgba(6,164,120,0.05)) !important;
-          }
           
           /* Адаптивные стили для мобильных устройств */
           @media (max-width: 768px) {
@@ -486,7 +467,6 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
                       group cursor-pointer rounded-xl p-3 border transition-all duration-300
                       bg-gradient-to-br ${stage.bgGradient} ${stage.borderColor}
                       hover:scale-[1.02] hover:shadow-lg
-                      ${isFirst && highlightFirstButton ? 'highlight-glow' : ''}
                     `}
                     onClick={() => handleStageClick(stage.id)}
                   >
