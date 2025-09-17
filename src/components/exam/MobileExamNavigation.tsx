@@ -68,8 +68,7 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
           border: '1px solid rgba(255, 255, 255, 0.3)',
           boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
           overflow: 'hidden',
-          // ВАЖНО: Добавляем отступ снизу для безопасной зоны iPhone
-          marginBottom: 'max(16px, env(safe-area-inset-bottom, 16px))'
+          // В App Shell архитектуре отступ снизу не нужен, так как footer уже учитывает safe-area
         }}
       >
         {/* Глянцевый эффект */}
@@ -197,8 +196,14 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
 
   
   // В App Shell архитектуре рендерим напрямую, без портала
-  if (!isMobile) return null;
+  console.log('MobileExamNavigation: isMobile =', isMobile, 'isHidden =', isHidden);
   
+  if (!isMobile) {
+    console.log('MobileExamNavigation: не мобильное устройство, скрываем меню');
+    return null;
+  }
+  
+  console.log('MobileExamNavigation: рендерим меню');
   return mobileNav;
 };
 
