@@ -1153,7 +1153,6 @@ const ExpertExamPage: React.FC = () => {
       <MobileExamNavigation
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        evaluationsCount={evaluations.length}
         isHidden={isAnyModalOpen}
       />
       

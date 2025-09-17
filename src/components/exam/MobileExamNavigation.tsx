@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Users, Calendar, Star } from 'lucide-react';
+import { Users, Calendar } from 'lucide-react';
 import './MobileExamNavigation.css';
 
 type ExamTab = 'participants' | 'schedule' | 'evaluations';
@@ -8,16 +8,12 @@ type ExamTab = 'participants' | 'schedule' | 'evaluations';
 interface MobileExamNavigationProps {
   activeTab: ExamTab;
   onTabChange: (tab: ExamTab) => void;
-  participantsCount?: number; // Опциональный параметр
-  evaluationsCount?: number;
   isHidden?: boolean; // Новый пропс для скрытия меню
 }
 
 const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({ 
   activeTab, 
   onTabChange, 
-  participantsCount = 0,
-  evaluationsCount = 0,
   isHidden = false
 }) => {
   const [isMobile, setIsMobile] = useState(false);
@@ -65,7 +61,12 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
       zIndex: 2147483647,
       display: 'flex',
       justifyContent: 'center',
-      padding: 'max(16px, env(safe-area-inset-bottom, 16px)) 16px 16px 16px'
+      padding: '0 16px', // Боковые отступы для контейнера
+      // Добавляем свойство для изоляции контекста рендеринга
+      willChange: 'transform',
+      // Делаем невидимым и отключаем взаимодействие, когда скрыто
+      visibility: isHidden ? 'hidden' : 'visible',
+      transition: 'visibility 0.3s'
     }}>
       <nav 
         className="mobile-exam-nav"
@@ -81,7 +82,12 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
           WebkitBackdropFilter: 'blur(30px) saturate(120%)',
           border: '1px solid rgba(255, 255, 255, 0.3)',
           boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          // ВАЖНО: Добавляем отступ снизу для безопасной зоны iPhone
+          marginBottom: 'max(16px, env(safe-area-inset-bottom, 16px))',
+          // Добавляем плавную анимацию появления/исчезновения
+          transform: isHidden ? 'translateY(150%)' : 'translateY(0)',
+          transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
         }}
       >
         {/* Глянцевый эффект */}
@@ -207,8 +213,9 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
   );
 
   
-  // Рендерим через портал в body только на мобильных устройствах и когда не скрыто
-  if (!isMobile || isHidden) return null;
+  // Вместо `if (isHidden) return null;` мы теперь управляем видимостью через стили
+  // для плавной анимации. Рендерим всегда, когда isMobile.
+  if (!isMobile) return null;
   
   return createPortal(mobileNav, document.body);
 };
