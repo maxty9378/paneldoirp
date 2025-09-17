@@ -135,21 +135,20 @@ const MobileTooltip: React.FC<{
   if (!isVisible) return null;
 
   return (
-    <>
-      {/* Затемнение фона */}
+    <ModalPortal>
       <div 
-        className="fixed inset-0 bg-black/20 z-[9998]"
+        className="fixed inset-0 bg-black/20 z-[10000]"
         onClick={onClose}
       />
       
-      {/* Тултип */}
       <div
-        className="fixed z-[9999] bg-white rounded-xl shadow-2xl p-4 sm:max-w-[280px] max-w-[240px]"
+        className="fixed z-[10001] bg-white rounded-xl shadow-2xl p-4 sm:max-w-[280px] max-w-[240px]"
         style={{
           top: `${position.top}px`,
           left: `${position.left}px`,
           fontFamily: 'Mabry, sans-serif'
         }}
+        role="tooltip"
       >
       <div className="flex items-start gap-2">
         <MousePointer className="w-4 h-4 mt-0.5 text-emerald-600" />
@@ -161,20 +160,20 @@ const MobileTooltip: React.FC<{
         </div>
       </div>
         
-        {/* Стрелка */}
+        {/* Стрелка с белым фоном - указывает от карточки к тултипу */}
         <div
           className={`absolute w-0 h-0 ${
             position.arrowPosition === 'left' 
-              ? 'border-t-[8px] border-b-[8px] border-l-[8px] border-t-transparent border-b-transparent border-l-emerald-600 -left-2 top-1/2 -translate-y-1/2'
+              ? 'border-t-[8px] border-b-[8px] border-r-[8px] border-t-transparent border-b-transparent border-r-white -right-2 top-1/2 -translate-y-1/2'
               : position.arrowPosition === 'right'
-              ? 'border-t-[8px] border-b-[8px] border-r-[8px] border-t-transparent border-b-transparent border-r-emerald-600 -right-2 top-1/2 -translate-y-1/2'
+              ? 'border-t-[8px] border-b-[8px] border-l-[8px] border-t-transparent border-b-transparent border-l-white -left-2 top-1/2 -translate-y-1/2'
               : position.arrowPosition === 'bottom'
-              ? 'border-l-[8px] border-r-[8px] border-b-[8px] border-l-transparent border-r-transparent border-b-emerald-600 -bottom-2 left-1/2 -translate-x-1/2'
-              : 'border-l-[8px] border-r-[8px] border-t-[8px] border-l-transparent border-r-transparent border-t-emerald-600 -top-2 left-1/2 -translate-x-1/2'
+              ? 'border-l-[8px] border-r-[8px] border-t-[8px] border-l-transparent border-r-transparent border-t-white -top-2 left-1/2 -translate-x-1/2'
+              : 'border-l-[8px] border-r-[8px] border-b-[8px] border-l-transparent border-r-transparent border-b-white -bottom-2 left-1/2 -translate-x-1/2'
           }`}
         />
       </div>
-    </>
+    </ModalPortal>
   );
 };
 
