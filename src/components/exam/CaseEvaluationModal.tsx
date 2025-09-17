@@ -1,5 +1,5 @@
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { X, FileText, Save, CheckCircle, MessageSquare, User } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
@@ -164,11 +164,17 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
 
   const scrollRootRef = useRef<HTMLDivElement>(null);
 
-  /* Уведомляем родительский компонент о состоянии модального окна */
-  useEffect(() => {
+  /* Уведомляем родительский компонент о состоянии модального окна (синхронно) */
+  useLayoutEffect(() => {
     // Уведомляем о любом открытом модальном окне (основном или внутренних)
     const anyModalOpen = isOpen || showSuccessModal || showChangeConfirmModal;
     onModalStateChange?.(anyModalOpen);
+    
+    // Также отправляем событие для глобального слушателя
+    const event = new CustomEvent('modalStateChange', { 
+      detail: { isOpen: anyModalOpen } 
+    });
+    window.dispatchEvent(event);
   }, [isOpen, showSuccessModal, showChangeConfirmModal, onModalStateChange, participantName, caseNumber]);
 
   /* Загрузка данных при открытии модала */
@@ -315,28 +321,10 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
     }
   };
 
-  /* Фулл-скрин модал: блокируем скролл боди, используем свой скролл внутри */
+  /* Фулл-скрин модал: используем свой скролл внутри, body не трогаем */
   useEffect(() => {
     if (!isOpen) return;
-    const y = window.scrollY;
-    document.body.classList.add('modal-open');
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${y}px`;
-    document.body.style.left = '0';
-    document.body.style.right = '0';
-    document.body.style.width = '100%';
-    document.body.style.overflow = 'hidden';
     requestAnimationFrame(() => scrollRootRef.current && (scrollRootRef.current.scrollTop = 0));
-    return () => {
-      document.body.classList.remove('modal-open');
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.left = '';
-      document.body.style.right = '';
-      document.body.style.width = '';
-      document.body.style.overflow = '';
-      window.scrollTo(0, y);
-    };
   }, [isOpen]);
 
   /* Вспомогалки */

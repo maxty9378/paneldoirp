@@ -62,32 +62,23 @@ const MobileLayout: React.FC = () => {
     };
   }, []);
 
-  // Управляем overflow body для App Shell архитектуры
+  // Управляем overflow body для App Shell архитектуры (стабильно, без переключений)
   useEffect(() => {
-    if (isMobile && !isModalOpen) {
-      document.body.style.overflow = 'hidden';
-      document.body.style.overscrollBehaviorY = 'none';
-      // iPhone-специфичные стили
-      (document.body.style as any).WebkitOverflowScrolling = 'touch';
-      document.body.style.position = 'fixed';
-      document.body.style.width = '100%';
-    } else {
-      document.body.style.overflow = '';
-      document.body.style.overscrollBehaviorY = '';
-      (document.body.style as any).WebkitOverflowScrolling = '';
-      document.body.style.position = '';
-      document.body.style.width = '';
-    }
+    if (!isMobile) return;
+    
+    document.body.style.overflow = 'hidden';
+    document.body.style.overscrollBehaviorY = 'none';
+    // iPhone-специфичные стили
+    (document.body.style as any).WebkitOverflowScrolling = 'touch';
+    // без position: fixed, пусть скроллится ваш <main>
 
     // Cleanup при размонтировании
     return () => {
       document.body.style.overflow = '';
       document.body.style.overscrollBehaviorY = '';
       (document.body.style as any).WebkitOverflowScrolling = '';
-      document.body.style.position = '';
-      document.body.style.width = '';
     };
-  }, [isMobile, isModalOpen]);
+  }, [isMobile]);
 
   // Функция для изменения вкладки через URL
   const handleTabChange = (tab: 'participants' | 'schedule' | 'evaluations' | 'results') => {
@@ -106,7 +97,7 @@ const MobileLayout: React.FC = () => {
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      height: '100dvh',
+      height: '100svh',
       width: '100vw',
       background: '#f8fafc'
     }}>
@@ -117,11 +108,11 @@ const MobileLayout: React.FC = () => {
         minHeight: 0,
         overflowY: 'auto',
         WebkitOverflowScrolling: 'touch',
-        // 64 (высота меню) + 16 (верхний паддинг футера) + 16 (нижний паддинг футера) + 16 (отступ от низа) + safe-area
+        // Фиксированная высота для предсказуемости
         // Если на странице оценки/досье, убираем отступ для нижнего меню
         paddingBottom: isEvaluationOrDossierPage 
           ? 'calc(16px + env(safe-area-inset-bottom, 0px))'
-          : 'calc(64px + 16px + 16px + 16px + env(safe-area-inset-bottom, 0px))'
+          : 'calc(80px + env(safe-area-inset-bottom, 0px))'
       }}>
         {/* React Router будет рендерить здесь нужную страницу (ExpertExamPage и т.д.) */}
         <Outlet context={{ setIsNavHidden }} />
