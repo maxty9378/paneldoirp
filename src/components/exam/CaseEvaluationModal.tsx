@@ -426,7 +426,8 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
         -webkit-tap-highlight-color: transparent !important;
         user-select: none !important;
         touch-action: manipulation !important;
-        min-height: 44px !important;
+        min-height: 48px !important;
+        padding-bottom: 8px !important;
       }
     }
   `;
@@ -558,7 +559,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
           paddingRight: '0px'
         }}
       >
-        <div className="px-4 pt-3 pb-2">
+        <div className="px-4 pt-3 pb-3">
           
           <div className="flex gap-2">
             <button
@@ -569,7 +570,8 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
                 WebkitTapHighlightColor: 'transparent',
                 userSelect: 'none',
                 touchAction: 'manipulation',
-                minHeight: '44px'
+                minHeight: '48px',
+                paddingBottom: '8px'
               }}
             >
               ← Назад
@@ -587,7 +589,8 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
                 WebkitTapHighlightColor: 'transparent',
                 userSelect: 'none',
                 touchAction: 'manipulation',
-                minHeight: '44px'
+                minHeight: '48px',
+                paddingBottom: '8px'
               }}
             >
               {saving ? (
