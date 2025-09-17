@@ -299,6 +299,37 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
       overflow: hidden !important;
     }
     
+    /* Специальные стили для iPhone */
+    @media screen and (max-width: 768px) {
+      .case-evaluation-modal {
+        -webkit-overflow-scrolling: touch !important;
+        -webkit-transform: translate3d(0, 0, 0) !important;
+        transform: translate3d(0, 0, 0) !important;
+      }
+      
+      .case-evaluation-modal header {
+        -webkit-transform: translateZ(0) !important;
+        transform: translateZ(0) !important;
+        will-change: transform !important;
+      }
+      
+      .case-evaluation-modal button {
+        -webkit-tap-highlight-color: transparent !important;
+        -webkit-touch-callout: none !important;
+        -webkit-user-select: none !important;
+        user-select: none !important;
+        touch-action: manipulation !important;
+      }
+      
+      /* Убираем возможные конфликты с safe area */
+      .case-evaluation-modal {
+        padding-top: env(safe-area-inset-top, 0px) !important;
+        padding-left: env(safe-area-inset-left, 0px) !important;
+        padding-right: env(safe-area-inset-right, 0px) !important;
+        padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+      }
+    }
+    
     /* Стабилизация для мобильных устройств */
     .fixed-bottom-menu {
       position: fixed !important;
@@ -345,9 +376,15 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
         margin: 0,
         padding: 0,
         paddingTop: 'env(safe-area-inset-top, 0px)',
-        transform: 'translateZ(0)',
+        paddingLeft: 'env(safe-area-inset-left, 0px)',
+        paddingRight: 'env(safe-area-inset-right, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        transform: 'translate3d(0, 0, 0)',
         backfaceVisibility: 'hidden',
-        willChange: 'transform'
+        willChange: 'transform',
+        WebkitTransform: 'translate3d(0, 0, 0)',
+        WebkitBackfaceVisibility: 'hidden',
+        WebkitOverflowScrolling: 'touch'
       }}>
         {/* Шапка (sticky top) */}
         <header className="sticky top-0 z-10 border-b border-gray-100 bg-white">
@@ -373,10 +410,25 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
               </div>
               <button
                 onClick={onClose}
-                className="p-2 rounded-lg hover:bg-gray-50"
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onClose();
+                }}
+                className="p-2 rounded-lg hover:bg-gray-50 active:bg-gray-100 touch-manipulation"
                 aria-label="Закрыть"
+                style={{
+                  minWidth: '44px',
+                  minHeight: '44px',
+                  zIndex: 1000,
+                  position: 'relative',
+                  WebkitTapHighlightColor: 'transparent',
+                  WebkitTouchCallout: 'none',
+                  WebkitUserSelect: 'none',
+                  userSelect: 'none'
+                }}
               >
-                <X className="w-6 h-6 text-gray-700" />
+                <X className="w-6 h-6 text-gray-700 pointer-events-none" />
               </button>
             </div>
           </div>

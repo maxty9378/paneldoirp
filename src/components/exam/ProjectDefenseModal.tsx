@@ -452,9 +452,15 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
         margin: 0,
         padding: 0,
         paddingTop: 'env(safe-area-inset-top, 0px)',
-        transform: 'translateZ(0)',
+        paddingLeft: 'env(safe-area-inset-left, 0px)',
+        paddingRight: 'env(safe-area-inset-right, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        transform: 'translate3d(0, 0, 0)',
         backfaceVisibility: 'hidden',
-        willChange: 'transform'
+        willChange: 'transform',
+        WebkitTransform: 'translate3d(0, 0, 0)',
+        WebkitBackfaceVisibility: 'hidden',
+        WebkitOverflowScrolling: 'touch'
       }}>
         {/* Шапка (sticky top) */}
         <header className="sticky top-0 z-10 border-b border-gray-100 bg-white">
@@ -480,10 +486,25 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
               </div>
               <button
                 onClick={onClose}
-                className="p-2 rounded-lg hover:bg-gray-50"
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onClose();
+                }}
+                className="p-2 rounded-lg hover:bg-gray-50 active:bg-gray-100 touch-manipulation"
                 aria-label="Закрыть"
+                style={{
+                  minWidth: '44px',
+                  minHeight: '44px',
+                  zIndex: 1000,
+                  position: 'relative',
+                  WebkitTapHighlightColor: 'transparent',
+                  WebkitTouchCallout: 'none',
+                  WebkitUserSelect: 'none',
+                  userSelect: 'none'
+                }}
               >
-                <X className="w-6 h-6 text-gray-700" />
+                <X className="w-6 h-6 text-gray-700 pointer-events-none" />
               </button>
             </div>
           </div>
