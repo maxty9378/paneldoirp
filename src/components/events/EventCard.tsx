@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
 import { 
   CalendarDays,
   Users2,
@@ -246,9 +248,25 @@ export function EventCard({
   onEditEvent?: (id: string) => void;
   onDeleteEvent?: (id: string) => void;
 }) {
+  const { userProfile } = useAuth();
+  const navigate = useNavigate();
   const [showTestReview, setShowTestReview] = useState(false);
   const d = parseDate(event);
   const status = STATUS_MAP[event.status] || STATUS_MAP.draft;
+  
+  // Функция для обработки навигации
+  const handleNavigate = () => {
+    const isAdmin = userProfile?.role === 'administrator';
+    const isExamTalentReserve = event.event_types?.name === 'exam_talent_reserve';
+    
+    // Для администраторов на экзаменах резерва талантов ведем к оценке
+    if (isAdmin && isExamTalentReserve) {
+      navigate(`/expert-exam/${event.id}`);
+    } else {
+      // Для остальных случаев используем стандартную навигацию
+      onNavigateToEvent?.(event.id);
+    }
+  };
   const { label, tone: statusTone, ring, Icon: StatusIcon } = status;
   const typeInfo = event.type
     ? TYPE_LABELS[event.type] || { label: event.event_types?.name_ru || 'Мероприятие', icon: Info }
@@ -405,7 +423,7 @@ export function EventCard({
                 <Trash2 className="h-4 w-4" />
               </button>
               <button 
-                onClick={() => onNavigateToEvent?.(event.id)}
+                onClick={handleNavigate}
                 className="btn-primary"
                 title="Открыть"
               >
@@ -416,7 +434,7 @@ export function EventCard({
           </div>
         ) : (
           <button 
-            onClick={() => onNavigateToEvent?.(event.id)}
+            onClick={handleNavigate}
             className="w-full justify-center relative overflow-hidden bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-600 hover:via-teal-600 hover:to-emerald-700 text-white font-medium py-2.5 px-4 rounded-lg transition-all duration-300 shadow-sm hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
             title="Открыть"
           >

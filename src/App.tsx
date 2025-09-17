@@ -302,6 +302,7 @@ function AppContent() {
             navigate('/expert-exam/36520f72-c191-4e32-ba02-aa17c482c50b');
           } else {
             // Для администраторов и других ролей ведем на обычную страницу мероприятия
+            // Логика для экзаменов резерва талантов будет обработана в EventCard
             navigate(`/event/${id}`);
           }
         }} onEditEvent={id => handleEditEvent(id)} onCreateEvent={() => setShowCreateEventModal(true)} />} />
