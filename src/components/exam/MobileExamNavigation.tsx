@@ -25,15 +25,11 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
 
   // Функция для проверки наличия модальных окон на странице
   const checkForModals = () => {
-    // Проверяем различные селекторы модальных окон
+    // Проверяем основные селекторы модальных окон
     const modalSelectors = [
       '[role="dialog"]',
-      '.modal',
-      '.modal-open',
-      '[data-modal="true"]',
-      '.fixed.inset-0', // Полноэкранные модальные окна
-      '.case-evaluation-modal',
       '.dossier-modal',
+      '.case-evaluation-modal', 
       '.evaluation-stage-modal',
       '.project-defense-modal',
       '.diagnostic-game-modal'
@@ -51,12 +47,6 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
                          element.offsetParent !== null;
         
         if (isVisible) {
-          console.log('Modal found via selector:', selector, element, {
-            display: style.display,
-            visibility: style.visibility,
-            opacity: style.opacity,
-            offsetParent: element.offsetParent
-          });
           modalFound = true;
           break;
         }
@@ -64,72 +54,9 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
       if (modalFound) break;
     }
     
-    // Дополнительная проверка: ищем элементы с высоким z-index
-    if (!modalFound) {
-      const highZIndexElements = document.querySelectorAll('*');
-      for (const element of highZIndexElements) {
-        const style = window.getComputedStyle(element);
-        const zIndex = parseInt(style.zIndex, 10);
-        if (zIndex > 1000 && style.position !== 'static' && element.offsetParent !== null) {
-          // Проверяем, не является ли это нашим меню
-          if (!element.closest('.mobile-exam-nav') && !element.classList.contains('mobile-exam-nav')) {
-            console.log('Modal found via z-index:', element, 'z-index:', zIndex);
-            modalFound = true;
-            break;
-          }
-        }
-      }
-    }
-    
-    // Дополнительная проверка: ищем элементы с классом modal-open на body
+    // Проверяем класс modal-open на body
     if (!modalFound && document.body.classList.contains('modal-open')) {
-      console.log('Modal found via body.modal-open class');
       modalFound = true;
-    }
-    
-    // Дополнительная отладочная информация
-    if (!modalFound) {
-      console.log('No modals found. Checking all modal elements:');
-      for (const selector of modalSelectors) {
-        const elements = document.querySelectorAll(selector);
-        console.log(`Selector ${selector}:`, elements.length, 'elements found');
-        elements.forEach((el, index) => {
-          const style = window.getComputedStyle(el);
-          console.log(`  Element ${index}:`, {
-            display: style.display,
-            visibility: style.visibility,
-            opacity: style.opacity,
-            offsetParent: el.offsetParent,
-            classList: el.classList.toString(),
-            zIndex: style.zIndex,
-            position: style.position
-          });
-        });
-      }
-      
-      // Дополнительная проверка: ищем все элементы с высоким z-index
-      console.log('Checking all high z-index elements:');
-      const allElements = document.querySelectorAll('*');
-      const highZElements = Array.from(allElements).filter(el => {
-        const style = window.getComputedStyle(el);
-        const zIndex = parseInt(style.zIndex, 10);
-        return zIndex > 1000 && style.position !== 'static';
-      });
-      
-      console.log('High z-index elements found:', highZElements.length);
-      highZElements.forEach((el, index) => {
-        const style = window.getComputedStyle(el);
-        console.log(`  High z-index element ${index}:`, {
-          tagName: el.tagName,
-          classList: el.classList.toString(),
-          zIndex: style.zIndex,
-          position: style.position,
-          display: style.display,
-          visibility: style.visibility,
-          opacity: style.opacity,
-          offsetParent: el.offsetParent
-        });
-      });
     }
     
     setHasModalOpen(modalFound);
@@ -161,16 +88,21 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
     // Проверяем сразу
     checkForModals();
     
-    // Устанавливаем интервал для периодической проверки
-    const interval = setInterval(checkForModals, 100);
+    // Устанавливаем интервал для периодической проверки (увеличиваем интервал)
+    const interval = setInterval(checkForModals, 500);
     
-    // Также слушаем изменения DOM
-    const observer = new MutationObserver(checkForModals);
+    // Также слушаем изменения DOM (только важные изменения)
+    const observer = new MutationObserver(() => {
+      // Проверяем только при добавлении/удалении элементов с модальными классами
+      const hasModalElements = document.querySelectorAll('[role="dialog"], .modal, .dossier-modal, .case-evaluation-modal, .evaluation-stage-modal, .project-defense-modal, .diagnostic-game-modal').length > 0;
+      if (hasModalElements) {
+        checkForModals();
+      }
+    });
     observer.observe(document.body, {
       childList: true,
       subtree: true,
-      attributes: true,
-      attributeFilter: ['class', 'style', 'data-modal']
+      attributes: false // Отключаем отслеживание атрибутов
     });
     
     return () => {
@@ -347,16 +279,17 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
   // Определяем, должно ли меню быть скрыто
   const shouldHide = isHidden || hasModalOpen;
   
-  // Отладочная информация
-  console.log('MobileExamNavigation render:', { 
-    isMobile, 
-    isHidden, 
-    hasModalOpen,
-    shouldHide,
-    activeTab, 
-    willRender: isMobile && !shouldHide,
-    modalElements: document.querySelectorAll('[role="dialog"], .modal, .dossier-modal, .case-evaluation-modal, .evaluation-stage-modal, .project-defense-modal, .diagnostic-game-modal').length
-  });
+  // Отладочная информация (только в development режиме)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('MobileExamNavigation render:', { 
+      isMobile, 
+      isHidden, 
+      hasModalOpen,
+      shouldHide,
+      activeTab, 
+      willRender: isMobile && !shouldHide
+    });
+  }
   
   // Рендерим через портал в body только на мобильных устройствах и когда не скрыто
   if (!isMobile || shouldHide) return null;
@@ -365,28 +298,6 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
     <>
       {mobileNav}
       
-      {/* Отладочная информация для меню */}
-      {process.env.NODE_ENV === 'development' && (
-        <div style={{
-          position: 'fixed',
-          bottom: '120px',
-          right: '10px',
-          background: 'rgba(0,0,0,0.8)',
-          color: 'white',
-          padding: '8px',
-          borderRadius: '4px',
-          fontSize: '10px',
-          zIndex: 9999,
-          maxWidth: '200px'
-        }}>
-          <div>Menu Auto-Hide Debug:</div>
-          <div>isMobile: {isMobile.toString()}</div>
-          <div>isHidden: {isHidden.toString()}</div>
-          <div>hasModalOpen: {hasModalOpen.toString()}</div>
-          <div>shouldHide: {shouldHide.toString()}</div>
-          <div>Modal elements: {document.querySelectorAll('[role="dialog"], .modal, .dossier-modal, .case-evaluation-modal, .evaluation-stage-modal, .project-defense-modal, .diagnostic-game-modal').length}</div>
-        </div>
-      )}
     </>, 
     document.body
   );
