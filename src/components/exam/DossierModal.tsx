@@ -1,22 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, MapPin, Briefcase, Calendar, GraduationCap, Award, Clock } from 'lucide-react';
+import { X, User, MapPin, Calendar, Briefcase, Award, GraduationCap, Clock, Mail, Phone, Building } from 'lucide-react';
 
 interface DossierData {
   id?: string;
   user_id: string;
   photo_url?: string;
-  program_name?: string;
-  position?: string;
-  territory?: string;
-  age?: number;
+  phone?: string;
+  location?: string;
   experience_in_position?: string;
-  education?: {
-    level?: string;
-    institution?: string;
-    specialty?: string;
-  };
-  career_path?: string;
-  achievements?: string[];
+  education?: string;
+  achievements?: string;
+  skills?: string;
+  additional_info?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -25,7 +20,6 @@ interface User {
   id: string;
   full_name: string;
   email: string;
-  sap_number: string;
   work_experience_days?: number;
   position?: { name: string };
   territory?: { name: string };
@@ -41,26 +35,11 @@ interface DossierModalProps {
 
 // Компонент скелетона для загрузки
 const SkeletonLine: React.FC<{ className?: string }> = ({ className = "" }) => (
-  <div 
-    className={`animate-pulse bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 bg-[length:200%_100%] rounded-lg ${className}`}
-    style={{ 
-      animation: 'shimmer 1.5s ease-in-out infinite',
-      backgroundImage: 'linear-gradient(90deg, #e5e7eb 0%, #d1d5db 50%, #e5e7eb 100%)'
-    }}
-  />
+  <div className={`bg-gray-200 rounded animate-pulse ${className}`} />
 );
 
 const SkeletonAvatar: React.FC = () => (
-  <div className="relative">
-    <div 
-      className="w-32 h-40 md:w-44 md:h-52 rounded-2xl bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 bg-[length:200%_100%]"
-      style={{ 
-        animation: 'shimmer 1.5s ease-in-out infinite',
-        backgroundImage: 'linear-gradient(90deg, #e5e7eb 0%, #d1d5db 50%, #e5e7eb 100%)'
-      }}
-    />
-    <div className="absolute inset-0 bg-gradient-to-t from-gray-300/50 to-transparent rounded-2xl"></div>
-  </div>
+  <div className="w-12 h-12 bg-gray-200 rounded-xl animate-pulse" />
 );
 
 export const DossierModal: React.FC<DossierModalProps> = ({
@@ -72,11 +51,6 @@ export const DossierModal: React.FC<DossierModalProps> = ({
 }) => {
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
-  const [contentVisible, setContentVisible] = useState(false);
-  const [currentSection, setCurrentSection] = useState(0);
-  const [typewriterText, setTypewriterText] = useState('');
-
-
 
   // Создаем инициалы
   const getInitials = (fullName?: string) => {
@@ -114,143 +88,183 @@ export const DossierModal: React.FC<DossierModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       // Блокируем прокрутку
+      const y = window.scrollY;
+      document.body.classList.add('modal-open');
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${y}px`;
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+      document.body.style.width = '100%';
       document.body.style.overflow = 'hidden';
       return () => {
         // Восстанавливаем прокрутку при закрытии
+        document.body.classList.remove('modal-open');
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.body.style.right = '';
+        document.body.style.width = '';
         document.body.style.overflow = '';
+        window.scrollTo(0, y);
       };
     }
   }, [isOpen]);
 
-  // Анимация появления контента
-  useEffect(() => {
-    if (isOpen && !loading) {
-      setContentVisible(false);
-      setCurrentSection(0);
-      setTypewriterText('');
-      
-      // Задержка перед началом анимации
-      const timer = setTimeout(() => {
-        setContentVisible(true);
-      }, 300);
-      
-      return () => clearTimeout(timer);
+  const dossierStyles = `
+    /* Принудительное убирание всех отступов для модального окна */
+    .dossier-modal {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      padding-top: env(safe-area-inset-top, 0px) !important;
+      z-index: 10002 !important;
+      background: white !important;
     }
-  }, [isOpen, loading]);
-
-  // Эффект печатающей машинки для ФИО
-  useEffect(() => {
-    if (!contentVisible) return;
     
-    const fullName = user?.full_name?.toUpperCase() || 'НЕ УКАЗАНО';
-    let currentIndex = 0;
+    /* Убираем отступы у body когда открыто модальное окно */
+    body.modal-open {
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+    }
     
-    const typeInterval = setInterval(() => {
-      if (currentIndex <= fullName.length) {
-        setTypewriterText(fullName.slice(0, currentIndex));
-        currentIndex++;
-      } else {
-        clearInterval(typeInterval);
-        // После завершения печати ФИО, показываем остальные блоки
-        setTimeout(() => setCurrentSection(1), 200);
-        setTimeout(() => setCurrentSection(2), 400);
-        setTimeout(() => setCurrentSection(3), 600);
-        setTimeout(() => setCurrentSection(4), 800);
+    /* Специальные стили для iPhone */
+    @media screen and (max-width: 768px) {
+      .dossier-modal {
+        -webkit-overflow-scrolling: touch !important;
+        -webkit-transform: translate3d(0, 0, 0) !important;
+        transform: translate3d(0, 0, 0) !important;
       }
-    }, 40); // Скорость печати ФИО
-    
-    return () => clearInterval(typeInterval);
-  }, [contentVisible, user?.full_name]);
+      
+      .dossier-modal header {
+        -webkit-transform: translateZ(0) !important;
+        transform: translateZ(0) !important;
+        will-change: transform !important;
+      }
+      
+      .dossier-modal button {
+        -webkit-tap-highlight-color: transparent !important;
+        -webkit-touch-callout: none !important;
+        -webkit-user-select: none !important;
+        user-select: none !important;
+        touch-action: manipulation !important;
+      }
+      
+      /* Убираем возможные конфликты с safe area */
+      .dossier-modal {
+        padding-top: env(safe-area-inset-top, 0px) !important;
+        padding-left: env(safe-area-inset-left, 0px) !important;
+        padding-right: env(safe-area-inset-right, 0px) !important;
+        padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+      }
+    }
+  `;
 
   if (!isOpen) return null;
   if (!user) return null;
 
   return (
     <>
-      <style>{`
-        @media screen and (max-width: 768px) {
-          .dossier-modal-container {
-            align-items: flex-start !important;
-            padding-top: env(safe-area-inset-top, 16px) !important;
-          }
-          .dossier-modal-content {
-            max-height: calc(100vh - env(safe-area-inset-top, 16px) - 32px) !important;
-            margin-top: 0 !important;
-          }
-        }
-      `}</style>
-      <div className="fixed inset-0 z-[9999] flex items-start sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4 pt-safe-top sm:pt-4 dossier-modal-container">
-        <div className={`relative max-w-4xl w-full max-h-[90vh] sm:max-h-[90vh] overflow-hidden rounded-3xl bg-white shadow-2xl transform transition-all duration-700 ease-out dossier-modal-content ${
-          isOpen ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-full opacity-0 scale-95'
-        }`}>
-        {/* Заголовок с кнопкой закрытия */}
-        <div className="relative bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 p-6 text-white">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl"></div>
-          <div className="relative flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: 'SNS, sans-serif' }}>
-                Досье резервиста
-              </h2>
-              <p className="text-emerald-100 text-sm">
-                Подробная информация о кандидате
-              </p>
+      <style>{dossierStyles}</style>
+      <div className="dossier-modal fixed inset-0 z-[10002] flex flex-col bg-white" style={{ 
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        margin: 0,
+        padding: 0,
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingLeft: 'env(safe-area-inset-left, 0px)',
+        paddingRight: 'env(safe-area-inset-right, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        transform: 'translate3d(0, 0, 0)',
+        backfaceVisibility: 'hidden',
+        willChange: 'transform',
+        WebkitTransform: 'translate3d(0, 0, 0)',
+        WebkitBackfaceVisibility: 'hidden',
+        WebkitOverflowScrolling: 'touch'
+      }}>
+        {/* Шапка (sticky top) */}
+        <header className="sticky top-0 z-10 border-b border-gray-100 bg-white">
+          <div className="px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                <User className="w-5 h-5 text-emerald-700" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs text-gray-500">Досье резервиста</div>
+                <div className="text-base font-semibold truncate">{user.full_name}</div>
+              </div>
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-white/20 rounded-xl transition-colors duration-200"
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClose();
+              }}
+              className="p-2 rounded-lg hover:bg-gray-50 active:bg-gray-100 touch-manipulation"
+              aria-label="Закрыть"
+              style={{
+                minWidth: '44px',
+                minHeight: '44px',
+                zIndex: 1000,
+                position: 'relative',
+                WebkitTapHighlightColor: 'transparent',
+                WebkitTouchCallout: 'none',
+                WebkitUserSelect: 'none',
+                userSelect: 'none'
+              }}
             >
-              <X className="w-6 h-6" />
+              <X className="w-6 h-6 text-gray-700 pointer-events-none" />
             </button>
           </div>
-        </div>
+        </header>
 
-        {/* Основной контент */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)] sm:max-h-[calc(90vh-120px)]">
-          {loading ? (
-            // Скелетон загрузки
-            <div className="space-y-6">
-              <div className="flex gap-6">
-                <SkeletonAvatar />
-                <div className="flex-1 space-y-3">
-                  <SkeletonLine className="h-7 md:h-8 w-3/4" />
-                  <div className="flex flex-wrap gap-1">
-                    <SkeletonLine className="h-6 w-20" />
-                    <SkeletonLine className="h-6 w-24" />
-                    <SkeletonLine className="h-6 w-16" />
+        {/* Контент (скролл) */}
+        <main className="flex-1 overflow-y-auto px-4 pt-3 pb-32">
+          <div className="space-y-3">
+            {loading ? (
+              // Скелетон загрузки
+              <div className="space-y-3">
+                <div className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
+                  <div className="flex gap-4">
+                    <SkeletonAvatar />
+                    <div className="flex-1 space-y-2">
+                      <SkeletonLine className="h-4 w-32" />
+                      <SkeletonLine className="h-3 w-24" />
+                      <SkeletonLine className="h-3 w-20" />
+                    </div>
                   </div>
                 </div>
+                <div className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
+                  <SkeletonLine className="h-4 w-full" />
+                  <SkeletonLine className="h-3 w-3/4" />
+                </div>
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="space-y-3">
-                    <SkeletonLine className="h-6 w-1/3" />
-                    <SkeletonLine className="h-4 w-full" />
-                    <SkeletonLine className="h-4 w-3/4" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            // Основное содержимое
-            <div className="space-y-8">
-              {/* Основная информация */}
-              <div className="flex gap-6">
-                {/* Фото */}
-                <div className="relative shrink-0">
-                  <div className="w-32 h-40 md:w-44 md:h-52 rounded-2xl overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 shadow-lg border-4 border-white">
+            ) : (
+              <>
+                {/* Основная информация */}
+                <div className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
+                      <User className="w-6 h-6 text-emerald-700" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-gray-900 truncate">{user.full_name}</div>
+                      <div className="text-xs text-gray-500">{user.position?.name}</div>
+                      <div className="text-xs text-gray-400">{user.territory?.name}</div>
+                    </div>
                     {dossier?.photo_url && !imageError ? (
-                      <div className="relative w-full h-full">
-                        {imageLoading && (
-                          <div className="absolute inset-0 bg-gradient-to-br from-gray-200 via-gray-300 to-gray-200 animate-pulse" />
-                        )}
+                      <div className="w-12 h-12 rounded-xl overflow-hidden">
                         <img
                           src={dossier.photo_url}
-                          alt={user?.full_name || 'Фото'}
-                          loading="lazy"
-                          className={`w-full h-full object-cover transition-opacity duration-300 ${
-                            imageLoading ? 'opacity-0' : 'opacity-100'
-                          }`}
+                          alt={user.full_name}
+                          className="w-full h-full object-cover"
                           onLoad={() => setImageLoading(false)}
                           onError={() => {
                             setImageError(true);
@@ -259,192 +273,103 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                         />
                       </div>
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-100 to-teal-100">
-                        {getInitials(user?.full_name) ? (
-                          <span 
-                            className="text-4xl font-bold text-emerald-600" 
-                            style={{ fontFamily: 'SNS, sans-serif' }}
-                          >
-                            {getInitials(user?.full_name)}
-                          </span>
-                        ) : (
-                          <User className="w-12 h-12 text-emerald-600" />
-                        )}
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center">
+                        <span className="text-sm font-bold text-white">
+                          {getInitials(user.full_name)}
+                        </span>
                       </div>
                     )}
                   </div>
-                  
                 </div>
 
-                {/* Основная информация */}
-                <div className="flex-1 min-w-0">
-                  <div className="mb-3">
-                    <h3 
-                      className="text-xl md:text-3xl font-bold text-gray-900 mb-2 leading-tight uppercase" 
-                      style={{ 
-                        fontFamily: 'SNS, sans-serif',
-                        color: '#06A478'
-                      }}
-                    >
-                      {contentVisible ? (
-                        <span className="inline-block">
-                          {typewriterText}
-                          {typewriterText.length < (user?.full_name?.toUpperCase() || 'НЕ УКАЗАНО').length && (
-                            <span className="animate-pulse ml-1 text-emerald-500">|</span>
-                          )}
-                        </span>
-                      ) : (
-                        <span className="opacity-0">...</span>
-                      )}
-                    </h3>
-                    <div className="flex flex-wrap gap-1 md:gap-2 mb-2">
-                      {/* Должность */}
-                      <span className={`inline-flex items-center px-2 py-1 md:px-3 rounded-full text-xs md:text-sm font-medium bg-emerald-100 text-emerald-800 transition-all duration-300 ${
-                        currentSection >= 2 ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-4'
-                      }`}>
-                        <Briefcase className="w-3 h-3 md:w-4 md:h-4 mr-1" />
-                        {dossier?.position || user?.position?.name || 'Не указана'}
-                      </span>
-                      
-                      {/* Территория */}
-                      <span className={`inline-flex items-center px-2 py-1 md:px-3 rounded-full text-xs md:text-sm font-medium bg-blue-100 text-blue-800 transition-all duration-300 delay-100 ${
-                        currentSection >= 3 ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-4'
-                      }`}>
-                        <MapPin className="w-3 h-3 md:w-4 md:h-4 mr-1" />
-                        {dossier?.territory || user?.territory?.name || 'Не указан'}
-                      </span>
-                      
-                      {/* Возраст */}
-                      {dossier?.age && (
-                        <span className={`inline-flex items-center px-2 py-1 md:px-3 rounded-full text-xs md:text-sm font-medium bg-purple-100 text-purple-800 transition-all duration-300 delay-200 ${
-                          currentSection >= 4 ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-4'
-                        }`}>
-                          <Calendar className="w-3 h-3 md:w-4 md:h-4 mr-1" />
-                          {dossier.age} лет
-                        </span>
-                      )}
-                    </div>
+                {/* Контактная информация */}
+                <div className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Mail className="w-4 h-4 text-gray-500" />
+                    <div className="text-sm font-medium text-gray-900">Контактная информация</div>
                   </div>
-
+                  <div className="space-y-1">
+                    <div className="text-xs text-gray-600">{user.email}</div>
+                    {dossier?.phone && (
+                      <div className="text-xs text-gray-600">{dossier.phone}</div>
+                    )}
+                    {dossier?.location && (
+                      <div className="text-xs text-gray-600">{dossier.location}</div>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              {/* Подробная информация */}
-              <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 transition-all duration-400 delay-700 ${
-                currentSection >= 4 ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-8'
-              }`}>
                 {/* Опыт работы */}
-                <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-6 border border-emerald-100">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center">
-                      <Clock className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900">Опыт работы</h4>
-                      <p className="text-sm text-gray-600">Стаж в текущей должности</p>
-                    </div>
+                <div className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Briefcase className="w-4 h-4 text-gray-500" />
+                    <div className="text-sm font-medium text-gray-900">Опыт работы</div>
                   </div>
-                  <div className="text-lg font-semibold text-emerald-700">
+                  <div className="text-sm text-gray-600">
                     {formatExperience(user?.work_experience_days, dossier?.experience_in_position)}
                   </div>
                 </div>
 
                 {/* Образование */}
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
-                      <GraduationCap className="w-5 h-5 text-white" />
+                {dossier?.education && (
+                  <div className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
+                    <div className="flex items-center gap-2 mb-2">
+                      <GraduationCap className="w-4 h-4 text-gray-500" />
+                      <div className="text-sm font-medium text-gray-900">Образование</div>
                     </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900">Образование</h4>
-                      <p className="text-sm text-gray-600">Уровень и специальность</p>
-                    </div>
+                    <div className="text-sm text-gray-600">{dossier.education}</div>
                   </div>
-                  <div className="space-y-2">
-                    <div className="text-sm font-semibold text-blue-700">
-                      {dossier?.education?.level || 'Не указано'}
-                    </div>
-                    {dossier?.education?.institution && (
-                      <div className="text-sm text-gray-600">
-                        {dossier.education.institution}
-                      </div>
-                    )}
-                    {dossier?.education?.specialty && (
-                      <div className="text-sm text-gray-600">
-                        Специальность: {dossier.education.specialty}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+                )}
 
-              {/* Карьерный путь */}
-              {dossier?.career_path && (
-                <div className={`bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6 border border-purple-100 transition-all duration-400 delay-1000 ${
-                  currentSection >= 4 ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-8'
-                }`}>
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center">
-                      <Briefcase className="w-5 h-5 text-white" />
+                {/* Достижения */}
+                {dossier?.achievements && (
+                  <div className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Award className="w-4 h-4 text-gray-500" />
+                      <div className="text-sm font-medium text-gray-900">Достижения</div>
                     </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900">Карьерный путь</h4>
-                      <p className="text-sm text-gray-600">История развития</p>
-                    </div>
+                    <div className="text-sm text-gray-600">{dossier.achievements}</div>
                   </div>
-                  <div className="text-sm text-gray-700 leading-relaxed">
-                    {dossier.career_path}
-                  </div>
-                </div>
-              )}
+                )}
 
-              {/* Достижения */}
-              {dossier?.achievements && dossier.achievements.length > 0 && (
-                <div className={`bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 border border-amber-100 transition-all duration-400 delay-1400 ${
-                  currentSection >= 4 ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-8'
-                }`}>
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center">
-                      <Award className="w-5 h-5 text-white" />
+                {/* Навыки */}
+                {dossier?.skills && (
+                  <div className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Building className="w-4 h-4 text-gray-500" />
+                      <div className="text-sm font-medium text-gray-900">Навыки</div>
                     </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900">Достижения</h4>
-                      <p className="text-sm text-gray-600">Награды и успехи</p>
-                    </div>
+                    <div className="text-sm text-gray-600">{dossier.skills}</div>
                   </div>
-                  <div className="space-y-3">
-                    {dossier.achievements.map((achievement, index) => (
-                      <div key={index} className="flex items-start gap-3">
-                        <div className="w-2 h-2 bg-amber-400 rounded-full mt-2 shrink-0"></div>
-                        <div className="text-sm text-gray-700 leading-relaxed">
-                          {achievement}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+                )}
 
-        {/* Футер */}
-        <div className="border-t border-gray-100 p-4 bg-gray-50">
-          <div className="flex justify-between items-center text-sm text-gray-500">
-            <div>
-              {dossier?.created_at && (
-                <span>
-                  Создано: {new Date(dossier.created_at).toLocaleDateString('ru-RU')}
-                </span>
-              )}
-            </div>
-            <div>
-              Система управления резервом кадров
-            </div>
+                {/* Дополнительная информация */}
+                {dossier?.additional_info && (
+                  <div className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Clock className="w-4 h-4 text-gray-500" />
+                      <div className="text-sm font-medium text-gray-900">Дополнительная информация</div>
+                    </div>
+                    <div className="text-sm text-gray-600">{dossier.additional_info}</div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
-        </div>
+        </main>
+
+        {/* Футер (sticky bottom) */}
+        <footer className="sticky bottom-0 z-10 border-t border-gray-100 bg-white px-4 py-3 pb-safe-bottom">
+          <div className="flex gap-2">
+            <button
+              onClick={onClose}
+              className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+            >
+              ← Назад
+            </button>
+          </div>
+        </footer>
       </div>
-    </div>
     </>
   );
 };
