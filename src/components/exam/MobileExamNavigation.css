@@ -60,7 +60,9 @@
 
 /* Поддержка safe-area для устройств с вырезами */
 @supports (padding: max(0px)) {
-  /* .mobile-exam-nav { margin-bottom: max(16px, env(safe-area-inset-bottom, 16px)) !important; } */
+  .mobile-exam-nav {
+    margin-bottom: max(8px, env(safe-area-inset-bottom, 8px)) !important;
+  }
 }
 
 /* Устанавливаем высоту без внешних отступов */
@@ -74,6 +76,20 @@
 @media screen and (max-width: 768px) {
   .mobile-exam-nav {
     height: 64px; /* Фиксированная высота меню */
+  }
+}
+
+/* Специальные стили для iPhone с системными кнопками */
+@supports (-webkit-touch-callout: none) {
+  .mobile-exam-nav {
+    margin-bottom: max(20px, env(safe-area-inset-bottom, 20px)) !important;
+  }
+}
+
+/* Дополнительный отступ для устройств с низким разрешением */
+@media screen and (max-height: 667px) {
+  .mobile-exam-nav {
+    margin-bottom: max(24px, env(safe-area-inset-bottom, 24px)) !important;
   }
 }
 

@@ -44,7 +44,7 @@ const navigationItems: NavItem[] = [
     icon: <FileText />, 
     href: '/testing', 
     description: 'Прохождение тестов',
-    roles: ['employee', 'supervisor', 'trainer', 'expert', 'moderator', 'administrator'] 
+    roles: ['employee', 'supervisor', 'trainer', 'moderator', 'administrator'] 
   },
   { 
     id: 'employees', 
@@ -80,7 +80,7 @@ const navigationItems: NavItem[] = [
     icon: <Star />, 
     href: '/expert-events', 
     description: 'Специальные события',
-    roles: ['expert', 'trainer', 'moderator', 'administrator'],
+    roles: ['trainer', 'moderator', 'administrator'],
     disabled: true,
     disabledReason: 'В разработке'
   },

@@ -247,6 +247,19 @@ export function DashboardView() {
   }
 
   const getMotivationalMessage = () => {
+    // Специальные сообщения для экспертов
+    if (userProfile?.role === 'expert') {
+      const expertMessages = [
+        'Спасибо за ваш вклад в развитие команды!',
+        'Ваша экспертная оценка помогает расти другим',
+        'Благодарим за участие в наставничестве',
+        'Ваш опыт ценен для всей команды',
+        'Спасибо за вашу экспертную поддержку'
+      ];
+      return expertMessages[Math.floor(Math.random() * expertMessages.length)];
+    }
+    
+    // Обычные сообщения для остальных ролей
     const messages = [
       'Готовы к новым знаниям?',
       'Продолжайте развиваться!',
@@ -470,11 +483,21 @@ export function DashboardView() {
 
       {/* Stats Grid */}
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6">
-        <StatsCard
-          title="Активные мероприятия"
-          value={stats.activeEvents}
-          icon={<BookOpen size={22} />}
-        />
+        {/* Для экспертов не показываем карточки статистики */}
+        {userProfile?.role !== 'expert' && (
+          <>
+            <StatsCard
+              title="Активные мероприятия"
+              value={stats.activeEvents}
+              icon={<BookOpen size={22} />}
+            />
+            <StatsCard
+              title="Завершенные курсы"
+              value={stats.completedCourses}
+              icon={<Award size={22} />}
+            />
+          </>
+        )}
         {userProfile?.role && ['administrator', 'moderator', 'trainer'].includes(userProfile.role) && (
           <StatsCard
             title="Участники"
@@ -482,11 +505,6 @@ export function DashboardView() {
             icon={<Users size={22} />}
           />
         )}
-        <StatsCard
-          title="Завершенные курсы"
-          value={stats.completedCourses}
-          icon={<Award size={22} />}
-        />
         {userProfile?.role && ['administrator', 'moderator', 'trainer'].includes(userProfile.role) && (
           <StatsCard
             title="Средняя оценка"

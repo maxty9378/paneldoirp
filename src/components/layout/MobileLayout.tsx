@@ -73,8 +73,8 @@ const MobileLayout: React.FC = () => {
         minHeight: 0,
         overflowY: 'auto',
         WebkitOverflowScrolling: 'touch',
-        // 64 (высота меню) + 16 (верхний паддинг футера) + 16 (нижний паддинг футера) + safe-area
-        paddingBottom: 'calc(64px + 16px + 16px + env(safe-area-inset-bottom, 0px))'
+        // 64 (высота меню) + 16 (верхний паддинг футера) + 16 (нижний паддинг футера) + safe-area + дополнительный отступ для iPhone
+        paddingBottom: 'calc(64px + 16px + 16px + max(env(safe-area-inset-bottom, 0px), 20px))'
       }}>
         {/* React Router будет рендерить здесь нужную страницу (ExpertExamPage и т.д.) */}
         <Outlet context={{ setIsNavHidden }} />
@@ -89,7 +89,7 @@ const MobileLayout: React.FC = () => {
           backgroundColor: '#f8fafc',
           height: '64px',
           padding: '8px 0',
-          paddingBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))'
+          paddingBottom: 'calc(8px + max(env(safe-area-inset-bottom, 0px), 20px))'
         }}>
           <MobileExamNavigation
             activeTab={activeTab}
