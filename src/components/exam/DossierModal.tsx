@@ -100,6 +100,10 @@ export const DossierModal: React.FC<DossierModalProps> = ({
       document.body.style.right = '0';
       document.body.style.width = '100%';
       document.body.style.overflow = 'hidden';
+      
+      // Уведомляем Layout о том, что модальное окно открыто
+      window.dispatchEvent(new CustomEvent('dossierModalOpen', { detail: { isOpen: true } }));
+      
       return () => {
         // Восстанавливаем прокрутку при закрытии
         document.body.classList.remove('modal-open');
@@ -110,6 +114,9 @@ export const DossierModal: React.FC<DossierModalProps> = ({
         document.body.style.width = '';
         document.body.style.overflow = '';
         window.scrollTo(0, y);
+        
+        // Уведомляем Layout о том, что модальное окно закрыто
+        window.dispatchEvent(new CustomEvent('dossierModalOpen', { detail: { isOpen: false } }));
       };
     }
   }, [isOpen]);
@@ -371,7 +378,7 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                         <p className="text-sm text-gray-600">Профессиональные успехи</p>
                       </div>
                     </div>
-                    <div className="text-sm text-gray-700">{dossier.achievements}</div>
+                    <div className="text-sm text-gray-700 whitespace-pre-line">{dossier.achievements}</div>
                   </div>
                 )}
 

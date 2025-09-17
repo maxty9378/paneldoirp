@@ -25,6 +25,7 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [examTabTitle, setExamTabTitle] = useState('Экзамен');
+  const [isDossierModalOpen, setIsDossierModalOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -55,6 +56,19 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
     };
   }, []);
 
+  // Слушаем открытие/закрытие модального окна досье
+  useEffect(() => {
+    const handleDossierModalChange = (event: CustomEvent) => {
+      setIsDossierModalOpen(event.detail.isOpen);
+    };
+
+    window.addEventListener('dossierModalOpen', handleDossierModalChange as EventListener);
+    
+    return () => {
+      window.removeEventListener('dossierModalOpen', handleDossierModalChange as EventListener);
+    };
+  }, []);
+
   // Управление скроллом body при открытии мобильного меню
   useEffect(() => {
     if (isMobileMenuOpen) {
@@ -77,6 +91,9 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
   
   // Проверяем, находимся ли мы на странице экзамена
   const isExamPage = location.pathname.includes('/expert-exam/') || location.pathname.includes('/case-evaluation/');
+  
+  // Если открыто модальное окно досье, скрываем меню
+  const shouldHideMenu = isExamPage || isDossierModalOpen;
 
   // Теперь Sidebar будет использовать navigate для перехода по роутам
   const handleMenuItemClick = (itemId: string) => {
@@ -162,8 +179,8 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
     );
   }
 
-  // Если это страница экзамена, показываем только мобильное меню без основной шапки
-  if (isExamPage) {
+  // Если это страница экзамена или открыто модальное окно досье, показываем только мобильное меню без основной шапки
+  if (shouldHideMenu) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
         {/* Мобильное меню (бутерброд) - только на мобильных */}
