@@ -15,6 +15,7 @@ interface DossierData {
     specialty?: string;
     institution?: string;
   };
+  career_path?: string;
   achievements?: string | string[];
   skills?: string | string[];
   additional_info?: string;
@@ -127,6 +128,7 @@ export const DossierModal: React.FC<DossierModalProps> = ({
           specialty: '',
           institution: ''
         },
+        career_path: '',
         achievements: '',
         skills: '',
         additional_info: ''
@@ -141,10 +143,10 @@ export const DossierModal: React.FC<DossierModalProps> = ({
     setIsSaving(true);
     try {
       const { error } = await supabase
-        .from('reservist_dossiers')
+        .from('participant_dossiers')
         .upsert({
           ...editingData,
-          exam_event_id: editingData.event_id || editingData.exam_event_id,
+          event_id: editingData.event_id || editingData.exam_event_id,
           updated_at: new Date().toISOString()
         });
 
@@ -186,6 +188,7 @@ export const DossierModal: React.FC<DossierModalProps> = ({
           specialty: '',
           institution: ''
         },
+        career_path: '',
         achievements: '',
         skills: '',
         additional_info: ''
@@ -518,7 +521,7 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                       <p className="text-sm text-gray-600">Стаж в текущей должности</p>
                     </div>
                   </div>
-                  <div className="text-lg font-semibold text-emerald-700">
+                  <div className="text-sm text-gray-700">
                     {formatExperience(user?.work_experience_days, dossier?.experience_in_position)}
                   </div>
                 </div>
@@ -569,11 +572,55 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                         />
                       </div>
                     ) : (
-                      <div className="text-sm text-gray-700">
-                        {typeof dossier?.education === 'string' 
-                          ? dossier.education 
-                          : `${dossier?.education?.level || ''} ${dossier?.education?.specialty || ''} ${dossier?.education?.institution || ''}`.trim()
-                        }
+                      <div className="space-y-2">
+                        {typeof dossier?.education === 'string' ? (
+                          <div className="text-sm text-gray-700">{dossier.education}</div>
+                        ) : (
+                          <>
+                            {dossier?.education?.level && (
+                              <div className="text-sm text-gray-700">
+                                <span className="font-medium">Уровень:</span> {dossier.education.level}
+                              </div>
+                            )}
+                            {dossier?.education?.specialty && (
+                              <div className="text-sm text-gray-700">
+                                <span className="font-medium">Специальность:</span> {dossier.education.specialty}
+                              </div>
+                            )}
+                            {dossier?.education?.institution && (
+                              <div className="text-sm text-gray-700">
+                                <span className="font-medium">Учебное заведение:</span> {dossier.education.institution}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Карьерный путь в ГК СНС */}
+                {(dossier?.career_path || isEditing) && (
+                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6 border border-purple-100">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center">
+                        <Briefcase className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-gray-900">Путь в ГК СНС</h4>
+                        <p className="text-sm text-gray-600">Карьерный рост в компании</p>
+                      </div>
+                    </div>
+                    {isEditing ? (
+                      <textarea
+                        value={editingData?.career_path || ''}
+                        onChange={(e) => setEditingData(prev => prev ? { ...prev, career_path: e.target.value } : null)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm h-24 resize-none"
+                        placeholder="Опишите карьерный путь в ГК СНС"
+                      />
+                    ) : (
+                      <div className="text-sm text-gray-700 whitespace-pre-line">
+                        {dossier?.career_path || 'Карьерный путь не указан'}
                       </div>
                     )}
                   </div>

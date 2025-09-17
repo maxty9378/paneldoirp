@@ -265,10 +265,10 @@ const ExpertExamPage: React.FC = () => {
         (participantsData || []).map(async (participant) => {
           try {
             const { data: dossierData, error: dossierError } = await supabase
-              .from('reservist_dossiers')
+              .from('participant_dossiers')
               .select('*')
               .eq('user_id', participant.user_id)
-              .eq('exam_event_id', id)
+              .eq('event_id', id)
               .single();
 
             if (dossierError && dossierError.code !== 'PGRST116') {
