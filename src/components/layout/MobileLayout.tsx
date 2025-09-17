@@ -3,6 +3,13 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import MobileExamNavigation from '../exam/MobileExamNavigation';
 import { useAuth } from '../../hooks/useAuth';
 
+// Тип для события состояния модального окна
+interface ModalStateChangeEvent extends CustomEvent {
+  detail: {
+    isOpen: boolean;
+  };
+}
+
 // Определяем, какая вкладка активна, на основе текущего URL
 const getActiveTabFromPathname = (pathname: string) => {
   if (pathname.includes('/schedule')) return 'schedule';
@@ -15,6 +22,7 @@ const MobileLayout: React.FC = () => {
   // Состояние для скрытия меню (например, при открытии модалок)
   const [isNavHidden, setIsNavHidden] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -27,6 +35,19 @@ const MobileLayout: React.FC = () => {
                                    (location.pathname.includes('/expert-exam/') && 
                                     (location.pathname.includes('/evaluations') || 
                                      location.pathname.includes('/dossiers')));
+
+  // Слушаем события о состоянии модальных окон
+  useEffect(() => {
+    const handleModalStateChange = (event: ModalStateChangeEvent) => {
+      setIsModalOpen(event.detail.isOpen);
+    };
+
+    window.addEventListener('modalStateChange', handleModalStateChange as EventListener);
+    
+    return () => {
+      window.removeEventListener('modalStateChange', handleModalStateChange as EventListener);
+    };
+  }, []);
 
   // Определяем, мобильное ли устройство
   useEffect(() => {
@@ -43,7 +64,7 @@ const MobileLayout: React.FC = () => {
 
   // Управляем overflow body для App Shell архитектуры
   useEffect(() => {
-    if (isMobile) {
+    if (isMobile && !isModalOpen) {
       document.body.style.overflow = 'hidden';
       document.body.style.overscrollBehaviorY = 'none';
     } else {
@@ -56,7 +77,7 @@ const MobileLayout: React.FC = () => {
       document.body.style.overflow = '';
       document.body.style.overscrollBehaviorY = '';
     };
-  }, [isMobile]);
+  }, [isMobile, isModalOpen]);
 
   // Функция для изменения вкладки через URL
   const handleTabChange = (tab: 'participants' | 'schedule' | 'evaluations' | 'results') => {
@@ -97,7 +118,7 @@ const MobileLayout: React.FC = () => {
       </main>
 
       {/* 2. ОБЛАСТЬ НАВИГАЦИИ (ФИКСИРОВАНА) - только на мобильных и не на страницах оценки/досье */}
-      {isMobile && !isEvaluationOrDossierPage && (
+      {isMobile && !isEvaluationOrDossierPage && !isModalOpen && (
         <footer
           style={{
             // ДЕЛАЕМ ФИКСИРОВАННЫМ, чтобы быть НАД браузерным UI
@@ -105,7 +126,7 @@ const MobileLayout: React.FC = () => {
             left: 0,
             right: 0,
             bottom: 0,                   // ключ
-            zIndex: 9999,               // поверх всего
+            zIndex: 1000,               // ниже модальных окон
             backgroundColor: 'transparent',
             // геометрия футера
             height: '64px',
