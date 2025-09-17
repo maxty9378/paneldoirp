@@ -117,11 +117,11 @@ const MobileLayout: React.FC = () => {
         minHeight: 0,
         overflowY: 'auto',
         WebkitOverflowScrolling: 'touch',
-        // 64 (высота меню) + 16 (верхний паддинг футера) + 16 (нижний паддинг футера) + safe-area
+        // 64 (высота меню) + 16 (верхний паддинг футера) + 16 (нижний паддинг футера) + 16 (отступ от низа) + safe-area
         // Если на странице оценки/досье, убираем отступ для нижнего меню
         paddingBottom: isEvaluationOrDossierPage 
           ? 'calc(16px + env(safe-area-inset-bottom, 0px))'
-          : 'calc(64px + 16px + 16px + env(safe-area-inset-bottom, 0px))'
+          : 'calc(64px + 16px + 16px + 16px + env(safe-area-inset-bottom, 0px))'
       }}>
         {/* React Router будет рендерить здесь нужную страницу (ExpertExamPage и т.д.) */}
         <Outlet context={{ setIsNavHidden }} />
@@ -135,13 +135,13 @@ const MobileLayout: React.FC = () => {
             position: 'fixed',
             left: 0,
             right: 0,
-            bottom: 8,                   // поднимаем меню на 8px выше
+            bottom: 16,                  // поднимаем меню еще выше на 16px
             zIndex: 1000,               // ниже модальных окон
             backgroundColor: 'transparent',
             // геометрия футера
             height: '64px',
             paddingTop: 8,
-            paddingBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))'
+            paddingBottom: 8  // убираем safe-area, делаем зону прозрачной
           }}
         >
           <MobileExamNavigation
