@@ -194,6 +194,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
     try {
       // Сначала проверяем, есть ли данные в existingEvaluation (переданные извне)
       if (existingEvaluation) {
+        console.log('🔄 Загружаем данные из existingEvaluation:', existingEvaluation);
         // Используем данные из props (старая структура)
         setEvaluation({
           id: existingEvaluation.id,
@@ -211,6 +212,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
         setSaved(true);
         setHasExistingEvaluation(true);
         setLoading(false);
+        console.log('✅ Данные установлены из existingEvaluation');
         return;
       }
 
@@ -273,6 +275,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
         });
         setSaved(true);
         setHasExistingEvaluation(true);
+        console.log('✅ Данные установлены из базы данных');
       } else {
         console.warn('⚠️ 0 строк: либо их реально нет, либо RLS не пустил, либо фильтры не совпали');
         // Нет существующей оценки - создаем новую
@@ -285,6 +288,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
         });
         setSaved(false);
         setHasExistingEvaluation(false);
+        console.log('ℹ️ Создана новая оценка');
       }
     } catch (error) {
       console.error('❌ Ошибка загрузки существующей оценки:', error);
@@ -301,6 +305,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
       setHasExistingEvaluation(false);
     } finally {
       setLoading(false);
+      console.log('🏁 Загрузка данных завершена');
     }
   };
 
