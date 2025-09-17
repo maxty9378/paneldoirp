@@ -34,7 +34,7 @@
 }
 
 /* Анимация для активной кнопки */
-.mobile-exam-nav button[style*="background: #06A478"] {
+.mobile-exam-nav button[data-active="true"] {
   box-shadow: 0 4px 12px rgba(6, 164, 120, 0.3);
 }
 

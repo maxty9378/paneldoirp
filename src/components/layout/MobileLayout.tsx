@@ -40,6 +40,7 @@ const MobileLayout: React.FC = () => {
         flex: '1 1 0%', // Занимает всё доступное пространство
         overflowY: 'auto', // Включаем скролл ТОЛЬКО для этой области
         WebkitOverflowScrolling: 'touch', // Плавный скролл на iOS
+        paddingBottom: 'calc(64px + env(safe-area-inset-bottom, 0px))' // Отступ под меню
       }}>
         {/* React Router будет рендерить здесь нужную страницу (ExpertExamPage и т.д.) */}
         <Outlet context={{ setIsNavHidden }} />

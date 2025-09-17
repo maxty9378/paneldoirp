@@ -113,6 +113,7 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
             return (
               <button
                 key={item.id}
+                data-active={isActive}
                 onClick={() => onTabChange(item.id)}
                 onMouseEnter={(e) => {
                   if (!isActive) {

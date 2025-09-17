@@ -132,6 +132,11 @@ const ExpertExamPage: React.FC = () => {
     setIsNavHidden(anyModalOpen);
   }, [showEvaluationModal, showProjectDefenseModal, showDiagnosticGameModal, selectedParticipantId, setIsNavHidden]);
 
+  // Сброс скрытия меню на размонтировании
+  useEffect(() => {
+    return () => setIsNavHidden(false);
+  }, [setIsNavHidden]);
+
   
   const [bannerSettings, setBannerSettings] = useState({
     position: 'center bottom',
@@ -516,7 +521,7 @@ const ExpertExamPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
-      <div className="container mx-auto px-0 md:px-4 pt-4 pb-8 md:pb-8 pb-20">
+      <div className="container mx-auto px-0 md:px-4 pt-4 pb-8 md:pb-8">
 
         {/* Шапка мероприятия в стиле очного тренинга */}
         <div className="w-full rounded-2xl shadow-lg overflow-hidden relative mb-4 sm:mb-6 font-mabry hidden md:block">
@@ -770,7 +775,7 @@ const ExpertExamPage: React.FC = () => {
             </nav>
           </div>
 
-          <div className="p-3 pb-20 md:pb-6">
+          <div className="p-3 md:pb-6">
             {/* Содержимое вкладки "Резервисты" */}
             {activeTab === 'participants' && (
               <div className="space-y-6">
@@ -962,7 +967,7 @@ const ExpertExamPage: React.FC = () => {
 
         {/* Мобильный контент */}
         <div className="md:hidden bg-white rounded-2xl shadow-lg border border-gray-200 mb-8">
-          <div className="p-3 pb-20">
+          <div className="p-3">
             {/* Содержимое вкладки "Резервисты" */}
             {activeTab === 'participants' && (
               <div className="space-y-6">
