@@ -405,7 +405,7 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
       {/* Фуллскрин слой */}
       <div className="fixed inset-0 z-[10002] flex flex-col bg-white">
         {/* Шапка (sticky top) */}
-        <header className="sticky top-0 z-10 border-b border-gray-100 bg-white">
+        <header className="sticky top-0 z-10 border-b border-gray-100 bg-white pt-safe-top">
           <div className="px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
@@ -503,7 +503,7 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
         </main>
 
         {/* Футер (sticky bottom) */}
-        <footer className="sticky bottom-0 z-10 border-t border-gray-100 bg-white px-4 py-3">
+        <footer className="sticky bottom-0 z-10 border-t border-gray-100 bg-white px-4 py-3 pb-safe-bottom">
           <div className="flex gap-2">
             <button
               onClick={onClose}
