@@ -325,7 +325,7 @@ const ExpertExamPage: React.FC = () => {
   // Функция для поиска существующей оценки диагностической игры
   const getExistingDiagnosticGameEvaluation = (participantId: string) => {
     return diagnosticGameEvaluations.find(
-      eval => eval.reservist_id === participantId && eval.evaluator_id === user?.id
+      evaluation => evaluation.reservist_id === participantId && evaluation.evaluator_id === user?.id
     );
   };
 
