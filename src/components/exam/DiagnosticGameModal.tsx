@@ -58,13 +58,19 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showCriteriaModal, setShowCriteriaModal] = useState(false);
   const [selectedCompetency, setSelectedCompetency] = useState<any>(null);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   // Загрузка данных при открытии модала
   useEffect(() => {
     if (isOpen && participantId && examId && user?.id) {
-      loadExistingEvaluation();
+      if (!dataLoaded) {
+        loadExistingEvaluation();
+      }
+    } else if (!isOpen) {
+      // Сбрасываем состояние при закрытии модального окна
+      setDataLoaded(false);
     }
-  }, [isOpen, participantId, examId, user?.id]);
+  }, [isOpen, participantId, examId, user?.id, dataLoaded]);
 
   // Блокировка прокрутки фона при открытом модальном окне
   useEffect(() => {
@@ -111,6 +117,8 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
     
     setLoading(true);
     try {
+      console.log('🔄 Загружаем данные диагностической игры для:', { examId, participantId, userId: user.id });
+      
       const { data, error } = await supabase
         .from('diagnostic_game_evaluations')
         .select('*')
@@ -121,11 +129,25 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
 
       if (error && error.code !== 'PGRST116') {
         console.error('Ошибка загрузки существующей оценки:', error);
+        // Создаем новую оценку при ошибке
+        setEvaluation({
+          exam_event_id: examId,
+          reservist_id: participantId,
+          evaluator_id: user.id,
+          competency_scores: {
+            results_orientation: 0,
+            effective_communication: 0,
+            teamwork_skills: 0,
+            systemic_thinking: 0,
+          }
+        });
+        setSaved(false);
+        setDataLoaded(true);
         return;
       }
 
       if (data) {
-        console.log('🔄 Загружена существующая оценка диагностической игры:', data);
+        console.log('✅ Загружена существующая оценка диагностической игры:', data);
         setEvaluation({
           id: data.id,
           exam_event_id: data.exam_event_id,
@@ -135,6 +157,7 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
         });
         setSaved(true);
       } else {
+        console.log('📝 Создаем новую оценку диагностической игры');
         // Нет существующей оценки - создаем новую
         setEvaluation({
           exam_event_id: examId,
@@ -149,8 +172,23 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
         });
         setSaved(false);
       }
+      setDataLoaded(true);
     } catch (error) {
-      console.error('Ошибка загрузки существующей оценки:', error);
+      console.error('❌ Ошибка загрузки существующей оценки:', error);
+      // Создаем новую оценку при ошибке
+      setEvaluation({
+        exam_event_id: examId,
+        reservist_id: participantId,
+        evaluator_id: user.id,
+        competency_scores: {
+          results_orientation: 0,
+          effective_communication: 0,
+          teamwork_skills: 0,
+          systemic_thinking: 0,
+        }
+      });
+      setSaved(false);
+      setDataLoaded(true);
     } finally {
       setLoading(false);
     }
@@ -362,6 +400,37 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
       padding: 0 !important;
       overflow: hidden !important;
     }
+    
+    /* Специальные стили для iPhone */
+    @media screen and (max-width: 768px) {
+      .case-evaluation-modal {
+        -webkit-overflow-scrolling: touch !important;
+        -webkit-transform: translate3d(0, 0, 0) !important;
+        transform: translate3d(0, 0, 0) !important;
+      }
+      
+      .case-evaluation-modal header {
+        -webkit-transform: translateZ(0) !important;
+        transform: translateZ(0) !important;
+        will-change: transform !important;
+      }
+      
+      .case-evaluation-modal button {
+        -webkit-tap-highlight-color: transparent !important;
+        -webkit-touch-callout: none !important;
+        -webkit-user-select: none !important;
+        user-select: none !important;
+        touch-action: manipulation !important;
+      }
+      
+      /* Убираем возможные конфликты с safe area */
+      .case-evaluation-modal {
+        padding-top: env(safe-area-inset-top, 0px) !important;
+        padding-left: env(safe-area-inset-left, 0px) !important;
+        padding-right: env(safe-area-inset-right, 0px) !important;
+        padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+      }
+    }
   `;
 
   // Компонент слайдера (как в CaseEvaluationModal)
@@ -523,9 +592,10 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
         {/* Контент (скролл) */}
         <main className="flex-1 overflow-y-auto px-4 pt-3 pb-24">
           <div className="space-y-3">
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
+          {loading || !dataLoaded ? (
+            <div className="flex flex-col items-center justify-center py-8 space-y-4">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+              <p className="text-sm text-gray-600">Загружаем данные диагностической игры...</p>
             </div>
           ) : (
             <>
