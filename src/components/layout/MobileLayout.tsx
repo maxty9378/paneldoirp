@@ -52,11 +52,12 @@ const MobileLayout: React.FC = () => {
       
       {/* 1. ОБЛАСТЬ КОНТЕНТА (СКРОЛЛИТСЯ) */}
       <main style={{
-        flex: '1 1 0%',       // важно
-        minHeight: 0,         // КЛЮЧ к рабочему скроллу во flex-контейнере
+        flex: '1 1 0%',
+        minHeight: 0,
         overflowY: 'auto',
         WebkitOverflowScrolling: 'touch',
-        paddingBottom: 'var(--footer-space, 80px)' // отступ под меню
+        // 64 (высота меню) + 16 (верхний паддинг футера) + 16 (нижний паддинг футера) + safe-area
+        paddingBottom: 'calc(64px + 16px + 16px + env(safe-area-inset-bottom, 0px))'
       }}>
         {/* React Router будет рендерить здесь нужную страницу (ExpertExamPage и т.д.) */}
         <Outlet context={{ setIsNavHidden }} />
@@ -69,13 +70,10 @@ const MobileLayout: React.FC = () => {
           position: 'relative',
           width: '100%',
           backgroundColor: '#f8fafc',
-          // задаём реальную высоту футера и пробрасываем её наверх
           height: '64px',
           padding: '8px 0',
-          paddingBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))',
-          // 64 + 8 + 8 = 80
-          ['--footer-space' as any]: '80px'
-        } as React.CSSProperties}>
+          paddingBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))'
+        }}>
           <MobileExamNavigation
             activeTab={activeTab}
             onTabChange={handleTabChange}
