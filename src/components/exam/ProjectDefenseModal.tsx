@@ -3,6 +3,7 @@ import { X, Target, CheckCircle, Presentation, FileText, Save } from 'lucide-rea
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { EvaluationSuccessModal } from './EvaluationSuccessModal';
+import { ChangeEvaluationConfirmModal } from './ChangeEvaluationConfirmModal';
 
 interface ProjectDefenseModalProps {
   isOpen: boolean;
@@ -56,6 +57,8 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showChangeConfirmModal, setShowChangeConfirmModal] = useState(false);
+  const [hasExistingEvaluation, setHasExistingEvaluation] = useState(false);
   const [assignedPresentationNumber, setAssignedPresentationNumber] = useState<number | null>(null);
 
   // Загрузка данных при открытии модала
@@ -134,6 +137,7 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
           criteria_scores: data.criteria_scores
         });
         setSaved(true);
+        setHasExistingEvaluation(true);
       } else {
         // Нет существующей оценки - создаем новую
         const defaultPresentationNumber = assignedPresentationNumber ?? 1;
@@ -149,6 +153,7 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
           }
         });
         setSaved(false);
+        setHasExistingEvaluation(false);
       }
     } catch (error) {
       console.error('Ошибка загрузки существующей оценки:', error);
@@ -171,6 +176,16 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
   };
 
 
+
+  const handleSaveClick = () => {
+    if (hasExistingEvaluation && !saved) {
+      // Показываем модальное окно подтверждения
+      setShowChangeConfirmModal(true);
+    } else {
+      // Сохраняем сразу
+      saveEvaluation();
+    }
+  };
 
   const saveEvaluation = async () => {
     setSaving(true);
@@ -565,7 +580,7 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
             <button
               onPointerUp={() => { 
                 console.log('ProjectDefenseModal Submit button clicked:', { canSave });
-                if (canSave) saveEvaluation(); 
+                if (canSave) handleSaveClick(); 
               }}
               disabled={!canSave}
               className={`flex-1 px-4 py-2.5 rounded-lg font-semibold text-sm ${
@@ -609,6 +624,19 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
         onRemoveEvaluation={async () => {
           await onRemoveEvaluation?.(participantId);
         }}
+      />
+
+      {/* Change confirmation modal */}
+      <ChangeEvaluationConfirmModal
+        isOpen={showChangeConfirmModal}
+        onClose={() => setShowChangeConfirmModal(false)}
+        onConfirm={() => {
+          setShowChangeConfirmModal(false);
+          saveEvaluation();
+        }}
+        participantName={participantName}
+        evaluationType="Защита проекта"
+        totalScore={getTotalScore()}
       />
     </>
   );

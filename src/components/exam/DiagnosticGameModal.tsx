@@ -3,6 +3,7 @@ import { X, Brain, CheckCircle, Save } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { EvaluationSuccessModal } from './EvaluationSuccessModal';
+import { ChangeEvaluationConfirmModal } from './ChangeEvaluationConfirmModal';
 
 interface DiagnosticGameModalProps {
   isOpen: boolean;
@@ -56,6 +57,8 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showChangeConfirmModal, setShowChangeConfirmModal] = useState(false);
+  const [hasExistingEvaluation, setHasExistingEvaluation] = useState(false);
   const [showCriteriaModal, setShowCriteriaModal] = useState(false);
   const [selectedCompetency, setSelectedCompetency] = useState<any>(null);
   const [dataLoaded, setDataLoaded] = useState(false);
@@ -118,6 +121,7 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
           }
         });
         setSaved(false);
+        setHasExistingEvaluation(false);
         setDataLoaded(true);
         return;
       }
@@ -131,6 +135,7 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
           competency_scores: data.competency_scores
         });
         setSaved(true);
+        setHasExistingEvaluation(true);
       } else {
         // Нет существующей оценки - создаем новую
         setEvaluation({
@@ -160,10 +165,11 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
           teamwork_skills: 0,
           systemic_thinking: 0,
         }
-      });
-      setSaved(false);
-      setDataLoaded(true);
-    } finally {
+        });
+        setSaved(false);
+        setHasExistingEvaluation(false);
+        setDataLoaded(true);
+      } finally {
       setLoading(false);
     }
   };
@@ -180,6 +186,16 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
     setSaved(false);
   };
 
+
+  const handleSaveClick = () => {
+    if (hasExistingEvaluation && !saved) {
+      // Показываем модальное окно подтверждения
+      setShowChangeConfirmModal(true);
+    } else {
+      // Сохраняем сразу
+      saveEvaluation();
+    }
+  };
 
   const saveEvaluation = async () => {
     setSaving(true);
@@ -628,7 +644,7 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
             <button
               onPointerUp={() => { 
                 console.log('DiagnosticGameModal Submit button clicked:', { canSave });
-                if (canSave) saveEvaluation(); 
+                if (canSave) handleSaveClick(); 
               }}
               disabled={!canSave}
               className={`flex-1 px-4 py-2.5 rounded-lg font-semibold text-sm ${
@@ -714,6 +730,19 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
           </div>
         </div>
       )}
+
+      {/* Change confirmation modal */}
+      <ChangeEvaluationConfirmModal
+        isOpen={showChangeConfirmModal}
+        onClose={() => setShowChangeConfirmModal(false)}
+        onConfirm={() => {
+          setShowChangeConfirmModal(false);
+          saveEvaluation();
+        }}
+        participantName={participantName}
+        evaluationType="Диагностическая игра"
+        totalScore={totalScore}
+      />
     </>
   );
 };

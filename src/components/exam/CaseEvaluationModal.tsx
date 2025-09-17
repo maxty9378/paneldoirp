@@ -4,6 +4,7 @@ import { X, FileText, Save, CheckCircle, MessageSquare, User } from 'lucide-reac
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { EvaluationSuccessModal } from './EvaluationSuccessModal';
+import { ChangeEvaluationConfirmModal } from './ChangeEvaluationConfirmModal';
 import { LegacyCaseEvaluation } from '../../types/evaluation';
 
 /* ========= Типы ========= */
@@ -157,6 +158,8 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showChangeConfirmModal, setShowChangeConfirmModal] = useState(false);
+  const [hasExistingEvaluation, setHasExistingEvaluation] = useState(false);
 
   const scrollRootRef = useRef<HTMLDivElement>(null);
 
@@ -198,6 +201,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
           criteria_scores: { correctness: 0, clarity: 0, independence: 0 },
         });
         setSaved(false);
+        setHasExistingEvaluation(false);
         return;
       }
 
@@ -213,7 +217,14 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
           comments: data.comments || '',
         });
         setSaved(true);
-      } else if (existingEvaluation) {
+        setHasExistingEvaluation(true);
+      } else {
+        // Нет существующей оценки
+        setHasExistingEvaluation(false);
+        setSaved(false);
+      }
+      
+      if (existingEvaluation) {
         // Fallback: используем данные из props (старая структура)
         setEvaluation({
           id: existingEvaluation.id,
@@ -229,6 +240,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
           comments: existingEvaluation.overall_comment || '',
         });
         setSaved(true);
+        setHasExistingEvaluation(true);
       } else {
         // Нет существующей оценки - создаем новую
         setEvaluation({
@@ -239,6 +251,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
           criteria_scores: { correctness: 0, clarity: 0, independence: 0 },
         });
         setSaved(false);
+        setHasExistingEvaluation(false);
       }
     } catch (error) {
       console.error('Ошибка загрузки существующей оценки:', error);
@@ -295,6 +308,16 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
 
   const canSave = totalScore > 0 && !saving;
   
+
+  const handleSaveClick = () => {
+    if (hasExistingEvaluation && !saved) {
+      // Показываем модальное окно подтверждения
+      setShowChangeConfirmModal(true);
+    } else {
+      // Сохраняем сразу
+      saveEvaluation();
+    }
+  };
 
   const saveEvaluation = async () => {
     if (!canSave) return;
@@ -519,7 +542,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
               ← Назад
             </button>
             <button
-              onPointerUp={() => { if (canSave) saveEvaluation(); }}
+              onPointerUp={() => { if (canSave) handleSaveClick(); }}
               disabled={!canSave}
               className={`flex-1 px-4 py-2.5 rounded-lg font-semibold text-sm ${
                 !canSave
@@ -562,6 +585,19 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
         onRemoveEvaluation={async () => {
           await onRemoveEvaluation?.(participantId, caseNumber);
         }}
+      />
+
+      {/* Change confirmation modal */}
+      <ChangeEvaluationConfirmModal
+        isOpen={showChangeConfirmModal}
+        onClose={() => setShowChangeConfirmModal(false)}
+        onConfirm={() => {
+          setShowChangeConfirmModal(false);
+          saveEvaluation();
+        }}
+        participantName={participantName}
+        evaluationType="Решение кейса"
+        totalScore={totalScore}
       />
       
     </>
