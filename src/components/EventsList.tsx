@@ -53,6 +53,7 @@ type ViewMode = 'grid' | 'list' | 'calendar';
 type SortBy = 'start_date' | 'title' | 'participants' | 'status' | 'created_at';
 
 export function EventsList({ onCreateEvent }: EventsListProps) {
+  const { userProfile } = useAuth();
   const [events, setEvents] = useState<EventWithStats[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<EventWithStats[]>([]);
   const [loading, setLoading] = useState(true);
@@ -388,243 +389,250 @@ export function EventsList({ onCreateEvent }: EventsListProps) {
             }
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          {canCreateEvents && (
-            <>
-              <button className="btn-outline flex items-center space-x-2">
-                <Download size={20} />
-                <span>Экспорт</span>
-              </button>
-              <button className="btn-outline flex items-center space-x-2">
-                <Upload size={18} />
-                <span>Импорт</span>
-              </button>
-            </>
-          )}
-          {canCreateEvents && (
-            <button 
-              onClick={onCreateEvent}
-              className="btn-primary flex items-center space-x-2 shadow hover:scale-105 active:scale-95"
-            >
-              <Plus size={20} />
-              <span>Создать мероприятие</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Statistics */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-        <div className="card flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Всего</p>
-              <p className="text-2xl font-bold text-gray-900">{eventStats.total}</p>
-            </div>
-            <div className="w-10 h-10 bg-primary-light rounded-xl flex items-center justify-center">
-              <Calendar size={20} className="text-primary" />
-            </div>
-          </div>
-        </div>
-        <div className="card flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Активные</p>
-              <p className="text-2xl font-bold text-primary">{eventStats.active}</p>
-            </div>
-            <div className="w-10 h-10 bg-primary-light rounded-xl flex items-center justify-center">
-              <CheckCircle size={20} className="text-primary" />
-            </div>
-          </div>
-        </div>
-        <div className="card flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Завершено</p>
-              <p className="text-2xl font-bold text-primary">{eventStats.completed}</p>
-            </div>
-            <div className="w-10 h-10 bg-primary-light rounded-xl flex items-center justify-center">
-              <Star size={20} className="text-primary" />
-            </div>
-          </div>
-        </div>
-        <div className="card flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Черновики</p>
-              <p className="text-2xl font-bold text-yellow-600">{eventStats.draft}</p>
-            </div>
-            <div className="w-10 h-10 bg-yellow-100 rounded-xl flex items-center justify-center">
-              <AlertCircle size={20} className="text-yellow-600" />
-            </div>
-          </div>
-        </div>
-        <div className="card flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">В этом месяце</p>
-              <p className="text-2xl font-bold text-primary">{eventStats.thisMonth}</p>
-            </div>
-            <div className="w-10 h-10 bg-primary-light rounded-xl flex items-center justify-center">
-              <TrendingUp size={20} className="text-primary" />
-            </div>
-          </div>
-        </div>
-        <div className="card flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Горящие задачи</p>
-              <p className="text-2xl font-bold text-red-600">{eventStats.urgentTasks}</p>
-            </div>
-            <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
-              <Zap size={20} className="text-red-600" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Controls */}
-      <div className="card p-6">
-        <div className="flex flex-col lg:flex-row gap-4">
-          {/* Search */}
-          <div className="flex-1">
-            <div className="relative">
-              <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
-              <input
-                type="text"
-                placeholder="Поиск по названию, описанию или месту проведения..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-primary rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 mobile-text"
-              />
-            </div>
-          </div>
-
-          {/* Filters */}
+        {/* Скрываем кнопки управления для экспертов */}
+        {userProfile?.role !== 'expert' && (
           <div className="flex items-center gap-3">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-3 border border-primary rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 min-w-[140px] mobile-text"
-            >
-              <option value="all">Все статусы</option>
-              <option value="draft">Черновик</option>
-              <option value="published">Опубликовано</option>
-              <option value="active">Активно</option>
-              <option value="ongoing">Проходит</option>
-              <option value="completed">Завершено</option>
-              <option value="cancelled">Отменено</option>
-            </select>
-
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="btn-outline flex items-center space-x-2"
-            >
-              <Filter size={20} />
-              <span>Фильтры</span>
-            </button>
-          </div>
-
-          {/* View Mode */}
-          <div className="flex items-center bg-primary-light rounded-xl p-1">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={clsx(
-                "px-3 py-2 rounded-xl transition-colors",
-                viewMode === 'grid' ? 'bg-white shadow' : 'text-primary'
-              )}
-            >
-              <BarChart3 size={18} />
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={clsx(
-                "px-3 py-2 rounded-xl transition-colors",
-                viewMode === 'list' ? 'bg-white shadow' : 'text-primary'
-              )}
-            >
-              <FileText size={18} />
-            </button>
-            <button
-              onClick={() => setViewMode('calendar')}
-              className={clsx(
-                "px-3 py-2 rounded-xl transition-colors",
-                viewMode === 'calendar' ? 'bg-white shadow' : 'text-primary'
-              )}
-            >
-              <Calendar size={18} />
-            </button>
-          </div>
-        </div>
-
-        {/* Extended Filters */}
-        {showFilters && (
-          <div className="mt-6 pt-6 border-t border-primary">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Сортировка
-                </label>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as SortBy)}
-                  className="w-full px-3 py-2 border border-primary rounded-xl focus:ring-2 focus:ring-primary focus:border-primary mobile-text"
-                >
-                  <option value="start_date">По дате проведения</option>
-                  <option value="title">По названию</option>
-                  <option value="participants">По количеству участников</option>
-                  <option value="status">По статусу</option>
-                  <option value="created_at">По дате создания</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Порядок
-                </label>
-                <select
-                  value={sortOrder}
-                  onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
-                  className="w-full px-3 py-2 border border-primary rounded-xl focus:ring-2 focus:ring-primary focus:border-primary mobile-text"
-                >
-                  <option value="desc">По убыванию</option>
-                  <option value="asc">По возрастанию</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Фильтр по задачам
-                </label>
-                <select className="w-full px-3 py-2 border border-primary rounded-xl focus:ring-2 focus:ring-primary focus:border-primary mobile-text">
-                  <option value="all">Все мероприятия</option>
-                  <option value="pending_tests">Есть незавершенные тесты</option>
-                  <option value="pending_feedback">Нет обратной связи</option>
-                  <option value="no_report">Нет отчета</option>
-                </select>
-              </div>
-
-              <div className="flex items-end">
-                <button
-                  onClick={() => {
-                    setSearchTerm('');
-                    setStatusFilter('all');
-                    setTypeFilter('all');
-                    setSortBy('start_date');
-                    setSortOrder('desc');
-                  }}
-                  className="btn-outline w-full"
-                >
-                  Сбросить фильтры
+            {canCreateEvents && (
+              <>
+                <button className="btn-outline flex items-center space-x-2">
+                  <Download size={20} />
+                  <span>Экспорт</span>
                 </button>
-              </div>
-            </div>
+                <button className="btn-outline flex items-center space-x-2">
+                  <Upload size={18} />
+                  <span>Импорт</span>
+                </button>
+              </>
+            )}
+            {canCreateEvents && (
+              <button 
+                onClick={onCreateEvent}
+                className="btn-primary flex items-center space-x-2 shadow hover:scale-105 active:scale-95"
+              >
+                <Plus size={20} />
+                <span>Создать мероприятие</span>
+              </button>
+            )}
           </div>
         )}
       </div>
 
-      {/* Bulk Actions */}
-      {selectedEvents.length > 0 && canCreateEvents && (
+      {/* Скрываем статистику для экспертов */}
+      {userProfile?.role !== 'expert' && (
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+          <div className="card flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Всего</p>
+                <p className="text-2xl font-bold text-gray-900">{eventStats.total}</p>
+              </div>
+              <div className="w-10 h-10 bg-primary-light rounded-xl flex items-center justify-center">
+                <Calendar size={20} className="text-primary" />
+              </div>
+            </div>
+          </div>
+          <div className="card flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Активные</p>
+                <p className="text-2xl font-bold text-primary">{eventStats.active}</p>
+              </div>
+              <div className="w-10 h-10 bg-primary-light rounded-xl flex items-center justify-center">
+                <CheckCircle size={20} className="text-primary" />
+              </div>
+            </div>
+          </div>
+          <div className="card flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Завершено</p>
+                <p className="text-2xl font-bold text-primary">{eventStats.completed}</p>
+              </div>
+              <div className="w-10 h-10 bg-primary-light rounded-xl flex items-center justify-center">
+                <Star size={20} className="text-primary" />
+              </div>
+            </div>
+          </div>
+          <div className="card flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Черновики</p>
+                <p className="text-2xl font-bold text-yellow-600">{eventStats.draft}</p>
+              </div>
+              <div className="w-10 h-10 bg-yellow-100 rounded-xl flex items-center justify-center">
+                <AlertCircle size={20} className="text-yellow-600" />
+              </div>
+            </div>
+          </div>
+          <div className="card flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">В этом месяце</p>
+                <p className="text-2xl font-bold text-primary">{eventStats.thisMonth}</p>
+              </div>
+              <div className="w-10 h-10 bg-primary-light rounded-xl flex items-center justify-center">
+                <TrendingUp size={20} className="text-primary" />
+              </div>
+            </div>
+          </div>
+          <div className="card flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Горящие задачи</p>
+                <p className="text-2xl font-bold text-red-600">{eventStats.urgentTasks}</p>
+              </div>
+              <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
+                <Zap size={20} className="text-red-600" />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Скрываем поиск и фильтры для экспертов */}
+      {userProfile?.role !== 'expert' && (
+        <div className="card p-6">
+          <div className="flex flex-col lg:flex-row gap-4">
+            {/* Search */}
+            <div className="flex-1">
+              <div className="relative">
+                <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
+                <input
+                  type="text"
+                  placeholder="Поиск по названию, описанию или месту проведения..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 border border-primary rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 mobile-text"
+                />
+              </div>
+            </div>
+
+            {/* Filters */}
+            <div className="flex items-center gap-3">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-4 py-3 border border-primary rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 min-w-[140px] mobile-text"
+              >
+                <option value="all">Все статусы</option>
+                <option value="draft">Черновик</option>
+                <option value="published">Опубликовано</option>
+                <option value="active">Активно</option>
+                <option value="ongoing">Проходит</option>
+                <option value="completed">Завершено</option>
+                <option value="cancelled">Отменено</option>
+              </select>
+
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="btn-outline flex items-center space-x-2"
+              >
+                <Filter size={20} />
+                <span>Фильтры</span>
+              </button>
+            </div>
+
+            {/* View Mode */}
+            <div className="flex items-center bg-primary-light rounded-xl p-1">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={clsx(
+                  "px-3 py-2 rounded-xl transition-colors",
+                  viewMode === 'grid' ? 'bg-white shadow' : 'text-primary'
+                )}
+              >
+                <BarChart3 size={18} />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={clsx(
+                  "px-3 py-2 rounded-xl transition-colors",
+                  viewMode === 'list' ? 'bg-white shadow' : 'text-primary'
+                )}
+              >
+                <FileText size={18} />
+              </button>
+              <button
+                onClick={() => setViewMode('calendar')}
+                className={clsx(
+                  "px-3 py-2 rounded-xl transition-colors",
+                  viewMode === 'calendar' ? 'bg-white shadow' : 'text-primary'
+                )}
+              >
+                <Calendar size={18} />
+              </button>
+            </div>
+        </div>
+
+          {/* Extended Filters */}
+          {showFilters && (
+            <div className="mt-6 pt-6 border-t border-primary">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Сортировка
+                  </label>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as SortBy)}
+                    className="w-full px-3 py-2 border border-primary rounded-xl focus:ring-2 focus:ring-primary focus:border-primary mobile-text"
+                  >
+                    <option value="start_date">По дате проведения</option>
+                    <option value="title">По названию</option>
+                    <option value="participants">По количеству участников</option>
+                    <option value="status">По статусу</option>
+                    <option value="created_at">По дате создания</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Порядок
+                  </label>
+                  <select
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+                    className="w-full px-3 py-2 border border-primary rounded-xl focus:ring-2 focus:ring-primary focus:border-primary mobile-text"
+                  >
+                    <option value="desc">По убыванию</option>
+                    <option value="asc">По возрастанию</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Фильтр по задачам
+                  </label>
+                  <select className="w-full px-3 py-2 border border-primary rounded-xl focus:ring-2 focus:ring-primary focus:border-primary mobile-text">
+                    <option value="all">Все мероприятия</option>
+                    <option value="pending_tests">Есть незавершенные тесты</option>
+                    <option value="pending_feedback">Нет обратной связи</option>
+                    <option value="no_report">Нет отчета</option>
+                  </select>
+                </div>
+
+                <div className="flex items-end">
+                  <button
+                    onClick={() => {
+                      setSearchTerm('');
+                      setStatusFilter('all');
+                      setTypeFilter('all');
+                      setSortBy('start_date');
+                      setSortOrder('desc');
+                    }}
+                    className="btn-outline w-full"
+                  >
+                    Сбросить фильтры
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Скрываем Bulk Actions для экспертов */}
+      {selectedEvents.length > 0 && canCreateEvents && userProfile?.role !== 'expert' && (
         <div className="bg-primary-light border border-primary rounded-xl p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -770,6 +778,19 @@ export function EventsList({ onCreateEvent }: EventsListProps) {
                           >
                             <Star size={16} className="mr-1" />
                             <span className="text-sm font-medium">Оценить</span>
+                          </button>
+                        );
+                      }
+                      
+                      // Для экспертов все мероприятия ведут на страницу эксперта
+                      if (isExpert) {
+                        return (
+                          <button 
+                            onClick={() => window.location.href = `/expert-exam/36520f72-c191-4e32-ba02-aa17c482c50b`}
+                            className="btn-outline flex items-center px-3 py-2 rounded-xl transition-all duration-300 hover:bg-primary hover:text-white" 
+                            title="Открыть"
+                          >
+                            <Eye size={16} />
                           </button>
                         );
                       }

@@ -336,42 +336,45 @@ export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: Ev
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {canCreateEvents && (
-            <button
-              onClick={() => setShowSearchFilters((v) => !v)}
-              className="px-3.5 py-2 h-9 text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all text-sm inline-flex items-center gap-2"
-              title="Поиск и фильтры"
-            >
-              <Search className="w-4 h-4" />
-              <span className="hidden sm:inline">Поиск</span>
-              <Filter className="w-4 h-4" />
-            </button>
-          )}
-
-          {canCreateEvents && (
-            <>
-              <button className="px-3.5 py-2 h-9 text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all text-sm inline-flex items-center gap-2">
-                <Download className="w-4 h-4" />
-                <span className="hidden sm:inline">Экспорт</span>
+        {/* Скрываем кнопки управления для экспертов */}
+        {userProfile?.role !== 'expert' && (
+          <div className="flex items-center gap-2">
+            {canCreateEvents && (
+              <button
+                onClick={() => setShowSearchFilters((v) => !v)}
+                className="px-3.5 py-2 h-9 text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all text-sm inline-flex items-center gap-2"
+                title="Поиск и фильтры"
+              >
+                <Search className="w-4 h-4" />
+                <span className="hidden sm:inline">Поиск</span>
+                <Filter className="w-4 h-4" />
               </button>
-              <button className="px-3.5 py-2 h-9 text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-all text-sm inline-flex items-center gap-2">
-                <Upload className="w-4 h-4" />
-                <span className="hidden sm:inline">Импорт</span>
-              </button>
-            </>
-          )}
+            )}
 
-          {canCreateEvents && (
-            <button
-              onClick={() => onCreateEvent?.()}
-              className="px-3.5 py-2 h-9 bg-sns-500 text-white font-medium rounded-lg hover:bg-sns-600 transition-all text-sm inline-flex items-center gap-2 shadow-sm"
-            >
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Создать</span>
-            </button>
-          )}
-        </div>
+            {canCreateEvents && (
+              <>
+                <button className="px-3.5 py-2 h-9 text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all text-sm inline-flex items-center gap-2">
+                  <Download className="w-4 h-4" />
+                  <span className="hidden sm:inline">Экспорт</span>
+                </button>
+                <button className="px-3.5 py-2 h-9 text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-all text-sm inline-flex items-center gap-2">
+                  <Upload className="w-4 h-4" />
+                  <span className="hidden sm:inline">Импорт</span>
+                </button>
+              </>
+            )}
+
+            {canCreateEvents && (
+              <button
+                onClick={() => onCreateEvent?.()}
+                className="px-3.5 py-2 h-9 bg-sns-500 text-white font-medium rounded-lg hover:bg-sns-600 transition-all text-sm inline-flex items-center gap-2 shadow-sm"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">Создать</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Search & Filters */}
@@ -474,60 +477,62 @@ export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: Ev
         </div>
       )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-        <StatCard
-          label="Всего"
-          value={filteredEvents.length}
-          icon={<CalendarIcon className="w-4 h-4 text-slate-600" />}
-          iconWrapClass="from-slate-100 to-slate-200"
-        />
-        <StatCard
-          label="Активные"
-          value={activeTab === 'active' ? filteredEvents.filter((e) => ['active', 'published', 'ongoing'].includes(e.status)).length : 0}
-          valueClass="text-emerald-600"
-          icon={<Play className="w-4 h-4 text-emerald-600" />}
-          iconWrapClass="from-emerald-100 to-emerald-200"
-        />
-        <StatCard
-          label="Завершено"
-          value={activeTab === 'completed' ? filteredEvents.length : 0}
-          valueClass="text-indigo-600"
-          icon={<CheckCircle className="w-4 h-4 text-indigo-600" />}
-          iconWrapClass="from-indigo-100 to-indigo-200"
-        />
-        <StatCard
-          label="Черновики"
-          value={activeTab === 'active' ? filteredEvents.filter((e) => e.status === 'draft').length : 0}
-          valueClass="text-slate-700"
-          icon={<Pause className="w-4 h-4 text-slate-600" />}
-          iconWrapClass="from-slate-100 to-slate-200"
-        />
-        <StatCard
-          label="Этот месяц"
-          value={filteredEvents.filter((e) => {
-            const d = new Date((e as any).start_date || (e as any).date_time || '');
-            const now = new Date();
-            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-          }).length}
-          valueClass="text-purple-600"
-          icon={<CalendarDays className="w-4 h-4 text-purple-600" />}
-          iconWrapClass="from-purple-100 to-purple-200"
-        />
-        <StatCard
-          label="Задачи"
-          value={filteredEvents.reduce((acc, ev) => {
-            let t = 0;
-            if (ev.pending_tests && ev.pending_tests > 0) t++;
-            if (ev.pending_feedback && ev.pending_feedback > 0) t++;
-            if (ev.status === 'completed' && !ev.has_report) t++;
-            return acc + t;
-          }, 0)}
-          valueClass="text-red-600"
-          icon={<Zap className="w-4 h-4 text-red-600" />}
-          iconWrapClass="from-red-100 to-red-200"
-        />
-      </div>
+      {/* Скрываем статистику для экспертов */}
+      {userProfile?.role !== 'expert' && (
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+          <StatCard
+            label="Всего"
+            value={filteredEvents.length}
+            icon={<CalendarIcon className="w-4 h-4 text-slate-600" />}
+            iconWrapClass="from-slate-100 to-slate-200"
+          />
+          <StatCard
+            label="Активные"
+            value={activeTab === 'active' ? filteredEvents.filter((e) => ['active', 'published', 'ongoing'].includes(e.status)).length : 0}
+            valueClass="text-emerald-600"
+            icon={<Play className="w-4 h-4 text-emerald-600" />}
+            iconWrapClass="from-emerald-100 to-emerald-200"
+          />
+          <StatCard
+            label="Завершено"
+            value={activeTab === 'completed' ? filteredEvents.length : 0}
+            valueClass="text-indigo-600"
+            icon={<CheckCircle className="w-4 h-4 text-indigo-600" />}
+            iconWrapClass="from-indigo-100 to-indigo-200"
+          />
+          <StatCard
+            label="Черновики"
+            value={activeTab === 'active' ? filteredEvents.filter((e) => e.status === 'draft').length : 0}
+            valueClass="text-slate-700"
+            icon={<Pause className="w-4 h-4 text-slate-600" />}
+            iconWrapClass="from-slate-100 to-slate-200"
+          />
+          <StatCard
+            label="Этот месяц"
+            value={filteredEvents.filter((e) => {
+              const d = new Date((e as any).start_date || (e as any).date_time || '');
+              const now = new Date();
+              return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+            }).length}
+            valueClass="text-purple-600"
+            icon={<CalendarDays className="w-4 h-4 text-purple-600" />}
+            iconWrapClass="from-purple-100 to-purple-200"
+          />
+          <StatCard
+            label="Задачи"
+            value={filteredEvents.reduce((acc, ev) => {
+              let t = 0;
+              if (ev.pending_tests && ev.pending_tests > 0) t++;
+              if (ev.pending_feedback && ev.pending_feedback > 0) t++;
+              if (ev.status === 'completed' && !ev.has_report) t++;
+              return acc + t;
+            }, 0)}
+            valueClass="text-red-600"
+            icon={<Zap className="w-4 h-4 text-red-600" />}
+            iconWrapClass="from-red-100 to-red-200"
+          />
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex space-x-1 bg-slate-100 p-1 rounded-xl">
