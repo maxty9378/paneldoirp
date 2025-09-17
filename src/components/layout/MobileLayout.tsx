@@ -43,27 +43,20 @@ const MobileLayout: React.FC = () => {
 
   return (
     <div style={{
-      // Применяем position: fixed только на мобильных устройствах
-      ...(isMobile ? {
-        position: 'fixed',
-        inset: '0',
-      } : {
-        height: '100vh',
-        width: '100vw',
-      }),
       display: 'flex',
       flexDirection: 'column',
-      background: '#f8fafc',
-      overflow: isMobile ? 'hidden' : 'auto', // На десктопе разрешаем скролл
+      height: '100dvh',       // вместо position: fixed + inset: 0
+      width: '100vw',
+      background: '#f8fafc'
     }}>
       
       {/* 1. ОБЛАСТЬ КОНТЕНТА (СКРОЛЛИТСЯ) */}
       <main style={{
-        flex: '1 1 auto', // Позволяем расти и сжиматься
-        overflowY: isMobile ? 'auto' : 'visible', // На мобильных скролл внутри, на десктопе обычный
-        WebkitOverflowScrolling: 'touch', // Плавный скролл на iOS
-        // Отступ снизу нужен только на мобильных, чтобы контент не прятался ЗА меню
-        paddingBottom: isMobile ? '80px' : '0',
+        flex: '1 1 0%',       // важно
+        minHeight: 0,         // КЛЮЧ к рабочему скроллу во flex-контейнере
+        overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch',
+        paddingBottom: 'var(--footer-space, 80px)' // отступ под меню
       }}>
         {/* React Router будет рендерить здесь нужную страницу (ExpertExamPage и т.д.) */}
         <Outlet context={{ setIsNavHidden }} />
@@ -72,12 +65,17 @@ const MobileLayout: React.FC = () => {
       {/* 2. ОБЛАСТЬ НАВИГАЦИИ (ФИКСИРОВАНА) - только на мобильных */}
       {isMobile && (
         <footer style={{
-          flexShrink: 0, // Запрещаем сжиматься
+          flexShrink: 0,
+          position: 'relative',
           width: '100%',
-          // Добавляем фон, чтобы контент при скролле не просвечивал
-          backgroundColor: '#f8fafc', 
-          paddingBottom: 'env(safe-area-inset-bottom, 0px)' // Safe area для iPhone
-        }}>
+          backgroundColor: '#f8fafc',
+          // задаём реальную высоту футера и пробрасываем её наверх
+          height: '64px',
+          padding: '8px 0',
+          paddingBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))',
+          // 64 + 8 + 8 = 80
+          ['--footer-space' as any]: '80px'
+        } as React.CSSProperties}>
           <MobileExamNavigation
             activeTab={activeTab}
             onTabChange={handleTabChange}
