@@ -31,6 +31,23 @@ const MobileLayout: React.FC = () => {
     };
   }, []);
 
+  // Управляем overflow body для App Shell архитектуры
+  useEffect(() => {
+    if (isMobile) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.overscrollBehaviorY = 'none';
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.overscrollBehaviorY = '';
+    }
+
+    // Cleanup при размонтировании
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.overscrollBehaviorY = '';
+    };
+  }, [isMobile]);
+
   // Функция для изменения вкладки через URL
   const handleTabChange = (tab: 'participants' | 'schedule' | 'evaluations') => {
     const base = location.pathname.replace(/\/(schedule|evaluations)$/, '');
