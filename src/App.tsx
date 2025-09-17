@@ -311,6 +311,8 @@ function AppContent() {
         {/* Роуты с мобильным меню */}
         <Route element={<MobileLayout />}>
           <Route path="/expert-exam/:id" element={<ExpertExamPage />} />
+          <Route path="/expert-exam/:id/schedule" element={<ExpertExamPage />} />
+          <Route path="/expert-exam/:id/evaluations" element={<ExpertExamPage />} />
           <Route path="/case-evaluation/:examId" element={<CaseEvaluationPage />} />
         </Route>
         <Route path="/create-event" element={

@@ -227,12 +227,12 @@ const ExamDetailsPage: React.FC = () => {
 
       const userIds = participants.map(p => p.user_id);
       
-      // Используем правильную таблицу participant_dossiers
+      // Используем правильную таблицу reservist_dossiers
       const { data: dossiersData, error } = await supabase
-        .from('participant_dossiers')
+        .from('reservist_dossiers')
         .select('*')
         .in('user_id', userIds)
-        .eq('event_id', examId);
+        .eq('exam_event_id', examId);
 
       if (error) {
         console.error('Ошибка загрузки досье:', error);

@@ -22,11 +22,13 @@ interface ExamEvent {
   expert_emails?: string[];
   status: string;
   detailed_schedule?: Array<{
-    id: string;
-    time: string;
+    id?: string;
+    startTime?: string;
+    endTime?: string;
+    time?: string;
     title: string;
     description?: string;
-    duration?: number;
+    duration?: string | number;
     type?: string;
     location?: string;
     speaker?: string;
@@ -100,16 +102,20 @@ const ExpertExamPage: React.FC = () => {
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'participants' | 'evaluations' | 'schedule'>('participants');
+  
+  // Определяем активную вкладку по URL
+  const getActiveTabFromUrl = () => {
+    if (location.pathname.includes('/schedule')) return 'schedule';
+    if (location.pathname.includes('/evaluations')) return 'evaluations';
+    return 'participants';
+  };
+  
+  const [activeTab, setActiveTab] = useState<'participants' | 'evaluations' | 'schedule'>(getActiveTabFromUrl);
 
-  // Синхронизация activeTab с URL
+  // Синхронизируем activeTab с URL
   useEffect(() => {
-    const tab = location.pathname.includes('/schedule')
-      ? 'schedule'
-      : location.pathname.includes('/evaluations')
-      ? 'evaluations'
-      : 'participants';
-    setActiveTab(tab);
+    const newTab = getActiveTabFromUrl();
+    setActiveTab(newTab);
   }, [location.pathname]);
 
   // Обновляем заголовок в Layout при изменении вкладки
@@ -250,14 +256,16 @@ const ExpertExamPage: React.FC = () => {
         (participantsData || []).map(async (participant) => {
           try {
             const { data: dossierData, error: dossierError } = await supabase
-              .from('participant_dossiers')
+              .from('reservist_dossiers')
               .select('*')
               .eq('user_id', participant.user_id)
-              .eq('event_id', id)
+              .eq('exam_event_id', id)
               .single();
 
             if (dossierError && dossierError.code !== 'PGRST116') {
               console.warn(`Ошибка загрузки досье для ${participant.user.full_name}:`, dossierError);
+            } else if (dossierError && dossierError.code === 'PGRST116') {
+              console.log(`Досье для ${participant.user.full_name} не найдено - это нормально, если досье еще не создано`);
             }
 
             return {
@@ -755,7 +763,7 @@ const ExpertExamPage: React.FC = () => {
           <div className="border-b border-gray-200">
             <nav className="flex space-x-8 px-6">
               <button
-                onClick={() => navigate(`/expert-exam/${id}`, { replace: false })}
+                onClick={() => navigate(`/expert-exam/${id}`)}
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === 'participants'
                     ? 'border-[#06A478] text-[#06A478]'
@@ -766,7 +774,7 @@ const ExpertExamPage: React.FC = () => {
                 Резервисты ({participants.length})
               </button>
               <button
-                onClick={() => navigate(`/expert-exam/${id}/evaluations`, { replace: false })}
+                onClick={() => navigate(`/expert-exam/${id}/evaluations`)}
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === 'evaluations'
                     ? 'border-[#06A478] text-[#06A478]'
@@ -777,7 +785,7 @@ const ExpertExamPage: React.FC = () => {
                 Оценки
               </button>
               <button
-                onClick={() => navigate(`/expert-exam/${id}/schedule`, { replace: false })}
+                onClick={() => navigate(`/expert-exam/${id}/schedule`)}
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === 'schedule'
                     ? 'border-[#06A478] text-[#06A478]'
@@ -904,13 +912,27 @@ const ExpertExamPage: React.FC = () => {
                                   <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
                                     <div className="flex items-center space-x-2">
                                       <div className="bg-[#06A478] text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-sm font-bold shadow-sm">
-                                        {item.time}
+                                        {item.time || item.startTime || 'Время не указано'}
                                       </div>
-                                      <div className="flex items-center text-[#06A478]/60">
-                                        <div className="w-4 h-0.5 sm:w-6 bg-[#06A478]/30"></div>
-                                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#06A478]/50 rounded-full mx-1"></div>
-                                        <div className="w-4 h-0.5 sm:w-6 bg-[#06A478]/30"></div>
-                                      </div>
+                                      {item.endTime && (
+                                        <>
+                                          <div className="flex items-center text-[#06A478]/60">
+                                            <div className="w-4 h-0.5 sm:w-6 bg-[#06A478]/30"></div>
+                                            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#06A478]/50 rounded-full mx-1"></div>
+                                            <div className="w-4 h-0.5 sm:w-6 bg-[#06A478]/30"></div>
+                                          </div>
+                                          <div className="bg-gray-100 text-gray-700 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-sm font-medium border border-gray-200">
+                                            {item.endTime}
+                                          </div>
+                                        </>
+                                      )}
+                                      {!item.endTime && (
+                                        <div className="flex items-center text-[#06A478]/60">
+                                          <div className="w-4 h-0.5 sm:w-6 bg-[#06A478]/30"></div>
+                                          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#06A478]/50 rounded-full mx-1"></div>
+                                          <div className="w-4 h-0.5 sm:w-6 bg-[#06A478]/30"></div>
+                                        </div>
+                                      )}
                                       {item.duration && (
                                         <div className="bg-gray-100 text-gray-700 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-sm font-medium border border-gray-200">
                                           {item.duration}
@@ -1088,13 +1110,27 @@ const ExpertExamPage: React.FC = () => {
                                   <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
                                     <div className="flex items-center space-x-2">
                                       <div className="bg-[#06A478] text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-sm font-bold shadow-sm">
-                                        {item.time}
+                                        {item.time || item.startTime || 'Время не указано'}
                                       </div>
-                                      <div className="flex items-center text-[#06A478]/60">
-                                        <div className="w-4 h-0.5 sm:w-6 bg-[#06A478]/30"></div>
-                                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#06A478]/50 rounded-full mx-1"></div>
-                                        <div className="w-4 h-0.5 sm:w-6 bg-[#06A478]/30"></div>
-                                      </div>
+                                      {item.endTime && (
+                                        <>
+                                          <div className="flex items-center text-[#06A478]/60">
+                                            <div className="w-4 h-0.5 sm:w-6 bg-[#06A478]/30"></div>
+                                            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#06A478]/50 rounded-full mx-1"></div>
+                                            <div className="w-4 h-0.5 sm:w-6 bg-[#06A478]/30"></div>
+                                          </div>
+                                          <div className="bg-gray-100 text-gray-700 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-sm font-medium border border-gray-200">
+                                            {item.endTime}
+                                          </div>
+                                        </>
+                                      )}
+                                      {!item.endTime && (
+                                        <div className="flex items-center text-[#06A478]/60">
+                                          <div className="w-4 h-0.5 sm:w-6 bg-[#06A478]/30"></div>
+                                          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#06A478]/50 rounded-full mx-1"></div>
+                                          <div className="w-4 h-0.5 sm:w-6 bg-[#06A478]/30"></div>
+                                        </div>
+                                      )}
                                       {item.duration && (
                                         <div className="bg-gray-100 text-gray-700 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-sm font-medium border border-gray-200">
                                           {item.duration}

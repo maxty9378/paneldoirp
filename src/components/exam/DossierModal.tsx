@@ -141,9 +141,10 @@ export const DossierModal: React.FC<DossierModalProps> = ({
     setIsSaving(true);
     try {
       const { error } = await supabase
-        .from('participant_dossiers')
+        .from('reservist_dossiers')
         .upsert({
           ...editingData,
+          exam_event_id: editingData.event_id || editingData.exam_event_id,
           updated_at: new Date().toISOString()
         });
 
