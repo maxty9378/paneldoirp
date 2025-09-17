@@ -518,26 +518,17 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
       <style>{sliderStyles}</style>
 
       {/* Фуллскрин слой */}
-      <div className="case-evaluation-modal fixed inset-0 z-[10002] flex flex-col bg-white" style={{ 
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        margin: 0,
-        padding: 0,
-        paddingTop: 'env(safe-area-inset-top, 0px)',
-        paddingLeft: 'env(safe-area-inset-left, 0px)',
-        paddingRight: 'env(safe-area-inset-right, 0px)',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-        transform: 'translate3d(0, 0, 0)',
-        backfaceVisibility: 'hidden',
-        willChange: 'transform',
-        WebkitTransform: 'translate3d(0, 0, 0)',
-        WebkitBackfaceVisibility: 'hidden',
-        WebkitOverflowScrolling: 'touch'
-      }}>
+      <div 
+        className="case-evaluation-modal fixed inset-0 z-[10002] overflow-y-auto bg-white" 
+        style={{ 
+          pointerEvents: 'auto'
+        }}
+      >
         {/* Шапка (sticky top) */}
-        <header className="sticky top-0 z-10 border-b border-gray-100 bg-white">
+        <header 
+          className="sticky top-0 z-10 border-b border-gray-100 bg-white/80 backdrop-blur-sm"
+          style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+        >
           <div className="px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
@@ -585,8 +576,8 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
         </header>
 
 
-        {/* Контент (скролл) */}
-        <main className="flex-1 overflow-y-auto px-4 pt-3 pb-24">
+        {/* Контент */}
+        <main className="px-4 pt-3">
           <div className="space-y-3">
           {loading || !dataLoaded ? (
             <div className="flex flex-col items-center justify-center py-8 space-y-4">
@@ -638,8 +629,12 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
         </main>
 
         {/* Футер (sticky bottom) */}
-        <footer className="sticky bottom-0 z-10 border-t border-gray-100 bg-white px-4 py-3 pb-safe-bottom">
-          <div className="flex gap-2">
+        <footer 
+          className="sticky bottom-0 z-10 border-t border-gray-100 bg-white/80 backdrop-blur-sm"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        >
+          <div className="px-4 pt-3 pb-3">
+            <div className="flex gap-2">
           <button
             onClick={onClose}
               className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
@@ -672,6 +667,7 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
                 </div>
               )}
             </button>
+            </div>
           </div>
         </footer>
       </div>
