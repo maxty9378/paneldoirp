@@ -101,6 +101,7 @@ const ExpertExamPage: React.FC = () => {
   const [exam, setExam] = useState<ExamEvent | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -177,6 +178,19 @@ const ExpertExamPage: React.FC = () => {
   useEffect(() => {
     return () => setIsNavHidden(false);
   }, [setIsNavHidden]);
+
+  // Определяем тёмную тему
+  useEffect(() => {
+    const checkDarkMode = () => setIsDarkMode(window.matchMedia('(prefers-color-scheme: dark)').matches);
+    checkDarkMode();
+    
+    const onThemeChange = () => checkDarkMode();
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', onThemeChange);
+    
+    return () => {
+      window.matchMedia('(prefers-color-scheme: dark)').removeEventListener('change', onThemeChange);
+    };
+  }, []);
 
   
   const [bannerSettings, setBannerSettings] = useState({
@@ -803,17 +817,19 @@ const ExpertExamPage: React.FC = () => {
         )}
 
         {/* Десктопные вкладки */}
-        <div className={`hidden md:block bg-white rounded-2xl shadow-lg border border-gray-200 mb-8 transition-all duration-300 ${
+        <div className={`hidden md:block ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-2xl shadow-lg border mb-8 transition-all duration-300 ${
           isAnyModalOpen ? 'opacity-0 pointer-events-none transform scale-95' : 'opacity-100'
         }`}>
-          <div className="border-b border-gray-200">
+          <div className={`border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
             <nav className="flex space-x-8 px-6">
               <button
                 onClick={() => navigate(`/expert-exam/${id}`)}
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === 'participants'
                     ? 'border-[#06A478] text-[#06A478]'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    : isDarkMode 
+                      ? 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
                 <Users className="w-4 h-4 inline mr-2" />
@@ -824,7 +840,9 @@ const ExpertExamPage: React.FC = () => {
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === 'evaluations'
                     ? 'border-[#06A478] text-[#06A478]'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    : isDarkMode 
+                      ? 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
                 <Star className="w-4 h-4 inline mr-2" />
@@ -835,7 +853,9 @@ const ExpertExamPage: React.FC = () => {
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === 'schedule'
                     ? 'border-[#06A478] text-[#06A478]'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    : isDarkMode 
+                      ? 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
                 <Calendar className="w-4 h-4 inline mr-2" />
@@ -844,7 +864,11 @@ const ExpertExamPage: React.FC = () => {
               {userProfile?.role === 'administrator' && (
                 <button
                   onClick={() => setShowEvaluationResults(true)}
-                  className="py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm transition-colors"
+                  className={`py-4 px-1 border-b-2 border-transparent font-medium text-sm transition-colors ${
+                    isDarkMode 
+                      ? 'text-gray-400 hover:text-gray-200 hover:border-gray-500'
+                      : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
                 >
                   <Target className="w-4 h-4 inline mr-2" />
                   Результаты оценок

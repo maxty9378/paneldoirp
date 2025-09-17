@@ -18,16 +18,26 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
   userRole
 }) => {
   const [isMobile, setIsMobile] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
     const checkDevice = () => setIsMobile(window.matchMedia('(max-width: 767.98px)').matches);
+    const checkDarkMode = () => setIsDarkMode(window.matchMedia('(prefers-color-scheme: dark)').matches);
+    
     checkDevice();
+    checkDarkMode();
+    
     const onOrientation = () => setTimeout(checkDevice, 200);
+    const onThemeChange = () => checkDarkMode();
+    
     window.addEventListener('resize', checkDevice);
     window.addEventListener('orientationchange', onOrientation);
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', onThemeChange);
+    
     return () => {
       window.removeEventListener('resize', checkDevice);
       window.removeEventListener('orientationchange', onOrientation);
+      window.matchMedia('(prefers-color-scheme: dark)').removeEventListener('change', onThemeChange);
     };
   }, []);
 
@@ -71,11 +81,17 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
           maxWidth: '400px',
           width: '100%',
           position: 'relative',
-          background: 'rgba(255, 255, 255, 0.5)',
+          background: isDarkMode 
+            ? 'rgba(17, 24, 39, 0.8)' 
+            : 'rgba(255, 255, 255, 0.5)',
           backdropFilter: 'blur(30px) saturate(120%)',
           WebkitBackdropFilter: 'blur(30px) saturate(120%)',
-          border: '1px solid rgba(255, 255, 255, 0.3)',
-          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
+          border: isDarkMode 
+            ? '1px solid rgba(55, 65, 81, 0.3)' 
+            : '1px solid rgba(255, 255, 255, 0.3)',
+          boxShadow: isDarkMode 
+            ? '0 4px 16px rgba(0, 0, 0, 0.3)' 
+            : '0 4px 16px rgba(0, 0, 0, 0.08)',
           overflow: 'hidden',
           // Анимация скрытия - не утекает под системную панель
           transform: isHidden ? 'translateY(100%)' : 'translateY(0)',
@@ -89,7 +105,9 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
           left: '0',
           right: '0',
           height: '40%',
-          background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 70%, transparent 100%)',
+          background: isDarkMode 
+            ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 70%, transparent 100%)'
+            : 'linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 70%, transparent 100%)',
           borderRadius: '24px 24px 0 0',
           pointerEvents: 'none'
         }} />
@@ -116,13 +134,17 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
                 onClick={() => onTabChange(item.id)}
                 onMouseEnter={(e) => {
                   if (!isActive) {
-                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+                    e.currentTarget.style.backgroundColor = isDarkMode 
+                      ? 'rgba(255, 255, 255, 0.1)' 
+                      : 'rgba(255, 255, 255, 0.2)';
                     e.currentTarget.style.transform = 'translateY(-1px)';
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!isActive) {
-                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                    e.currentTarget.style.backgroundColor = isDarkMode 
+                      ? 'rgba(255, 255, 255, 0.05)' 
+                      : 'rgba(255, 255, 255, 0.1)';
                     e.currentTarget.style.transform = 'translateY(0)';
                   } else {
                     // Убеждаемся, что активная кнопка остается корпоративного цвета
@@ -139,10 +161,18 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
                   minHeight: '48px',
                   padding: '4px 8px',
                   borderRadius: '16px',
-                  backgroundColor: isActive ? '#06A478' : 'rgba(255, 255, 255, 0.1)',
+                  backgroundColor: isActive 
+                    ? '#06A478' 
+                    : isDarkMode 
+                      ? 'rgba(255, 255, 255, 0.05)' 
+                      : 'rgba(255, 255, 255, 0.1)',
                   boxShadow: isActive ? '0 2px 8px rgba(6, 164, 120, 0.3)' : 'none',
                   border: 'none',
-                  color: isActive ? '#ffffff' : '#374151',
+                  color: isActive 
+                    ? '#ffffff' 
+                    : isDarkMode 
+                      ? '#d1d5db' 
+                      : '#374151',
                   cursor: 'pointer',
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                   outline: 'none',
