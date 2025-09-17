@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import MobileExamNavigation from '../exam/MobileExamNavigation';
 
 // Определяем, какая вкладка активна, на основе текущего URL
@@ -14,12 +14,17 @@ const MobileLayout: React.FC = () => {
   const [isNavHidden, setIsNavHidden] = useState(false);
 
   const location = useLocation();
+  const navigate = useNavigate();
   const activeTab = getActiveTabFromPathname(location.pathname);
 
-  // Функция для изменения вкладки (в данном примере не используется, т.к. навигация через ссылки)
+  // Функция для изменения вкладки через URL
   const handleTabChange = (tab: 'participants' | 'schedule' | 'evaluations') => {
-    // Здесь должна быть логика навигации, если у вас не ссылки, а кнопки
-    // navigate(`/exam/${id}/${tab}`);
+    const base = location.pathname.replace(/\/(schedule|evaluations)$/, '');
+    if (tab === 'participants') {
+      navigate(base, { replace: false });
+    } else {
+      navigate(`${base}/${tab}`, { replace: false });
+    }
   };
 
   return (
@@ -30,7 +35,7 @@ const MobileLayout: React.FC = () => {
       // которая учитывает появление/скрытие панелей браузера на мобильных.
       // Это современная и лучшая замена 100vh.
       height: '100vh', // Fallback для старых браузеров
-      height: '100dvh', // Современные браузеры
+      // height: '100dvh', // Современные браузеры (пока отключено из-за ограниченной поддержки)
       width: '100vw',
       overflow: 'hidden', // Запрещаем скролл для всего контейнера
       background: '#f8fafc' // Фон для всего приложения

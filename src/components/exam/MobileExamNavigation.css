@@ -68,6 +68,10 @@
 }
 
 /* Стили для мобильной навигации в App Shell архитектуре */
+.mobile-exam-nav {
+  height: 64px; /* Фиксированная высота меню */
+}
+
 @media screen and (max-width: 768px) {
   .mobile-exam-nav {
     height: 64px; /* Фиксированная высота меню */

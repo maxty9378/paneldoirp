@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
+import { useParams, useNavigate, useOutletContext, useLocation } from 'react-router-dom';
 import { ArrowLeft, Calendar, MapPin, Users, Target, User, Star, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
@@ -91,6 +91,7 @@ interface Evaluation {
 const ExpertExamPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, userProfile } = useAuth();
   const { setIsNavHidden } = useOutletContext<{ setIsNavHidden: (hidden: boolean) => void }>();
   
@@ -100,6 +101,16 @@ const ExpertExamPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'participants' | 'evaluations' | 'schedule'>('participants');
+
+  // Синхронизация activeTab с URL
+  useEffect(() => {
+    const tab = location.pathname.includes('/schedule')
+      ? 'schedule'
+      : location.pathname.includes('/evaluations')
+      ? 'evaluations'
+      : 'participants';
+    setActiveTab(tab);
+  }, [location.pathname]);
 
   // Обновляем заголовок в Layout при изменении вкладки
   useEffect(() => {
@@ -740,7 +751,7 @@ const ExpertExamPage: React.FC = () => {
           <div className="border-b border-gray-200">
             <nav className="flex space-x-8 px-6">
               <button
-                onClick={() => setActiveTab('participants')}
+                onClick={() => navigate(`/expert-exam/${id}`, { replace: false })}
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === 'participants'
                     ? 'border-[#06A478] text-[#06A478]'
@@ -751,7 +762,7 @@ const ExpertExamPage: React.FC = () => {
                 Резервисты ({participants.length})
               </button>
               <button
-                onClick={() => setActiveTab('evaluations')}
+                onClick={() => navigate(`/expert-exam/${id}/evaluations`, { replace: false })}
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === 'evaluations'
                     ? 'border-[#06A478] text-[#06A478]'
@@ -762,7 +773,7 @@ const ExpertExamPage: React.FC = () => {
                 Оценки
               </button>
               <button
-                onClick={() => setActiveTab('schedule')}
+                onClick={() => navigate(`/expert-exam/${id}/schedule`, { replace: false })}
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === 'schedule'
                     ? 'border-[#06A478] text-[#06A478]'
