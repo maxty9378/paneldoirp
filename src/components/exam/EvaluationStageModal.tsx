@@ -383,21 +383,28 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
         {`
           /* Стили для выделения карточки "Решение кейсов" */
           .case-solving-highlight {
-            border: 2px solid #06A478 !important;
-            box-shadow: 0 0 0 4px rgba(6,164,120,0.1), 0 4px 12px rgba(6,164,120,0.15) !important;
-            background: linear-gradient(135deg, rgba(6,164,120,0.05), rgba(6,164,120,0.02)) !important;
-            animation: gentlePulse 2s ease-in-out infinite;
+            border: 3px solid #06A478 !important;
+            box-shadow: 0 0 0 2px rgba(6,164,120,0.2) !important;
+            background: linear-gradient(135deg, rgba(6,164,120,0.08), rgba(6,164,120,0.03)) !important;
+            animation: gentleGlow 2s ease-in-out infinite;
+            transform: scale(1.02) !important;
           }
           
-          @keyframes gentlePulse {
+          /* Отключаем hover эффекты для выделенной карточки */
+          .case-solving-highlight:hover {
+            box-shadow: 0 0 0 2px rgba(6,164,120,0.2) !important;
+            transform: scale(1.02) !important;
+          }
+          
+          @keyframes gentleGlow {
             0% { 
-              box-shadow: 0 0 0 4px rgba(6,164,120,0.1), 0 4px 12px rgba(6,164,120,0.15);
+              box-shadow: 0 0 0 2px rgba(6,164,120,0.2);
             }
             50% { 
-              box-shadow: 0 0 0 6px rgba(6,164,120,0.15), 0 6px 16px rgba(6,164,120,0.2);
+              box-shadow: 0 0 0 4px rgba(6,164,120,0.3);
             }
             100% { 
-              box-shadow: 0 0 0 4px rgba(6,164,120,0.1), 0 4px 12px rgba(6,164,120,0.15);
+              box-shadow: 0 0 0 2px rgba(6,164,120,0.2);
             }
           }
           
