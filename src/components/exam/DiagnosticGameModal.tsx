@@ -74,44 +74,20 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
   }, [isOpen, participantId, examId, user?.id, dataLoaded]);
 
   // Блокировка прокрутки фона при открытом модальном окне
+  // Сообщаем родителю об ОТКРЫТОСТИ модала с учётом дочерних окон
   useEffect(() => {
-    if (isOpen && !showSuccessModal && !showCriteriaModal) {
-      // Блокируем прокрутку
-      const y = window.scrollY;
-      document.body.classList.add('modal-open');
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${y}px`;
-      document.body.style.left = '0';
-      document.body.style.right = '0';
-      document.body.style.width = '100%';
-      document.body.style.overflow = 'hidden';
-      return () => {
-        // Восстанавливаем прокрутку при закрытии
-        document.body.classList.remove('modal-open');
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.left = '';
-        document.body.style.right = '';
-        document.body.style.width = '';
-        document.body.style.overflow = '';
-        window.scrollTo(0, y);
-      };
-    } else {
-      // Восстанавливаем прокрутку если модальное окно закрыто или показывается другое модальное окно
-      document.body.classList.remove('modal-open');
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.left = '';
-      document.body.style.right = '';
-      document.body.style.width = '';
-      document.body.style.overflow = '';
+    const anyOpen = isOpen || showSuccessModal || showCriteriaModal;
+    if (onModalStateChange) {
+      onModalStateChange(anyOpen);
     }
-  }, [isOpen, showSuccessModal, showCriteriaModal]);
+    
+    // Также отправляем событие для глобального слушателя
+    const event = new CustomEvent('modalStateChange', {
+      detail: { isOpen: anyOpen }
+    });
+    window.dispatchEvent(event);
+  }, [isOpen, showSuccessModal, showCriteriaModal, onModalStateChange]);
   
-  // Уведомляем родительский компонент о состоянии модального окна
-  useEffect(() => {
-    onModalStateChange?.(isOpen);
-  }, [isOpen, onModalStateChange]);
 
   const loadExistingEvaluation = async () => {
     if (!user?.id) return;
@@ -337,18 +313,6 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
 
   const canSave = totalScore > 0 && !saving;
   
-  // Уведомляем MobileLayout о состоянии модального окна
-  useEffect(() => {
-    if (onModalStateChange) {
-      onModalStateChange(isOpen);
-    }
-    
-    // Также отправляем событие для глобального слушателя
-    const event = new CustomEvent('modalStateChange', {
-      detail: { isOpen }
-    });
-    window.dispatchEvent(event);
-  }, [isOpen, onModalStateChange]);
   
   // Отладка
   console.log('DiagnosticGameModal Debug:', {
@@ -546,12 +510,15 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
       <div 
         className="case-evaluation-modal fixed inset-0 z-[10002] overflow-y-auto bg-white" 
         style={{ 
+          paddingTop: 'env(safe-area-inset-top, 0px)',
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
           pointerEvents: 'auto'
         }}
       >
         {/* Шапка (sticky top) */}
         <header 
           className="sticky top-0 z-10 border-b border-gray-100 bg-white/80 backdrop-blur-sm"
+          style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
         >
           <div className="px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-3 min-w-0">
@@ -574,22 +541,14 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
                 <div className="text-[11px] text-gray-400">средний балл</div>
               </div>
               <button
-                onClick={onClose}
-                onTouchEnd={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onClose();
-                }}
-                className="p-2 rounded-lg hover:bg-gray-50 active:bg-gray-100 touch-manipulation"
+                onPointerUp={onClose}
+                className="p-2 rounded-lg hover:bg-gray-50 active:bg-gray-100"
                 aria-label="Закрыть"
                 style={{
                   minWidth: '44px',
                   minHeight: '44px',
-                  zIndex: 1000,
-                  position: 'relative',
                   WebkitTapHighlightColor: 'transparent',
-                  WebkitTouchCallout: 'none',
-                  WebkitUserSelect: 'none',
+                  touchAction: 'manipulation',
                   userSelect: 'none'
                 }}
               >
@@ -635,7 +594,7 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
                         </div>
                         <div className="text-right ml-3">
                           <div className="text-lg font-bold" style={{ color: col }}>
-                            {val.toFixed(1)}
+                            {val ? val.toFixed(1) : '—'}
                           </div>
                         </div>
                       </div>
@@ -655,6 +614,7 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
         {/* Футер (sticky bottom) */}
         <footer 
           className="sticky bottom-0 z-10 border-t border-gray-100 bg-white/80 backdrop-blur-sm"
+          style={{ paddingBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))' }}
         >
           <div className="px-4 pt-3 pb-3">
             <div className="flex gap-2">
@@ -716,7 +676,7 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
 
       {/* Модал критериев оценки */}
       {showCriteriaModal && selectedCompetency && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10003] p-4">
           <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden shadow-2xl">
             {/* Заголовок */}
             <div className="p-6 border-b border-gray-100">
