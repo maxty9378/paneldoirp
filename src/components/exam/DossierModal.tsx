@@ -35,6 +35,7 @@ interface DossierModalProps {
   user: User;
   dossier?: DossierData;
   loading?: boolean;
+  onModalStateChange?: (isOpen: boolean) => void;
 }
 
 // Компонент скелетона для загрузки
@@ -51,7 +52,8 @@ export const DossierModal: React.FC<DossierModalProps> = ({
   onClose,
   user,
   dossier,
-  loading = false
+  loading = false,
+  onModalStateChange
 }) => {
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
@@ -101,9 +103,6 @@ export const DossierModal: React.FC<DossierModalProps> = ({
       document.body.style.width = '100%';
       document.body.style.overflow = 'hidden';
       
-      // Уведомляем Layout о том, что модальное окно открыто
-      window.dispatchEvent(new CustomEvent('dossierModalOpen', { detail: { isOpen: true } }));
-      
       return () => {
         // Восстанавливаем прокрутку при закрытии
         document.body.classList.remove('modal-open');
@@ -114,12 +113,14 @@ export const DossierModal: React.FC<DossierModalProps> = ({
         document.body.style.width = '';
         document.body.style.overflow = '';
         window.scrollTo(0, y);
-        
-        // Уведомляем Layout о том, что модальное окно закрыто
-        window.dispatchEvent(new CustomEvent('dossierModalOpen', { detail: { isOpen: false } }));
       };
     }
   }, [isOpen]);
+
+  // Уведомляем родительский компонент о состоянии модального окна
+  useEffect(() => {
+    onModalStateChange?.(isOpen);
+  }, [isOpen, onModalStateChange]);
 
   const dossierStyles = `
     /* Принудительное убирание всех отступов для модального окна */

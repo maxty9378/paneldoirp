@@ -329,6 +329,12 @@ export const ReservistCard: React.FC<ReservistCardProps> = ({
           ...participant.dossier,
           user_id: participant.user.id
         } : undefined}
+        onModalStateChange={(isOpen) => {
+          // Уведомляем родительский компонент о состоянии модального окна
+          if (isOpen) {
+            // Можно добавить логику для скрытия меню если нужно
+          }
+        }}
       />
 
       {/* мягкие круглые углы у всей карточки и лёгкий блик для объёма */}

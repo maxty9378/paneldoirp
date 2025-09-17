@@ -277,6 +277,12 @@ export const DiagnosticGameCard: React.FC<DiagnosticGameCardProps> = ({
           ...participant.dossier,
           user_id: participant.user.id
         } : undefined}
+        onModalStateChange={(isOpen) => {
+          // Уведомляем родительский компонент о состоянии модального окна
+          if (isOpen) {
+            // Можно добавить логику для скрытия меню если нужно
+          }
+        }}
       />
 
       {/* Декоративный элемент */}

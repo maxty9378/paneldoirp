@@ -1192,6 +1192,11 @@ const ExpertExamPage: React.FC = () => {
             onClose={() => setSelectedParticipantId(null)}
             user={selectedParticipant.user}
             dossier={selectedParticipant.dossier}
+            onModalStateChange={(isOpen) => {
+              if (isOpen) {
+                setIsAnyModalOpen(true);
+              }
+            }}
           />
         ) : null;
       })()}
