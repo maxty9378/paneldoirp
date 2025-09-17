@@ -389,21 +389,6 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
       background: white !important;
     }
     
-    /* Стили для футера с кнопками */
-    .case-evaluation-modal footer {
-      position: fixed !important;
-      bottom: 0 !important;
-      left: 0 !important;
-      right: 0 !important;
-      z-index: 9999 !important;
-      pointer-events: auto !important;
-    }
-    
-    .case-evaluation-modal footer button {
-      pointer-events: auto !important;
-      position: relative !important;
-      z-index: 10000 !important;
-    }
     
     /* Убираем отступы у body когда открыто модальное окно */
     body.modal-open {
@@ -490,7 +475,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
         </header>
 
         {/* Контент (скролл) */}
-        <main ref={scrollRootRef} className="flex-1 overflow-y-auto px-4 pt-3 pb-28">
+        <main ref={scrollRootRef} className="flex-1 overflow-y-auto px-4 pt-3">
           <div className="space-y-3">
             {loading ? (
               <div className="flex items-center justify-center py-8">
@@ -527,23 +512,10 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
             )}
           </div>
         </main>
-      </div>
 
-      {/* Футер (отдельный от основного контейнера) */}
-      <footer 
-        className="fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white"
-        style={{ 
-          zIndex: 10010,
-          pointerEvents: 'auto',
-          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-          paddingTop: '0px',
-          paddingLeft: '0px',
-          paddingRight: '0px'
-        }}
-      >
-        <div className="px-4 pt-3 pb-3">
-          
-          <div className="flex gap-2">
+        {/* Футер (sticky bottom) */}
+      <footer className="sticky bottom-0 z-10 border-t border-gray-100 bg-white px-4 py-3 pb-safe-bottom">
+        <div className="flex gap-2">
             <button
               onPointerUp={onClose}
               className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium"
@@ -578,9 +550,9 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
                 </div>
               )}
             </button>
-          </div>
         </div>
       </footer>
+      </div>
 
       {/* Success modal */}
       <EvaluationSuccessModal
