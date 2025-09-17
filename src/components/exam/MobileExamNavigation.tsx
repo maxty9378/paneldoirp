@@ -100,10 +100,36 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
             visibility: style.visibility,
             opacity: style.opacity,
             offsetParent: el.offsetParent,
-            classList: el.classList.toString()
+            classList: el.classList.toString(),
+            zIndex: style.zIndex,
+            position: style.position
           });
         });
       }
+      
+      // Дополнительная проверка: ищем все элементы с высоким z-index
+      console.log('Checking all high z-index elements:');
+      const allElements = document.querySelectorAll('*');
+      const highZElements = Array.from(allElements).filter(el => {
+        const style = window.getComputedStyle(el);
+        const zIndex = parseInt(style.zIndex, 10);
+        return zIndex > 1000 && style.position !== 'static';
+      });
+      
+      console.log('High z-index elements found:', highZElements.length);
+      highZElements.forEach((el, index) => {
+        const style = window.getComputedStyle(el);
+        console.log(`  High z-index element ${index}:`, {
+          tagName: el.tagName,
+          classList: el.classList.toString(),
+          zIndex: style.zIndex,
+          position: style.position,
+          display: style.display,
+          visibility: style.visibility,
+          opacity: style.opacity,
+          offsetParent: el.offsetParent
+        });
+      });
     }
     
     setHasModalOpen(modalFound);
