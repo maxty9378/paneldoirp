@@ -99,7 +99,11 @@ const MobileLayout: React.FC = () => {
       flexDirection: 'column',
       height: '100svh',
       width: '100vw',
-      background: '#f8fafc'
+      background: '#f8fafc',
+      // Учитываем все safe zone для iPhone с вырезами
+      paddingTop: 'env(safe-area-inset-top, 0px)',
+      paddingLeft: 'env(safe-area-inset-left, 0px)',
+      paddingRight: 'env(safe-area-inset-right, 0px)'
     }}>
       
       {/* 1. ОБЛАСТЬ КОНТЕНТА (СКРОЛЛИТСЯ) */}
@@ -124,15 +128,15 @@ const MobileLayout: React.FC = () => {
           style={{
             // ДЕЛАЕМ ФИКСИРОВАННЫМ, чтобы быть НАД браузерным UI
             position: 'fixed',
-            left: 0,
-            right: 0,
-            bottom: 16,                  // поднимаем меню еще выше на 16px
+            left: 'env(safe-area-inset-left, 0px)',
+            right: 'env(safe-area-inset-right, 0px)',
+            bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
             zIndex: 1000,               // ниже модальных окон
             backgroundColor: 'transparent',
             // геометрия футера
             height: '64px',
             paddingTop: 8,
-            paddingBottom: 8  // убираем safe-area, делаем зону прозрачной
+            paddingBottom: 8
           }}
         >
           <MobileExamNavigation
