@@ -56,26 +56,21 @@
 
 @media screen and (max-height: 600px) {
   .mobile-exam-nav {
-    bottom: 8px !important;
+    margin-bottom: 8px !important;
   }
 }
 
 /* Поддержка safe-area для устройств с вырезами */
 @supports (padding: max(0px)) {
   .mobile-exam-nav {
-    bottom: max(16px, env(safe-area-inset-bottom, 16px)) !important;
+    margin-bottom: max(16px, env(safe-area-inset-bottom, 16px)) !important;
   }
 }
 
-/* Отступ для контента на мобильных устройствах */
+/* Стили для мобильной навигации в App Shell архитектуре */
 @media screen and (max-width: 768px) {
   .mobile-exam-nav {
     height: 64px; /* Фиксированная высота меню */
-  }
-  
-  /* Добавляем отступ для контента */
-  .mobile-content-spacer {
-    padding-bottom: 80px; /* Высота меню + отступ */
   }
 }
 

@@ -19,6 +19,7 @@ import { TestingView } from './components/admin/TestingView';
 import { TrainerTerritoriesView } from './components/TrainerTerritoriesView';
 import { ExamReservePage, ExamDetailsPage, ExpertExamPage } from './components/exam';
 import CaseEvaluationPage from './components/exam/CaseEvaluationPage';
+import MobileLayout from './components/layout/MobileLayout';
 import { Loader2, RefreshCw, AlertOctagon } from 'lucide-react';
 import TakeTestPage from './pages/TakeTestPage';
 import TestResultsPage from './pages/TestResultsPage';
@@ -306,8 +307,12 @@ function AppContent() {
         <Route path="/employees" element={<EmployeesView />} />
         <Route path="/exam-reserve" element={<ExamReservePage />} />
         <Route path="/exam-details/:id" element={<ExamDetailsPage />} />
-        <Route path="/expert-exam/:id" element={<ExpertExamPage />} />
-        <Route path="/case-evaluation/:examId" element={<CaseEvaluationPage />} />
+        
+        {/* Роуты с мобильным меню */}
+        <Route element={<MobileLayout />}>
+          <Route path="/expert-exam/:id" element={<ExpertExamPage />} />
+          <Route path="/case-evaluation/:examId" element={<CaseEvaluationPage />} />
+        </Route>
         <Route path="/create-event" element={
           <div className="space-y-6">
             <div className="flex items-center">

@@ -54,16 +54,9 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
 
   const mobileNav = (
     <div style={{
-      position: 'fixed',
-      bottom: '0',
-      left: '0',
-      right: '0',
-      zIndex: 2147483647,
       display: 'flex',
       justifyContent: 'center',
       padding: '0 16px', // Боковые отступы для контейнера
-      // Добавляем свойство для изоляции контекста рендеринга
-      willChange: 'transform',
       // Делаем невидимым и отключаем взаимодействие, когда скрыто
       visibility: isHidden ? 'hidden' : 'visible',
       transition: 'visibility 0.3s'

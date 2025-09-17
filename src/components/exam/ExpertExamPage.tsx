@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, MapPin, Users, Target, User, Star, AlertCircle, Settings } from 'lucide-react';
+import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
+import { ArrowLeft, Calendar, MapPin, Users, Target, User, Star, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 // import DossierCard from './DossierCard';
 import { CompactDossierCard } from './CompactDossierCard';
 import { DossierModal } from './DossierModal';
 import { EvaluationStageModal } from './EvaluationStageModal';
-import { CaseEvaluationModal } from './CaseEvaluationModal';
 import { ProjectDefenseModal } from './ProjectDefenseModal';
 import { DiagnosticGameModal } from './DiagnosticGameModal';
-import MobileExamNavigation from './MobileExamNavigation';
 
 interface ExamEvent {
   id: string;
@@ -94,6 +92,7 @@ const ExpertExamPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, userProfile } = useAuth();
+  const { setIsNavHidden } = useOutletContext<{ setIsNavHidden: (hidden: boolean) => void }>();
   
   const [exam, setExam] = useState<ExamEvent | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -121,19 +120,17 @@ const ExpertExamPage: React.FC = () => {
   const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(null);
   const [showEvaluationModal, setShowEvaluationModal] = useState(false);
   const [selectedParticipantForEvaluation, setSelectedParticipantForEvaluation] = useState<Participant | null>(null);
-  const [showCaseEvaluation, setShowCaseEvaluation] = useState(false);
-  const [selectedCaseNumber, setSelectedCaseNumber] = useState<number | null>(null);
   const [showProjectDefenseModal, setShowProjectDefenseModal] = useState(false);
   const [showDiagnosticGameModal, setShowDiagnosticGameModal] = useState(false);
   
-  // Состояние для отслеживания открытых модальных окон
-  const [isAnyModalOpen, setIsAnyModalOpen] = useState(false);
   
   // Отслеживание открытых модальных окон
   useEffect(() => {
-    const anyModalOpen = showEvaluationModal || showCaseEvaluation || showProjectDefenseModal || showDiagnosticGameModal || !!selectedParticipantId;
-    setIsAnyModalOpen(anyModalOpen);
-  }, [showEvaluationModal, showCaseEvaluation, showProjectDefenseModal, showDiagnosticGameModal, selectedParticipantId]);
+    const anyModalOpen = showEvaluationModal || showProjectDefenseModal || showDiagnosticGameModal || !!selectedParticipantId;
+    
+    // Сообщаем родительскому layout, нужно ли скрыть меню
+    setIsNavHidden(anyModalOpen);
+  }, [showEvaluationModal, showProjectDefenseModal, showDiagnosticGameModal, selectedParticipantId, setIsNavHidden]);
 
   
   const [bannerSettings, setBannerSettings] = useState({
@@ -1149,12 +1146,6 @@ const ExpertExamPage: React.FC = () => {
 
       </div>
 
-      {/* Мобильная навигация */}
-      <MobileExamNavigation
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        isHidden={isAnyModalOpen}
-      />
       
 
       {/* Модальное окно досье */}
@@ -1177,7 +1168,7 @@ const ExpertExamPage: React.FC = () => {
           setShowEvaluationModal(false);
           setSelectedParticipantForEvaluation(null);
         }}
-        onStageSelect={(stage, caseNumber) => {
+        onStageSelect={(stage) => {
           
           // Для кейсов НЕ закрываем основное меню (обрабатывается внутри EvaluationStageModal)
           // Для других этапов закрываем и переходим к соответствующему модальному окну
@@ -1192,7 +1183,7 @@ const ExpertExamPage: React.FC = () => {
             }
           }
         }}
-        onCaseEvaluationComplete={async (caseNumber) => {
+        onCaseEvaluationComplete={async () => {
           // Перезагружаем оценки после завершения оценки кейса
           await fetchEvaluations();
         }}
@@ -1220,7 +1211,7 @@ const ExpertExamPage: React.FC = () => {
             // Перезагружаем данные после завершения оценки
             await fetchExamData();
           }}
-          onRemoveEvaluation={async (participantId) => {
+          onRemoveEvaluation={async () => {
             // Перезагружаем данные после удаления оценки
             await fetchExamData();
           }}
@@ -1242,7 +1233,7 @@ const ExpertExamPage: React.FC = () => {
             // Перезагружаем данные после завершения оценки
             await fetchExamData();
           }}
-          onRemoveEvaluation={async (participantId) => {
+          onRemoveEvaluation={async () => {
             // Перезагружаем данные после удаления оценки
             await fetchExamData();
           }}
