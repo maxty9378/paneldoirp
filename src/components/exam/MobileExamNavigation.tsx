@@ -51,7 +51,12 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
                          element.offsetParent !== null;
         
         if (isVisible) {
-          console.log('Modal found via selector:', selector, element);
+          console.log('Modal found via selector:', selector, element, {
+            display: style.display,
+            visibility: style.visibility,
+            opacity: style.opacity,
+            offsetParent: element.offsetParent
+          });
           modalFound = true;
           break;
         }
@@ -80,6 +85,25 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
     if (!modalFound && document.body.classList.contains('modal-open')) {
       console.log('Modal found via body.modal-open class');
       modalFound = true;
+    }
+    
+    // Дополнительная отладочная информация
+    if (!modalFound) {
+      console.log('No modals found. Checking all modal elements:');
+      for (const selector of modalSelectors) {
+        const elements = document.querySelectorAll(selector);
+        console.log(`Selector ${selector}:`, elements.length, 'elements found');
+        elements.forEach((el, index) => {
+          const style = window.getComputedStyle(el);
+          console.log(`  Element ${index}:`, {
+            display: style.display,
+            visibility: style.visibility,
+            opacity: style.opacity,
+            offsetParent: el.offsetParent,
+            classList: el.classList.toString()
+          });
+        });
+      }
     }
     
     setHasModalOpen(modalFound);
