@@ -78,6 +78,13 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
   
   // Проверяем, находимся ли мы на странице экзамена
   const isExamPage = location.pathname.includes('/expert-exam/') || location.pathname.includes('/case-evaluation/');
+  
+  // Проверяем, находимся ли мы на страницах оценки или досье (где нужно скрыть меню)
+  const isEvaluationOrDossierPage = location.pathname.includes('/case-evaluation/') || 
+                                   location.pathname.includes('/evaluations') ||
+                                   (location.pathname.includes('/expert-exam/') && 
+                                    (location.pathname.includes('/evaluations') || 
+                                     location.pathname.includes('/dossiers')));
 
   // Теперь Sidebar будет использовать navigate для перехода по роутам
   const handleMenuItemClick = (itemId: string) => {
@@ -125,6 +132,46 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
 
   // Если это страница теста на мобильном, показываем только контент без шапки и сайдбара
   if (isTestPage) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        {/* На мобильных устройствах скрываем шапку и сайдбар */}
+        <div className="lg:hidden px-4 pt-4 pb-safe-bottom">
+          {children}
+        </div>
+        
+        {/* На десктопе показываем обычный layout */}
+        <div className="hidden lg:flex min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+          {/* Desktop sidebar */}
+          <div className="relative flex-shrink-0">
+            <Sidebar 
+              activeItem={currentView} 
+              onItemClick={handleMenuItemClick}
+              isCollapsed={isSidebarCollapsed}
+              onToggle={toggleSidebar}
+            />
+          </div>
+
+          {/* Main content */}
+          <div className="flex-1 flex flex-col min-w-0">
+            <Header onMobileMenuToggle={() => setIsMobileMenuOpen(true)} />
+            <main className={clsx(
+                "flex-1 overflow-auto pt-20 transition-all duration-300",
+                isSidebarCollapsed ? "lg:ml-20" : "lg:ml-80"
+              )}>
+              <div className="py-6">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                  {children}
+                </div>
+              </div>
+            </main>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Если это страница оценки или досье, показываем только контент без меню
+  if (isEvaluationOrDossierPage) {
     return (
       <div className="min-h-screen bg-gray-50">
         {/* На мобильных устройствах скрываем шапку и сайдбар */}

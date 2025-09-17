@@ -8,12 +8,14 @@ interface MobileExamNavigationProps {
   activeTab: ExamTab;
   onTabChange: (tab: ExamTab) => void;
   isHidden?: boolean; // Новый пропс для скрытия меню
+  userRole?: string; // Роль пользователя для проверки доступа
 }
 
 const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({ 
   activeTab, 
   onTabChange, 
-  isHidden = false
+  isHidden = false,
+  userRole
 }) => {
   const [isMobile, setIsMobile] = useState(false);
 
@@ -42,12 +44,13 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
       label: 'Расписание',
       count: 0
     },
-    {
+    // Показываем "Результаты" только администраторам
+    ...(userRole === 'administrator' ? [{
       id: 'results' as const,
       icon: Target,
       label: 'Результаты',
       count: 0
-    }
+    }] : [])
   ];
 
   const mobileNav = (

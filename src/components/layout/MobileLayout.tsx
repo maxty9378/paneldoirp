@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import MobileExamNavigation from '../exam/MobileExamNavigation';
+import { useAuth } from '../../hooks/useAuth';
 
 // Определяем, какая вкладка активна, на основе текущего URL
 const getActiveTabFromPathname = (pathname: string) => {
@@ -17,7 +18,15 @@ const MobileLayout: React.FC = () => {
 
   const location = useLocation();
   const navigate = useNavigate();
+  const { userProfile } = useAuth();
   const activeTab = getActiveTabFromPathname(location.pathname);
+
+  // Проверяем, находимся ли мы на страницах оценки или досье (где нужно скрыть меню)
+  const isEvaluationOrDossierPage = location.pathname.includes('/case-evaluation/') || 
+                                   location.pathname.includes('/evaluations') ||
+                                   (location.pathname.includes('/expert-exam/') && 
+                                    (location.pathname.includes('/evaluations') || 
+                                     location.pathname.includes('/dossiers')));
 
   // Определяем, мобильное ли устройство
   useEffect(() => {
@@ -78,14 +87,17 @@ const MobileLayout: React.FC = () => {
         overflowY: 'auto',
         WebkitOverflowScrolling: 'touch',
         // 64 (высота меню) + 16 (верхний паддинг футера) + 16 (нижний паддинг футера) + safe-area
-        paddingBottom: 'calc(64px + 16px + 16px + env(safe-area-inset-bottom, 0px))'
+        // Если на странице оценки/досье, убираем отступ для нижнего меню
+        paddingBottom: isEvaluationOrDossierPage 
+          ? 'calc(16px + env(safe-area-inset-bottom, 0px))'
+          : 'calc(64px + 16px + 16px + env(safe-area-inset-bottom, 0px))'
       }}>
         {/* React Router будет рендерить здесь нужную страницу (ExpertExamPage и т.д.) */}
         <Outlet context={{ setIsNavHidden }} />
       </main>
 
-      {/* 2. ОБЛАСТЬ НАВИГАЦИИ (ФИКСИРОВАНА) - только на мобильных */}
-      {isMobile && (
+      {/* 2. ОБЛАСТЬ НАВИГАЦИИ (ФИКСИРОВАНА) - только на мобильных и не на страницах оценки/досье */}
+      {isMobile && !isEvaluationOrDossierPage && (
         <footer
           style={{
             // ДЕЛАЕМ ФИКСИРОВАННЫМ, чтобы быть НАД браузерным UI
@@ -105,6 +117,7 @@ const MobileLayout: React.FC = () => {
             activeTab={activeTab}
             onTabChange={handleTabChange}
             isHidden={isNavHidden}
+            userRole={userProfile?.role}
           />
         </footer>
       )}

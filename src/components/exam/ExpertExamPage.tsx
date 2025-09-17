@@ -156,14 +156,17 @@ const ExpertExamPage: React.FC = () => {
   // Обработчик события для открытия результатов оценок из мобильной навигации
   useEffect(() => {
     const handleOpenEvaluationResults = () => {
-      setShowEvaluationResults(true);
+      // Открываем результаты только для администраторов
+      if (userProfile?.role === 'administrator') {
+        setShowEvaluationResults(true);
+      }
     };
 
     window.addEventListener('openEvaluationResults', handleOpenEvaluationResults);
     return () => {
       window.removeEventListener('openEvaluationResults', handleOpenEvaluationResults);
     };
-  }, []);
+  }, [userProfile?.role]);
 
   // Сброс скрытия меню на размонтировании
   useEffect(() => {
@@ -827,13 +830,15 @@ const ExpertExamPage: React.FC = () => {
                 <Calendar className="w-4 h-4 inline mr-2" />
                 Расписание
               </button>
-              <button
-                onClick={() => setShowEvaluationResults(true)}
-                className="py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm transition-colors"
-              >
-                <Target className="w-4 h-4 inline mr-2" />
-                Результаты оценок
-              </button>
+              {userProfile?.role === 'administrator' && (
+                <button
+                  onClick={() => setShowEvaluationResults(true)}
+                  className="py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm transition-colors"
+                >
+                  <Target className="w-4 h-4 inline mr-2" />
+                  Результаты оценок
+                </button>
+              )}
             </nav>
           </div>
 
