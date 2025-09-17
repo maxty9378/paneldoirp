@@ -423,7 +423,7 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
             type="range"
             min={0}
             max={STEPS.length - 1}
-            value={STEPS.findIndex(s => s === value)}
+            value={Math.max(0, STEPS.indexOf(value))}
             onChange={handleSliderChange}
             className="w-full h-5 relative z-10"
           />
