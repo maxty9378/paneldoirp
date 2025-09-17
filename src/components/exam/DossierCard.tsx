@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, MapPin, Award, GraduationCap, Calendar, Edit, Camera, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../hooks/useAuth';
 
 interface DossierData {
   id?: string;
@@ -42,8 +43,12 @@ interface DossierCardProps {
 }
 
 const DossierCard: React.FC<DossierCardProps> = ({ participant, dossier, groupName, onEdit, onSave }) => {
+  const { userProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  
+  // Проверяем, является ли пользователь администратором
+  const isAdmin = userProfile?.role === 'administrator';
   
   // Формируем название программы с номером группы
   const getProgramName = () => {
@@ -618,12 +623,14 @@ const DossierCard: React.FC<DossierCardProps> = ({ participant, dossier, groupNa
           </div>
         </div>
 
-        <button
-          onClick={() => setIsEditing(true)}
-          className="p-2 text-[#06A478] hover:bg-[#06A478]/10 rounded-lg transition-colors"
-        >
-          <Edit className="w-5 h-5" />
-        </button>
+        {isAdmin && (
+          <button
+            onClick={() => setIsEditing(true)}
+            className="p-2 text-[#06A478] hover:bg-[#06A478]/10 rounded-lg transition-colors"
+          >
+            <Edit className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
       {/* Секции информации */}

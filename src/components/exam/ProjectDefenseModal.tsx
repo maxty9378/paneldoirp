@@ -147,7 +147,6 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
       }
 
       if (data) {
-        console.log('🔄 Загружена существующая оценка защиты проекта:', data);
         setEvaluation({
           id: data.id,
           exam_event_id: data.exam_event_id,
@@ -205,7 +204,6 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
         criteria_scores: evaluation.criteria_scores
       };
 
-      console.log('💾 Сохраняем оценку защиты проекта:', evaluationData);
 
       const { error } = await supabase
         .from('project_defense_evaluations')
@@ -444,7 +442,7 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
       <style>{sliderStyles}</style>
 
       {/* Фуллскрин слой */}
-      <div className="project-defense-modal fixed inset-0 z-[10002] flex flex-col bg-white" style={{ 
+      <div className="case-evaluation-modal fixed inset-0 z-[10002] flex flex-col bg-white" style={{ 
         top: 0,
         left: 0,
         right: 0,

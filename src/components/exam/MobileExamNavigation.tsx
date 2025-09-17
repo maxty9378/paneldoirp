@@ -21,46 +21,6 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
   isHidden = false
 }) => {
   const [isMobile, setIsMobile] = useState(false);
-  const [hasModalOpen, setHasModalOpen] = useState(false);
-
-  // Функция для проверки наличия модальных окон на странице
-  const checkForModals = () => {
-    // Проверяем основные селекторы модальных окон
-    const modalSelectors = [
-      '[role="dialog"]',
-      '.dossier-modal',
-      '.case-evaluation-modal', 
-      '.evaluation-stage-modal',
-      '.project-defense-modal',
-      '.diagnostic-game-modal'
-    ];
-    
-    let modalFound = false;
-    
-    for (const selector of modalSelectors) {
-      const elements = document.querySelectorAll(selector);
-      for (const element of elements) {
-        const style = window.getComputedStyle(element);
-        const isVisible = style.display !== 'none' && 
-                         style.visibility !== 'hidden' && 
-                         style.opacity !== '0' &&
-                         element.offsetParent !== null;
-        
-        if (isVisible) {
-          modalFound = true;
-          break;
-        }
-      }
-      if (modalFound) break;
-    }
-    
-    // Проверяем класс modal-open на body
-    if (!modalFound && document.body.classList.contains('modal-open')) {
-      modalFound = true;
-    }
-    
-    setHasModalOpen(modalFound);
-  };
 
   useEffect(() => {
     const checkDevice = () => {
@@ -80,36 +40,6 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
       window.removeEventListener('orientationchange', checkDevice);
     };
   }, []);
-
-  // Проверяем наличие модальных окон периодически
-  useEffect(() => {
-    if (!isMobile) return;
-
-    // Проверяем сразу
-    checkForModals();
-    
-    // Устанавливаем интервал для периодической проверки (увеличиваем интервал)
-    const interval = setInterval(checkForModals, 500);
-    
-    // Также слушаем изменения DOM (только важные изменения)
-    const observer = new MutationObserver(() => {
-      // Проверяем только при добавлении/удалении элементов с модальными классами
-      const hasModalElements = document.querySelectorAll('[role="dialog"], .modal, .dossier-modal, .case-evaluation-modal, .evaluation-stage-modal, .project-defense-modal, .diagnostic-game-modal').length > 0;
-      if (hasModalElements) {
-        checkForModals();
-      }
-    });
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: false // Отключаем отслеживание атрибутов
-    });
-    
-    return () => {
-      clearInterval(interval);
-      observer.disconnect();
-    };
-  }, [isMobile]);
 
   const navItems = [
     {
@@ -276,31 +206,11 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
     </div>
   );
 
-  // Определяем, должно ли меню быть скрыто
-  const shouldHide = isHidden || hasModalOpen;
-  
-  // Отладочная информация (только в development режиме)
-  if (process.env.NODE_ENV === 'development') {
-    console.log('MobileExamNavigation render:', { 
-      isMobile, 
-      isHidden, 
-      hasModalOpen,
-      shouldHide,
-      activeTab, 
-      willRender: isMobile && !shouldHide
-    });
-  }
   
   // Рендерим через портал в body только на мобильных устройствах и когда не скрыто
-  if (!isMobile || shouldHide) return null;
+  if (!isMobile || isHidden) return null;
   
-  return createPortal(
-    <>
-      {mobileNav}
-      
-    </>, 
-    document.body
-  );
+  return createPortal(mobileNav, document.body);
 };
 
 export default MobileExamNavigation;

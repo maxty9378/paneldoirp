@@ -65,7 +65,6 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
     if (isOpen && participantId && examId && user?.id) {
       if (!dataLoaded) {
         // ВСЕГДА загружаем актуальные данные из Supabase
-        console.log('🔄 Загружаем актуальные данные из Supabase');
         loadExistingEvaluation();
       }
     } else if (!isOpen) {
@@ -119,7 +118,6 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
     
     setLoading(true);
     try {
-      console.log('🔄 Загружаем данные диагностической игры из Supabase:', { examId, participantId, userId: user.id });
       
       const { data, error } = await supabase
         .from('diagnostic_game_evaluations')
@@ -149,7 +147,6 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
       }
 
       if (data) {
-        console.log('✅ Загружена существующая оценка из Supabase:', data);
         setEvaluation({
           id: data.id,
           exam_event_id: data.exam_event_id,
@@ -159,7 +156,6 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
         });
         setSaved(true);
       } else {
-        console.log('📝 Создаем новую оценку диагностической игры');
         // Нет существующей оценки - создаем новую
         setEvaluation({
           exam_event_id: examId,
@@ -218,7 +214,6 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
         competency_scores: evaluation.competency_scores
       };
 
-      console.log('💾 Сохраняем оценку диагностической игры:', evaluationData);
 
       const { error } = await supabase
         .from('diagnostic_game_evaluations')
@@ -524,7 +519,7 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
       <style>{sliderStyles}</style>
 
       {/* Фуллскрин слой */}
-      <div className="diagnostic-game-modal fixed inset-0 z-[10002] flex flex-col bg-white" style={{ 
+      <div className="case-evaluation-modal fixed inset-0 z-[10002] flex flex-col bg-white" style={{ 
         top: 0,
         left: 0,
         right: 0,

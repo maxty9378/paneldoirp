@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, User, MapPin, Calendar, Briefcase, Award, GraduationCap, Clock, Mail, Phone, Building, Edit, Save } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../hooks/useAuth';
 
 interface DossierData {
   id?: string;
@@ -56,11 +57,15 @@ export const DossierModal: React.FC<DossierModalProps> = ({
   loading = false,
   onModalStateChange
 }) => {
+  const { userProfile } = useAuth();
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingData, setEditingData] = useState<DossierData | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Проверяем, является ли пользователь администратором
+  const isAdmin = userProfile?.role === 'administrator';
 
   // Создаем инициалы
   const getInitials = (fullName?: string) => {
@@ -319,23 +324,25 @@ export const DossierModal: React.FC<DossierModalProps> = ({
             </div>
             <div className="flex items-center gap-2">
               {!isEditing ? (
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="p-2 rounded-lg hover:bg-gray-50 active:bg-gray-100 touch-manipulation"
-                  aria-label="Редактировать"
-                  style={{
-                    minWidth: '44px',
-                    minHeight: '44px',
-                    zIndex: 1000,
-                    position: 'relative',
-                    WebkitTapHighlightColor: 'transparent',
-                    WebkitTouchCallout: 'none',
-                    WebkitUserSelect: 'none',
-                    userSelect: 'none'
-                  }}
-                >
-                  <Edit className="w-5 h-5 text-gray-700 pointer-events-none" />
-                </button>
+                isAdmin ? (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="p-2 rounded-lg hover:bg-gray-50 active:bg-gray-100 touch-manipulation"
+                    aria-label="Редактировать"
+                    style={{
+                      minWidth: '44px',
+                      minHeight: '44px',
+                      zIndex: 1000,
+                      position: 'relative',
+                      WebkitTapHighlightColor: 'transparent',
+                      WebkitTouchCallout: 'none',
+                      WebkitUserSelect: 'none',
+                      userSelect: 'none'
+                    }}
+                  >
+                    <Edit className="w-5 h-5 text-gray-700 pointer-events-none" />
+                  </button>
+                ) : null
               ) : (
                 <div className="flex items-center gap-1">
                   <button

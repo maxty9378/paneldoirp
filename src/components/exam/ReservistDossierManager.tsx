@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Briefcase, GraduationCap, Award, Target, Edit, Trash2, Plus, Save, X, Upload } from 'lucide-react';
 import { ReservistDossier } from '../../types/exam';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../hooks/useAuth';
 
 interface ReservistDossierManagerProps {
   examEventId: string;
@@ -9,12 +10,16 @@ interface ReservistDossierManagerProps {
 }
 
 export function ReservistDossierManager({ examEventId, onDossierChange }: ReservistDossierManagerProps) {
+  const { userProfile } = useAuth();
   const [dossiers, setDossiers] = useState<ReservistDossier[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingDossier, setEditingDossier] = useState<ReservistDossier | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
+  
+  // Проверяем, является ли пользователь администратором
+  const isAdmin = userProfile?.role === 'administrator';
 
   // Загрузка досье
   const fetchDossiers = async () => {
@@ -151,13 +156,15 @@ export function ReservistDossierManager({ examEventId, onDossierChange }: Reserv
       {/* Заголовок с кнопкой добавления */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-900">Досье резервистов</h3>
-        <button
-          onClick={() => setIsAddingNew(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          Добавить резервиста
-        </button>
+        {isAdmin && (
+          <button
+            onClick={() => setIsAddingNew(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            Добавить резервиста
+          </button>
+        )}
       </div>
 
       {/* Список досье */}
@@ -187,20 +194,22 @@ export function ReservistDossierManager({ examEventId, onDossierChange }: Reserv
                   <p className="text-sm text-gray-600">{dossier.position}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setEditingDossier(dossier)}
-                  className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                >
-                  <Edit className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => deleteDossier(dossier.id)}
-                  className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
+              {isAdmin && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setEditingDossier(dossier)}
+                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => deleteDossier(dossier.id)}
+                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="space-y-3">

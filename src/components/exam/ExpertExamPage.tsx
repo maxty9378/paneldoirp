@@ -156,7 +156,6 @@ const ExpertExamPage: React.FC = () => {
 
     try {
       setLoading(true);
-      console.log('Загружаем данные экзамена с ID:', id);
       
       // Загружаем данные экзамена
       const { data: examData, error: examError } = await supabase
@@ -174,19 +173,14 @@ const ExpertExamPage: React.FC = () => {
         .eq('id', id)
         .single();
 
-      console.log('Результат запроса экзамена:', { examData, examError });
 
       if (examError) throw examError;
 
       // Проверяем, что это экзамен кадрового резерва
       if (examData.event_types?.name !== 'exam_talent_reserve') {
-        console.error('Тип события не соответствует:', examData.event_types?.name);
         throw new Error('Это не экзамен кадрового резерва');
       }
 
-      console.log('Экзамен загружен успешно:', examData);
-      console.log('Название группы:', examData.group_name);
-      console.log('Детальное расписание:', examData.detailed_schedule);
       setExam(examData);
 
       // Загружаем сохраненную позицию обложки
@@ -197,7 +191,6 @@ const ExpertExamPage: React.FC = () => {
         savedPosition = examData.metadata.banner_position;
       }
       
-      console.log('Загружена позиция обложки:', savedPosition);
       setBannerSettings(prev => ({
         ...prev,
         position: savedPosition,
@@ -223,7 +216,6 @@ const ExpertExamPage: React.FC = () => {
     if (!id) return;
 
     try {
-      console.log('Загружаем резервистов для экзамена:', id);
       
       // Сначала загружаем участников без досье
       const { data: participantsData, error: participantsError } = await supabase
@@ -242,11 +234,9 @@ const ExpertExamPage: React.FC = () => {
         `)
         .eq('event_id', id);
 
-      console.log('Результат запроса резервистов:', { participantsData, participantsError });
 
       if (participantsError) throw participantsError;
       
-      console.log('Загружены резервисты:', participantsData);
       
       // Теперь загружаем досье для каждого участника отдельно
       const participantsWithDossiers = await Promise.all(
@@ -277,14 +267,6 @@ const ExpertExamPage: React.FC = () => {
         })
       );
       
-      // Проверяем, есть ли досье у резервистов
-      participantsWithDossiers.forEach((participant, index) => {
-        console.log(`Резервист ${index + 1}:`, {
-          name: participant.user?.full_name,
-          hasDossier: !!participant.dossier,
-          dossier: participant.dossier
-        });
-      });
       
       setParticipants(participantsWithDossiers);
     } catch (err) {
@@ -297,7 +279,6 @@ const ExpertExamPage: React.FC = () => {
     if (!id || !user?.id) return;
 
     try {
-      console.log('Загружаем оценки для экзамена:', id, 'пользователь:', user.id);
       
       // Загружаем оценки кейсов из case_evaluations
       let query = supabase
@@ -312,11 +293,9 @@ const ExpertExamPage: React.FC = () => {
 
       const { data, error } = await query;
 
-      console.log('Результат запроса оценок кейсов:', { data, error });
 
       if (error) throw error;
       
-      console.log('Загружены оценки кейсов:', data);
       setEvaluations(data || []);
     } catch (err) {
       console.error('Ошибка загрузки оценок кейсов:', err);
@@ -391,11 +370,9 @@ const ExpertExamPage: React.FC = () => {
     if (!id) return;
     
     try {
-      console.log('Сохранение позиции обложки:', position, 'для экзамена:', id);
       
       // Проверяем, что ID валидный UUID
       if (!id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-        console.error('Невалидный UUID:', id);
         return;
       }
       
@@ -405,7 +382,6 @@ const ExpertExamPage: React.FC = () => {
         .eq('id', id);
       
       if (error) {
-        console.error('Ошибка Supabase:', error);
         
         // Пробуем альтернативный способ - сохранить в metadata
         const { error: metadataError } = await supabase
@@ -416,14 +392,11 @@ const ExpertExamPage: React.FC = () => {
           .eq('id', id);
           
         if (metadataError) {
-          console.error('Ошибка сохранения в metadata:', metadataError);
         } else {
-          console.log('Позиция сохранена в metadata');
         }
         return;
       }
       
-      console.log('Позиция обложки успешно сохранена');
     } catch (err) {
       console.error('Ошибка сохранения позиции обложки:', err);
     }
@@ -1190,26 +1163,6 @@ const ExpertExamPage: React.FC = () => {
         isHidden={isAnyModalOpen}
       />
       
-      {/* Отладочная информация */}
-      {process.env.NODE_ENV === 'development' && (
-        <div style={{
-          position: 'fixed',
-          top: '10px',
-          right: '10px',
-          background: 'rgba(0,0,0,0.8)',
-          color: 'white',
-          padding: '8px',
-          borderRadius: '4px',
-          fontSize: '12px',
-          zIndex: 9999
-        }}>
-          <div>isAnyModalOpen: {isAnyModalOpen.toString()}</div>
-          <div>showEvaluationModal: {showEvaluationModal.toString()}</div>
-          <div>showCaseEvaluation: {showCaseEvaluation.toString()}</div>
-          <div>showProjectDefenseModal: {showProjectDefenseModal.toString()}</div>
-          <div>showDiagnosticGameModal: {showDiagnosticGameModal.toString()}</div>
-        </div>
-      )}
 
       {/* Модальное окно досье */}
       {selectedParticipantId && (() => {
@@ -1239,13 +1192,11 @@ const ExpertExamPage: React.FC = () => {
           setIsAnyModalOpen(isOpen);
         }}
         onStageSelect={(stage, caseNumber) => {
-          console.log('Selected stage:', stage, 'case number:', caseNumber, 'for participant:', selectedParticipantForEvaluation?.user.full_name);
           
           // Для кейсов НЕ закрываем основное меню (обрабатывается внутри EvaluationStageModal)
           // Для других этапов закрываем и переходим к соответствующему модальному окну
           if (stage !== 'case-solving') {
             setShowEvaluationModal(false);
-            console.log('Переход к оценке этапа:', stage);
             
             // Открываем соответствующее модальное окно
             if (stage === 'project-defense') {
