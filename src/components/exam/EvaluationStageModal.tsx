@@ -22,27 +22,34 @@ const MobileTooltip: React.FC<{
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
         
+        // Определяем, мобильное ли устройство
+        const isMobile = viewportWidth <= 768;
+        
         // Размеры тултипа
-        const tooltipWidth = 280;
+        const tooltipWidth = isMobile ? 240 : 280; // Уменьшаем для мобильных
         const tooltipHeight = 80;
         const padding = 16;
         const arrowSize = 8;
-
-        // Определяем, мобильное ли устройство
-        const isMobile = viewportWidth <= 768;
         
         let top, left, arrowPosition;
 
         if (isMobile) {
-          // Для мобильных устройств размещаем тултип сверху карточки
-          left = Math.max(padding, rect.left + rect.width / 2 - tooltipWidth / 2);
-          top = rect.top - tooltipHeight - padding - arrowSize;
-          arrowPosition = 'bottom';
+          // Для мобильных устройств размещаем тултип справа от карточки
+          left = rect.right + padding;
+          top = rect.top + rect.height / 2 - tooltipHeight / 2;
+          arrowPosition = 'left';
           
-          // Если не помещается сверху, размещаем снизу
-          if (top < padding) {
-            top = rect.bottom + padding + arrowSize;
-            arrowPosition = 'top';
+          // Если не помещается справа, пробуем слева
+          if (left + tooltipWidth > viewportWidth - padding) {
+            left = rect.left - tooltipWidth - padding;
+            arrowPosition = 'right';
+            
+            // Если не помещается слева, размещаем сверху по центру
+            if (left < padding) {
+              left = Math.max(padding, rect.left + rect.width / 2 - tooltipWidth / 2);
+              top = rect.top - tooltipHeight - padding - arrowSize;
+              arrowPosition = 'bottom';
+            }
           }
         } else {
           // Для десктопа размещаем справа от карточки
@@ -107,11 +114,12 @@ const MobileTooltip: React.FC<{
       
       {/* Тултип */}
       <div
-        className="fixed z-[9999] bg-white rounded-xl shadow-2xl p-4 max-w-[280px]"
+        className="fixed z-[9999] bg-white rounded-xl shadow-2xl p-4 sm:max-w-[280px] max-w-[240px]"
         style={{
           top: `${position.top}px`,
           left: `${position.left}px`,
-          fontFamily: 'Mabry, sans-serif'
+          fontFamily: 'Mabry, sans-serif',
+          width: `${tooltipWidth}px`
         }}
       >
         <div className="flex items-start gap-2">
