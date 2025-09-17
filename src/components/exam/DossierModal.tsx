@@ -231,97 +231,126 @@ export const DossierModal: React.FC<DossierModalProps> = ({
 
         {/* Контент (скролл) */}
         <main className="flex-1 overflow-y-auto px-4 pt-3 pb-32">
-          <div className="space-y-3">
-            {loading ? (
-              // Скелетон загрузки
-              <div className="space-y-3">
-                <div className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
-                  <div className="flex gap-4">
-                    <SkeletonAvatar />
-                    <div className="flex-1 space-y-2">
-                      <SkeletonLine className="h-4 w-32" />
-                      <SkeletonLine className="h-3 w-24" />
-                      <SkeletonLine className="h-3 w-20" />
-                    </div>
+          {loading ? (
+            // Скелетон загрузки
+            <div className="space-y-6">
+              <div className="flex gap-6">
+                <SkeletonAvatar />
+                <div className="flex-1 space-y-3">
+                  <SkeletonLine className="h-7 md:h-8 w-3/4" />
+                  <div className="flex flex-wrap gap-1">
+                    <SkeletonLine className="h-6 w-20" />
+                    <SkeletonLine className="h-6 w-24" />
+                    <SkeletonLine className="h-6 w-16" />
                   </div>
                 </div>
-                <div className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
-                  <SkeletonLine className="h-4 w-full" />
-                  <SkeletonLine className="h-3 w-3/4" />
-                </div>
               </div>
-            ) : (
-              <>
-                {/* Основная информация */}
-                <div className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
-                      <User className="w-6 h-6 text-emerald-700" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-gray-900 truncate">{user.full_name}</div>
-                      <div className="text-xs text-gray-500">{user.position?.name}</div>
-                      <div className="text-xs text-gray-400">{user.territory?.name}</div>
-                    </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="space-y-3">
+                    <SkeletonLine className="h-6 w-1/3" />
+                    <SkeletonLine className="h-4 w-full" />
+                    <SkeletonLine className="h-4 w-3/4" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            // Основное содержимое
+            <div className="space-y-8">
+              {/* Основная информация */}
+              <div className="flex gap-6">
+                {/* Фото */}
+                <div className="relative shrink-0">
+                  <div className="w-32 h-40 md:w-44 md:h-52 rounded-2xl overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 shadow-lg border-4 border-white">
                     {dossier?.photo_url && !imageError ? (
-                      <div className="w-12 h-12 rounded-xl overflow-hidden">
-                        <img
-                          src={dossier.photo_url}
-                          alt={user.full_name}
-                          className="w-full h-full object-cover"
-                          onLoad={() => setImageLoading(false)}
-                          onError={() => {
-                            setImageError(true);
-                            setImageLoading(false);
-                          }}
-                        />
-                      </div>
+                      <img
+                        src={dossier.photo_url}
+                        alt={user.full_name}
+                        className="w-full h-full object-cover"
+                        onLoad={() => setImageLoading(false)}
+                        onError={() => {
+                          setImageError(true);
+                          setImageLoading(false);
+                        }}
+                      />
                     ) : (
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center">
-                        <span className="text-sm font-bold text-white">
+                      <div className="w-full h-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center">
+                        <span className="text-4xl font-bold text-white">
                           {getInitials(user.full_name)}
                         </span>
                       </div>
                     )}
+                    {imageLoading && (
+                      <div className="absolute inset-0 bg-gray-200 animate-pulse" />
+                    )}
                   </div>
                 </div>
 
-                {/* Контактная информация */}
-                <div className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Mail className="w-4 h-4 text-gray-500" />
-                    <div className="text-sm font-medium text-gray-900">Контактная информация</div>
+                {/* Информация */}
+                <div className="flex-1 space-y-4">
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2" style={{ fontFamily: 'SNS, sans-serif' }}>
+                      {user.full_name}
+                    </h3>
+                    <p className="text-gray-600 mb-1">{user.position?.name}</p>
+                    <p className="text-sm text-gray-500">{user.territory?.name}</p>
                   </div>
-                  <div className="space-y-1">
-                    <div className="text-xs text-gray-600">{user.email}</div>
+
+                  {/* Контактная информация */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <Mail className="w-4 h-4 text-gray-500" />
+                      <span className="text-gray-700">{user.email}</span>
+                    </div>
                     {dossier?.phone && (
-                      <div className="text-xs text-gray-600">{dossier.phone}</div>
+                      <div className="flex items-center gap-3">
+                        <Phone className="w-4 h-4 text-gray-500" />
+                        <span className="text-gray-700">{dossier.phone}</span>
+                      </div>
                     )}
                     {dossier?.location && (
-                      <div className="text-xs text-gray-600">{dossier.location}</div>
+                      <div className="flex items-center gap-3">
+                        <MapPin className="w-4 h-4 text-gray-500" />
+                        <span className="text-gray-700">{dossier.location}</span>
+                      </div>
                     )}
                   </div>
                 </div>
+              </div>
 
+              {/* Карточки информации */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Опыт работы */}
-                <div className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Briefcase className="w-4 h-4 text-gray-500" />
-                    <div className="text-sm font-medium text-gray-900">Опыт работы</div>
+                <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-2xl p-6 border border-emerald-100">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center">
+                      <Briefcase className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-gray-900">Опыт работы</h4>
+                      <p className="text-sm text-gray-600">Стаж в текущей должности</p>
+                    </div>
                   </div>
-                  <div className="text-sm text-gray-600">
+                  <div className="text-lg font-semibold text-emerald-700">
                     {formatExperience(user?.work_experience_days, dossier?.experience_in_position)}
                   </div>
                 </div>
 
                 {/* Образование */}
                 {dossier?.education && (
-                  <div className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
-                    <div className="flex items-center gap-2 mb-2">
-                      <GraduationCap className="w-4 h-4 text-gray-500" />
-                      <div className="text-sm font-medium text-gray-900">Образование</div>
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
+                        <GraduationCap className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-gray-900">Образование</h4>
+                        <p className="text-sm text-gray-600">Уровень и специальность</p>
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-gray-700">
                       {typeof dossier.education === 'string' 
                         ? dossier.education 
                         : `${dossier.education.level || ''} ${dossier.education.specialty || ''} ${dossier.education.institution || ''}`.trim()
@@ -332,39 +361,54 @@ export const DossierModal: React.FC<DossierModalProps> = ({
 
                 {/* Достижения */}
                 {dossier?.achievements && (
-                  <div className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Award className="w-4 h-4 text-gray-500" />
-                      <div className="text-sm font-medium text-gray-900">Достижения</div>
+                  <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl p-6 border border-yellow-100">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 bg-yellow-500 rounded-xl flex items-center justify-center">
+                        <Award className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-gray-900">Достижения</h4>
+                        <p className="text-sm text-gray-600">Профессиональные успехи</p>
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-600">{dossier.achievements}</div>
+                    <div className="text-sm text-gray-700">{dossier.achievements}</div>
                   </div>
                 )}
 
                 {/* Навыки */}
                 {dossier?.skills && (
-                  <div className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Building className="w-4 h-4 text-gray-500" />
-                      <div className="text-sm font-medium text-gray-900">Навыки</div>
+                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6 border border-purple-100">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center">
+                        <Building className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-gray-900">Навыки</h4>
+                        <p className="text-sm text-gray-600">Профессиональные компетенции</p>
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-600">{dossier.skills}</div>
+                    <div className="text-sm text-gray-700">{dossier.skills}</div>
                   </div>
                 )}
 
                 {/* Дополнительная информация */}
                 {dossier?.additional_info && (
-                  <div className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Clock className="w-4 h-4 text-gray-500" />
-                      <div className="text-sm font-medium text-gray-900">Дополнительная информация</div>
+                  <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200 md:col-span-2">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 bg-gray-500 rounded-xl flex items-center justify-center">
+                        <Clock className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-gray-900">Дополнительная информация</h4>
+                        <p className="text-sm text-gray-600">Прочая важная информация</p>
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-600">{dossier.additional_info}</div>
+                    <div className="text-sm text-gray-700">{dossier.additional_info}</div>
                   </div>
                 )}
-              </>
-            )}
-          </div>
+              </div>
+            </div>
+          )}
         </main>
 
         {/* Футер (sticky bottom) */}
