@@ -165,6 +165,21 @@ function EventCard({ event }: { event: EventWithDetails }) {
           const isExamTalentReserve = event.event_type?.name === 'exam_talent_reserve';
           const isExpertForThisExam = (isExpert || isAdmin) && isExamTalentReserve && (event.expert_emails?.includes(userProfile?.email || '') || isAdmin);
           
+          // Для администраторов: если это экзамен, показываем кнопку "Оценить"
+          if (isAdmin && isExamTalentReserve) {
+            return (
+              <button 
+                onClick={() => window.location.href = `/expert-exam/${event.id}`}
+                className="w-full justify-center relative overflow-hidden bg-gradient-to-r from-[#06A478] via-[#059669] to-[#06A478] hover:from-[#059669] hover:via-[#047857] hover:to-[#059669] text-white font-medium py-2.5 px-4 rounded-lg transition-all duration-300 shadow-sm hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#06A478] focus:ring-offset-2"
+                title="Перейти к оценке"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-[shimmer_3s_ease-in-out_infinite]"></div>
+                <span className="text-sm font-medium relative z-10">Перейти к оценке</span>
+              </button>
+            );
+          }
+          
+          // Для экспертов, назначенных на конкретный экзамен
           if (isExpertForThisExam) {
             return (
               <button 
@@ -174,6 +189,20 @@ function EventCard({ event }: { event: EventWithDetails }) {
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-[shimmer_3s_ease-in-out_infinite]"></div>
                 <span className="text-sm font-medium relative z-10">Перейти к оценке</span>
+              </button>
+            );
+          }
+          
+          // Для экспертов все мероприятия ведут на страницу эксперта
+          if (isExpert) {
+            return (
+              <button 
+                onClick={() => window.location.href = `/expert-exam/36520f72-c191-4e32-ba02-aa17c482c50b`}
+                className="w-full justify-center relative overflow-hidden bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-600 hover:via-teal-600 hover:to-emerald-700 text-white font-medium py-2.5 px-4 rounded-lg transition-all duration-300 shadow-sm hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                title="Открыть"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-[shimmer_3s_ease-in-out_infinite]"></div>
+                <span className="text-sm font-medium relative z-10">Открыть</span>
               </button>
             );
           }

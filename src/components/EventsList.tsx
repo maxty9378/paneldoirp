@@ -769,6 +769,21 @@ export function EventsList({ onCreateEvent }: EventsListProps) {
                       // Отладка
                       console.log('EventsList - Event:', event.title, 'Type:', event.event_types?.name, 'IsExpert:', isExpert, 'IsAdmin:', isAdmin, 'IsExam:', isExamTalentReserve, 'IsExpertForThisExam:', isExpertForThisExam);
                       
+                      // Для администраторов: если это экзамен, показываем кнопку "Оценить"
+                      if (isAdmin && isExamTalentReserve) {
+                        return (
+                          <button 
+                            onClick={() => window.location.href = `/expert-exam/${event.id}`}
+                            className="btn-primary flex items-center px-3 py-2 rounded-xl transition-all duration-300 hover:bg-[#059669] text-white" 
+                            title="Перейти к оценке"
+                          >
+                            <Star size={16} className="mr-1" />
+                            <span className="text-sm font-medium">Оценить</span>
+                          </button>
+                        );
+                      }
+                      
+                      // Для экспертов, назначенных на конкретный экзамен
                       if (isExpertForThisExam) {
                         return (
                           <button 
