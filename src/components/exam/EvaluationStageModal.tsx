@@ -118,8 +118,7 @@ const MobileTooltip: React.FC<{
         style={{
           top: `${position.top}px`,
           left: `${position.left}px`,
-          fontFamily: 'Mabry, sans-serif',
-          width: `${tooltipWidth}px`
+          fontFamily: 'Mabry, sans-serif'
         }}
       >
         <div className="flex items-start gap-2">
