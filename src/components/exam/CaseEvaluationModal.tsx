@@ -160,6 +160,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showChangeConfirmModal, setShowChangeConfirmModal] = useState(false);
   const [hasExistingEvaluation, setHasExistingEvaluation] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const scrollRootRef = useRef<HTMLDivElement>(null);
 
@@ -173,59 +174,19 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
     if (isOpen && participantId && examId && user?.id) {
       loadExistingEvaluation();
     }
-  }, [isOpen, participantId, examId, user?.id, caseNumber]);
+  }, [isOpen, participantId, examId, user?.id, caseNumber, existingEvaluation]);
 
   /* Загрузка существующих оценок */
   const loadExistingEvaluation = async () => {
     if (!user?.id) return;
     
     setLoading(true);
+    setError(null); // Сбрасываем ошибку при новой загрузке
     try {
-      const { data, error } = await supabase
-        .from('case_evaluations')
-        .select('*')
-        .eq('exam_event_id', examId)
-        .eq('reservist_id', participantId)
-        .eq('evaluator_id', user.id)
-        .eq('case_number', caseNumber)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Ошибка загрузки существующей оценки:', error);
-        // Создаем новую оценку при ошибке
-        setEvaluation({
-          exam_event_id: examId,
-          reservist_id: participantId,
-          evaluator_id: user.id,
-          case_number: caseNumber,
-          criteria_scores: { correctness: 0, clarity: 0, independence: 0 },
-        });
-        setSaved(false);
-        setHasExistingEvaluation(false);
-        return;
-      }
-
-      if (data) {
-        // Загружаем данные из новой структуры
-        setEvaluation({
-          id: data.id,
-          exam_event_id: data.exam_event_id,
-          reservist_id: data.reservist_id,
-          evaluator_id: data.evaluator_id,
-          case_number: data.case_number,
-          criteria_scores: data.criteria_scores,
-          comments: data.comments || '',
-        });
-        setSaved(true);
-        setHasExistingEvaluation(true);
-      } else {
-        // Нет существующей оценки
-        setHasExistingEvaluation(false);
-        setSaved(false);
-      }
-      
+      // Сначала проверяем, есть ли данные в existingEvaluation (переданные извне)
       if (existingEvaluation) {
-        // Fallback: используем данные из props (старая структура)
+        console.log('🔄 Загружаем данные из existingEvaluation:', existingEvaluation);
+        // Используем данные из props (старая структура)
         setEvaluation({
           id: existingEvaluation.id,
           exam_event_id: examId,
@@ -241,7 +202,54 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
         });
         setSaved(true);
         setHasExistingEvaluation(true);
+        setLoading(false);
+        return;
+      }
+
+      // Если нет existingEvaluation, загружаем из базы данных
+      console.log('🔄 Загружаем данные из базы данных...');
+      const { data, error } = await supabase
+        .from('case_evaluations')
+        .select('*')
+        .eq('exam_event_id', examId)
+        .eq('reservist_id', participantId)
+        .eq('evaluator_id', user.id)
+        .eq('case_number', caseNumber)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('❌ Ошибка загрузки существующей оценки:', error);
+        setError(`Ошибка загрузки данных: ${error.message}`);
+        // Создаем новую оценку при ошибке
+        setEvaluation({
+          exam_event_id: examId,
+          reservist_id: participantId,
+          evaluator_id: user.id,
+          case_number: caseNumber,
+          criteria_scores: { correctness: 0, clarity: 0, independence: 0 },
+        });
+        setSaved(false);
+        setHasExistingEvaluation(false);
+        setLoading(false);
+        return;
+      }
+
+      if (data) {
+        console.log('✅ Найдена существующая оценка в БД:', data);
+        // Загружаем данные из новой структуры
+        setEvaluation({
+          id: data.id,
+          exam_event_id: data.exam_event_id,
+          reservist_id: data.reservist_id,
+          evaluator_id: data.evaluator_id,
+          case_number: data.case_number,
+          criteria_scores: data.criteria_scores,
+          comments: data.comments || '',
+        });
+        setSaved(true);
+        setHasExistingEvaluation(true);
       } else {
+        console.log('ℹ️ Существующая оценка не найдена, создаем новую');
         // Нет существующей оценки - создаем новую
         setEvaluation({
           exam_event_id: examId,
@@ -254,7 +262,8 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
         setHasExistingEvaluation(false);
       }
     } catch (error) {
-      console.error('Ошибка загрузки существующей оценки:', error);
+      console.error('❌ Ошибка загрузки существующей оценки:', error);
+      setError(`Ошибка загрузки: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
       // Создаем новую оценку при ошибке
       setEvaluation({
         exam_event_id: examId,
@@ -264,6 +273,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
         criteria_scores: { correctness: 0, clarity: 0, independence: 0 },
       });
       setSaved(false);
+      setHasExistingEvaluation(false);
     } finally {
       setLoading(false);
     }
@@ -310,18 +320,26 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
   
 
   const handleSaveClick = () => {
+    // Показываем подтверждение если есть существующая оценка или если это повторное сохранение
     if (hasExistingEvaluation && !saved) {
-      // Показываем модальное окно подтверждения
+      console.log('🔄 Показываем подтверждение изменения существующей оценки');
       setShowChangeConfirmModal(true);
     } else {
-      // Сохраняем сразу
+      // Сохраняем сразу для новых оценок
+      console.log('💾 Сохраняем новую оценку');
       saveEvaluation();
     }
   };
 
   const saveEvaluation = async () => {
-    if (!canSave) return;
+    if (!canSave) {
+      console.log('❌ Нельзя сохранить: canSave =', canSave);
+      return;
+    }
+    
+    console.log('💾 Начинаем сохранение оценки:', evaluation);
     setSaving(true);
+    
     try {
       const evaluationData = {
         exam_event_id: examId,
@@ -332,6 +350,8 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
         comments: evaluation.comments || null
       };
 
+      console.log('📤 Отправляем данные в БД:', evaluationData);
+
       const { data, error } = await supabase
         .from('case_evaluations')
         .upsert(evaluationData, {
@@ -341,10 +361,12 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
         .single();
 
       if (error) {
-        console.error('Ошибка сохранения оценки кейса:', error);
+        console.error('❌ Ошибка сохранения оценки кейса:', error);
         alert(`Ошибка сохранения оценки: ${error.message}`);
         return;
       }
+
+      console.log('✅ Оценка успешно сохранена:', data);
 
       // Обновляем состояние с полученными данными
       if (data) {
@@ -352,9 +374,10 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
       }
 
       setSaved(true);
+      setHasExistingEvaluation(true); // Теперь у нас есть существующая оценка
       setShowSuccessModal(true);
     } catch (e) {
-      console.error('Ошибка сохранения:', e);
+      console.error('❌ Ошибка сохранения:', e);
       alert(`Ошибка сохранения: ${e instanceof Error ? e.message : 'Неизвестная ошибка'}`);
     } finally {
       setSaving(false);
@@ -492,6 +515,24 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
         {/* Контент */}
         <main ref={scrollRootRef} className="px-4 pt-3">
           <div className="space-y-3">
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 text-red-500">⚠️</div>
+                  <div className="text-red-700 text-sm">{error}</div>
+                </div>
+                <button
+                  onClick={() => {
+                    setError(null);
+                    loadExistingEvaluation();
+                  }}
+                  className="mt-2 text-red-600 hover:text-red-800 text-sm font-medium"
+                >
+                  Попробовать снова
+                </button>
+              </div>
+            )}
+            
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>

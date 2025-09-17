@@ -95,3 +95,5 @@ export const ChangeEvaluationConfirmModal: React.FC<ChangeEvaluationConfirmModal
     </div>
   );
 };
+
+export default ChangeEvaluationConfirmModal;
