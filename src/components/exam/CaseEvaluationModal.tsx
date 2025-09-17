@@ -171,6 +171,15 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
 
   /* Загрузка данных при открытии модала */
   useEffect(() => {
+    console.log('🚀 CaseEvaluationModal useEffect triggered:', {
+      isOpen,
+      participantId,
+      examId,
+      userId: user?.id,
+      caseNumber,
+      hasExistingEvaluation: !!existingEvaluation
+    });
+    
     if (isOpen && participantId && examId && user?.id) {
       loadExistingEvaluation();
     }
