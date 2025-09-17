@@ -383,10 +383,13 @@ export function Sidebar({ activeItem, onItemClick, isCollapsed = false, onToggle
             
             {/* Быстрые действия */}
             <div className="space-y-2">
-                                           <button className="flex items-center space-x-3 w-full p-3 text-left rounded-xl hover:bg-white/60 transition-all duration-200 active:scale-95 backdrop-blur-sm">
-                <Settings size={18} className="text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">Настройки</span>
-              </button>
+              {/* Скрываем кнопку "Настройки" для экспертов */}
+              {userProfile?.role !== 'expert' && (
+                <button className="flex items-center space-x-3 w-full p-3 text-left rounded-xl hover:bg-white/60 transition-all duration-200 active:scale-95 backdrop-blur-sm">
+                  <Settings size={18} className="text-gray-500" />
+                  <span className="text-sm font-medium text-gray-700">Настройки</span>
+                </button>
+              )}
               <button 
                 onClick={() => {
                   // Добавить логику выхода

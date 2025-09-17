@@ -241,16 +241,19 @@ export function Header({ onMobileMenuToggle }: HeaderProps) {
 
                       {/* Действия */}
                       <div className="p-3 border-t border-gray-100">
-                                                 <button
-                           onClick={() => {
-                             setShowMobileMenu(false);
-                             // Добавить логику настроек
-                           }}
-                           className="flex items-center space-x-3 w-full p-3 text-left rounded-xl hover:bg-gray-50 transition-all duration-200 active:scale-95"
-                         >
-                          <Settings size={18} className="text-gray-500" />
-                          <span className="text-sm font-medium text-gray-700">Настройки</span>
-                        </button>
+                        {/* Скрываем кнопку "Настройки" для экспертов */}
+                        {userProfile?.role !== 'expert' && (
+                          <button
+                            onClick={() => {
+                              setShowMobileMenu(false);
+                              // Добавить логику настроек
+                            }}
+                            className="flex items-center space-x-3 w-full p-3 text-left rounded-xl hover:bg-gray-50 transition-all duration-200 active:scale-95"
+                          >
+                            <Settings size={18} className="text-gray-500" />
+                            <span className="text-sm font-medium text-gray-700">Настройки</span>
+                          </button>
+                        )}
                                                  <button
                            onClick={() => {
                              handleSignOut();
