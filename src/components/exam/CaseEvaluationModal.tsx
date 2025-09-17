@@ -424,8 +424,6 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
       
       .case-evaluation-modal footer button {
         -webkit-tap-highlight-color: transparent !important;
-        -webkit-touch-callout: none !important;
-        -webkit-user-select: none !important;
         user-select: none !important;
         touch-action: manipulation !important;
         min-height: 44px !important;
@@ -554,7 +552,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
         style={{ 
           zIndex: 10010,
           pointerEvents: 'auto',
-          paddingBottom: '12px',
+          paddingBottom: 'max(12px, env(safe-area-inset-bottom, 12px))',
           paddingTop: '0px',
           paddingLeft: '0px',
           paddingRight: '0px'
@@ -565,11 +563,10 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
           <div className="flex gap-2">
             <button
               onClick={onClose}
+              onTouchEnd={(e) => { e.preventDefault(); onClose(); }}
               className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
               style={{
                 WebkitTapHighlightColor: 'transparent',
-                WebkitTouchCallout: 'none',
-                WebkitUserSelect: 'none',
                 userSelect: 'none',
                 touchAction: 'manipulation',
                 minHeight: '44px'
@@ -579,6 +576,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
             </button>
             <button
               onClick={saveEvaluation}
+              onTouchEnd={(e) => { if (canSave) { e.preventDefault(); saveEvaluation(); } }}
               disabled={!canSave}
               className={`flex-1 px-4 py-2.5 rounded-lg font-semibold transition-all text-sm ${
                 !canSave
@@ -587,8 +585,6 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
               }`}
               style={{
                 WebkitTapHighlightColor: 'transparent',
-                WebkitTouchCallout: 'none',
-                WebkitUserSelect: 'none',
                 userSelect: 'none',
                 touchAction: 'manipulation',
                 minHeight: '44px'
