@@ -115,6 +115,7 @@ const ExpertExamPage: React.FC = () => {
   // Синхронизируем activeTab с URL
   useEffect(() => {
     const newTab = getActiveTabFromUrl();
+    console.log('🔄 Смена вкладки на:', newTab, 'URL:', location.pathname);
     setActiveTab(newTab);
   }, [location.pathname]);
 
@@ -168,6 +169,7 @@ const ExpertExamPage: React.FC = () => {
     if (!id) return;
 
     try {
+      console.log('🔄 Загружаем данные экзамена для ID:', id);
       setLoading(true);
       
       // Загружаем данные экзамена
@@ -211,9 +213,11 @@ const ExpertExamPage: React.FC = () => {
       }));
 
       // Загружаем участников
+      console.log('👥 Загружаем участников...');
       await fetchParticipants();
 
       // Загружаем оценки эксперта
+      console.log('⭐ Загружаем оценки...');
       await fetchEvaluations();
 
     } catch (err) {
@@ -229,6 +233,7 @@ const ExpertExamPage: React.FC = () => {
     if (!id) return;
 
     try {
+      console.log('🔍 Ищем участников для экзамена:', id);
       
       // Сначала загружаем участников без досье
       const { data: participantsData, error: participantsError } = await supabase
@@ -248,8 +253,12 @@ const ExpertExamPage: React.FC = () => {
         .eq('event_id', id);
 
 
-      if (participantsError) throw participantsError;
+      if (participantsError) {
+        console.error('❌ Ошибка загрузки участников:', participantsError);
+        throw participantsError;
+      }
       
+      console.log('✅ Найдено участников:', participantsData?.length || 0);
       
       // Теперь загружаем досье для каждого участника отдельно
       const participantsWithDossiers = await Promise.all(
@@ -282,7 +291,7 @@ const ExpertExamPage: React.FC = () => {
         })
       );
       
-      
+      console.log('✅ Участники с досье загружены:', participantsWithDossiers.length);
       setParticipants(participantsWithDossiers);
     } catch (err) {
       console.error('Ошибка загрузки участников:', err);
@@ -294,6 +303,7 @@ const ExpertExamPage: React.FC = () => {
     if (!id || !user?.id) return;
 
     try {
+      console.log('🔍 Ищем оценки для экзамена:', id, 'пользователя:', user.id);
       
       // Загружаем оценки кейсов из case_evaluations
       let query = supabase
@@ -309,8 +319,12 @@ const ExpertExamPage: React.FC = () => {
       const { data, error } = await query;
 
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Ошибка загрузки оценок:', error);
+        throw error;
+      }
       
+      console.log('✅ Найдено оценок:', data?.length || 0);
       setEvaluations(data || []);
     } catch (err) {
       console.error('Ошибка загрузки оценок кейсов:', err);
@@ -452,8 +466,11 @@ const ExpertExamPage: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchExamData();
-  }, [id]);
+    if (id) {
+      console.log('🚀 Запуск загрузки данных для ID:', id, 'URL:', location.pathname);
+      fetchExamData();
+    }
+  }, [id, location.pathname]);
 
   // Глобальные обработчики мыши для лучшего контроля
   useEffect(() => {
@@ -804,7 +821,12 @@ const ExpertExamPage: React.FC = () => {
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-gray-900">Резервисты экзамена</h3>
                 
-                {participants.length === 0 ? (
+                {loading ? (
+                  <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#06A478] mx-auto mb-4"></div>
+                    <p className="text-gray-500">Загрузка резервистов...</p>
+                  </div>
+                ) : participants.length === 0 ? (
                   <div className="text-center py-12">
                     <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                     <p className="text-gray-500">Резервисты не добавлены</p>
@@ -1010,7 +1032,12 @@ const ExpertExamPage: React.FC = () => {
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-gray-900">Резервисты экзамена</h3>
                 
-                {participants.length === 0 ? (
+                {loading ? (
+                  <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#06A478] mx-auto mb-4"></div>
+                    <p className="text-gray-500">Загрузка резервистов...</p>
+                  </div>
+                ) : participants.length === 0 ? (
                   <div className="text-center py-12">
                     <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                     <p className="text-gray-500">Резервисты не добавлены</p>
