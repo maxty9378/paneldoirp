@@ -379,7 +379,14 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                         <p className="text-sm text-gray-600">Профессиональные успехи</p>
                       </div>
                     </div>
-                    <div className="text-sm text-gray-700 whitespace-pre-line">{dossier.achievements}</div>
+                    <div className="text-sm text-gray-700">
+                      {dossier.achievements.split('\n').filter(item => item.trim()).map((achievement, index) => (
+                        <div key={index} className="flex items-start gap-2 mb-2 last:mb-0">
+                          <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
+                          <span>{achievement.trim()}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -395,7 +402,14 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                         <p className="text-sm text-gray-600">Профессиональные компетенции</p>
                       </div>
                     </div>
-                    <div className="text-sm text-gray-700">{dossier.skills}</div>
+                    <div className="text-sm text-gray-700">
+                      {dossier.skills.split('\n').filter(item => item.trim()).map((skill, index) => (
+                        <div key={index} className="flex items-start gap-2 mb-2 last:mb-0">
+                          <div className="w-1.5 h-1.5 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
+                          <span>{skill.trim()}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -420,11 +434,11 @@ export const DossierModal: React.FC<DossierModalProps> = ({
         </main>
 
         {/* Футер (sticky bottom) */}
-        <footer className="sticky bottom-0 z-10 border-t border-gray-100 bg-white px-4 py-3 pb-safe-bottom">
+        <footer className="sticky bottom-0 z-10 border-t border-gray-100 bg-white px-4 py-4 pb-safe-bottom">
           <div className="flex gap-2">
             <button
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+              className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
             >
               ← Назад
             </button>
