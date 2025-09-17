@@ -101,6 +101,23 @@ const ExpertExamPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'participants' | 'evaluations' | 'schedule'>('participants');
+
+  // Обновляем заголовок в Layout при изменении вкладки
+  useEffect(() => {
+    const tabTitles = {
+      participants: 'Резервисты',
+      evaluations: 'Оценки', 
+      schedule: 'Расписание'
+    };
+    
+    // Сохраняем текущую вкладку в window для Layout
+    (window as any).currentExamTab = tabTitles[activeTab];
+    
+    // Принудительно обновляем Layout
+    window.dispatchEvent(new CustomEvent('examTabChanged', { 
+      detail: { tab: activeTab, title: tabTitles[activeTab] } 
+    }));
+  }, [activeTab]);
   const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(null);
   const [showEvaluationModal, setShowEvaluationModal] = useState(false);
   const [selectedParticipantForEvaluation, setSelectedParticipantForEvaluation] = useState<Participant | null>(null);

@@ -24,6 +24,7 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
   const { user, signOut } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [examTabTitle, setExamTabTitle] = useState('Экзамен');
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -40,6 +41,19 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
+
+  // Слушаем изменения вкладки экзамена
+  useEffect(() => {
+    const handleExamTabChange = (event: CustomEvent) => {
+      setExamTabTitle(event.detail.title);
+    };
+
+    window.addEventListener('examTabChanged', handleExamTabChange as EventListener);
+    
+    return () => {
+      window.removeEventListener('examTabChanged', handleExamTabChange as EventListener);
+    };
+  }, []);
 
   // Управление скроллом body при открытии мобильного меню
   useEffect(() => {
@@ -164,7 +178,7 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
                 <Menu className="w-6 h-6" />
               </button>
               <div className="text-center flex-1">
-                <h1 className="text-lg font-semibold text-gray-900">Экзамен</h1>
+                <h1 className="text-lg font-semibold text-gray-900">{examTabTitle}</h1>
               </div>
               <div className="w-10"></div> {/* Spacer для центрирования */}
             </div>
