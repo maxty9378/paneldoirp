@@ -552,13 +552,13 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
         style={{ 
           zIndex: 10010,
           pointerEvents: 'auto',
-          paddingBottom: 'max(12px, env(safe-area-inset-bottom, 12px))',
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
           paddingTop: '0px',
           paddingLeft: '0px',
           paddingRight: '0px'
         }}
       >
-        <div className="px-4 py-3">
+        <div className="px-4 pt-3 pb-2">
           
           <div className="flex gap-2">
             <button
