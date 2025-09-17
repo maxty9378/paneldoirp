@@ -1,0 +1,28 @@
+[33mcommit c4bb9d57ab7ce4b509c32109863234362d2e7187[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m
+Author: Maxty9378 <maxim.kadochkin@gmail.com>
+Date:   Wed Sep 17 13:45:24 2025 +0300
+
+    Исправлено отображение карточек в мобильной версии
+    
+    - Добавлен отступ mb-8 к мобильному блоку
+    - Добавлены отступы px-4 к секции 'Резервисты' в мобильной версии
+    - Теперь карточки резервистов должны быть видны на мобильных устройствах
+    - Сохранена прозрачность блока без фона и обводки
+
+[1mdiff --git a/src/components/exam/ExpertExamPage.tsx b/src/components/exam/ExpertExamPage.tsx[m
+[1mindex 01f0083..c0ae40d 100644[m
+[1m--- a/src/components/exam/ExpertExamPage.tsx[m
+[1m+++ b/src/components/exam/ExpertExamPage.tsx[m
+[36m@@ -1006,10 +1006,10 @@[m [mconst ExpertExamPage: React.FC = () => {[m
+       </div>[m
+ [m
+         {/* Мобильный контент - прозрачный */}[m
+[31m-        <div className="md:hidden">[m
+[32m+[m[32m        <div className="md:hidden mb-8">[m
+             {/* Содержимое вкладки "Резервисты" */}[m
+             {activeTab === 'participants' && ([m
+[31m-              <div className="space-y-6">[m
+[32m+[m[32m              <div className="space-y-6 px-4">[m
+                 [m
+                 {participants.length === 0 ? ([m
+                   <div className="text-center py-12">[m

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, MapPin, Calendar, Briefcase, Award, GraduationCap, Clock, Mail, Phone, Building } from 'lucide-react';
+import { X, User, MapPin, Calendar, Briefcase, Award, GraduationCap, Clock, Mail, Phone, Building, Edit, Save } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 interface DossierData {
   id?: string;
@@ -13,8 +14,8 @@ interface DossierData {
     specialty?: string;
     institution?: string;
   };
-  achievements?: string;
-  skills?: string;
+  achievements?: string | string[];
+  skills?: string | string[];
   additional_info?: string;
   created_at?: string;
   updated_at?: string;
@@ -57,6 +58,9 @@ export const DossierModal: React.FC<DossierModalProps> = ({
 }) => {
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingData, setEditingData] = useState<DossierData | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Создаем инициалы
   const getInitials = (fullName?: string) => {
@@ -83,6 +87,107 @@ export const DossierModal: React.FC<DossierModalProps> = ({
     return [yearStr, monthStr].filter(Boolean).join(' ') || 'Менее месяца';
   };
 
+  // Нормализация достижений и навыков в массив
+  const normalizeToArray = (data: string | string[] | undefined): string[] => {
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+    if (typeof data === 'string') {
+      return data.split('\n').filter(item => item.trim()).map(item => item.trim());
+    }
+    return [];
+  };
+
+  // Инициализация данных для редактирования
+  useEffect(() => {
+    if (dossier) {
+      setEditingData({
+        ...dossier,
+        user_id: user.id,
+        achievements: Array.isArray(dossier.achievements) 
+          ? dossier.achievements.join('\n') 
+          : dossier.achievements || '',
+        skills: Array.isArray(dossier.skills) 
+          ? dossier.skills.join('\n') 
+          : dossier.skills || ''
+      });
+    } else {
+      setEditingData({
+        user_id: user.id,
+        photo_url: '',
+        phone: '',
+        location: '',
+        experience_in_position: formatExperience(user?.work_experience_days),
+        education: {
+          level: '',
+          specialty: '',
+          institution: ''
+        },
+        achievements: '',
+        skills: '',
+        additional_info: ''
+      });
+    }
+  }, [dossier, user.id, user.work_experience_days]);
+
+  // Функция сохранения досье
+  const handleSave = async () => {
+    if (!editingData) return;
+
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('participant_dossiers')
+        .upsert({
+          ...editingData,
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+
+      alert('Досье сохранено');
+      setIsEditing(false);
+      // Можно добавить callback для обновления родительского компонента
+    } catch (err) {
+      console.error('Ошибка сохранения досье:', err);
+      alert('Не удалось сохранить досье');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Функция отмены редактирования
+  const handleCancel = () => {
+    if (dossier) {
+      setEditingData({
+        ...dossier,
+        user_id: user.id,
+        achievements: Array.isArray(dossier.achievements) 
+          ? dossier.achievements.join('\n') 
+          : dossier.achievements || '',
+        skills: Array.isArray(dossier.skills) 
+          ? dossier.skills.join('\n') 
+          : dossier.skills || ''
+      });
+    } else {
+      setEditingData({
+        user_id: user.id,
+        photo_url: '',
+        phone: '',
+        location: '',
+        experience_in_position: formatExperience(user?.work_experience_days),
+        education: {
+          level: '',
+          specialty: '',
+          institution: ''
+        },
+        achievements: '',
+        skills: '',
+        additional_info: ''
+      });
+    }
+    setIsEditing(false);
+  };
+
   useEffect(() => {
     if (dossier?.photo_url) {
       setImageLoading(true);
@@ -93,11 +198,12 @@ export const DossierModal: React.FC<DossierModalProps> = ({
   // Блокировка прокрутки фона при открытом модальном окне
   useEffect(() => {
     if (isOpen) {
+      // Сохраняем текущую позицию прокрутки
+      const scrollY = window.scrollY;
+      
       // Блокируем прокрутку
-      const y = window.scrollY;
-      document.body.classList.add('modal-open');
       document.body.style.position = 'fixed';
-      document.body.style.top = `-${y}px`;
+      document.body.style.top = `-${scrollY}px`;
       document.body.style.left = '0';
       document.body.style.right = '0';
       document.body.style.width = '100%';
@@ -105,14 +211,13 @@ export const DossierModal: React.FC<DossierModalProps> = ({
       
       return () => {
         // Восстанавливаем прокрутку при закрытии
-        document.body.classList.remove('modal-open');
         document.body.style.position = '';
         document.body.style.top = '';
         document.body.style.left = '';
         document.body.style.right = '';
         document.body.style.width = '';
         document.body.style.overflow = '';
-        window.scrollTo(0, y);
+        window.scrollTo(0, scrollY);
       };
     }
   }, [isOpen]);
@@ -212,28 +317,65 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                 <div className="text-base font-semibold truncate">{user.full_name}</div>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              onTouchEnd={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onClose();
-              }}
-              className="p-2 rounded-lg hover:bg-gray-50 active:bg-gray-100 touch-manipulation"
-              aria-label="Закрыть"
-              style={{
-                minWidth: '44px',
-                minHeight: '44px',
-                zIndex: 1000,
-                position: 'relative',
-                WebkitTapHighlightColor: 'transparent',
-                WebkitTouchCallout: 'none',
-                WebkitUserSelect: 'none',
-                userSelect: 'none'
-              }}
-            >
-              <X className="w-6 h-6 text-gray-700 pointer-events-none" />
-            </button>
+            <div className="flex items-center gap-2">
+              {!isEditing ? (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="p-2 rounded-lg hover:bg-gray-50 active:bg-gray-100 touch-manipulation"
+                  aria-label="Редактировать"
+                  style={{
+                    minWidth: '44px',
+                    minHeight: '44px',
+                    zIndex: 1000,
+                    position: 'relative',
+                    WebkitTapHighlightColor: 'transparent',
+                    WebkitTouchCallout: 'none',
+                    WebkitUserSelect: 'none',
+                    userSelect: 'none'
+                  }}
+                >
+                  <Edit className="w-5 h-5 text-gray-700 pointer-events-none" />
+                </button>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 text-sm font-medium"
+                  >
+                    {isSaving ? 'Сохранение...' : 'Сохранить'}
+                  </button>
+                  <button
+                    onClick={handleCancel}
+                    className="px-3 py-1.5 bg-gray-500 text-white rounded-lg hover:bg-gray-600 text-sm font-medium"
+                  >
+                    Отмена
+                  </button>
+                </div>
+              )}
+              <button
+                onClick={onClose}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onClose();
+                }}
+                className="p-2 rounded-lg hover:bg-gray-50 active:bg-gray-100 touch-manipulation"
+                aria-label="Закрыть"
+                style={{
+                  minWidth: '44px',
+                  minHeight: '44px',
+                  zIndex: 1000,
+                  position: 'relative',
+                  WebkitTapHighlightColor: 'transparent',
+                  WebkitTouchCallout: 'none',
+                  WebkitUserSelect: 'none',
+                  userSelect: 'none'
+                }}
+              >
+                <X className="w-6 h-6 text-gray-700 pointer-events-none" />
+              </button>
+            </div>
           </div>
         </header>
 
@@ -312,17 +454,44 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                       <Mail className="w-4 h-4 text-gray-500" />
                       <span className="text-gray-700">{user.email}</span>
                     </div>
-                    {dossier?.phone && (
-                      <div className="flex items-center gap-3">
-                        <Phone className="w-4 h-4 text-gray-500" />
-                        <span className="text-gray-700">{dossier.phone}</span>
-                      </div>
-                    )}
-                    {dossier?.location && (
-                      <div className="flex items-center gap-3">
-                        <MapPin className="w-4 h-4 text-gray-500" />
-                        <span className="text-gray-700">{dossier.location}</span>
-                      </div>
+                    {isEditing ? (
+                      <>
+                        <div className="flex items-center gap-3">
+                          <Phone className="w-4 h-4 text-gray-500" />
+                          <input
+                            type="text"
+                            value={editingData?.phone || ''}
+                            onChange={(e) => setEditingData(prev => prev ? { ...prev, phone: e.target.value } : null)}
+                            className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
+                            placeholder="Телефон"
+                          />
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <MapPin className="w-4 h-4 text-gray-500" />
+                          <input
+                            type="text"
+                            value={editingData?.location || ''}
+                            onChange={(e) => setEditingData(prev => prev ? { ...prev, location: e.target.value } : null)}
+                            className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
+                            placeholder="Местоположение"
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        {dossier?.phone && (
+                          <div className="flex items-center gap-3">
+                            <Phone className="w-4 h-4 text-gray-500" />
+                            <span className="text-gray-700">{dossier.phone}</span>
+                          </div>
+                        )}
+                        {dossier?.location && (
+                          <div className="flex items-center gap-3">
+                            <MapPin className="w-4 h-4 text-gray-500" />
+                            <span className="text-gray-700">{dossier.location}</span>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -347,7 +516,7 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                 </div>
 
                 {/* Образование */}
-                {dossier?.education && (
+                {(dossier?.education || isEditing) && (
                   <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
                     <div className="flex items-center gap-3 mb-4">
                       <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
@@ -358,17 +527,52 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                         <p className="text-sm text-gray-600">Уровень и специальность</p>
                       </div>
                     </div>
-                    <div className="text-sm text-gray-700">
-                      {typeof dossier.education === 'string' 
-                        ? dossier.education 
-                        : `${dossier.education.level || ''} ${dossier.education.specialty || ''} ${dossier.education.institution || ''}`.trim()
-                      }
-                    </div>
+                    {isEditing ? (
+                      <div className="space-y-3">
+                        <input
+                          type="text"
+                          value={editingData?.education?.level || ''}
+                          onChange={(e) => setEditingData(prev => prev ? { 
+                            ...prev, 
+                            education: { ...prev.education, level: e.target.value }
+                          } : null)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                          placeholder="Уровень образования"
+                        />
+                        <input
+                          type="text"
+                          value={editingData?.education?.specialty || ''}
+                          onChange={(e) => setEditingData(prev => prev ? { 
+                            ...prev, 
+                            education: { ...prev.education, specialty: e.target.value }
+                          } : null)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                          placeholder="Специальность"
+                        />
+                        <input
+                          type="text"
+                          value={editingData?.education?.institution || ''}
+                          onChange={(e) => setEditingData(prev => prev ? { 
+                            ...prev, 
+                            education: { ...prev.education, institution: e.target.value }
+                          } : null)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                          placeholder="Учебное заведение"
+                        />
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-700">
+                        {typeof dossier?.education === 'string' 
+                          ? dossier.education 
+                          : `${dossier?.education?.level || ''} ${dossier?.education?.specialty || ''} ${dossier?.education?.institution || ''}`.trim()
+                        }
+                      </div>
+                    )}
                   </div>
                 )}
 
                 {/* Достижения */}
-                {dossier?.achievements && (
+                {(dossier?.achievements || isEditing) && (
                   <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl p-6 border border-yellow-100">
                     <div className="flex items-center gap-3 mb-4">
                       <div className="w-10 h-10 bg-yellow-500 rounded-xl flex items-center justify-center">
@@ -379,22 +583,42 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                         <p className="text-sm text-gray-600">Профессиональные успехи</p>
                       </div>
                     </div>
-                    <div className="text-sm text-gray-700">
-                      {typeof dossier.achievements === 'string' 
-                        ? dossier.achievements.split('\n').filter(item => item.trim()).map((achievement, index) => (
-                            <div key={index} className="flex items-start gap-2 mb-2 last:mb-0">
-                              <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
-                              <span>{achievement.trim()}</span>
+                    {isEditing ? (
+                      <textarea
+                        value={editingData?.achievements || ''}
+                        onChange={(e) => setEditingData(prev => prev ? { ...prev, achievements: e.target.value } : null)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm h-24 resize-none"
+                        placeholder="Введите достижения, каждое с новой строки"
+                      />
+                    ) : (
+                      <div className="space-y-2">
+                        {(() => {
+                          const achievements = normalizeToArray(dossier?.achievements);
+                          return achievements.length > 0 ? (
+                            achievements.map((achievement, index) => (
+                              <div key={index} className="flex items-center space-x-3 p-3 bg-gradient-to-r from-[#06A478]/5 to-[#059669]/5 border border-[#06A478]/20 rounded-lg hover:shadow-sm transition-all duration-200">
+                                <div className="flex-shrink-0">
+                                  <div className="w-6 h-6 bg-gradient-to-br from-[#06A478] to-[#059669] rounded-full flex items-center justify-center shadow-sm">
+                                    <Award className="w-3 h-3 text-white" />
+                                  </div>
+                                </div>
+                                <p className="text-sm text-gray-700 leading-relaxed">{achievement}</p>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-center py-8">
+                              <Award className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                              <p className="text-gray-500">Достижения не указаны</p>
                             </div>
-                          ))
-                        : <span>{String(dossier.achievements)}</span>
-                      }
-                    </div>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </div>
                 )}
 
                 {/* Навыки */}
-                {dossier?.skills && (
+                {(dossier?.skills || isEditing) && (
                   <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6 border border-purple-100">
                     <div className="flex items-center gap-3 mb-4">
                       <div className="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center">
@@ -405,22 +629,42 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                         <p className="text-sm text-gray-600">Профессиональные компетенции</p>
                       </div>
                     </div>
-                    <div className="text-sm text-gray-700">
-                      {typeof dossier.skills === 'string' 
-                        ? dossier.skills.split('\n').filter(item => item.trim()).map((skill, index) => (
-                            <div key={index} className="flex items-start gap-2 mb-2 last:mb-0">
-                              <div className="w-1.5 h-1.5 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
-                              <span>{skill.trim()}</span>
+                    {isEditing ? (
+                      <textarea
+                        value={editingData?.skills || ''}
+                        onChange={(e) => setEditingData(prev => prev ? { ...prev, skills: e.target.value } : null)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm h-24 resize-none"
+                        placeholder="Введите навыки, каждый с новой строки"
+                      />
+                    ) : (
+                      <div className="space-y-2">
+                        {(() => {
+                          const skills = normalizeToArray(dossier?.skills);
+                          return skills.length > 0 ? (
+                            skills.map((skill, index) => (
+                              <div key={index} className="flex items-center space-x-3 p-3 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg hover:shadow-sm transition-all duration-200">
+                                <div className="flex-shrink-0">
+                                  <div className="w-6 h-6 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-sm">
+                                    <Building className="w-3 h-3 text-white" />
+                                  </div>
+                                </div>
+                                <p className="text-sm text-gray-700 leading-relaxed">{skill}</p>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-center py-8">
+                              <Building className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                              <p className="text-gray-500">Навыки не указаны</p>
                             </div>
-                          ))
-                        : <span>{String(dossier.skills)}</span>
-                      }
-                    </div>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </div>
                 )}
 
                 {/* Дополнительная информация */}
-                {dossier?.additional_info && (
+                {(dossier?.additional_info || isEditing) && (
                   <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200 md:col-span-2">
                     <div className="flex items-center gap-3 mb-4">
                       <div className="w-10 h-10 bg-gray-500 rounded-xl flex items-center justify-center">
@@ -431,7 +675,16 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                         <p className="text-sm text-gray-600">Прочая важная информация</p>
                       </div>
                     </div>
-                    <div className="text-sm text-gray-700">{dossier.additional_info}</div>
+                    {isEditing ? (
+                      <textarea
+                        value={editingData?.additional_info || ''}
+                        onChange={(e) => setEditingData(prev => prev ? { ...prev, additional_info: e.target.value } : null)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm h-24 resize-none"
+                        placeholder="Введите дополнительную информацию"
+                      />
+                    ) : (
+                      <div className="text-sm text-gray-700">{dossier?.additional_info}</div>
+                    )}
                   </div>
                 )}
               </div>

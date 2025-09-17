@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, MapPin, Users, Target, User, Mail, Building2, Edit, Trash2, Plus, X, Save, FileText, Hash } from 'lucide-react';
+import { ArrowLeft, Calendar, Users, Target, User, Mail, Edit, Trash2, Plus, X, Save, FileText, Hash } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import DossierCard from './DossierCard';
@@ -227,10 +227,12 @@ const ExamDetailsPage: React.FC = () => {
 
       const userIds = participants.map(p => p.user_id);
       
+      // Используем правильную таблицу participant_dossiers
       const { data: dossiersData, error } = await supabase
-        .from('reservist_dossiers')
+        .from('participant_dossiers')
         .select('*')
-        .in('user_id', userIds);
+        .in('user_id', userIds)
+        .eq('event_id', examId);
 
       if (error) {
         console.error('Ошибка загрузки досье:', error);
@@ -242,6 +244,7 @@ const ExamDetailsPage: React.FC = () => {
         dossiersMap[dossier.user_id] = dossier;
       });
 
+      console.log('Загружены досье:', dossiersMap);
       setDossiers(dossiersMap);
     } catch (err) {
       console.error('Ошибка fetchDossiers:', err);
@@ -374,10 +377,16 @@ const ExamDetailsPage: React.FC = () => {
 
   const handleSaveDossier = async (participantId: string, dossierData: any) => {
     try {
+      if (!id) {
+        alert('ID экзамена не найден');
+        return;
+      }
+
       const { error } = await supabase
-        .from('reservist_dossiers')
+        .from('participant_dossiers')
         .upsert({
           user_id: participantId,
+          event_id: id,
           ...dossierData,
           updated_at: new Date().toISOString()
         });
@@ -390,6 +399,7 @@ const ExamDetailsPage: React.FC = () => {
         [participantId]: { ...prev[participantId], ...dossierData }
       }));
 
+      console.log('Досье сохранено для участника:', participantId);
       alert('Досье сохранено');
     } catch (err) {
       console.error('Ошибка сохранения досье:', err);
