@@ -70,13 +70,33 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
   useEffect(() => {
     if (isOpen && !showSuccessModal && !showCriteriaModal) {
       // Блокируем прокрутку
+      const y = window.scrollY;
+      document.body.classList.add('modal-open');
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${y}px`;
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+      document.body.style.width = '100%';
       document.body.style.overflow = 'hidden';
       return () => {
         // Восстанавливаем прокрутку при закрытии
+        document.body.classList.remove('modal-open');
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.body.style.right = '';
+        document.body.style.width = '';
         document.body.style.overflow = '';
+        window.scrollTo(0, y);
       };
     } else {
       // Восстанавливаем прокрутку если модальное окно закрыто или показывается другое модальное окно
+      document.body.classList.remove('modal-open');
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+      document.body.style.width = '';
       document.body.style.overflow = '';
     }
   }, [isOpen, showSuccessModal, showCriteriaModal]);
@@ -321,6 +341,27 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
       border: none;
       box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }
+    
+    /* Принудительное убирание всех отступов для модального окна */
+    .case-evaluation-modal {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      padding-top: env(safe-area-inset-top, 0px) !important;
+      z-index: 10002 !important;
+      background: white !important;
+    }
+    
+    /* Убираем отступы у body когда открыто модальное окно */
+    body.modal-open {
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+    }
   `;
 
   // Компонент слайдера (как в CaseEvaluationModal)
@@ -412,7 +453,18 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
       <style>{sliderStyles}</style>
 
       {/* Фуллскрин слой */}
-      <div className="fixed inset-0 z-[10002] flex flex-col bg-white" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+      <div className="case-evaluation-modal fixed inset-0 z-[10002] flex flex-col bg-white" style={{ 
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        margin: 0,
+        padding: 0,
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        transform: 'translateZ(0)',
+        backfaceVisibility: 'hidden',
+        willChange: 'transform'
+      }}>
         {/* Шапка (sticky top) */}
         <header className="sticky top-0 z-10 border-b border-gray-100 bg-white">
           <div className="px-4 py-3 flex items-center justify-between">

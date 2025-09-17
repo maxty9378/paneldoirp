@@ -184,6 +184,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     const y = window.scrollY;
+    document.body.classList.add('modal-open');
     document.body.style.position = 'fixed';
     document.body.style.top = `-${y}px`;
     document.body.style.left = '0';
@@ -192,6 +193,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
     document.body.style.overflow = 'hidden';
     requestAnimationFrame(() => scrollRootRef.current && (scrollRootRef.current.scrollTop = 0));
     return () => {
+      document.body.classList.remove('modal-open');
       document.body.style.position = '';
       document.body.style.top = '';
       document.body.style.left = '';
@@ -276,6 +278,27 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
       border: 3px solid #fff; box-shadow: 0 0 5px rgba(0,0,0,.15);
     }
     
+    /* Принудительное убирание всех отступов для модального окна */
+    .case-evaluation-modal {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      padding-top: env(safe-area-inset-top, 0px) !important;
+      z-index: 10002 !important;
+      background: white !important;
+    }
+    
+    /* Убираем отступы у body когда открыто модальное окно */
+    body.modal-open {
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+    }
+    
     /* Стабилизация для мобильных устройств */
     @media (max-width: 768px) {
       .fixed-bottom-menu {
@@ -296,7 +319,13 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
       <style>{sliderStyles}</style>
 
       {/* Фуллскрин слой */}
-      <div className="fixed inset-0 z-[10002] flex flex-col bg-white" style={{ 
+      <div className="case-evaluation-modal fixed inset-0 z-[10002] flex flex-col bg-white" style={{ 
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        margin: 0,
+        padding: 0,
         paddingTop: 'env(safe-area-inset-top, 0px)',
         transform: 'translateZ(0)',
         backfaceVisibility: 'hidden',
