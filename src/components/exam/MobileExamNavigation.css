@@ -67,9 +67,21 @@
   }
 }
 
-/* Стили для мобильной навигации в App Shell архитектуре */
+/* Устанавливаем высоту и нижний отступ */
 .mobile-exam-nav {
-  height: 64px; /* Фиксированная высота меню */
+  height: 64px;
+  /* Стандартный отступ снизу */
+  margin-bottom: 16px; 
+}
+
+/* 
+  Прогрессивное улучшение для iPhone:
+  Если браузер поддерживает safe-area, он перезапишет margin-bottom.
+*/
+@supports (margin-bottom: env(safe-area-inset-bottom)) {
+  .mobile-exam-nav {
+    margin-bottom: max(16px, env(safe-area-inset-bottom));
+  }
 }
 
 @media screen and (max-width: 768px) {

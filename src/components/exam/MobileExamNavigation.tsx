@@ -68,8 +68,9 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
           border: '1px solid rgba(255, 255, 255, 0.3)',
           boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
           overflow: 'hidden',
-          // Добавляем небольшой отступ снизу для визуального разделения
-          marginBottom: '8px'
+          // Возвращаем анимацию
+          transform: isHidden ? 'translateY(120%)' : 'translateY(0)',
+          transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
         }}
       >
         {/* Глянцевый эффект */}
@@ -197,14 +198,8 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
 
   
   // В App Shell архитектуре рендерим напрямую, без портала
-  console.log('MobileExamNavigation: isMobile =', isMobile, 'isHidden =', isHidden);
+  if (!isMobile) return null;
   
-  if (!isMobile) {
-    console.log('MobileExamNavigation: не мобильное устройство, скрываем меню');
-    return null;
-  }
-  
-  console.log('MobileExamNavigation: рендерим меню');
   return mobileNav;
 };
 

@@ -29,24 +29,22 @@ const MobileLayout: React.FC = () => {
 
   return (
     <div style={{
+      position: 'fixed', // Прибиваем каркас к окну
+      inset: '0', // Растягиваем на весь экран (top: 0, left: 0, right: 0, bottom: 0)
       display: 'flex',
       flexDirection: 'column',
-      // Используем 100dvh - это "динамическая высота окна", 
-      // которая учитывает появление/скрытие панелей браузера на мобильных.
-      // Это современная и лучшая замена 100vh.
-      height: '100vh', // Fallback для старых браузеров
-      // height: '100dvh', // Современные браузеры (пока отключено из-за ограниченной поддержки)
-      width: '100vw',
-      overflow: 'hidden', // Запрещаем скролл для всего контейнера
-      background: '#f8fafc' // Фон для всего приложения
+      background: '#f8fafc',
+      // overflow: 'hidden' здесь больше не нужен, так как inset: 0 уже фиксирует размер
     }}>
       
       {/* 1. ОБЛАСТЬ КОНТЕНТА (СКРОЛЛИТСЯ) */}
       <main style={{
-        flex: '1 1 0%', // Занимает всё доступное пространство
+        flex: '1 1 auto', // Позволяем расти и сжиматься
         overflowY: 'auto', // Включаем скролл ТОЛЬКО для этой области
         WebkitOverflowScrolling: 'touch', // Плавный скролл на iOS
-        paddingBottom: 'calc(64px + env(safe-area-inset-bottom, 0px))' // Отступ под меню
+        // Отступ снизу нужен, чтобы контент не прятался ЗА меню
+        // Высота меню (64px) + его нижний отступ (16px) = 80px
+        paddingBottom: '80px',
       }}>
         {/* React Router будет рендерить здесь нужную страницу (ExpertExamPage и т.д.) */}
         <Outlet context={{ setIsNavHidden }} />
@@ -55,11 +53,10 @@ const MobileLayout: React.FC = () => {
       {/* 2. ОБЛАСТЬ НАВИГАЦИИ (ФИКСИРОВАНА) */}
       <footer style={{
         flexShrink: 0, // Запрещаем сжиматься
-        // Убираем position: fixed, так как Flexbox сам прижмет его к низу
-        backgroundColor: 'rgba(255, 0, 0, 0.1)', // Временный отладочный фон
-        minHeight: '80px', // Минимальная высота для отладки
-        paddingTop: '16px', // Отступ сверху для поднятия меню
-        paddingBottom: 'env(safe-area-inset-bottom, 16px)' // Safe area для iPhone
+        width: '100%',
+        // Добавляем фон, чтобы контент при скролле не просвечивал
+        backgroundColor: '#f8fafc', 
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)' // Safe area для iPhone
       }}>
         <MobileExamNavigation
           activeTab={activeTab}
