@@ -68,7 +68,8 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
           border: '1px solid rgba(255, 255, 255, 0.3)',
           boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
           overflow: 'hidden',
-          // В App Shell архитектуре отступ снизу не нужен, так как footer уже учитывает safe-area
+          // Добавляем небольшой отступ снизу для визуального разделения
+          marginBottom: '8px'
         }}
       >
         {/* Глянцевый эффект */}

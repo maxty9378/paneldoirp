@@ -58,7 +58,8 @@ const MobileLayout: React.FC = () => {
         // Убираем position: fixed, так как Flexbox сам прижмет его к низу
         backgroundColor: 'rgba(255, 0, 0, 0.1)', // Временный отладочный фон
         minHeight: '80px', // Минимальная высота для отладки
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)' // Safe area для iPhone
+        paddingTop: '16px', // Отступ сверху для поднятия меню
+        paddingBottom: 'env(safe-area-inset-bottom, 16px)' // Safe area для iPhone
       }}>
         <MobileExamNavigation
           activeTab={activeTab}
