@@ -144,20 +144,24 @@ const ExpertExamPage: React.FC = () => {
   const [showProjectDefenseModal, setShowProjectDefenseModal] = useState(false);
   const [showDiagnosticGameModal, setShowDiagnosticGameModal] = useState(false);
   const [showEvaluationResults, setShowEvaluationResults] = useState(false);
+  const [isAnyModalOpen, setIsAnyModalOpen] = useState(false);
   
   // Вычисляем состояние открытых модалок
-  const isAnyModalOpen = showEvaluationModal || showProjectDefenseModal || showDiagnosticGameModal || showEvaluationResults || !!selectedParticipantId;
+  const computedModalOpen = showEvaluationModal || showProjectDefenseModal || showDiagnosticGameModal || showEvaluationResults || !!selectedParticipantId;
   
   // Отслеживание открытых модальных окон
   useEffect(() => {
+    // Обновляем состояние модальных окон
+    setIsAnyModalOpen(computedModalOpen);
+    
     // Сообщаем родительскому layout, нужно ли скрыть меню
-    setIsNavHidden(isAnyModalOpen);
+    setIsNavHidden(computedModalOpen);
     
     // Отправляем событие в Layout для скрытия шапки
     window.dispatchEvent(new CustomEvent('modalStateChanged', { 
-      detail: { isOpen: isAnyModalOpen } 
+      detail: { isOpen: computedModalOpen } 
     }));
-  }, [isAnyModalOpen, setIsNavHidden]);
+  }, [computedModalOpen, setIsNavHidden]);
 
   // Обработчик события для открытия результатов оценок из мобильной навигации
   useEffect(() => {
@@ -191,6 +195,7 @@ const ExpertExamPage: React.FC = () => {
       window.matchMedia('(prefers-color-scheme: dark)').removeEventListener('change', onThemeChange);
     };
   }, []);
+
 
   
   const [bannerSettings, setBannerSettings] = useState({
@@ -1338,6 +1343,10 @@ const ExpertExamPage: React.FC = () => {
         participantId={selectedParticipantForEvaluation?.user.id || ''}
         // Передаем загруженные оценки для отображения статуса завершенности
         evaluations={evaluations}
+        onModalStateChange={(isOpen) => {
+          // Уведомляем о состоянии модального окна для скрытия меню
+          setIsAnyModalOpen(isOpen);
+        }}
       />
 
 
@@ -1360,6 +1369,10 @@ const ExpertExamPage: React.FC = () => {
             // Перезагружаем данные после удаления оценки
             await fetchExamData();
           }}
+          onModalStateChange={(isOpen) => {
+            // Уведомляем о состоянии модального окна для скрытия меню
+            setIsAnyModalOpen(isOpen);
+          }}
         />
       )}
 
@@ -1381,6 +1394,10 @@ const ExpertExamPage: React.FC = () => {
           onRemoveEvaluation={async () => {
             // Перезагружаем данные после удаления оценки
             await fetchExamData();
+          }}
+          onModalStateChange={(isOpen) => {
+            // Уведомляем о состоянии модального окна для скрытия меню
+            setIsAnyModalOpen(isOpen);
           }}
         />
       )}

@@ -68,9 +68,11 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
       display: 'flex',
       justifyContent: 'center',
       padding: '0 16px', // Боковые отступы для контейнера
-      // В App Shell архитектуре меню всегда видимо, управляем только взаимодействием
+      // Полностью скрываем меню при открытии модального окна
+      opacity: isHidden ? 0 : 1,
+      visibility: isHidden ? 'hidden' : 'visible',
       pointerEvents: isHidden ? 'none' : 'auto',
-      transition: 'pointer-events 0.3s'
+      transition: 'opacity 0.3s, visibility 0.3s, pointer-events 0.3s'
     }}>
       <nav 
         className="mobile-exam-nav"
