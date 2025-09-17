@@ -417,7 +417,6 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
           /* Стили для выделения карточки "Решение кейсов" */
           .case-solving-highlight {
             border: 3px solid #06A478 !important;
-            box-shadow: 0 0 0 2px rgba(6,164,120,0.2) !important;
             background: linear-gradient(135deg, rgba(6,164,120,0.08), rgba(6,164,120,0.03)) !important;
             animation: gentleGlow 2s ease-in-out infinite;
             transform: scale(1.02) !important;
@@ -425,19 +424,18 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
           
           /* Отключаем hover эффекты для выделенной карточки */
           .case-solving-highlight:hover {
-            box-shadow: 0 0 0 2px rgba(6,164,120,0.2) !important;
             transform: scale(1.02) !important;
           }
           
           @keyframes gentleGlow {
             0% { 
-              box-shadow: 0 0 0 2px rgba(6,164,120,0.2);
+              transform: scale(1.02);
             }
             50% { 
-              box-shadow: 0 0 0 4px rgba(6,164,120,0.3);
+              transform: scale(1.03);
             }
             100% { 
-              box-shadow: 0 0 0 2px rgba(6,164,120,0.2);
+              transform: scale(1.02);
             }
           }
           
