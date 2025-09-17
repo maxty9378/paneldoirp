@@ -47,6 +47,7 @@ function EventDetailPage({ onStartTest }: { onStartTest: (testId: string, eventI
 function AppContent() {
   const { 
     user, 
+    userProfile,
     loading, 
     resetAuth, 
     authError, 
@@ -295,7 +296,14 @@ function AppContent() {
       <Layout currentView={currentView}>
         <Routes>
         <Route path="/" element={<DashboardView />} />
-        <Route path="/events" element={<EventsView onNavigateToEvent={id => navigate(`/event/${id}`)} onEditEvent={id => handleEditEvent(id)} onCreateEvent={() => setShowCreateEventModal(true)} />} />
+        <Route path="/events" element={<EventsView onNavigateToEvent={id => {
+          // Для экспертов все мероприятия ведут на страницу эксперта
+          if (userProfile?.role === 'expert') {
+            navigate('/expert-exam/36520f72-c191-4e32-ba02-aa17c482c50b');
+          } else {
+            navigate(`/event/${id}`);
+          }
+        }} onEditEvent={id => handleEditEvent(id)} onCreateEvent={() => setShowCreateEventModal(true)} />} />
         <Route path="/event/:eventId" element={<EventDetailPage onStartTest={handleStartTest} />} />
         <Route path="/calendar" element={<CalendarView />} />
         <Route path="/representatives" element={<RepresentativesView />} />
