@@ -206,6 +206,24 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
       }
 
       // Если нет existingEvaluation, загружаем из базы данных
+      console.log('🔄 Загружаем данные из базы данных с параметрами:', {
+        exam_event_id: examId,
+        reservist_id: participantId,
+        evaluator_id: user.id,
+        case_number: caseNumber
+      });
+
+      // Сначала проверим, есть ли вообще данные с нашими фильтрами
+      const { count, error: countError } = await supabase
+        .from('case_evaluations')
+        .select('*', { count: 'exact', head: true })
+        .eq('exam_event_id', examId)
+        .eq('reservist_id', participantId)
+        .eq('evaluator_id', user.id)
+        .eq('case_number', caseNumber);
+
+      console.log('📊 Количество строк по фильтрам:', count, countError);
+
       const { data, error } = await supabase
         .from('case_evaluations')
         .select('*')
@@ -213,9 +231,9 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
         .eq('reservist_id', participantId)
         .eq('evaluator_id', user.id)
         .eq('case_number', caseNumber)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('❌ Ошибка загрузки существующей оценки:', error);
         setError(`Ошибка загрузки данных: ${error.message}`);
         // Создаем новую оценку при ошибке
@@ -247,7 +265,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
         setSaved(true);
         setHasExistingEvaluation(true);
       } else {
-        console.log('ℹ️ Существующая оценка не найдена, создаем новую');
+        console.warn('⚠️ 0 строк: либо их реально нет, либо RLS не пустил, либо фильтры не совпали');
         // Нет существующей оценки - создаем новую
         setEvaluation({
           exam_event_id: examId,
