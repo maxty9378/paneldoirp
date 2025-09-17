@@ -18,21 +18,14 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    const checkDevice = () => {
-      const isMobileDevice = window.innerWidth < 768;
-      setIsMobile(isMobileDevice);
-    };
-
+    const checkDevice = () => setIsMobile(window.matchMedia('(max-width: 767.98px)').matches);
     checkDevice();
-    
+    const onOrientation = () => setTimeout(checkDevice, 200);
     window.addEventListener('resize', checkDevice);
-    window.addEventListener('orientationchange', () => {
-      setTimeout(checkDevice, 200); // Увеличиваем задержку для стабильности
-    });
-
+    window.addEventListener('orientationchange', onOrientation);
     return () => {
       window.removeEventListener('resize', checkDevice);
-      window.removeEventListener('orientationchange', checkDevice);
+      window.removeEventListener('orientationchange', onOrientation);
     };
   }, []);
 
@@ -58,6 +51,7 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
       padding: '0 16px', // Боковые отступы для контейнера
       // Делаем невидимым и отключаем взаимодействие, когда скрыто
       visibility: isHidden ? 'hidden' : 'visible',
+      pointerEvents: isHidden ? 'none' : 'auto',
       transition: 'visibility 0.3s'
     }}>
       <nav 
@@ -207,12 +201,8 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
 
   
   // В App Shell архитектуре рендерим напрямую, без портала
-  if (!isMobile) {
-    console.log('MobileExamNavigation: не мобильное устройство, скрываем меню');
-    return null;
-  }
+  if (!isMobile) return null;
   
-  console.log('MobileExamNavigation: рендерим меню, isHidden:', isHidden);
   return mobileNav;
 };
 
