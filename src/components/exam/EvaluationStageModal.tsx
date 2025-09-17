@@ -2,115 +2,43 @@ import React, { useState, useEffect } from 'react';
 import { X, FileText, Users, Trophy, ArrowRight, Loader2, User, MousePointer } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { CaseEvaluationModal } from './CaseEvaluationModal';
-// Убираем @reactour/tour, создаем собственное решение
+import Joyride, { CallBackProps, STATUS, Step } from 'react-joyride';
 
-// Собственный компонент тултипа для мобильных устройств
-const MobileTooltip: React.FC<{
-  isVisible: boolean;
-  targetRef: React.RefObject<HTMLElement | null>;
-  onClose: () => void;
-}> = ({ isVisible, targetRef, onClose }) => {
-  const [position, setPosition] = useState({ top: 0, left: 0, arrowPosition: 'left' });
-
-  useEffect(() => {
-    if (isVisible && targetRef.current) {
-      const updatePosition = () => {
-        const target = targetRef.current;
-        if (!target) return;
-
-        const rect = target.getBoundingClientRect();
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-        
-        // Размеры тултипа
-        const tooltipWidth = 280;
-        const tooltipHeight = 80;
-        const padding = 16;
-
-        let top = rect.top + rect.height / 2 - tooltipHeight / 2;
-        let left = rect.right + padding;
-        let arrowPosition = 'left';
-
-        // Проверяем, помещается ли справа
-        if (left + tooltipWidth > viewportWidth - padding) {
-          // Пробуем слева
-          left = rect.left - tooltipWidth - padding;
-          arrowPosition = 'right';
-          
-          // Если не помещается слева, размещаем сверху
-          if (left < padding) {
-            left = Math.max(padding, rect.left + rect.width / 2 - tooltipWidth / 2);
-            top = rect.top - tooltipHeight - padding;
-            arrowPosition = 'bottom';
-          }
-        }
-
-        // Проверяем вертикальные границы
-        if (top < padding) {
-          top = padding;
-        } else if (top + tooltipHeight > viewportHeight - padding) {
-          top = viewportHeight - tooltipHeight - padding;
-        }
-
-        setPosition({ top, left, arrowPosition });
-      };
-
-      updatePosition();
-      
-      // Обновляем позицию при изменении размера окна
-      window.addEventListener('resize', updatePosition);
-      window.addEventListener('scroll', updatePosition);
-      
-      return () => {
-        window.removeEventListener('resize', updatePosition);
-        window.removeEventListener('scroll', updatePosition);
-      };
-    }
-  }, [isVisible, targetRef]);
-
-  if (!isVisible) return null;
-
-  return (
-    <>
-      {/* Затемнение фона */}
-      <div 
-        className="fixed inset-0 bg-black/20 z-[9998]"
-        onClick={onClose}
-      />
-      
-      {/* Тултип */}
-      <div
-        className="fixed z-[9999] bg-white rounded-xl shadow-2xl p-4 max-w-[280px]"
-        style={{
-          top: `${position.top}px`,
-          left: `${position.left}px`,
-          fontFamily: 'Mabry, sans-serif'
-        }}
-      >
-        <div className="flex items-start gap-2">
-          <MousePointer className="w-4 h-4 mt-0.5 text-emerald-600" />
-          <div className="flex-1">
-            <div className="font-semibold text-gray-900 text-sm">Начните здесь</div>
-            <div className="text-xs text-gray-600 mt-1">
-              Нажмите «Решение кейсов», чтобы выбрать и оценить кейс.
-            </div>
+// Конфигурация шагов для React Joyride
+const tourSteps: Step[] = [
+  {
+    target: '[data-tour="case-solving-card"]',
+    content: (
+      <div className="flex items-start gap-2">
+        <MousePointer className="w-4 h-4 mt-0.5 text-emerald-600" />
+        <div>
+          <div className="font-semibold text-gray-900 text-sm" style={{ fontFamily: 'Mabry, sans-serif' }}>
+            Начните здесь
+          </div>
+          <div className="text-xs text-gray-600 mt-1" style={{ fontFamily: 'Mabry, sans-serif' }}>
+            Нажмите «Решение кейсов», чтобы выбрать и оценить кейс.
           </div>
         </div>
-        
-        {/* Стрелка */}
-        <div
-          className={`absolute w-0 h-0 ${
-            position.arrowPosition === 'left' 
-              ? 'border-t-[8px] border-b-[8px] border-l-[8px] border-t-transparent border-b-transparent border-l-emerald-600 -left-2 top-1/2 -translate-y-1/2'
-              : position.arrowPosition === 'right'
-              ? 'border-t-[8px] border-b-[8px] border-r-[8px] border-t-transparent border-b-transparent border-r-emerald-600 -right-2 top-1/2 -translate-y-1/2'
-              : 'border-l-[8px] border-r-[8px] border-b-[8px] border-l-transparent border-r-transparent border-b-emerald-600 -bottom-2 left-1/2 -translate-x-1/2'
-          }`}
-        />
       </div>
-    </>
-  );
-};
+    ),
+    placement: 'right',
+    disableBeacon: true,
+    hideCloseButton: true,
+    hideFooter: true,
+    spotlightClicks: true,
+    styles: {
+      options: {
+        primaryColor: '#06A478',
+        textColor: '#374151',
+        backgroundColor: '#ffffff',
+        overlayColor: 'rgba(0, 0, 0, 0.2)',
+        arrowColor: '#06A478',
+        width: 280,
+        zIndex: 10000
+      }
+    }
+  }
+];
 
 interface EvaluationStageModalProps {
   isOpen: boolean;
@@ -139,8 +67,9 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
   onRemoveEvaluation,
   evaluations = []
 }) => {
-  const [showTooltip, setShowTooltip] = useState(false);
-  const targetRef = React.useRef<HTMLElement>(null);
+  const [runTour, setRunTour] = useState(false);
+  const [hasShownTutorial, setHasShownTutorial] = useState(false);
+  const [tutorialLoading, setTutorialLoading] = useState(false);
   const [showCaseSelection, setShowCaseSelection] = useState(false);
   const [assignedCases, setAssignedCases] = useState<number[]>([]);
   const [loadingCases, setLoadingCases] = useState(false);
@@ -200,13 +129,14 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
         // Даем время модалке выровняться перед показом тултипа
         setTimeout(() => {
           // Проверяем, что элемент существует и видим
-          if (targetRef.current) {
+          const targetElement = document.querySelector('[data-tour="case-solving-card"]') as HTMLElement;
+          if (targetElement && targetElement.offsetParent !== null) {
             // Принудительно прокручиваем к элементу
-            targetRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
             
             // Небольшая задержка для завершения прокрутки
             setTimeout(() => {
-              setShowTooltip(true);
+              setRunTour(true);
             }, 300);
           }
         }, tourDelay);
@@ -220,20 +150,24 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
         clearTimeout(t2);
       };
     } else {
-      setShowTooltip(false);
+      setRunTour(false);
       setHighlightFirstButton(false);
     }
   }, [isOpen]);
 
-  // Обработчик закрытия тултипа
-  const handleTooltipClose = () => {
-    setShowTooltip(false);
-    setHighlightFirstButton(false);
+  // Обработчик завершения тура
+  const handleTourChange = (data: CallBackProps) => {
+    const { status } = data;
+    if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
+      setRunTour(false);
+      setHighlightFirstButton(false);
+      markTutorialAsShown();
+    }
   };
 
-  // Обработчик клика по любой карточке - закрываем тултип
+  // Обработчик клика по любой карточке - закрываем тур
   const handleStageClick = (stageId: string) => {
-    setShowTooltip(false); // Закрываем тултип
+    setRunTour(false); // Закрываем тур
     setHighlightFirstButton(false); // Убираем подсветку
     
     if (stageId === 'case-solving') {
@@ -384,88 +318,122 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
           }
         `}
       </style>
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-2 xs:p-4">
-      <div className={`relative max-w-lg w-full max-h-[70vh] overflow-hidden rounded-2xl bg-white shadow-2xl transform transition-all duration-500 ease-out ${
-        isOpen && !showCaseEvaluation ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-full opacity-0 scale-95'
-      }`}>
-        {/* Заголовок */}
-        <div className="relative bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 p-3 text-white">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl"></div>
-          <div className="relative flex items-center justify-between">
-            <div className="flex items-center gap-3 flex-1 pr-2">
-              {/* Круглое фото */}
-              <div className="w-12 h-12 rounded-full bg-white/20 border-2 border-white/30 overflow-hidden flex-shrink-0">
-                {participantPhoto ? (
-                  <img
-                    src={participantPhoto}
-                    alt={participantName}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-white/10">
-                    <User className="w-6 h-6 text-white/80" />
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-md p-2 xs:p-4">
+        <div className={`relative max-w-lg w-full max-h-[80vh] overflow-hidden rounded-3xl bg-white shadow-2xl transform transition-all duration-700 ease-out ${
+          isOpen && !showCaseEvaluation ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-full opacity-0 scale-95'
+        }`}>
+        {/* Современный заголовок */}
+        <div className="relative overflow-hidden">
+          {/* Градиентный фон с декоративными элементами */}
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600" />
+          <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-teal-400/20 rounded-full blur-xl" />
+          
+          <div className="relative p-6 text-white">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-4 flex-1 min-w-0">
+                {/* Фото участника в новом стиле */}
+                <div className="relative">
+                  <div className="w-16 h-16 rounded-2xl bg-white/20 border-2 border-white/30 overflow-hidden flex-shrink-0 shadow-lg">
+                    {participantPhoto ? (
+                      <img
+                        src={participantPhoto}
+                        alt={participantName}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-white/10">
+                        <User className="w-8 h-8 text-white/80" />
+                      </div>
+                    )}
                   </div>
-                )}
+                  {/* Декоративное кольцо */}
+                  <div className="absolute -inset-1 rounded-2xl border border-white/20" />
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-xl font-bold mb-1 leading-tight" style={{ fontFamily: 'SNS, sans-serif' }}>
+                    Выбор этапа оценки
+                  </h2>
+                  <p className="text-emerald-100 text-sm truncate">
+                    {participantName}
+                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="w-2 h-2 bg-emerald-300 rounded-full animate-pulse" />
+                    <span className="text-xs text-emerald-200">Резервист кадрового резерва</span>
+                  </div>
+                </div>
               </div>
               
-              <div className="flex-1 min-w-0">
-                <h2 className="text-base font-bold mb-1 leading-tight" style={{ fontFamily: 'SNS, sans-serif' }}>
-                  Выбор этапа оценки
-                </h2>
-                <p className="text-emerald-100 text-xs truncate">
-                  {participantName}
-                </p>
-              </div>
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-white/20 rounded-xl transition-all duration-300 touch-target group"
+              >
+                <X className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              </button>
             </div>
-            <button
-              onClick={onClose}
-              className="p-1.5 hover:bg-white/20 rounded-lg transition-colors duration-200 touch-target"
-            >
-              <X className="w-4 h-4" />
-            </button>
           </div>
         </div>
 
         {/* Основной контент с прокруткой */}
-        <div className="p-3 overflow-y-auto max-h-[calc(70vh-120px)]">
+        <div className="p-6 overflow-y-auto max-h-[calc(80vh-200px)]">
           {!showCaseSelection ? (
-            // Выбор этапа оценки
-            <div className="grid grid-cols-1 gap-3 relative">
-              {stages.map((stage) => {
+            // Выбор этапа оценки в современном стиле
+            <div className="space-y-4">
+              {stages.map((stage, index) => {
                 const Icon = stage.icon;
                 const isFirst = stage.id === 'case-solving';
                 return (
                   <div
                     key={stage.id}
-                    ref={isFirst ? (targetRef as React.RefObject<HTMLDivElement>) : undefined}
+                    data-tour={isFirst ? 'case-solving-card' : undefined}
                     className={`
-                      group cursor-pointer rounded-xl p-3 border transition-all duration-300
+                      group cursor-pointer rounded-2xl p-5 border transition-all duration-500 transform
                       bg-gradient-to-br ${stage.bgGradient} ${stage.borderColor}
-                      hover:scale-[1.02] hover:shadow-lg
+                      hover:scale-[1.02] hover:shadow-xl hover:-translate-y-1
                       ${isFirst && highlightFirstButton ? 'highlight-glow' : ''}
+                      relative overflow-hidden
                     `}
                     onClick={() => handleStageClick(stage.id)}
                   >
-                    <div className="flex items-center gap-3">
-                      {/* Иконка */}
-                      <div className={`w-10 h-10 ${stage.iconBg} rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
-                        <Icon className="w-5 h-5 text-white" />
+                    {/* Декоративный элемент */}
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full blur-xl" />
+                    
+                    <div className="relative flex items-center gap-4">
+                      {/* Иконка в новом стиле */}
+                      <div className="relative">
+                        <div className={`w-14 h-14 ${stage.iconBg} rounded-2xl flex items-center justify-center group-hover:scale-110 transition-all duration-300 shadow-lg`}>
+                          <Icon className="w-7 h-7 text-white" />
+                        </div>
+                        {/* Декоративное кольцо */}
+                        <div className="absolute -inset-1 rounded-2xl border border-white/20 group-hover:border-white/40 transition-colors duration-300" />
                       </div>
                       
                       {/* Контент */}
-                      <div className="flex-1">
-                        <h3 className="text-base font-bold text-gray-900 mb-1" style={{ fontFamily: 'SNS, sans-serif' }}>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: 'SNS, sans-serif' }}>
                           {stage.title}
                         </h3>
-                        <p className="text-xs text-gray-600 leading-relaxed">
+                        <p className="text-sm text-gray-600 leading-relaxed">
                           {stage.description}
                         </p>
+                        
+                        {/* Дополнительная информация */}
+                        <div className="flex items-center gap-2 mt-3">
+                          <div className="flex items-center gap-1 px-2 py-1 bg-white/60 rounded-full text-xs font-medium text-gray-700">
+                            <div className="w-2 h-2 bg-emerald-500 rounded-full" />
+                            Этап {index + 1}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            Нажмите для перехода
+                          </div>
+                        </div>
                       </div>
 
-                      {/* Стрелка */}
-                      <div className="w-6 h-6 rounded-full bg-white/50 flex items-center justify-center group-hover:bg-white group-hover:shadow-md transition-all duration-300">
-                        <svg className="w-3 h-3 text-gray-600 group-hover:translate-x-0.5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      {/* Стрелка в новом стиле */}
+                      <div className="w-10 h-10 rounded-2xl bg-white/60 flex items-center justify-center group-hover:bg-white group-hover:shadow-lg transition-all duration-300 group-hover:scale-110">
+                        <svg className="w-5 h-5 text-gray-600 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
                         </svg>
                       </div>
                     </div>
@@ -534,17 +502,17 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
                   </p>
                 </div>
               ) : (
-                <div className={`grid gap-3 ${assignedCases.length === 1 ? 'grid-cols-1 max-w-xs mx-auto' : assignedCases.length === 2 ? 'grid-cols-1 xs:grid-cols-2' : 'grid-cols-1 xs:grid-cols-2 sm:grid-cols-3'}`}>
+                <div className={`grid gap-4 ${assignedCases.length === 1 ? 'grid-cols-1 max-w-sm mx-auto' : assignedCases.length === 2 ? 'grid-cols-1 xs:grid-cols-2' : 'grid-cols-1 xs:grid-cols-2 sm:grid-cols-3'}`}>
                   {assignedCases.map((caseNumber) => {
                     const isCompleted = isCaseEvaluationCompleted(caseNumber);
                     const averageScore = getCaseAverageScore(caseNumber);
                     return (
                       <div
                         key={caseNumber}
-                        className={`group cursor-pointer rounded-2xl p-4 border transition-all duration-300 relative ${
+                        className={`group cursor-pointer rounded-3xl p-6 border transition-all duration-500 transform relative overflow-hidden ${
                           isCompleted 
-                            ? 'border-green-300 bg-gradient-to-br from-green-50 to-emerald-50 hover:scale-[1.02] hover:shadow-lg' 
-                            : 'border-emerald-100 bg-gradient-to-br from-emerald-50 to-teal-50 hover:scale-[1.02] hover:shadow-lg'
+                            ? 'border-green-200 bg-gradient-to-br from-green-50 via-white to-emerald-50 hover:scale-[1.03] hover:shadow-xl hover:-translate-y-1' 
+                            : 'border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-teal-50 hover:scale-[1.03] hover:shadow-xl hover:-translate-y-1'
                         }`}
                         onClick={() => {
                           console.log('Клик по кейсу:', caseNumber);
@@ -553,38 +521,50 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
                           console.log('Состояние после клика:', { selectedCaseNumber: caseNumber, showCaseEvaluation: true });
                         }}
                       >
-                        {/* Индикатор завершения */}
+                        {/* Декоративные элементы */}
+                        <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 rounded-full blur-xl" />
+                        <div className="absolute bottom-0 left-0 w-12 h-12 bg-emerald-200/20 rounded-full blur-lg" />
+                        
+                        {/* Индикатор завершения в новом стиле */}
                         {isCompleted && (
-                          <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center shadow-lg">
-                            <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg ring-4 ring-white">
+                            <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
                           </div>
                         )}
                         
-                        <div className="text-center">
-                          <div className={`w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform duration-300 ${
-                            isCompleted ? 'bg-green-500' : 'bg-emerald-500'
-                          }`}>
-                            <span className="text-xl font-bold text-white">
-                              {caseNumber}
-                            </span>
+                        <div className="relative text-center">
+                          {/* Номер кейса в новом стиле */}
+                          <div className="relative mb-4">
+                            <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mx-auto group-hover:scale-110 transition-all duration-300 shadow-lg ${
+                              isCompleted ? 'bg-gradient-to-br from-green-500 to-emerald-600' : 'bg-gradient-to-br from-emerald-500 to-teal-600'
+                            }`}>
+                              <span className="text-2xl font-bold text-white">
+                                {caseNumber}
+                              </span>
+                            </div>
+                            {/* Декоративное кольцо */}
+                            <div className={`absolute -inset-2 rounded-3xl border-2 ${
+                              isCompleted ? 'border-green-200' : 'border-emerald-200'
+                            } group-hover:border-opacity-60 transition-all duration-300`} />
                           </div>
-                          <h4 className={`text-base font-bold mb-1 ${
-                            isCompleted ? 'text-green-700' : 'text-gray-900'
+                          
+                          <h4 className={`text-lg font-bold mb-2 ${
+                            isCompleted ? 'text-green-800' : 'text-gray-900'
                           }`}>
                             Кейс #{caseNumber}
                           </h4>
                           
-                          {/* Средний балл */}
+                          {/* Средний балл в новом стиле */}
                           {isCompleted && averageScore !== null && (
-                            <div className="mb-2">
-                              <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${
-                                averageScore >= 4 ? 'bg-green-100 text-green-700' :
-                                averageScore >= 3 ? 'bg-yellow-100 text-yellow-700' :
-                                'bg-red-100 text-red-700'
+                            <div className="mb-3">
+                              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-bold ${
+                                averageScore >= 4 ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border border-green-200' :
+                                averageScore >= 3 ? 'bg-gradient-to-r from-yellow-100 to-orange-100 text-yellow-800 border border-yellow-200' :
+                                'bg-gradient-to-r from-red-100 to-pink-100 text-red-800 border border-red-200'
                               }`}>
-                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                   <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                                 </svg>
                                 {averageScore}/5
@@ -592,11 +572,17 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
                             </div>
                           )}
                           
-                          <p className={`text-xs ${
-                            isCompleted ? 'text-green-600' : 'text-gray-600'
+                          {/* Статус */}
+                          <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${
+                            isCompleted 
+                              ? 'bg-green-100 text-green-700' 
+                              : 'bg-emerald-100 text-emerald-700'
                           }`}>
+                            <div className={`w-2 h-2 rounded-full ${
+                              isCompleted ? 'bg-green-500' : 'bg-emerald-500'
+                            }`} />
                             {isCompleted ? 'Оценка выставлена' : 'Оценить решение кейса'}
-                          </p>
+                          </div>
                         </div>
                       </div>
                     );
@@ -604,23 +590,31 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
                 </div>
               )}
               
-              <div className="flex justify-center pt-4">
+              <div className="flex justify-center pt-6">
                 <button
                   onClick={() => setShowCaseSelection(false)}
-                  className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                  className="group flex items-center gap-3 px-6 py-3 bg-white/80 hover:bg-white border border-gray-200 hover:border-emerald-200 rounded-2xl text-gray-700 hover:text-gray-900 transition-all duration-300 hover:shadow-lg hover:scale-105"
                 >
-                  <ArrowRight className="w-4 h-4 rotate-180" />
-                  Назад к выбору этапа
+                  <div className="w-8 h-8 rounded-xl bg-gray-100 group-hover:bg-emerald-100 flex items-center justify-center transition-colors duration-300">
+                    <ArrowRight className="w-4 h-4 rotate-180 group-hover:text-emerald-600" />
+                  </div>
+                  <span className="font-medium">Назад к выбору этапа</span>
                 </button>
               </div>
             </div>
           )}
         </div>
 
-        {/* Футер */}
-        <div className="border-t border-gray-100 p-2 bg-gray-50 rounded-b-2xl">
-          <div className="text-center text-xs text-gray-500">
-            Выберите этап для оценки резервиста
+        {/* Современный футер */}
+        <div className="border-t border-gray-100/50 p-4 bg-gradient-to-r from-gray-50 to-white rounded-b-3xl">
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
+              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+              <span className="font-medium">Выберите этап для оценки резервиста</span>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Система оценки кадрового резерва
+            </p>
           </div>
         </div>
 
@@ -650,12 +644,6 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
         )}
       />
       
-      {/* Наш собственный тултип */}
-      <MobileTooltip 
-        isVisible={showTooltip}
-        targetRef={targetRef}
-        onClose={handleTooltipClose}
-      />
     </div>
     </>
   );
