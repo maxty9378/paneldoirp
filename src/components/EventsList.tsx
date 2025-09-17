@@ -810,6 +810,20 @@ export function EventsList({ onCreateEvent }: EventsListProps) {
                         );
                       }
                       
+                      // Для администраторов на экзаменах резерва талантов показываем кнопку "Оценить"
+                      if (isAdmin && isExamTalentReserve) {
+                        return (
+                          <button 
+                            onClick={() => window.location.href = `/expert-exam/${event.id}`}
+                            className="btn-primary flex items-center px-3 py-2 rounded-xl transition-all duration-300 hover:bg-[#059669] text-white" 
+                            title="Перейти к оценке"
+                          >
+                            <Star size={16} className="mr-1" />
+                            <span className="text-sm font-medium">Оценить</span>
+                          </button>
+                        );
+                      }
+                      
                       return (
                         <button 
                           onClick={() => window.location.href = `/event/${event.id}`}
