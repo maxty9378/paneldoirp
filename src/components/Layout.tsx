@@ -228,32 +228,34 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
   if (isExamPage) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
-        {/* Мобильное меню (бутерброд) - только на мобильных */}
-        <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100">
-          <div className="px-4 py-3">
-            <div className="flex items-center justify-between">
-              <button
-                onClick={() => setIsMobileMenuOpen(true)}
-                className="p-2 -ml-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all duration-200 active:scale-95"
-                title="Открыть меню"
-              >
-                <Menu className="w-6 h-6" />
-              </button>
-              <div className="text-center flex-1">
-                <h1 className="text-lg font-semibold text-gray-900">{examTabTitle}</h1>
+        {/* Мобильное меню (бутерброд) - только на мобильных и только если модальное окно не открыто */}
+        {!isModalOpen && (
+          <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100">
+            <div className="px-4 py-3">
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => setIsMobileMenuOpen(true)}
+                  className="p-2 -ml-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all duration-200 active:scale-95"
+                  title="Открыть меню"
+                >
+                  <Menu className="w-6 h-6" />
+                </button>
+                <div className="text-center flex-1">
+                  <h1 className="text-lg font-semibold text-gray-900">{examTabTitle}</h1>
+                </div>
+                <div className="w-10"></div> {/* Spacer для центрирования */}
               </div>
-              <div className="w-10"></div> {/* Spacer для центрирования */}
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Основной контент с отступом для мобильного меню */}
-        <div className="pt-16 lg:pt-0">
+        {/* Основной контент с отступом для мобильного меню (только если модальное окно не открыто) */}
+        <div className={isModalOpen ? "pt-0" : "pt-16 lg:pt-0"}>
           {children}
         </div>
 
         {/* Мобильное меню */}
-        {isMobileMenuOpen && (
+        {isMobileMenuOpen && !isModalOpen && (
           <div className="lg:hidden fixed inset-0 z-50">
             <div 
               className="absolute inset-0 bg-black/50"

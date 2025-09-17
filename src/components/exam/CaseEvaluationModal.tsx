@@ -296,7 +296,6 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
       bottom: 0 !important;
       margin: 0 !important;
       padding: 0 !important;
-      padding-top: env(safe-area-inset-top, 0px) !important;
       z-index: 10002 !important;
       background: white !important;
     }
@@ -330,12 +329,12 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
         touch-action: manipulation !important;
       }
       
-      /* Убираем возможные конфликты с safe area */
+      /* Убираем safe area для полноэкранного режима */
       .case-evaluation-modal {
-        padding-top: env(safe-area-inset-top, 0px) !important;
-        padding-left: env(safe-area-inset-left, 0px) !important;
-        padding-right: env(safe-area-inset-right, 0px) !important;
-        padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+        padding-top: 0px !important;
+        padding-left: 0px !important;
+        padding-right: 0px !important;
+        padding-bottom: 0px !important;
       }
     }
     
