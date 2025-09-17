@@ -343,7 +343,6 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
       bottom: 0 !important;
       margin: 0 !important;
       padding: 0 !important;
-      padding-top: env(safe-area-inset-top, 0px) !important;
       z-index: 10002 !important;
       background: white !important;
     }
@@ -451,7 +450,6 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
         {/* Шапка (sticky top) */}
         <header 
           className="sticky top-0 z-10 border-b border-gray-100 bg-white/80 backdrop-blur-sm"
-          style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
         >
           <div className="px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-3 min-w-0">
@@ -567,7 +565,6 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
         {/* Футер (sticky bottom) */}
         <footer 
           className="sticky bottom-0 z-10 border-t border-gray-100 bg-white/80 backdrop-blur-sm"
-          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         >
           <div className="px-4 pt-3 pb-3">
             <div className="flex gap-2">
