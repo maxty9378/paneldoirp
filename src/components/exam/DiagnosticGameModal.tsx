@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Target, Users, MessageCircle, Brain, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { X, Brain, CheckCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { EvaluationSuccessModal } from './EvaluationSuccessModal';
@@ -13,6 +13,7 @@ interface DiagnosticGameModalProps {
   onEvaluationComplete?: () => Promise<void>;
   onRemoveEvaluation?: (participantId: string) => Promise<void>;
   existingEvaluation?: DiagnosticGameEvaluation;
+  onModalStateChange?: (isOpen: boolean) => void; // Новый пропс для уведомления о состоянии модальных окон
 }
 
 interface DiagnosticGameEvaluation {
@@ -26,7 +27,6 @@ interface DiagnosticGameEvaluation {
     teamwork_skills: number;
     systemic_thinking: number;
   };
-  comments?: string;
 }
 
 export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
@@ -37,7 +37,8 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
   examId,
   onEvaluationComplete,
   onRemoveEvaluation,
-  existingEvaluation
+  existingEvaluation,
+  onModalStateChange
 }) => {
   const { user } = useAuth();
   const [evaluation, setEvaluation] = useState<DiagnosticGameEvaluation>({
@@ -49,8 +50,7 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
       effective_communication: 0,
       teamwork_skills: 0,
       systemic_thinking: 0,
-    },
-    comments: ''
+    }
   });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -80,6 +80,11 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
       document.body.style.overflow = '';
     }
   }, [isOpen, showSuccessModal, showCriteriaModal]);
+  
+  // Уведомляем родительский компонент о состоянии модального окна
+  useEffect(() => {
+    onModalStateChange?.(isOpen);
+  }, [isOpen, onModalStateChange]);
 
   const loadExistingEvaluation = async () => {
     if (!user?.id) return;
@@ -106,8 +111,7 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
           exam_event_id: data.exam_event_id,
           reservist_id: data.reservist_id,
           evaluator_id: data.evaluator_id,
-          competency_scores: data.competency_scores,
-          comments: data.comments || ''
+          competency_scores: data.competency_scores
         });
         setSaved(true);
       } else {
@@ -121,8 +125,7 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
             effective_communication: 0,
             teamwork_skills: 0,
             systemic_thinking: 0,
-          },
-          comments: ''
+          }
         });
         setSaved(false);
       }
@@ -144,10 +147,6 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
     setSaved(false);
   };
 
-  const handleCommentsChange = (comments: string) => {
-    setEvaluation(prev => ({ ...prev, comments }));
-    setSaved(false);
-  };
 
   const saveEvaluation = async () => {
     setSaving(true);
@@ -156,8 +155,7 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
         exam_event_id: examId,
         reservist_id: participantId,
         evaluator_id: user?.id,
-        competency_scores: evaluation.competency_scores,
-        comments: evaluation.comments || null
+        competency_scores: evaluation.competency_scores
       };
 
       console.log('💾 Сохраняем оценку диагностической игры:', evaluationData);
@@ -219,7 +217,7 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
         '2. Самостоятельно ищет решения, сталкиваясь с проблемами в зоне своей ответственности',
         '3. В случае необходимости поступается личными интересами и комфортом ради достижения целей'
       ],
-      icon: Target
+      icon: null
     },
     {
       key: 'effective_communication' as const,
@@ -233,7 +231,7 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
         '5. Внимательно выслушивает мнение других',
         '6. Проявляет твердость в отстаивании своей позиции'
       ],
-      icon: MessageCircle
+      icon: null
     },
     {
       key: 'teamwork_skills' as const,
@@ -246,7 +244,7 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
         '4. Координирует свою работу с коллегами для решения совместных задач',
         '5. Мотивирует («заряжает») коллег на выполнение задач, учитывая особенности их характера и мотивации'
       ],
-      icon: Users
+      icon: null
     },
     {
       key: 'systemic_thinking' as const,
@@ -259,9 +257,148 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
         '4. Рассматривает несколько вариантов решения стоящих перед ним задач',
         '5. Прогнозирует последствия своих решений'
       ],
-      icon: Brain
+      icon: null
     }
   ];
+
+  // Константы для слайдера (как в CaseEvaluationModal)
+  const STEPS: number[] = Array.from({ length: 9 }, (_, i) => 1 + i * 0.5); // [1..5] шаг 0.5
+
+  // Функции для работы со слайдером (как в CaseEvaluationModal)
+  const colorFor = (score: number) => {
+    if (score >= 4) return '#059669'; // green-600
+    if (score >= 3) return '#d97706'; // amber-600
+    return '#dc2626'; // red-600
+  };
+
+  const totalScore = useMemo(() => {
+    const scores = Object.values(evaluation.competency_scores) as number[];
+    const validScores = scores.filter(s => s > 0);
+    if (validScores.length === 0) return 0;
+    const avg = validScores.reduce((s, x) => s + x, 0) / validScores.length;
+    return Math.round(avg * 10) / 10;
+  }, [evaluation.competency_scores]);
+
+  const canSave = totalScore > 0 && !saving;
+
+  // Стили для слайдера (как в CaseEvaluationModal)
+  const sliderStyles = `
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    input[type="range"]::-webkit-slider-track {
+      background: transparent;
+      height: 20px;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      background: #10b981;
+      height: 20px;
+      width: 20px;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    input[type="range"]::-moz-range-track {
+      background: transparent;
+      height: 20px;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      background: #10b981;
+      height: 20px;
+      width: 20px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+  `;
+
+  // Компонент слайдера (как в CaseEvaluationModal)
+  const SliderComponent = ({ 
+    value, 
+    onChange 
+  }: { 
+    value: number; 
+    onChange: (value: number) => void; 
+  }) => {
+    const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const i = parseInt(e.target.value);
+      onChange(STEPS[i]);
+    };
+
+    return (
+      <div className="mt-2">
+        {/* Чипы для быстрого выбора значений */}
+        <div className="mb-2 grid grid-cols-9 gap-1">
+          {[1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map(n => {
+            const active = value === n;
+            return (
+              <button
+                key={n}
+                className={
+                  'h-7 w-full rounded-full text-[10px] font-semibold border transition ' +
+                  (active
+                    ? 'bg-emerald-500 border-emerald-500 text-white'
+                    : 'bg-white border-gray-200 text-gray-700 hover:border-emerald-300 hover:bg-emerald-50')
+                }
+                onClick={() => onChange(n)}
+                aria-label={`Выбрать ${n}`}
+              >
+                {n}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Трек с рисками */}
+        <div className="relative pt-3">
+          {/* линия */}
+          <div className="absolute left-1 right-1 top-[9px] h-[2px] bg-gray-200 rounded-full" />
+          {/* риски */}
+          <div className="absolute left-1 right-1 top-0 h-5 pointer-events-none">
+            {STEPS.map((s, i) => {
+              const left = `${(i / (STEPS.length - 1)) * 100}%`;
+              const isInteger = Number.isInteger(s);
+              return (
+                <div
+                  key={s}
+                  className="absolute"
+                  style={{ left, transform: 'translateX(-50%)' }}
+                >
+                  <div className={isInteger ? 'w-[2px] h-5 bg-gray-300' : 'w-[1px] h-3 bg-gray-300'} />
+                  {isInteger && (
+                    <div className="text-[10px] text-gray-500 text-center mt-1 translate-x-[-50%]">
+                      {s}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* сам слайдер поверх трека */}
+          <input
+            type="range"
+            min={0}
+            max={STEPS.length - 1}
+            value={STEPS.findIndex(s => s === value)}
+            onChange={handleSliderChange}
+            className="w-full h-5 relative z-10"
+          />
+        </div>
+      </div>
+    );
+  };
 
   // Доступные значения оценок
   const scoreValues = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5];
@@ -271,40 +408,48 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10002] p-4 pb-20">
-      <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[85vh] overflow-y-auto">
-        {/* Заголовок */}
-        <div className="bg-emerald-600 text-white p-6 rounded-t-2xl">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white bg-opacity-20 rounded-xl flex items-center justify-center">
-                <Brain className="w-5 h-5 text-white" />
+    <>
+      <style>{sliderStyles}</style>
+
+      {/* Фуллскрин слой */}
+      <div className="fixed inset-0 z-[10002] flex flex-col bg-white">
+        {/* Шапка (sticky top) */}
+        <header className="sticky top-0 z-10 border-b border-gray-100 bg-white">
+          <div className="px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                <Brain className="w-5 h-5 text-emerald-700" />
               </div>
-              <div>
-                <h2 className="text-xl font-bold">Диагностическая игра</h2>
-                <p className="text-emerald-100">{participantName}</p>
+              <div className="min-w-0">
+                <div className="text-xs text-gray-500">Диагностическая игра</div>
+                <div className="text-base font-semibold truncate">{participantName}</div>
               </div>
             </div>
             <div className="flex items-center gap-4">
               <div className="text-right">
-                <div className="text-2xl font-bold">
-                  {getTotalScore()}<span className="text-emerald-200">/5</span>
+                <div
+                  className="text-2xl font-bold"
+                  style={{ color: colorFor(totalScore) }}
+                >
+                  {totalScore.toFixed(1)}
                 </div>
-                <div className="text-sm text-emerald-100">Средний балл</div>
+                <div className="text-[11px] text-gray-400">средний балл</div>
               </div>
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors"
+                className="p-2 rounded-lg hover:bg-gray-50"
+                aria-label="Закрыть"
               >
-                <X className="w-5 h-5" />
+                <X className="w-6 h-6 text-gray-700" />
               </button>
             </div>
           </div>
-        </div>
+        </header>
 
 
-        {/* Контент */}
-        <div className="p-6 space-y-6">
+        {/* Контент (скролл) */}
+        <main className="flex-1 overflow-y-auto px-4 pt-3 pb-24">
+          <div className="space-y-3">
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
@@ -312,142 +457,84 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
           ) : (
             <>
               {/* Компетенции */}
-              <div className="space-y-6">
-                {competencies.map((competency) => {
-                  const Icon = competency.icon;
-                  const currentScore = evaluation.competency_scores[competency.key];
-                  
+                {competencies.map(c => {
+                  const val = evaluation.competency_scores[c.key];
+                  const col = colorFor(val);
                   return (
-                    <div key={competency.key} className="bg-gray-50 rounded-xl p-6">
-                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4 gap-4">
-                        <div className="flex items-start gap-3 flex-1">
-                          <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <Icon className="w-5 h-5 text-emerald-600" />
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="text-lg font-semibold text-gray-900 leading-tight">
-                              {competency.title}
-                            </h3>
-                            <p className="text-gray-600 text-sm leading-relaxed mt-1 mb-3">
-                              {competency.description}
-                            </p>
-                            {/* Кнопка для показа критериев */}
+                    <div key={c.key} className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="text-sm font-medium text-gray-900">{c.title}</div>
                             <button
                               onClick={() => {
-                                setSelectedCompetency(competency);
+                                setSelectedCompetency(c);
                                 setShowCriteriaModal(true);
                               }}
-                              className="flex items-center gap-2 text-xs text-blue-600 font-medium hover:text-blue-700 transition-colors bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-lg"
+                              className="w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center shadow-sm hover:bg-emerald-600 transition-colors"
+                              aria-label="Показать критерии оценки"
                             >
-                              <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center shadow-sm">
-                                <span className="text-xs font-bold text-white">i</span>
-                              </div>
-                              <span>Критерии оценки</span>
+                              <span className="text-[10px] font-bold text-white">i</span>
                             </button>
                           </div>
+                          <div className="text-xs text-gray-500">{c.description}</div>
                         </div>
-                        <div className="text-center sm:text-right sm:ml-4">
-                          <div className={`text-2xl font-bold ${getScoreColor(currentScore)}`}>
-                            {currentScore || '—'}<span className="text-gray-400">/5</span>
+                        <div className="text-right ml-3">
+                          <div className="text-lg font-bold" style={{ color: col }}>
+                            {val.toFixed(1)}
                           </div>
                         </div>
                       </div>
-                      
-                      {/* Оценочная шкала */}
-                      <div className="space-y-2">
-                        {/* Первый ряд - целые числа */}
-                        <div className="flex gap-2">
-                          {[1, 2, 3, 4, 5].map((score) => (
-                            <button
-                              key={score}
-                              onClick={() => handleScoreChange(competency.key, score)}
-                              className={`flex-1 h-12 rounded-xl border-2 transition-all duration-200 font-semibold ${
-                                currentScore === score
-                                  ? 'border-emerald-500 bg-emerald-500 text-white shadow-lg'
-                                  : 'border-gray-200 bg-white text-gray-600 hover:border-emerald-300 hover:bg-emerald-50'
-                              }`}
-                            >
-                              {score}
-                            </button>
-                          ))}
-                        </div>
-                        {/* Второй ряд - дробные числа */}
-                        <div className="flex gap-2">
-                          {[1.5, 2.5, 3.5, 4.5].map((score) => (
-                            <button
-                              key={score}
-                              onClick={() => handleScoreChange(competency.key, score)}
-                              className={`flex-1 h-12 rounded-xl border-2 transition-all duration-200 font-semibold ${
-                                currentScore === score
-                                  ? 'border-emerald-300 bg-emerald-100 text-emerald-700 shadow-sm'
-                                  : 'border-gray-200 bg-gray-25 text-gray-400 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-500'
-                              }`}
-                            >
-                              {score}
-                            </button>
-                          ))}
-                          {/* Пустая кнопка для выравнивания */}
-                          <div className="flex-1"></div>
-                        </div>
-                      </div>
+                      <SliderComponent
+                        value={val}
+                        onChange={(score) => handleScoreChange(c.key, score)}
+                      />
                     </div>
                   );
                 })}
-              </div>
 
-              {/* Комментарии */}
-              <div className="bg-gray-50 rounded-xl p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Комментарии
-                </h3>
-                <textarea
-                  value={evaluation.comments || ''}
-                  onChange={(e) => handleCommentsChange(e.target.value)}
-                  placeholder="Дополнительные комментарии к оценке компетенций в диагностической игре..."
-                  className="w-full h-24 px-4 py-3 border border-gray-200 rounded-xl resize-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
-                />
-              </div>
             </>
           )}
         </div>
+        </main>
 
-        {/* Футер */}
-        <div className="sticky bottom-0 bg-white p-6 border-t border-gray-100 flex gap-3 justify-between rounded-b-2xl">
+        {/* Футер (sticky bottom) */}
+        <footer className="sticky bottom-0 z-10 border-t border-gray-100 bg-white px-4 py-3">
+          <div className="flex gap-2">
           <button
             onClick={onClose}
-            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
+              className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
           >
             ← Назад
           </button>
-          <div className="flex gap-3">
             <button
               onClick={saveEvaluation}
-              disabled={saving || getTotalScore() === 0}
-              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${
-                saving || getTotalScore() === 0
+              disabled={!canSave}
+              className={`flex-1 px-4 py-2.5 rounded-lg font-semibold transition-all text-sm ${
+                !canSave
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg hover:shadow-xl'
               }`}
             >
               {saving ? (
-                <>
+                <div className="flex items-center justify-center gap-2">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                   Сохранение...
-                </>
+                </div>
               ) : saved ? (
-                <>
+                <div className="flex items-center justify-center gap-2">
                   <CheckCircle className="w-4 h-4" />
                   Сохранено
-                </>
+                </div>
               ) : (
-                <>
+                <div className="flex items-center justify-center gap-2">
                   <Brain className="w-4 h-4" />
                   Отправить
-                </>
+                </div>
               )}
             </button>
           </div>
-        </div>
+        </footer>
       </div>
 
       {/* Модальное окно успешной отправки */}
@@ -504,6 +591,6 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };

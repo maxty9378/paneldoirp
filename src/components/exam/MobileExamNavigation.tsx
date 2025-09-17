@@ -10,13 +10,15 @@ interface MobileExamNavigationProps {
   onTabChange: (tab: ExamTab) => void;
   participantsCount?: number; // Опциональный параметр
   evaluationsCount?: number;
+  isHidden?: boolean; // Новый пропс для скрытия меню
 }
 
 const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({ 
   activeTab, 
   onTabChange, 
   participantsCount = 0,
-  evaluationsCount = 0 
+  evaluationsCount = 0,
+  isHidden = false
 }) => {
   const [isMobile, setIsMobile] = useState(false);
 
@@ -202,8 +204,8 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
     </div>
   );
 
-  // Рендерим через портал в body только на мобильных устройствах
-  if (!isMobile) return null;
+  // Рендерим через портал в body только на мобильных устройствах и когда не скрыто
+  if (!isMobile || isHidden) return null;
   
   return createPortal(mobileNav, document.body);
 };

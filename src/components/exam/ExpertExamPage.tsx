@@ -108,6 +108,16 @@ const ExpertExamPage: React.FC = () => {
   const [selectedCaseNumber, setSelectedCaseNumber] = useState<number | null>(null);
   const [showProjectDefenseModal, setShowProjectDefenseModal] = useState(false);
   const [showDiagnosticGameModal, setShowDiagnosticGameModal] = useState(false);
+  
+  // Состояние для отслеживания открытых модальных окон
+  const [isAnyModalOpen, setIsAnyModalOpen] = useState(false);
+  
+  // Отслеживание открытых модальных окон
+  useEffect(() => {
+    const anyModalOpen = showEvaluationModal || showCaseEvaluation || showProjectDefenseModal || showDiagnosticGameModal;
+    setIsAnyModalOpen(anyModalOpen);
+  }, [showEvaluationModal, showCaseEvaluation, showProjectDefenseModal, showDiagnosticGameModal]);
+  
   const [bannerSettings, setBannerSettings] = useState({
     position: 'center bottom',
     showAdminControls: false,
@@ -1163,6 +1173,7 @@ const ExpertExamPage: React.FC = () => {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         evaluationsCount={evaluations.length}
+        isHidden={isAnyModalOpen}
       />
 
       {/* Модальное окно досье */}
@@ -1185,6 +1196,12 @@ const ExpertExamPage: React.FC = () => {
           setShowEvaluationModal(false);
           setSelectedParticipantForEvaluation(null);
         }}
+        onModalStateChange={(isOpen) => {
+          // Обновляем состояние модальных окон
+          if (isOpen) {
+            setIsAnyModalOpen(true);
+          }
+        }}
         onStageSelect={(stage, caseNumber) => {
           console.log('Selected stage:', stage, 'case number:', caseNumber, 'for participant:', selectedParticipantForEvaluation?.user.full_name);
           
@@ -1201,6 +1218,10 @@ const ExpertExamPage: React.FC = () => {
               setShowDiagnosticGameModal(true);
             }
           }
+        }}
+        onCaseEvaluationComplete={async (caseNumber) => {
+          // Перезагружаем оценки после завершения оценки кейса
+          await fetchEvaluations();
         }}
         participantName={selectedParticipantForEvaluation?.user.full_name || ''}
         participantPhoto={selectedParticipantForEvaluation?.dossier?.photo_url}
@@ -1226,6 +1247,11 @@ const ExpertExamPage: React.FC = () => {
             // Перезагружаем данные после завершения оценки
             await fetchExamData();
           }}
+          onModalStateChange={(isOpen) => {
+            if (isOpen) {
+              setIsAnyModalOpen(true);
+            }
+          }}
           onRemoveEvaluation={async (participantId) => {
             // Перезагружаем данные после удаления оценки
             await fetchExamData();
@@ -1247,6 +1273,11 @@ const ExpertExamPage: React.FC = () => {
           onEvaluationComplete={async () => {
             // Перезагружаем данные после завершения оценки
             await fetchExamData();
+          }}
+          onModalStateChange={(isOpen) => {
+            if (isOpen) {
+              setIsAnyModalOpen(true);
+            }
           }}
           onRemoveEvaluation={async (participantId) => {
             // Перезагружаем данные после удаления оценки

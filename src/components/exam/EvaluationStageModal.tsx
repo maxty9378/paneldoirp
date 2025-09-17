@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom';
 import { X, FileText, Users, Trophy, ArrowRight, Loader2, User, MousePointer } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../hooks/useAuth';
 import { CaseEvaluationModal } from './CaseEvaluationModal';
 // Убираем @reactour/tour, создаем собственное решение
 
@@ -229,6 +230,7 @@ interface EvaluationStageModalProps {
   onCaseEvaluationComplete?: (caseNumber: number) => Promise<void>;
   onRemoveEvaluation?: (participantId: string, caseNumber: number) => Promise<void>;
   evaluations?: any[]; // Загруженные оценки для определения статуса завершенности
+  onModalStateChange?: (isOpen: boolean) => void; // Новый пропс для уведомления о состоянии модальных окон
 }
 
 // Внутренний компонент, который использует хук useTour
@@ -242,8 +244,10 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
   participantId,
   onCaseEvaluationComplete,
   onRemoveEvaluation,
-  evaluations = []
+  evaluations: _evaluations = [],
+  onModalStateChange
 }) => {
+  const { user } = useAuth();
   const [showTooltip, setShowTooltip] = useState(false);
   const targetRef = React.useRef<HTMLElement>(null);
   const [showCaseSelection, setShowCaseSelection] = useState(false);
@@ -252,19 +256,52 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
   const [showCaseEvaluation, setShowCaseEvaluation] = useState(false);
   const [selectedCaseNumber, setSelectedCaseNumber] = useState<number>(1);
   const [highlightCaseSolving, setHighlightCaseSolving] = useState(false);
+  const [currentEvaluations, setCurrentEvaluations] = useState<any[]>([]);
+  const [hasInitialized, setHasInitialized] = useState(false);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
+  
+  // Уведомляем родительский компонент о состоянии модальных окон
+  useEffect(() => {
+    const anyModalOpen = showCaseEvaluation || showCaseSelection;
+    onModalStateChange?.(anyModalOpen);
+  }, [showCaseEvaluation, showCaseSelection, onModalStateChange]);
+
+  // Загрузка актуальных оценок при открытии модального окна
+  const fetchCurrentEvaluations = async () => {
+    if (!examId || !user?.id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('case_evaluations')
+        .select('*')
+        .eq('exam_event_id', examId)
+        .eq('evaluator_id', user.id);
+
+      if (error) throw error;
+      setCurrentEvaluations(data || []);
+    } catch (err) {
+      console.error('Ошибка загрузки актуальных оценок:', err);
+    }
+  };
+
+  // Загружаем актуальные оценки при открытии модального окна
+  useEffect(() => {
+    if (isOpen) {
+      fetchCurrentEvaluations();
+    }
+  }, [isOpen, examId, user?.id]);
 
   // Оптимизированный индекс оценок для O(1) доступа
   const evalIndex = useMemo(() => {
     const m = new Map<string, { avg: number | null; raw: any }>();
-    for (const e of evaluations ?? []) {
+    for (const e of currentEvaluations ?? []) {
       const k = `${e.reservist_id}:${e.case_number}`;
       const scores = Object.values(e.criteria_scores ?? {}) as number[];
       const avg = scores.length ? Math.round((scores.reduce((s, x) => s + x, 0) / scores.length) * 10) / 10 : null;
       m.set(k, { avg, raw: e });
     }
     return m;
-  }, [evaluations, participantId]);
+  }, [currentEvaluations, participantId]);
 
   const getEval = useCallback((caseNumber: number) => {
     return evalIndex.get(`${participantId}:${caseNumber}`);
@@ -313,10 +350,12 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
 
   // Запуск тура при открытии модалки
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !hasInitialized) {
+      // Сбрасываем состояние только при первом открытии
       setShowCaseSelection(false);
       setShowCaseEvaluation(false);
       setSelectedCaseNumber(1);
+      setHasInitialized(true);
 
       // Сначала выравниваем модалку, затем показываем подсказку
       const isMobile = window.innerWidth <= 768;
@@ -343,11 +382,14 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
       return () => {
         clearTimeout(t1);
       };
+    } else if (!isOpen) {
+      // Сбрасываем флаг инициализации при закрытии
+      setHasInitialized(false);
     } else {
       setShowTooltip(false);
       setHighlightCaseSolving(false);
     }
-  }, [isOpen]);
+  }, [isOpen, hasInitialized]);
 
   // Обработчик закрытия тултипа
   const handleTooltipClose = () => {
@@ -775,8 +817,8 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
           setShowCaseSelection(false);
         }}
         onRemoveEvaluation={onRemoveEvaluation}
-        // Передаем существующую оценку для загрузки
-        existingEvaluation={evaluations.find(evaluation => 
+        // Передаем существующую оценку для загрузки (используем актуальные оценки)
+        existingEvaluation={currentEvaluations.find(evaluation => 
           evaluation.reservist_id === participantId && 
           evaluation.case_number === selectedCaseNumber
         )}
