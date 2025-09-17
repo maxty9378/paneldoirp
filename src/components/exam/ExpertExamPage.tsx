@@ -151,6 +151,11 @@ const ExpertExamPage: React.FC = () => {
   useEffect(() => {
     // Сообщаем родительскому layout, нужно ли скрыть меню
     setIsNavHidden(isAnyModalOpen);
+    
+    // Отправляем событие в Layout для скрытия шапки
+    window.dispatchEvent(new CustomEvent('modalStateChanged', { 
+      detail: { isOpen: isAnyModalOpen } 
+    }));
   }, [isAnyModalOpen, setIsNavHidden]);
 
   // Обработчик события для открытия результатов оценок из мобильной навигации

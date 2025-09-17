@@ -25,6 +25,7 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [examTabTitle, setExamTabTitle] = useState('Экзамен');
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -52,6 +53,19 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
     
     return () => {
       window.removeEventListener('examTabChanged', handleExamTabChange as EventListener);
+    };
+  }, []);
+
+  // Слушаем события открытия/закрытия модальных окон
+  useEffect(() => {
+    const handleModalStateChange = (event: CustomEvent) => {
+      setIsModalOpen(event.detail.isOpen);
+    };
+
+    window.addEventListener('modalStateChanged', handleModalStateChange as EventListener);
+    
+    return () => {
+      window.removeEventListener('modalStateChanged', handleModalStateChange as EventListener);
     };
   }, []);
 
@@ -299,7 +313,12 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
-        <Header onMobileMenuToggle={() => setIsMobileMenuOpen(true)} />
+        <div className={clsx(
+          "transition-all duration-300",
+          isModalOpen ? "opacity-0 pointer-events-none transform scale-95" : "opacity-100"
+        )}>
+          <Header onMobileMenuToggle={() => setIsMobileMenuOpen(true)} />
+        </div>
         <main className={clsx(
             "flex-1 overflow-auto transition-all duration-300",
             // Отступы для мобильной версии
