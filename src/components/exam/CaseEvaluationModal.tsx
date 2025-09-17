@@ -352,26 +352,31 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
     return Math.round(avg * 10) / 10;
   }, [evaluation.criteria_scores]);
 
-  const canSave = totalScore > 0 && !saving;
+  // Готовность к отправке считаем напрямую из критериев, без округления
+  const hasAnyScore = useMemo(
+    () => Object.values(evaluation.criteria_scores).some(v => v > 0),
+    [evaluation.criteria_scores]
+  );
+  const canSave = hasAnyScore && !saving;
   
 
   const handleSaveClick = () => {
-    // Показываем подтверждение если есть существующая оценка или если это повторное сохранение
+    // Считываем самое свежее состояние, без надежды на пропсы в JSX
+    if (saving) return;                   // защита от дабл-тапа
+    if (!Object.values(evaluation.criteria_scores).some(v => v > 0)) return; // вообще нет оценок
+
     if (hasExistingEvaluation && !saved) {
       console.log('🔄 Показываем подтверждение изменения существующей оценки');
       setShowChangeConfirmModal(true);
-    } else {
-      // Сохраняем сразу для новых оценок
-      console.log('💾 Сохраняем новую оценку');
-      saveEvaluation();
+      return;
     }
+    // Новая оценка или без изменений — сохраняем
+    console.log('💾 Сохраняем новую оценку');
+    saveEvaluation();
   };
 
   const saveEvaluation = async () => {
-    if (!canSave) {
-      console.log('❌ Нельзя сохранить: canSave =', canSave);
-      return;
-    }
+    // Проверки уже сделаны в handleSaveClick
     
     console.log('💾 Начинаем сохранение оценки:', evaluation);
     setSaving(true);
@@ -619,7 +624,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
               ← Назад
             </button>
             <button
-              onPointerUp={() => { if (canSave) handleSaveClick(); }}
+              onPointerUp={handleSaveClick}
               disabled={!canSave}
               className={`flex-1 px-4 py-2.5 rounded-lg font-semibold text-sm ${
                 !canSave
