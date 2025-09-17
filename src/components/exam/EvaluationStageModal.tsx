@@ -543,7 +543,7 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
               
               <div className="flex-1 min-w-0">
                 <h2 id="evaluation-stage-title" className="text-base font-bold mb-1 leading-tight" style={{ fontFamily: 'SNS, sans-serif' }}>
-                  Выбор кейса
+                  Выбор этапа оценки
                 </h2>
                 <p className="text-emerald-100 text-xs truncate">
                   {participantName}
