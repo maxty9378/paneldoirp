@@ -558,7 +558,7 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
       </style>
       <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-2 xs:p-4">
       <div 
-        className={`relative max-w-lg w-full max-h-[70vh] overflow-hidden rounded-2xl bg-white shadow-2xl transform transition-all duration-500 ease-out ${
+        className={`evaluation-stage-modal relative max-w-lg w-full max-h-[70vh] overflow-hidden rounded-2xl bg-white shadow-2xl transform transition-all duration-500 ease-out ${
         isOpen && !showCaseEvaluation ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-full opacity-0 scale-95'
         }`}
         role="dialog"

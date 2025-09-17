@@ -444,7 +444,7 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
       <style>{sliderStyles}</style>
 
       {/* Фуллскрин слой */}
-      <div className="case-evaluation-modal fixed inset-0 z-[10002] flex flex-col bg-white" style={{ 
+      <div className="project-defense-modal fixed inset-0 z-[10002] flex flex-col bg-white" style={{ 
         top: 0,
         left: 0,
         right: 0,
