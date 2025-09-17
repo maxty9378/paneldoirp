@@ -49,10 +49,9 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
       display: 'flex',
       justifyContent: 'center',
       padding: '0 16px', // Боковые отступы для контейнера
-      // Делаем невидимым и отключаем взаимодействие, когда скрыто
-      visibility: isHidden ? 'hidden' : 'visible',
+      // В App Shell архитектуре меню всегда видимо, управляем только взаимодействием
       pointerEvents: isHidden ? 'none' : 'auto',
-      transition: 'visibility 0.3s'
+      transition: 'pointer-events 0.3s'
     }}>
       <nav 
         className="mobile-exam-nav"
@@ -70,10 +69,7 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
           boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
           overflow: 'hidden',
           // ВАЖНО: Добавляем отступ снизу для безопасной зоны iPhone
-          marginBottom: 'max(16px, env(safe-area-inset-bottom, 16px))',
-          // Добавляем плавную анимацию появления/исчезновения
-          transform: isHidden ? 'translateY(150%)' : 'translateY(0)',
-          transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+          marginBottom: 'max(16px, env(safe-area-inset-bottom, 16px))'
         }}
       >
         {/* Глянцевый эффект */}
