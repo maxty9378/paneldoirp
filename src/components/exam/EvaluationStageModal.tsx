@@ -543,7 +543,7 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
               
               <div className="flex-1 min-w-0">
                 <h2 id="evaluation-stage-title" className="text-base font-bold mb-1 leading-tight" style={{ fontFamily: 'SNS, sans-serif' }}>
-                  Выбор этапа оценки
+                  Выбор кейса
                 </h2>
                 <p className="text-emerald-100 text-xs truncate">
                   {participantName}
@@ -754,9 +754,6 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
 
         {/* Футер */}
         <div className="border-t border-gray-100 p-2 bg-gray-50 rounded-b-2xl">
-          <div className="text-center text-xs text-gray-500">
-            Выберите этап для оценки резервиста
-          </div>
         </div>
 
       </div>
