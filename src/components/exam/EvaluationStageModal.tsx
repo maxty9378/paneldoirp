@@ -45,11 +45,11 @@ const MobileTooltip: React.FC<{
             top = rect.top + rect.height * 0.7 - tooltipHeight / 2; // Опускаем на 70% высоты карточки
             arrowPosition = 'right';
             
-            // Если не помещается слева, размещаем сверху по центру
+            // Если не помещается слева, размещаем снизу по центру
             if (left < padding) {
               left = Math.max(padding, rect.left + rect.width / 2 - tooltipWidth / 2);
-              top = rect.top - tooltipHeight - padding - arrowSize;
-              arrowPosition = 'bottom';
+              top = rect.bottom + padding + arrowSize;
+              arrowPosition = 'top';
             }
           }
         } else {
@@ -65,11 +65,11 @@ const MobileTooltip: React.FC<{
             top = rect.top + rect.height * 0.7 - tooltipHeight / 2; // Опускаем на 70% высоты карточки
             arrowPosition = 'right';
             
-            // Если не помещается слева, размещаем сверху
+            // Если не помещается слева, размещаем снизу
             if (left < padding) {
               left = Math.max(padding, rect.left + rect.width / 2 - tooltipWidth / 2);
-              top = rect.top - tooltipHeight - padding;
-              arrowPosition = 'bottom';
+              top = rect.bottom + padding + arrowSize;
+              arrowPosition = 'top';
             }
           }
         }
@@ -78,7 +78,13 @@ const MobileTooltip: React.FC<{
         if (top < padding) {
           top = padding;
         } else if (top + tooltipHeight > viewportHeight - padding) {
-          top = viewportHeight - tooltipHeight - padding;
+          // Если не помещается снизу, пробуем сверху
+          if (arrowPosition === 'top') {
+            top = rect.top - tooltipHeight - padding - arrowSize;
+            arrowPosition = 'bottom';
+          } else {
+            top = viewportHeight - tooltipHeight - padding;
+          }
         }
 
         // Проверяем горизонтальные границы
