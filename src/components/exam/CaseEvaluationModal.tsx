@@ -282,9 +282,9 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
       <style>{sliderStyles}</style>
 
       {/* Фуллскрин слой */}
-      <div className="fixed inset-0 z-[10002] flex flex-col bg-white">
+      <div className="fixed inset-0 z-[10002] flex flex-col bg-white" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
         {/* Шапка (sticky top) */}
-        <header className="sticky top-0 z-10 border-b border-gray-100 bg-white pt-safe-top">
+        <header className="sticky top-0 z-10 border-b border-gray-100 bg-white">
           <div className="px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
