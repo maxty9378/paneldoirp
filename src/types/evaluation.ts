@@ -21,6 +21,23 @@ export interface ParticipantAssignedCase {
 
 export interface CaseEvaluation {
   id: string;
+  exam_event_id: string;
+  reservist_id: string;
+  evaluator_id: string;
+  case_number: number;
+  criteria_scores: {
+    correctness: number;
+    clarity: number;
+    independence: number;
+  };
+  comments?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// Старая структура для обратной совместимости
+export interface LegacyCaseEvaluation {
+  id: string;
   participant_case_id: string;
   evaluator_id: string;
   

@@ -4,6 +4,7 @@ import { X, FileText, Save, CheckCircle, MessageSquare, User } from 'lucide-reac
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { EvaluationSuccessModal } from './EvaluationSuccessModal';
+import { LegacyCaseEvaluation } from '../../types/evaluation';
 
 /* ========= Типы ========= */
 interface CaseEvaluationModalProps {
@@ -15,20 +16,8 @@ interface CaseEvaluationModalProps {
   examId: string;
   onEvaluationComplete?: () => Promise<void>;
   onRemoveEvaluation?: (participantId: string, caseNumber: number) => Promise<void>;
-  existingEvaluation?: CaseEvaluation;
+  existingEvaluation?: LegacyCaseEvaluation;
   onModalStateChange?: (isOpen: boolean) => void;
-}
-interface CaseEvaluation {
-  id?: string;
-  exam_event_id: string;
-  reservist_id: string;
-  evaluator_id: string;
-  case_number: number;
-  criteria_scores: {
-    correctness: number;
-    clarity: number;
-    independence: number;
-  };
 }
 
 /* ========= Константы ========= */
@@ -148,7 +137,15 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
 }) => {
   const { user } = useAuth();
 
-  const [evaluation, setEvaluation] = useState<CaseEvaluation>({
+  const [evaluation, setEvaluation] = useState<{
+    id?: string;
+    exam_event_id: string;
+    reservist_id: string;
+    evaluator_id: string;
+    case_number: number;
+    criteria_scores: { correctness: number; clarity: number; independence: number };
+    comments?: string;
+  }>({
     exam_event_id: examId,
     reservist_id: participantId,
     evaluator_id: user?.id || '',
@@ -172,9 +169,19 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     if (existingEvaluation) {
+      // Преобразуем старую структуру в новую
       setEvaluation({
-        ...existingEvaluation,
+        id: existingEvaluation.id,
+        exam_event_id: examId,
+        reservist_id: participantId,
         evaluator_id: existingEvaluation.evaluator_id || user?.id || '',
+        case_number: caseNumber,
+        criteria_scores: {
+          correctness: existingEvaluation.correctness_score || 0,
+          clarity: existingEvaluation.clarity_score || 0,
+          independence: existingEvaluation.independence_score || 0,
+        },
+        comments: existingEvaluation.overall_comment || '',
       });
       setSaved(true);
     } else {
@@ -214,7 +221,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
   }, [isOpen]);
 
   /* Вспомогалки */
-  const setScore = (k: keyof CaseEvaluation['criteria_scores'], v: number) => {
+  const setScore = (k: keyof typeof evaluation.criteria_scores, v: number) => {
     setEvaluation(p => ({ ...p, criteria_scores: { ...p.criteria_scores, [k]: v } }));
     setSaved(false);
   };
@@ -237,24 +244,46 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
         reservist_id: participantId,
         evaluator_id: user?.id,
         case_number: caseNumber,
-        criteria_scores: evaluation.criteria_scores
+        criteria_scores: evaluation.criteria_scores,
+        comments: evaluation.comments || null,
+        updated_at: new Date().toISOString()
       };
 
-      const { error } = await supabase
-        .from('case_evaluations')
-        .upsert(payload, { onConflict: 'exam_event_id,reservist_id,evaluator_id,case_number' });
+      let result;
+      if (evaluation.id) {
+        // Обновляем существующую оценку
+        result = await supabase
+          .from('case_evaluations')
+          .update(payload)
+          .eq('id', evaluation.id);
+      } else {
+        // Создаём новую оценку
+        result = await supabase
+          .from('case_evaluations')
+          .insert([{
+            ...payload,
+            created_at: new Date().toISOString()
+          }])
+          .select()
+          .single();
+      }
 
-      if (error) {
-        console.error('Ошибка сохранения оценки:', error);
-        alert('Таблица case_evaluations недоступна. Оценка не сохранена в БД.');
+      if (result.error) {
+        console.error('Ошибка сохранения оценки:', result.error);
+        alert(`Ошибка сохранения оценки: ${result.error.message}`);
+        return;
+      }
+
+      // Обновляем ID если это новая запись
+      if (result.data && !evaluation.id) {
+        setEvaluation(prev => ({ ...prev, id: result.data.id }));
       }
 
       setSaved(true);
       setShowSuccessModal(true);
     } catch (e) {
       console.error('Ошибка сохранения:', e);
-      setSaved(true);
-      setShowSuccessModal(true);
+      alert(`Ошибка сохранения: ${e instanceof Error ? e.message : 'Неизвестная ошибка'}`);
     } finally {
       setSaving(false);
     }
