@@ -190,6 +190,7 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
   const [loadingCases, setLoadingCases] = useState(false);
   const [showCaseEvaluation, setShowCaseEvaluation] = useState(false);
   const [selectedCaseNumber, setSelectedCaseNumber] = useState<number>(1);
+  const [highlightCaseSolving, setHighlightCaseSolving] = useState(false);
 
 
   // Загрузка назначенных кейсов
@@ -249,6 +250,7 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
             // Небольшая задержка для завершения прокрутки
             setTimeout(() => {
               setShowTooltip(true);
+              setHighlightCaseSolving(true); // Выделяем карточку
             }, isMobile ? 200 : 100);
           }
         }, tourDelay);
@@ -259,17 +261,20 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
       };
     } else {
       setShowTooltip(false);
+      setHighlightCaseSolving(false);
     }
   }, [isOpen]);
 
   // Обработчик закрытия тултипа
   const handleTooltipClose = () => {
     setShowTooltip(false);
+    setHighlightCaseSolving(false); // Убираем выделение
   };
 
   // Обработчик клика по любой карточке - закрываем тултип
   const handleStageClick = (stageId: string) => {
     setShowTooltip(false); // Закрываем тултип
+    setHighlightCaseSolving(false); // Убираем выделение
     
     if (stageId === 'case-solving') {
       setShowCaseSelection(true);
@@ -376,6 +381,25 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
     <>
       <style>
         {`
+          /* Стили для выделения карточки "Решение кейсов" */
+          .case-solving-highlight {
+            border: 2px solid #06A478 !important;
+            box-shadow: 0 0 0 4px rgba(6,164,120,0.1), 0 4px 12px rgba(6,164,120,0.15) !important;
+            background: linear-gradient(135deg, rgba(6,164,120,0.05), rgba(6,164,120,0.02)) !important;
+            animation: gentlePulse 2s ease-in-out infinite;
+          }
+          
+          @keyframes gentlePulse {
+            0% { 
+              box-shadow: 0 0 0 4px rgba(6,164,120,0.1), 0 4px 12px rgba(6,164,120,0.15);
+            }
+            50% { 
+              box-shadow: 0 0 0 6px rgba(6,164,120,0.15), 0 6px 16px rgba(6,164,120,0.2);
+            }
+            100% { 
+              box-shadow: 0 0 0 4px rgba(6,164,120,0.1), 0 4px 12px rgba(6,164,120,0.15);
+            }
+          }
           
           /* Адаптивные стили для мобильных устройств */
           @media (max-width: 768px) {
@@ -467,6 +491,7 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
                       group cursor-pointer rounded-xl p-3 border transition-all duration-300
                       bg-gradient-to-br ${stage.bgGradient} ${stage.borderColor}
                       hover:scale-[1.02] hover:shadow-lg
+                      ${isFirst && highlightCaseSolving ? 'case-solving-highlight' : ''}
                     `}
                     onClick={() => handleStageClick(stage.id)}
                   >
