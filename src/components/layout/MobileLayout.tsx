@@ -29,7 +29,8 @@ const MobileLayout: React.FC = () => {
       // Используем 100dvh - это "динамическая высота окна", 
       // которая учитывает появление/скрытие панелей браузера на мобильных.
       // Это современная и лучшая замена 100vh.
-      height: '100dvh', 
+      height: '100vh', // Fallback для старых браузеров
+      height: '100dvh', // Современные браузеры
       width: '100vw',
       overflow: 'hidden', // Запрещаем скролл для всего контейнера
       background: '#f8fafc' // Фон для всего приложения
@@ -50,6 +51,8 @@ const MobileLayout: React.FC = () => {
       <footer style={{
         flexShrink: 0, // Запрещаем сжиматься
         // Убираем position: fixed, так как Flexbox сам прижмет его к низу
+        backgroundColor: 'rgba(255, 0, 0, 0.1)', // Временный отладочный фон
+        minHeight: '64px' // Минимальная высота для отладки
       }}>
         <MobileExamNavigation
           activeTab={activeTab}

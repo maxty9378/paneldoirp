@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { Users, Calendar } from 'lucide-react';
 import './MobileExamNavigation.css';
 
@@ -207,11 +206,14 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
   );
 
   
-  // Вместо `if (isHidden) return null;` мы теперь управляем видимостью через стили
-  // для плавной анимации. Рендерим всегда, когда isMobile.
-  if (!isMobile) return null;
+  // В App Shell архитектуре рендерим напрямую, без портала
+  if (!isMobile) {
+    console.log('MobileExamNavigation: не мобильное устройство, скрываем меню');
+    return null;
+  }
   
-  return createPortal(mobileNav, document.body);
+  console.log('MobileExamNavigation: рендерим меню, isHidden:', isHidden);
+  return mobileNav;
 };
 
 export default MobileExamNavigation;
