@@ -19,6 +19,7 @@ import { TestingView } from './components/admin/TestingView';
 import { TrainerTerritoriesView } from './components/TrainerTerritoriesView';
 import { ExamReservePage, ExamDetailsPage, ExpertExamPage } from './components/exam';
 import CaseEvaluationPage from './components/exam/CaseEvaluationPage';
+import ExpertRouteGuard from './components/ExpertRouteGuard';
 import MobileLayout from './components/layout/MobileLayout';
 import { Loader2, RefreshCw, AlertOctagon } from 'lucide-react';
 import TakeTestPage from './pages/TakeTestPage';
@@ -310,10 +311,26 @@ function AppContent() {
         
         {/* Роуты с мобильным меню */}
         <Route element={<MobileLayout />}>
-          <Route path="/expert-exam/:id" element={<ExpertExamPage />} />
-          <Route path="/expert-exam/:id/schedule" element={<ExpertExamPage />} />
-          <Route path="/expert-exam/:id/evaluations" element={<ExpertExamPage />} />
-          <Route path="/case-evaluation/:examId" element={<CaseEvaluationPage />} />
+          <Route path="/expert-exam/:id" element={
+            <ExpertRouteGuard>
+              <ExpertExamPage />
+            </ExpertRouteGuard>
+          } />
+          <Route path="/expert-exam/:id/schedule" element={
+            <ExpertRouteGuard>
+              <ExpertExamPage />
+            </ExpertRouteGuard>
+          } />
+          <Route path="/expert-exam/:id/evaluations" element={
+            <ExpertRouteGuard>
+              <ExpertExamPage />
+            </ExpertRouteGuard>
+          } />
+          <Route path="/case-evaluation/:examId" element={
+            <ExpertRouteGuard>
+              <CaseEvaluationPage />
+            </ExpertRouteGuard>
+          } />
         </Route>
         <Route path="/create-event" element={
           <div className="space-y-6">

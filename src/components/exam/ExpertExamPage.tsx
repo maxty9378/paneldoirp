@@ -187,7 +187,7 @@ const ExpertExamPage: React.FC = () => {
     isDragging: false
   });
 
-  // Загрузка данных экзамена
+  // Загрузка данных экзамена (доступ уже проверен в ExpertRouteGuard)
   const fetchExamData = async () => {
     if (!id) return;
 
@@ -195,7 +195,7 @@ const ExpertExamPage: React.FC = () => {
       console.log('🔄 Загружаем данные экзамена для ID:', id);
       setLoading(true);
       
-      // Загружаем данные экзамена
+      // Загружаем данные экзамена (доступ уже проверен на уровне роутинга)
       const { data: examData, error: examError } = await supabase
         .from('events')
         .select(`
@@ -210,7 +210,6 @@ const ExpertExamPage: React.FC = () => {
         `)
         .eq('id', id)
         .single();
-
 
       if (examError) throw examError;
 
