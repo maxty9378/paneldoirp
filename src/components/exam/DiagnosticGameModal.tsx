@@ -64,13 +64,22 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
   useEffect(() => {
     if (isOpen && participantId && examId && user?.id) {
       if (!dataLoaded) {
-        loadExistingEvaluation();
+        // Если есть переданная оценка, используем её
+        if (existingEvaluation) {
+          console.log('✅ Используем переданную оценку диагностической игры:', existingEvaluation);
+          setEvaluation(existingEvaluation);
+          setSaved(true);
+          setDataLoaded(true);
+        } else {
+          // Иначе загружаем из базы данных
+          loadExistingEvaluation();
+        }
       }
     } else if (!isOpen) {
       // Сбрасываем состояние при закрытии модального окна
       setDataLoaded(false);
     }
-  }, [isOpen, participantId, examId, user?.id, dataLoaded]);
+  }, [isOpen, participantId, examId, user?.id, dataLoaded, existingEvaluation]);
 
   // Блокировка прокрутки фона при открытом модальном окне
   useEffect(() => {
