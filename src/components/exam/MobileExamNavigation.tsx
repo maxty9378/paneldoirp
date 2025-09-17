@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Users, Calendar } from 'lucide-react';
+import { Users, Calendar, Target } from 'lucide-react';
 import './MobileExamNavigation.css';
 
-type ExamTab = 'participants' | 'schedule' | 'evaluations';
+type ExamTab = 'participants' | 'schedule' | 'evaluations' | 'results';
 
 interface MobileExamNavigationProps {
   activeTab: ExamTab;
@@ -40,6 +40,12 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
       id: 'schedule' as const,
       icon: Calendar,
       label: 'Расписание',
+      count: 0
+    },
+    {
+      id: 'results' as const,
+      icon: Target,
+      label: 'Результаты',
       count: 0
     }
   ];

@@ -6,6 +6,7 @@ import MobileExamNavigation from '../exam/MobileExamNavigation';
 const getActiveTabFromPathname = (pathname: string) => {
   if (pathname.includes('/schedule')) return 'schedule';
   if (pathname.includes('/evaluations')) return 'evaluations';
+  if (pathname.includes('/results')) return 'results';
   return 'participants'; // По умолчанию
 };
 
@@ -49,10 +50,13 @@ const MobileLayout: React.FC = () => {
   }, [isMobile]);
 
   // Функция для изменения вкладки через URL
-  const handleTabChange = (tab: 'participants' | 'schedule' | 'evaluations') => {
-    const base = location.pathname.replace(/\/(schedule|evaluations)$/, '');
+  const handleTabChange = (tab: 'participants' | 'schedule' | 'evaluations' | 'results') => {
+    const base = location.pathname.replace(/\/(schedule|evaluations|results)$/, '');
     if (tab === 'participants') {
       navigate(base, { replace: false });
+    } else if (tab === 'results') {
+      // Для результатов открываем модальное окно
+      window.dispatchEvent(new CustomEvent('openEvaluationResults'));
     } else {
       navigate(`${base}/${tab}`, { replace: false });
     }
