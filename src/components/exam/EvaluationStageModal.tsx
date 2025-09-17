@@ -33,114 +33,154 @@ const MobileTooltip: React.FC<{
   onClose: () => void;
 }> = ({ isVisible, targetRef, onClose }) => {
   const [position, setPosition] = useState({ top: 0, left: 0, arrowPosition: 'left' });
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  const gap = 8; // отступ вокруг «дырки»
 
   useEffect(() => {
-    if (isVisible && targetRef.current) {
-      const updatePosition = () => {
-        const target = targetRef.current;
-        if (!target) return;
+    if (!isVisible || !targetRef.current) return;
 
-        const rect = target.getBoundingClientRect();
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-        
-        // Определяем, мобильное ли устройство
-        const isMobile = viewportWidth <= 768;
-        
-        // Размеры тултипа
-        const tooltipWidth = isMobile ? 240 : 280; // Уменьшаем для мобильных
-        const tooltipHeight = 80;
-        const padding = 16;
-        const arrowSize = 8;
-        
-        let top, left, arrowPosition;
+    let raf = 0;
+    const update = () => {
+      const r = targetRef.current!.getBoundingClientRect();
+      setRect(r);
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      
+      // Определяем, мобильное ли устройство
+      const isMobile = viewportWidth <= 768;
+      
+      // Размеры тултипа
+      const tooltipWidth = isMobile ? 240 : 280; // Уменьшаем для мобильных
+      const tooltipHeight = 80;
+      const padding = 16;
+      const arrowSize = 8;
+      
+      let top, left, arrowPosition;
 
-        if (isMobile) {
-          // Для мобильных устройств размещаем тултип справа от карточки, опускаем ниже
-          left = rect.right + padding;
-          top = rect.top + rect.height * 0.7 - tooltipHeight / 2; // Опускаем на 70% высоты карточки
-          arrowPosition = 'left';
+      if (isMobile) {
+        // Для мобильных устройств размещаем тултип справа от карточки, опускаем ниже
+        left = r.right + padding;
+        top = r.top + r.height * 0.7 - tooltipHeight / 2; // Опускаем на 70% высоты карточки
+        arrowPosition = 'left';
+        
+        // Если не помещается справа, пробуем слева
+        if (left + tooltipWidth > viewportWidth - padding) {
+          left = r.left - tooltipWidth - padding;
+          top = r.top + r.height * 0.7 - tooltipHeight / 2; // Опускаем на 70% высоты карточки
+          arrowPosition = 'right';
           
-          // Если не помещается справа, пробуем слева
-          if (left + tooltipWidth > viewportWidth - padding) {
-            left = rect.left - tooltipWidth - padding;
-            top = rect.top + rect.height * 0.7 - tooltipHeight / 2; // Опускаем на 70% высоты карточки
-            arrowPosition = 'right';
-            
-            // Если не помещается слева, размещаем снизу по центру
-            if (left < padding) {
-              left = Math.max(padding, rect.left + rect.width / 2 - tooltipWidth / 2);
-              top = rect.bottom + padding + arrowSize;
-              arrowPosition = 'top';
-            }
+          // Если не помещается слева, размещаем снизу по центру
+          if (left < padding) {
+            left = Math.max(padding, r.left + r.width / 2 - tooltipWidth / 2);
+            top = r.bottom + padding + arrowSize;
+            arrowPosition = 'top';
           }
+        }
+      } else {
+        // Для десктопа размещаем справа от карточки, опускаем ниже
+        left = r.right + padding;
+        top = r.top + r.height * 0.7 - tooltipHeight / 2; // Опускаем на 70% высоты карточки
+        arrowPosition = 'left';
+
+        // Проверяем, помещается ли справа
+        if (left + tooltipWidth > viewportWidth - padding) {
+          // Пробуем слева
+          left = r.left - tooltipWidth - padding;
+          top = r.top + r.height * 0.7 - tooltipHeight / 2; // Опускаем на 70% высоты карточки
+          arrowPosition = 'right';
+          
+          // Если не помещается слева, размещаем снизу
+          if (left < padding) {
+            left = Math.max(padding, r.left + r.width / 2 - tooltipWidth / 2);
+            top = r.bottom + padding + arrowSize;
+            arrowPosition = 'top';
+          }
+        }
+      }
+
+      // Проверяем вертикальные границы
+      if (top < padding) {
+        top = padding;
+      } else if (top + tooltipHeight > viewportHeight - padding) {
+        // Если не помещается снизу, пробуем сверху
+        if (arrowPosition === 'top') {
+          top = r.top - tooltipHeight - padding - arrowSize;
+          arrowPosition = 'bottom';
         } else {
-          // Для десктопа размещаем справа от карточки, опускаем ниже
-          left = rect.right + padding;
-          top = rect.top + rect.height * 0.7 - tooltipHeight / 2; // Опускаем на 70% высоты карточки
-          arrowPosition = 'left';
-
-          // Проверяем, помещается ли справа
-          if (left + tooltipWidth > viewportWidth - padding) {
-            // Пробуем слева
-            left = rect.left - tooltipWidth - padding;
-            top = rect.top + rect.height * 0.7 - tooltipHeight / 2; // Опускаем на 70% высоты карточки
-            arrowPosition = 'right';
-            
-            // Если не помещается слева, размещаем снизу
-            if (left < padding) {
-              left = Math.max(padding, rect.left + rect.width / 2 - tooltipWidth / 2);
-              top = rect.bottom + padding + arrowSize;
-              arrowPosition = 'top';
-            }
-          }
+          top = viewportHeight - tooltipHeight - padding;
         }
+      }
 
-        // Проверяем вертикальные границы
-        if (top < padding) {
-          top = padding;
-        } else if (top + tooltipHeight > viewportHeight - padding) {
-          // Если не помещается снизу, пробуем сверху
-          if (arrowPosition === 'top') {
-            top = rect.top - tooltipHeight - padding - arrowSize;
-            arrowPosition = 'bottom';
-          } else {
-            top = viewportHeight - tooltipHeight - padding;
-          }
-        }
+      // Проверяем горизонтальные границы
+      if (left < padding) {
+        left = padding;
+      } else if (left + tooltipWidth > viewportWidth - padding) {
+        left = viewportWidth - tooltipWidth - padding;
+      }
 
-        // Проверяем горизонтальные границы
-        if (left < padding) {
-          left = padding;
-        } else if (left + tooltipWidth > viewportWidth - padding) {
-          left = viewportWidth - tooltipWidth - padding;
-        }
+      setPosition({ top, left, arrowPosition });
+    };
 
-        setPosition({ top, left, arrowPosition });
-      };
+    const onScrollOrResize = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(update);
+    };
 
-      updatePosition();
-      
-      // Обновляем позицию при изменении размера окна
-      window.addEventListener('resize', updatePosition);
-      window.addEventListener('scroll', updatePosition);
-      
-      return () => {
-        window.removeEventListener('resize', updatePosition);
-        window.removeEventListener('scroll', updatePosition);
-      };
-    }
+    update();
+    window.addEventListener('scroll', onScrollOrResize, { passive: true });
+    window.addEventListener('resize', onScrollOrResize, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', onScrollOrResize);
+      window.removeEventListener('resize', onScrollOrResize);
+      cancelAnimationFrame(raf);
+    };
   }, [isVisible, targetRef]);
 
-  if (!isVisible) return null;
+  if (!isVisible || !rect) return null;
 
   return (
     <ModalPortal>
-      <div 
-        className="fixed inset-0 bg-black/20 z-[10000]"
-        onClick={onClose}
-      />
-      
+      {/* СПОТЛАЙТ: четыре панели вокруг цели — клики по ним закрывают подсказку.
+          «Окно» над карточкой пустое, поэтому блок не затемняется и кликается. */}
+      <div className="fixed inset-0 z-[10000] pointer-events-none">
+        {/* Верхняя панель */}
+        <div
+          className="fixed left-0 bg-black/20 pointer-events-auto"
+          style={{ top: 0, width: '100vw', height: Math.max(0, rect.top - gap) }}
+          onClick={onClose}
+        />
+        {/* Нижняя панель */}
+        <div
+          className="fixed left-0 bg-black/20 pointer-events-auto"
+          style={{ top: rect.bottom + gap, width: '100vw', bottom: 0 }}
+          onClick={onClose}
+        />
+        {/* Левая панель */}
+        <div
+          className="fixed bg-black/20 pointer-events-auto"
+          style={{
+            top: Math.max(0, rect.top - gap),
+            left: 0,
+            width: Math.max(0, rect.left - gap),
+            height: rect.height + gap * 2
+          }}
+          onClick={onClose}
+        />
+        {/* Правая панель */}
+        <div
+          className="fixed bg-black/20 pointer-events-auto"
+          style={{
+            top: Math.max(0, rect.top - gap),
+            left: rect.right + gap,
+            right: 0,
+            height: rect.height + gap * 2
+          }}
+          onClick={onClose}
+        />
+      </div>
+
+      {/* Сам тултип */}
       <div
         className="fixed z-[10001] bg-white rounded-xl shadow-2xl p-4 sm:max-w-[280px] max-w-[240px]"
         style={{
