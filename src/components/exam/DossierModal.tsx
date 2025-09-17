@@ -8,7 +8,11 @@ interface DossierData {
   phone?: string;
   location?: string;
   experience_in_position?: string;
-  education?: string;
+  education?: string | {
+    level?: string;
+    specialty?: string;
+    institution?: string;
+  };
   achievements?: string;
   skills?: string;
   additional_info?: string;
@@ -317,7 +321,12 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                       <GraduationCap className="w-4 h-4 text-gray-500" />
                       <div className="text-sm font-medium text-gray-900">Образование</div>
                     </div>
-                    <div className="text-sm text-gray-600">{dossier.education}</div>
+                    <div className="text-sm text-gray-600">
+                      {typeof dossier.education === 'string' 
+                        ? dossier.education 
+                        : `${dossier.education.level || ''} ${dossier.education.specialty || ''} ${dossier.education.institution || ''}`.trim()
+                      }
+                    </div>
                   </div>
                 )}
 
