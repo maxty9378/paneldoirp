@@ -166,8 +166,10 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
 
   /* Уведомляем родительский компонент о состоянии модального окна */
   useEffect(() => {
-    onModalStateChange?.(isOpen);
-  }, [isOpen, onModalStateChange, participantName, caseNumber]);
+    // Уведомляем о любом открытом модальном окне (основном или внутренних)
+    const anyModalOpen = isOpen || showSuccessModal || showChangeConfirmModal;
+    onModalStateChange?.(anyModalOpen);
+  }, [isOpen, showSuccessModal, showChangeConfirmModal, onModalStateChange, participantName, caseNumber]);
 
   /* Загрузка данных при открытии модала */
   useEffect(() => {
