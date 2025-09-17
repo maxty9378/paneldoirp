@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Brain, CheckCircle } from 'lucide-react';
+import { X, Brain, CheckCircle, Save } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { EvaluationSuccessModal } from './EvaluationSuccessModal';
@@ -193,6 +193,7 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
   };
 
   const handleScoreChange = (competency: keyof DiagnosticGameEvaluation['competency_scores'], score: number) => {
+    console.log('DiagnosticGameModal handleScoreChange:', { competency, score });
     setEvaluation(prev => ({
       ...prev,
       competency_scores: {
@@ -335,6 +336,30 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
   }, [evaluation.competency_scores]);
 
   const canSave = totalScore > 0 && !saving;
+  
+  // Уведомляем MobileLayout о состоянии модального окна
+  useEffect(() => {
+    if (onModalStateChange) {
+      onModalStateChange(isOpen);
+    }
+    
+    // Также отправляем событие для глобального слушателя
+    const event = new CustomEvent('modalStateChange', {
+      detail: { isOpen }
+    });
+    window.dispatchEvent(event);
+  }, [isOpen, onModalStateChange]);
+  
+  // Отладка
+  console.log('DiagnosticGameModal Debug:', {
+    totalScore,
+    competency_scores: evaluation.competency_scores,
+    canSave,
+    saving,
+    saved,
+    showSuccessModal,
+    isOpen
+  });
 
   // Стили для слайдера (как в CaseEvaluationModal)
   const sliderStyles = `
@@ -634,19 +659,24 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
           <div className="px-4 pt-3 pb-3">
             <div className="flex gap-2">
           <button
-            onClick={onClose}
-              className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+            onPointerUp={onClose}
+            className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium"
+            style={{ minHeight: '48px', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
           >
             ← Назад
           </button>
             <button
-              onClick={saveEvaluation}
+              onPointerUp={() => { 
+                console.log('DiagnosticGameModal Submit button clicked:', { canSave });
+                if (canSave) saveEvaluation(); 
+              }}
               disabled={!canSave}
-              className={`flex-1 px-4 py-2.5 rounded-lg font-semibold transition-all text-sm ${
+              className={`flex-1 px-4 py-2.5 rounded-lg font-semibold text-sm ${
                 !canSave
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg hover:shadow-xl'
               }`}
+              style={{ minHeight: '48px', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
             >
               {saving ? (
                 <div className="flex items-center justify-center gap-2">
@@ -660,7 +690,7 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
                 </div>
               ) : (
                 <div className="flex items-center justify-center gap-2">
-                  <Brain className="w-4 h-4" />
+                  <Save className="w-4 h-4" />
                   Отправить
                 </div>
               )}
