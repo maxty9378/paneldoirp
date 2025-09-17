@@ -380,12 +380,15 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                       </div>
                     </div>
                     <div className="text-sm text-gray-700">
-                      {dossier.achievements.split('\n').filter(item => item.trim()).map((achievement, index) => (
-                        <div key={index} className="flex items-start gap-2 mb-2 last:mb-0">
-                          <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
-                          <span>{achievement.trim()}</span>
-                        </div>
-                      ))}
+                      {typeof dossier.achievements === 'string' 
+                        ? dossier.achievements.split('\n').filter(item => item.trim()).map((achievement, index) => (
+                            <div key={index} className="flex items-start gap-2 mb-2 last:mb-0">
+                              <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
+                              <span>{achievement.trim()}</span>
+                            </div>
+                          ))
+                        : <span>{String(dossier.achievements)}</span>
+                      }
                     </div>
                   </div>
                 )}
@@ -403,12 +406,15 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                       </div>
                     </div>
                     <div className="text-sm text-gray-700">
-                      {dossier.skills.split('\n').filter(item => item.trim()).map((skill, index) => (
-                        <div key={index} className="flex items-start gap-2 mb-2 last:mb-0">
-                          <div className="w-1.5 h-1.5 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
-                          <span>{skill.trim()}</span>
-                        </div>
-                      ))}
+                      {typeof dossier.skills === 'string' 
+                        ? dossier.skills.split('\n').filter(item => item.trim()).map((skill, index) => (
+                            <div key={index} className="flex items-start gap-2 mb-2 last:mb-0">
+                              <div className="w-1.5 h-1.5 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
+                              <span>{skill.trim()}</span>
+                            </div>
+                          ))
+                        : <span>{String(dossier.skills)}</span>
+                      }
                     </div>
                   </div>
                 )}
