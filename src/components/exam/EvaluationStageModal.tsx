@@ -160,7 +160,7 @@ const MobileTooltip: React.FC<{
         </div>
       </div>
         
-        {/* Стрелка сверху подсказки - указывает вниз к карточке */}
+        {/* Стрелка - правильное направление для ПК и мобилки */}
         <div
           className={`absolute w-0 h-0 ${
             position.arrowPosition === 'left' 
@@ -169,7 +169,7 @@ const MobileTooltip: React.FC<{
               ? 'border-t-[8px] border-b-[8px] border-l-[8px] border-t-transparent border-b-transparent border-l-white -left-2 top-1/2 -translate-y-1/2'
               : position.arrowPosition === 'bottom'
               ? 'border-l-[8px] border-r-[8px] border-b-[8px] border-l-transparent border-r-transparent border-b-white -bottom-2 left-1/2 -translate-x-1/2'
-              : 'border-l-[8px] border-r-[8px] border-b-[8px] border-l-transparent border-r-transparent border-b-white -top-2 left-1/2 -translate-x-1/2'
+              : 'border-l-[8px] border-r-[8px] border-t-[8px] border-l-transparent border-r-transparent border-t-white -top-2 left-1/2 -translate-x-1/2'
           }`}
         />
       </div>
