@@ -411,6 +411,26 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
       padding: 0 !important;
       overflow: hidden !important;
     }
+    
+    /* iPhone-специфичные стили */
+    @supports (-webkit-touch-callout: none) {
+      .case-evaluation-modal {
+        -webkit-overflow-scrolling: touch !important;
+        -webkit-transform: translate3d(0, 0, 0) !important;
+        transform: translate3d(0, 0, 0) !important;
+        backface-visibility: hidden !important;
+        will-change: transform !important;
+      }
+      
+      .case-evaluation-modal footer button {
+        -webkit-tap-highlight-color: transparent !important;
+        -webkit-touch-callout: none !important;
+        -webkit-user-select: none !important;
+        user-select: none !important;
+        touch-action: manipulation !important;
+        min-height: 44px !important;
+      }
+    }
   `;
 
   return (
@@ -427,6 +447,10 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
           bottom: 0,
           margin: 0,
           padding: '0px',
+          paddingTop: 'env(safe-area-inset-top, 0px)',
+          paddingLeft: 'env(safe-area-inset-left, 0px)',
+          paddingRight: 'env(safe-area-inset-right, 0px)',
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
           transform: 'translate3d(0, 0, 0)',
           backfaceVisibility: 'hidden',
           willChange: 'transform',
@@ -542,6 +566,14 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
             <button
               onClick={onClose}
               className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+              style={{
+                WebkitTapHighlightColor: 'transparent',
+                WebkitTouchCallout: 'none',
+                WebkitUserSelect: 'none',
+                userSelect: 'none',
+                touchAction: 'manipulation',
+                minHeight: '44px'
+              }}
             >
               ← Назад
             </button>
@@ -553,6 +585,14 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg hover:shadow-xl'
               }`}
+              style={{
+                WebkitTapHighlightColor: 'transparent',
+                WebkitTouchCallout: 'none',
+                WebkitUserSelect: 'none',
+                userSelect: 'none',
+                touchAction: 'manipulation',
+                minHeight: '44px'
+              }}
             >
               {saving ? (
                 <div className="flex items-center justify-center gap-2">
