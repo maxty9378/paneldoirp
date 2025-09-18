@@ -120,10 +120,10 @@ const MobileLayout: React.FC = () => {
       height: '100svh',
       width: '100vw',
       background: '#f8fafc',
-      // Учитываем все safe zone для iPhone с вырезами
-      paddingTop: 'env(safe-area-inset-top, 0px)',
-      paddingLeft: 'env(safe-area-inset-left, 0px)',
-      paddingRight: 'env(safe-area-inset-right, 0px)'
+      // Убраны safe zone настройки
+      paddingTop: '0px',
+      paddingLeft: '0px',
+      paddingRight: '0px'
     }}>
       
       {/* 1. ОБЛАСТЬ КОНТЕНТА (СКРОЛЛИТСЯ) */}
@@ -142,14 +142,14 @@ const MobileLayout: React.FC = () => {
         <Outlet context={{ setIsNavHidden }} />
       </main>
 
-      {/* 2. ОБЛАСТЬ НАВИГАЦИИ (ФИКСИРОВАНА) - только на мобильных и не на страницах оценки/досье */}
-      {isMobile && !isEvaluationOrDossierPage && !isModalOpen && !isMobileMenuOpen && (
+      {/* 2. ОБЛАСТЬ НАВИГАЦИИ (ФИКСИРОВАНА) - ВРЕМЕННО ОТКЛЮЧЕНА */}
+      {/* {isMobile && !isEvaluationOrDossierPage && !isModalOpen && !isMobileMenuOpen && (
         <footer
           style={{
             // ДЕЛАЕМ ФИКСИРОВАННЫМ, чтобы быть НАД браузерным UI
             position: 'fixed',
-            left: 'env(safe-area-inset-left, 0px)',
-            right: 'env(safe-area-inset-right, 0px)',
+            left: '0px',
+            right: '0px',
             bottom: '16px',
             zIndex: 1000,               // ниже модальных окон
             backgroundColor: 'transparent',
@@ -166,7 +166,7 @@ const MobileLayout: React.FC = () => {
             userRole={userProfile?.role}
           />
         </footer>
-      )}
+      )} */}
     </div>
   );
 };

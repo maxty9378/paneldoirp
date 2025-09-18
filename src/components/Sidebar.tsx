@@ -39,6 +39,14 @@ const navigationItems: NavItem[] = [
     roles: ['employee', 'supervisor', 'trainer', 'expert', 'moderator', 'administrator'] 
   },
   { 
+    id: 'schedule', 
+    label: 'Расписание', 
+    icon: <Calendar />, 
+    href: '/schedule', 
+    description: 'Расписание экзаменов и мероприятий',
+    roles: ['expert', 'moderator', 'administrator'] 
+  },
+  { 
     id: 'tests', 
     label: 'Тесты', 
     icon: <FileText />, 

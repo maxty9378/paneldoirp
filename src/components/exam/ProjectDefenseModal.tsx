@@ -450,14 +450,13 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
       <div 
         className="case-evaluation-modal fixed inset-0 z-[10002] overflow-y-auto bg-white" 
         style={{ 
-          paddingTop: 'env(safe-area-inset-top, 0px)',
           pointerEvents: 'auto'
         }}
       >
         {/* Шапка (sticky top) */}
         <header 
           className="sticky top-0 z-10 border-b border-gray-100 bg-white/80 backdrop-blur-sm"
-          style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+          style={{ paddingTop: '0px' }}
         >
           <div className="px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-3 min-w-0">
