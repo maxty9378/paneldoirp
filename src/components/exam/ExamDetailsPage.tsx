@@ -209,31 +209,50 @@ const ExamDetailsPage: React.FC = () => {
 
   const fetchReservists = async (examId: string) => {
     try {
+      // Сначала попробуем простой запрос без join'ов
       const { data, error } = await supabase
         .from('event_participants')
-        .select(`
-          *,
-          user:users(
+        .select('*')
+        .eq('event_id', examId);
+
+      if (error) {
+        console.error('Ошибка простого запроса резервистов:', error);
+        return;
+      }
+
+      // Если простой запрос работает, загружаем данные пользователей отдельно
+      if (data && data.length > 0) {
+        const userIds = data.map(p => p.user_id);
+        const { data: usersData, error: usersError } = await supabase
+          .from('users')
+          .select(`
             id,
             full_name,
             email,
             sap_number,
             position:positions(name),
             territory:territories(name)
-          ),
-          dossier:participant_dossiers(
-            age
-          )
-        `)
-        .eq('event_id', examId);
+          `)
+          .in('id', userIds);
 
-      if (error) {
-        console.error('Ошибка загрузки резервистов:', error);
-        return;
+        if (usersError) {
+          console.error('Ошибка загрузки пользователей:', usersError);
+          return;
+        }
+
+        // Объединяем данные
+        const combinedData = data.map(participant => {
+          const user = usersData?.find(u => u.id === participant.user_id);
+          return {
+            ...participant,
+            user: user || null
+          };
+        });
+
+        setReservists(combinedData);
+      } else {
+        setReservists([]);
       }
-
-      console.log('Загружены резервисты:', data);
-      setReservists(data || []);
     } catch (err) {
       console.error('Ошибка fetchReservists:', err);
     }
@@ -913,7 +932,7 @@ const ExamDetailsPage: React.FC = () => {
                           <p className="text-sm text-gray-600">SAP: {participant.user?.sap_number || 'Не указан'}</p>
                           <p className="text-xs text-gray-500">{participant.user?.territory?.name || 'Территория не указана'}</p>
                         </div>
-                        {userProfile?.role === 'administrator' && (
+                        {userProfile?.role === 'administrator' && participant.user && (
                           <button
                             onClick={() => removeParticipantFromExam(participant.user.id)}
                             className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -965,7 +984,7 @@ const ExamDetailsPage: React.FC = () => {
                     <DossierCard
                       key={participant.id}
                       participant={participant}
-                      dossier={dossiers[participant.user.id]}
+                      dossier={participant.user ? dossiers[participant.user.id] : null}
                       groupName={exam?.group_name}
                       onEdit={(_participantId, _dossierData) => {
                         /* редактирование внутри компонента */
