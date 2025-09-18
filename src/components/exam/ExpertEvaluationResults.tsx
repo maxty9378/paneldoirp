@@ -525,7 +525,7 @@ const ExpertEvaluationResults: React.FC<ExpertEvaluationResultsProps> = ({ examE
         return (
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Ориентация на результат</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Компетенция «Ориентация на результат»</label>
               <input
                 type="number"
                 min="1"
@@ -536,7 +536,7 @@ const ExpertEvaluationResults: React.FC<ExpertEvaluationResultsProps> = ({ examE
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Эффективная коммуникация</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Компетенция «Эффективная коммуникация»</label>
               <input
                 type="number"
                 min="1"
@@ -547,7 +547,7 @@ const ExpertEvaluationResults: React.FC<ExpertEvaluationResultsProps> = ({ examE
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Умение работать в команде</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Компетенция «Умение работать в команде»</label>
               <input
                 type="number"
                 min="1"
@@ -558,7 +558,7 @@ const ExpertEvaluationResults: React.FC<ExpertEvaluationResultsProps> = ({ examE
               />
               </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Системное мышление</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Компетенция «Системное мышление»</label>
               <input
                 type="number"
                 min="1"

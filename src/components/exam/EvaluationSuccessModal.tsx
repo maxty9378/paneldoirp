@@ -49,10 +49,10 @@ export const EvaluationSuccessModal: React.FC<EvaluationSuccessModalProps> = ({
       };
     } else if (evaluationType === 'Диагностическая игра') {
       return {
-        results_orientation: 'Ориентация на результат',
-        effective_communication: 'Эффективная коммуникация',
-        teamwork_skills: 'Умение работать в команде',
-        systemic_thinking: 'Системное мышление'
+        results_orientation: 'Компетенция «Ориентация на результат»',
+        effective_communication: 'Компетенция «Эффективная коммуникация»',
+        teamwork_skills: 'Компетенция «Умение работать в команде»',
+        systemic_thinking: 'Компетенция «Системное мышление»'
       };
     }
     return {};

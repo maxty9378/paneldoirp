@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Brain, CheckCircle, Save } from 'lucide-react';
+import { X, Brain, CheckCircle, Save, Info } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { EvaluationSuccessModal } from './EvaluationSuccessModal';
@@ -282,7 +282,7 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
   const competencies = [
     {
       key: 'results_orientation' as const,
-      title: 'Ориентация на результат',
+      title: 'Компетенция «Ориентация на результат»',
       description: 'Признает свою ответственность за результаты работы; самостоятельно ищет решения; поступается личными интересами ради достижения целей',
       details: [
         'Признает свою ответственность за результаты работы',
@@ -293,7 +293,7 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
     },
     {
       key: 'effective_communication' as const,
-      title: 'Эффективная коммуникация',
+      title: 'Компетенция «Эффективная коммуникация»',
       description: 'Легко инициирует контакт; общается вежливо и доброжелательно; четко излагает свою позицию; аргументирует мнение; внимательно выслушивает других',
       details: [
         'Легко инициирует контакт для решения рабочих вопросов',
@@ -307,7 +307,7 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
     },
     {
       key: 'teamwork_skills' as const,
-      title: 'Умение работать в команде',
+      title: 'Компетенция «Умение работать в команде»',
       description: 'Принимает на себя роль лидера; открыто делится опытом; оказывает поддержку другим; координирует работу с коллегами; мотивирует команду',
       details: [
         'Принимает на себя роль лидера',
@@ -320,7 +320,7 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
     },
     {
       key: 'systemic_thinking' as const,
-      title: 'Системное мышление',
+      title: 'Компетенция «Системное мышление»',
       description: 'Собирает и структурирует информацию; выстраивает целостную картину ситуации; делает логичные выводы; рассматривает варианты решений; прогнозирует последствия',
       details: [
         'Собирает, структурирует и сопоставляет информацию, восполняет пробелы в информации, необходимые для выработки решения',
@@ -368,7 +368,9 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
     saving,
     saved,
     showSuccessModal,
-    isOpen
+    isOpen,
+    showCriteriaModal,
+    selectedCompetency: selectedCompetency?.title
   });
 
   // Стили для слайдера (как в CaseEvaluationModal)
@@ -629,17 +631,25 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
                     <div key={c.key} className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
                       <div className="flex items-center justify-between">
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex items-center gap-1 mb-1">
                             <div className="text-sm font-medium text-gray-900">{c.title}</div>
                             <button
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                console.log('🔍 Info button clicked for:', c.title);
                                 setSelectedCompetency(c);
                                 setShowCriteriaModal(true);
+                                console.log('🔍 showCriteriaModal set to true');
                               }}
-                              className="w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center shadow-sm hover:bg-emerald-600 transition-colors"
+                              className="flex items-center justify-center hover:opacity-70 active:opacity-50 transition-opacity touch-manipulation"
                               aria-label="Показать критерии оценки"
+                              style={{
+                                WebkitTapHighlightColor: 'transparent',
+                                touchAction: 'manipulation'
+                              }}
                             >
-                              <span className="text-[10px] font-bold text-white">i</span>
+                              <Info className="w-4 h-4 text-gray-400" />
                             </button>
                           </div>
                           <div className="text-xs text-gray-500">{c.description}</div>
@@ -728,16 +738,46 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
 
       {/* Модал критериев оценки */}
       {showCriteriaModal && selectedCompetency && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[5003] p-4">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10004] p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              console.log('🔍 Overlay clicked - closing modal');
+              setShowCriteriaModal(false);
+              setSelectedCompetency(null);
+            }
+          }}
+        >
           <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden shadow-2xl">
             {/* Заголовок */}
             <div className="p-6 border-b border-gray-100">
-              <h2 className="text-xl font-semibold text-gray-900">
-                Критерии оценки: {selectedCompetency.title}
-              </h2>
-              <p className="text-gray-600 text-sm mt-2 leading-relaxed">
-                {selectedCompetency.description}
-              </p>
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    Критерии оценки: {selectedCompetency.title}
+                  </h2>
+                  <p className="text-gray-600 text-sm mt-2 leading-relaxed">
+                    {selectedCompetency.description}
+                  </p>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('🔍 X button clicked - closing modal');
+                    setShowCriteriaModal(false);
+                    setSelectedCompetency(null);
+                  }}
+                  className="ml-4 p-2 hover:bg-gray-100 rounded-lg transition-colors touch-manipulation"
+                  style={{
+                    WebkitTapHighlightColor: 'transparent',
+                    touchAction: 'manipulation'
+                  }}
+                  aria-label="Закрыть"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
             </div>
             
             {/* Содержание */}
@@ -750,8 +790,8 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
                     </div>
                     <div className="flex items-start gap-2 flex-1">
                       <p className="text-gray-700 text-sm leading-relaxed flex-1">{detail}</p>
-                      <div className="w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center shadow-sm flex-shrink-0 mt-0.5">
-                        <span className="text-[10px] font-bold text-white">i</span>
+                      <div className="w-6 h-6 bg-emerald-100 rounded-full flex items-center justify-center shadow-sm flex-shrink-0 mt-0.5">
+                        <Info className="w-3 h-3 text-emerald-600" />
                       </div>
                     </div>
                   </div>
@@ -760,10 +800,22 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
             </div>
             
             {/* Кнопка */}
-            <div className="p-6 border-t border-gray-100 flex justify-end">
+            <div className="p-4 sm:p-6 border-t border-gray-100">
               <button
-                onClick={() => setShowCriteriaModal(false)}
-                className="px-6 py-3 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors font-medium"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('🔍 Понятно button clicked');
+                  setShowCriteriaModal(false);
+                  setSelectedCompetency(null);
+                  console.log('🔍 showCriteriaModal set to false');
+                }}
+                className="w-full px-6 py-4 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 active:bg-emerald-700 transition-colors font-medium text-base touch-manipulation"
+                style={{
+                  minHeight: '48px',
+                  WebkitTapHighlightColor: 'transparent',
+                  touchAction: 'manipulation'
+                }}
               >
                 Понятно
               </button>

@@ -66,10 +66,10 @@ export const DiagnosticGameCard: React.FC<DiagnosticGameCardProps> = ({
   }, [participant]);
 
   const competencies = [
-    { name: 'Ориентация на результат', icon: '🎯' },
-    { name: 'Эффективная коммуникация', icon: '💬' },
-    { name: 'Умение работать в команде', icon: '👥' },
-    { name: 'Системное мышление', icon: '🧠' }
+    { name: 'Компетенция «Ориентация на результат»', icon: '🎯' },
+    { name: 'Компетенция «Эффективная коммуникация»', icon: '💬' },
+    { name: 'Компетенция «Умение работать в команде»', icon: '👥' },
+    { name: 'Компетенция «Системное мышление»', icon: '🧠' }
   ];
 
   return (
