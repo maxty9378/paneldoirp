@@ -349,9 +349,23 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
   
 
   const handleSaveClick = () => {
+    console.log('🔍 handleSaveClick вызван:', { 
+      saving, 
+      hasExistingEvaluation, 
+      saved, 
+      hasAnyScore: Object.values(evaluation.criteria_scores).some(v => v > 0),
+      criteriaScores: evaluation.criteria_scores
+    });
+    
     // Считываем самое свежее состояние, без надежды на пропсы в JSX
-    if (saving) return;                   // защита от дабл-тапа
-    if (!Object.values(evaluation.criteria_scores).some(v => v > 0)) return; // вообще нет оценок
+    if (saving) {
+      console.log('❌ Блокируем сохранение - уже идет процесс');
+      return;                   // защита от дабл-тапа
+    }
+    if (!Object.values(evaluation.criteria_scores).some(v => v > 0)) {
+      console.log('❌ Блокируем сохранение - нет оценок');
+      return; // вообще нет оценок
+    }
 
     if (hasExistingEvaluation && !saved) {
       console.log('🔄 Показываем подтверждение изменения существующей оценки');
@@ -404,6 +418,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
 
       setSaved(true);
       setHasExistingEvaluation(true); // Теперь у нас есть существующая оценка
+      console.log('🎉 Показываем модальное окно успеха');
       setShowSuccessModal(true);
     } catch (e) {
       console.error('❌ Ошибка сохранения:', e);
@@ -624,8 +639,13 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
                 </button>
                 <button
                   onPointerUp={() => { 
-                    console.log('CaseEvaluationModal Submit button clicked:', { canSave });
-                    if (canSave) handleSaveClick(); 
+                    console.log('🔘 CaseEvaluationModal Submit button clicked:', { canSave, hasAnyScore, saving });
+                    if (canSave) {
+                      console.log('✅ Вызываем handleSaveClick');
+                      handleSaveClick(); 
+                    } else {
+                      console.log('❌ Кнопка заблокирована');
+                    }
                   }}
                   disabled={!canSave}
                   className={`flex-1 px-4 py-2.5 rounded-lg font-semibold text-sm ${

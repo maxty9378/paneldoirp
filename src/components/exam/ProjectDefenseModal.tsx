@@ -178,11 +178,18 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
 
 
   const handleSaveClick = () => {
+    console.log('🔍 ProjectDefenseModal handleSaveClick вызван:', { 
+      hasExistingEvaluation, 
+      saved, 
+      saving,
+      criteriaScores: evaluation.criteria_scores
+    });
+    
     if (hasExistingEvaluation && !saved) {
-      // Показываем модальное окно подтверждения
+      console.log('🔄 Показываем подтверждение изменения существующей оценки');
       setShowChangeConfirmModal(true);
     } else {
-      // Сохраняем сразу
+      console.log('💾 Сохраняем новую оценку');
       saveEvaluation();
     }
   };
@@ -211,6 +218,7 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
       }
 
       setSaved(true);
+      console.log('🎉 Показываем модальное окно успеха');
       setShowSuccessModal(true);
     } catch (error) {
       console.error('Ошибка сохранения оценки защиты проекта:', error);
@@ -568,8 +576,13 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
                     </button>
                     <button
                       onPointerUp={() => { 
-                        console.log('ProjectDefenseModal Submit button clicked:', { canSave });
-                        if (canSave) handleSaveClick(); 
+                        console.log('🔘 ProjectDefenseModal Submit button clicked:', { canSave, hasAnyScore: Object.values(evaluation.criteria_scores).some(v => v > 0), saving });
+                        if (canSave) {
+                          console.log('✅ Вызываем handleSaveClick');
+                          handleSaveClick(); 
+                        } else {
+                          console.log('❌ Кнопка заблокирована');
+                        }
                       }}
                       disabled={!canSave}
                       className={`flex-1 px-4 py-2.5 rounded-lg font-semibold text-sm ${

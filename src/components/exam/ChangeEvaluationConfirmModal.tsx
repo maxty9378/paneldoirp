@@ -21,7 +21,7 @@ export const ChangeEvaluationConfirmModal: React.FC<ChangeEvaluationConfirmModal
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[5004] flex items-center justify-center bg-black bg-opacity-50 p-4">
+    <div className="fixed inset-0 z-[10004] flex items-center justify-center bg-black bg-opacity-50 p-4">
       <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl">
         {/* Заголовок */}
         <div className="p-6 border-b border-gray-100">
