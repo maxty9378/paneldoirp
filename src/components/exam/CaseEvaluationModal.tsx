@@ -612,55 +612,51 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
                 );
               })
             )}
+
+            {/* Кнопки действий */}
+            <div className="mt-6 px-4 pb-6">
+              <div className="flex gap-2">
+                <button
+                  onPointerUp={onClose}
+                  className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium"
+                  style={{ minHeight: '48px', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
+                >
+                  ← Назад
+                </button>
+                <button
+                  onPointerUp={() => { 
+                    console.log('CaseEvaluationModal Submit button clicked:', { canSave });
+                    if (canSave) handleSaveClick(); 
+                  }}
+                  disabled={!canSave}
+                  className={`flex-1 px-4 py-2.5 rounded-lg font-semibold text-sm ${
+                    !canSave
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg hover:shadow-xl'
+                  }`}
+                  style={{ minHeight: '48px', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
+                >
+                  {saving ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Сохранение...
+                    </div>
+                  ) : saved ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <CheckCircle className="w-4 h-4" />
+                      Сохранено
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center gap-2">
+                      <Save className="w-4 h-4" />
+                      Отправить
+                    </div>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </main>
-
-        {/* Футер (sticky bottom) */}
-      <footer 
-        className="sticky bottom-0 z-20 border-t border-gray-100 bg-white/80 backdrop-blur-sm"
-      >
-        <div className="px-4 pt-3 pb-3">
-          <div className="flex gap-2 relative">
-            <button
-              onPointerUp={onClose}
-              className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium relative z-10"
-              style={{ minHeight: '48px', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
-            >
-              ← Назад
-            </button>
-            <button
-              onPointerUp={() => { 
-                console.log('CaseEvaluationModal Submit button clicked:', { canSave });
-                if (canSave) handleSaveClick(); 
-              }}
-              disabled={!canSave}
-              className={`flex-1 px-4 py-2.5 rounded-lg font-semibold text-sm relative z-10 ${
-                !canSave
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg hover:shadow-xl'
-              }`}
-              style={{ minHeight: '48px', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
-            >
-              {saving ? (
-                <div className="flex items-center justify-center gap-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  Сохранение...
-                </div>
-              ) : saved ? (
-                <div className="flex items-center justify-center gap-2">
-                  <CheckCircle className="w-4 h-4" />
-                  Сохранено
-                </div>
-              ) : (
-                <div className="flex items-center justify-center gap-2">
-                  <Save className="w-4 h-4" />
-                  Отправить
-                </div>
-              )}
-            </button>
-          </div>
-        </div>
-      </footer>
       </div>
 
       {/* Success modal */}
