@@ -1030,7 +1030,7 @@ const ExpertExamPage: React.FC = () => {
                       {exam.detailed_schedule.map((item, index) => (
                         <div key={item.id || index} className="group relative">
                           {/* Timeline dot - hidden on mobile */}
-                          <div className="hidden sm:block absolute left-6 top-6 w-4 h-4 bg-white border-4 border-[#06A478] rounded-full shadow-lg z-20 group-hover:scale-125 transition-transform duration-200"></div>
+                          <div className="hidden sm:block absolute left-[30px] top-[18px] w-4 h-4 bg-white border-4 border-[#06A478] rounded-full shadow-lg z-20 group-hover:scale-125 transition-transform duration-200"></div>
                           
                           {/* Content card */}
                           <div className="sm:ml-12 relative">
@@ -1230,7 +1230,7 @@ const ExpertExamPage: React.FC = () => {
                       {exam.detailed_schedule.map((item, index) => (
                         <div key={item.id || index} className="group relative">
                           {/* Timeline dot - hidden on mobile */}
-                          <div className="hidden sm:block absolute left-6 top-6 w-4 h-4 bg-white border-4 border-[#06A478] rounded-full shadow-lg z-20 group-hover:scale-125 transition-transform duration-200"></div>
+                          <div className="hidden sm:block absolute left-[30px] top-[18px] w-4 h-4 bg-white border-4 border-[#06A478] rounded-full shadow-lg z-20 group-hover:scale-125 transition-transform duration-200"></div>
                           
                           {/* Content card */}
                           <div className="sm:ml-12 relative">
@@ -1356,8 +1356,19 @@ const ExpertExamPage: React.FC = () => {
       <EvaluationStageModal
         isOpen={showEvaluationModal}
         onClose={() => {
+          console.log('🔄 Закрываем EvaluationStageModal');
           setShowEvaluationModal(false);
           setSelectedParticipantForEvaluation(null);
+          
+          // Принудительно восстанавливаем прокрутку на случай проблем
+          setTimeout(() => {
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.width = '';
+            console.log('✅ Прокрутка восстановлена принудительно');
+          }, 50);
+          
+          console.log('✅ EvaluationStageModal закрыт');
         }}
         onStageSelect={(stage) => {
           

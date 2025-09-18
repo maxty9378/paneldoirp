@@ -193,6 +193,14 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
       criteriaScores: evaluation.criteria_scores
     });
     
+    // Проверяем, что все критерии заполнены (больше 0)
+    const allCriteriaFilled = Object.values(evaluation.criteria_scores).every(v => v > 0);
+    if (!allCriteriaFilled) {
+      console.log('❌ Блокируем сохранение - не все критерии заполнены:', evaluation.criteria_scores);
+      alert('Пожалуйста, заполните все критерии оценки перед сохранением.');
+      return;
+    }
+    
     if (hasExistingEvaluation && !saved) {
       console.log('🔄 Показываем подтверждение изменения существующей оценки с totalScore:', getTotalScore());
       setTimeout(() => {
@@ -255,10 +263,6 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
     onClose();
   };
 
-  const handleEditEvaluation = () => {
-    setShowSuccessModal(false);
-    setSaved(false);
-  };
 
   // Константы для слайдера (как в CaseEvaluationModal)
   const STEPS: number[] = Array.from({ length: 9 }, (_, i) => 1 + i * 0.5); // [1..5] шаг 0.5
@@ -267,19 +271,16 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
     {
       key: 'goal_achievement' as const,
       title: 'Степень достижения планируемой цели проекта',
-      description: 'Насколько полно достигнута цель проекта',
       icon: Target
     },
     {
       key: 'topic_development' as const,
       title: 'Степень проработки темы проекта',
-      description: 'Глубина анализа и проработки темы',
       icon: CheckCircle
     },
     {
       key: 'document_quality' as const,
       title: 'Качество оформления документов проекта',
-      description: 'Структура, оформление и презентация материалов',
       icon: FileText
     }
   ];
@@ -308,7 +309,13 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
 
   const totalScore = useMemo(() => getTotalScore(), [evaluation.criteria_scores]);
 
-  const canSave = totalScore > 0 && !saving;
+  // Проверяем, что все критерии заполнены
+  const allCriteriaFilled = useMemo(
+    () => Object.values(evaluation.criteria_scores).every(v => v > 0),
+    [evaluation.criteria_scores]
+  );
+  
+  const canSave = allCriteriaFilled && !saving;
   
   
   // Отладка
@@ -346,6 +353,7 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
       border-radius: 50%;
       cursor: pointer;
       box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      margin-top: -10px; /* центрируем точку относительно линии трека */
     }
 
     input[type="range"]::-moz-range-track {
@@ -361,6 +369,7 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
       cursor: pointer;
       border: none;
       box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      margin-top: -10px; /* центрируем точку относительно линии трека */
     }
     
     /* Принудительное убирание всех отступов для модального окна */
@@ -423,10 +432,16 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
 
         {/* Трек с рисками */}
         <div className="relative pt-3">
-          {/* линия */}
+          {/* линия фона */}
           <div className="absolute left-1 right-1 top-[9px] h-[2px] bg-gray-200 rounded-full" />
+          
+          {/* заполняющаяся часть слева до выбранной точки */}
+          <div 
+            className="absolute left-1 top-[9px] h-[2px] bg-emerald-500 rounded-full"
+            style={{ width: `${(STEPS.indexOf(value) / (STEPS.length - 1)) * 100}%` }}
+          />
           {/* риски */}
-          <div className="absolute left-1 right-1 top-0 h-5 pointer-events-none">
+          <div className="absolute left-1 right-1 top-[6px] h-5 pointer-events-none">
             {STEPS.map((s, i) => {
               const left = `${(i / (STEPS.length - 1)) * 100}%`;
               const isInteger = Number.isInteger(s);
@@ -570,7 +585,6 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
                           </div>
                           <div className="min-w-0">
                             <div className="text-sm font-medium text-gray-900">{c.title}</div>
-                            <div className="text-xs text-gray-500">{c.description}</div>
                           </div>
                         </div>
                         <div className="text-right">
@@ -645,11 +659,11 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
       <EvaluationSuccessModal
         isOpen={showSuccessModal}
         onClose={handleSuccessClose}
-        onEdit={handleEditEvaluation}
         participantName={participantName}
         caseNumber={null} // Для защиты проекта кейс не используется
         totalScore={getTotalScore()}
         evaluationType="Защита проекта"
+        detailedScores={evaluation.criteria_scores}
         onRemoveEvaluation={async () => {
           await onRemoveEvaluation?.(participantId);
         }}

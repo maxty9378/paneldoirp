@@ -82,8 +82,14 @@ function ScoreRail({
 
       {/* Трек с рисками (мажорные и минорные) */}
       <div className="relative pt-3">
-        {/* линия */}
+        {/* линия фона */}
         <div className="absolute left-1 right-1 top-[9px] h-[2px] bg-gray-200 rounded-full" />
+        
+        {/* заполняющаяся часть слева до выбранной точки */}
+        <div 
+          className="absolute left-1 top-[9px] h-[2px] bg-emerald-500 rounded-full"
+          style={{ width: `${(idx / (STEPS.length - 1)) * 100}%` }}
+        />
         {/* риски */}
         <div className="absolute left-1 right-1 top-0 h-5 pointer-events-none">
           {STEPS.map((s, i) => {
@@ -703,7 +709,6 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
       <EvaluationSuccessModal
         isOpen={showSuccessModal}
         onClose={handleSuccessClose}
-        onEdit={handleEditEvaluation}
         participantName={participantName}
         caseNumber={caseNumber}
         totalScore={getTotalScore()}

@@ -547,7 +547,7 @@ const ExpertEvaluationResults: React.FC<ExpertEvaluationResultsProps> = ({ examE
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Навыки командной работы</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Умение работать в команде</label>
               <input
                 type="number"
                 min="1"
@@ -995,13 +995,13 @@ const ExpertEvaluationResults: React.FC<ExpertEvaluationResultsProps> = ({ examE
           {renderCaseEvaluationsTable()}
         </div>
 
-        {/* Этап 2: Защита проектов */}
+        {/* Этап 2: Защита проекта */}
         <div className="mb-8">
           <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
             <Award className="mr-3 text-[#06A478]" />
-            Этап 2: Защита проектов
+            Этап 2: Защита проекта
           </h3>
-          <p className="text-sm text-gray-600 mb-4">Оценка презентации и защиты проектов по критериям: достижение цели, проработка темы, качество документов</p>
+          <p className="text-sm text-gray-600 mb-4">Оценка презентации и защиты проекта по критериям: достижение цели, проработка темы, качество документов</p>
           {renderProjectDefenseTable()}
             </div>
 

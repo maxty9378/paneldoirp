@@ -1,25 +1,25 @@
 import React from 'react';
-import { CheckCircle, Star, RotateCcw } from 'lucide-react';
+import { CheckCircle, Star } from 'lucide-react';
 
 interface EvaluationSuccessModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onEdit: () => void;
   participantName: string;
   caseNumber?: number | null;
   totalScore: number;
   evaluationType?: string;
+  detailedScores?: Record<string, number>; // Детальные оценки по критериям
   onRemoveEvaluation?: () => Promise<void>;
 }
 
 export const EvaluationSuccessModal: React.FC<EvaluationSuccessModalProps> = ({
   isOpen,
   onClose,
-  onEdit,
   participantName,
   caseNumber,
   totalScore,
   evaluationType = 'Решение кейса',
+  detailedScores = {},
   onRemoveEvaluation
 }) => {
   if (!isOpen) return null;
@@ -32,29 +32,51 @@ export const EvaluationSuccessModal: React.FC<EvaluationSuccessModalProps> = ({
     return 'text-red-600';
   };
 
-  const getScoreLabel = (score: number) => {
-    if (score >= 4.5) return 'Отлично';
-    if (score >= 4) return 'Хорошо';
-    if (score >= 3) return 'Удовлетворительно';
-    return 'Неудовлетворительно';
+
+  // Функция для получения названий критериев
+  const getCriteriaNames = () => {
+    if (evaluationType === 'Решение кейса') {
+      return {
+        correctness: 'Правильность решения кейса',
+        clarity: 'Чёткость объяснения выбранного варианта решения',
+        independence: 'Степень самостоятельности в решении кейса'
+      };
+    } else if (evaluationType === 'Защита проекта') {
+      return {
+        goal_achievement: 'Достижение цели',
+        topic_development: 'Раскрытие темы',
+        presentation_quality: 'Качество презентации'
+      };
+    } else if (evaluationType === 'Диагностическая игра') {
+      return {
+        results_orientation: 'Ориентация на результат',
+        effective_communication: 'Эффективная коммуникация',
+        teamwork_skills: 'Умение работать в команде',
+        systemic_thinking: 'Системное мышление'
+      };
+    }
+    return {};
   };
+
+  const criteriaNames = getCriteriaNames();
+  const hasDetailedScores = Object.keys(detailedScores).length > 0;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10003] p-4">
-      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-4 sm:p-6">
         {/* Иконка успеха */}
-        <div className="flex justify-center mb-6">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
-            <CheckCircle className="w-12 h-12 text-green-600" />
+        <div className="flex justify-center mb-4 sm:mb-6">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-100 rounded-full flex items-center justify-center">
+            <CheckCircle className="w-10 h-10 sm:w-12 sm:h-12 text-green-600" />
           </div>
         </div>
 
         {/* Заголовок */}
-        <div className="text-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+        <div className="text-center mb-4 sm:mb-6">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
             Оценка успешно отправлена
           </h2>
-          <p className="text-gray-600">
+          <p className="text-sm sm:text-base text-gray-600">
             {caseNumber 
               ? `Решение кейса #${caseNumber} от` 
               : `${evaluationType} от`
@@ -62,39 +84,48 @@ export const EvaluationSuccessModal: React.FC<EvaluationSuccessModalProps> = ({
           </p>
         </div>
 
-        {/* Итоговая оценка */}
-        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl p-6 mb-6">
+        {/* Детальные оценки */}
+        {hasDetailedScores && (
+          <div className="mb-4 sm:mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3 text-center">Оценки по критериям</h3>
+            <div className="space-y-2">
+              {Object.entries(detailedScores).map(([key, score]) => (
+                <div key={key} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
+                  <span className="text-sm text-gray-700 flex-1">
+                    {criteriaNames[key as keyof typeof criteriaNames] || key}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-lg font-semibold ${getScoreColor(score)}`}>
+                      {score % 1 === 0 ? score.toFixed(0) : score.toFixed(1)}
+                    </span>
+                    <span className="text-sm text-gray-500">/ 5</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Итоговая оценка - менее акцентная */}
+        <div className="bg-gray-50 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
           <div className="text-center">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <Star className="w-6 h-6 text-emerald-600" />
-              <span className="text-sm font-medium text-gray-600">Итоговая оценка</span>
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <Star className="w-4 h-4 text-gray-500" />
+              <span className="text-sm text-gray-600">Итоговая оценка</span>
             </div>
-            <div className={`text-4xl font-bold ${getScoreColor(totalScore)} mb-1`}>
-              {totalScore}
-            </div>
-            <div className="text-sm text-gray-500 mb-2">из 5 баллов</div>
-            <div className={`text-lg font-semibold ${getScoreColor(totalScore)}`}>
-              {getScoreLabel(totalScore)}
+            <div className={`text-xl sm:text-2xl font-semibold ${getScoreColor(totalScore)}`}>
+              {totalScore % 1 === 0 ? totalScore.toFixed(0) : totalScore.toFixed(1)}
             </div>
           </div>
         </div>
 
-        {/* Кнопки */}
-        <div className="flex gap-3">
-          <button
-            onClick={onEdit}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
-          >
-            <RotateCcw className="w-4 h-4" />
-            Изменить оценку
-          </button>
-          <button
-            onClick={onClose}
-            className="flex-1 px-4 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-semibold"
-          >
-            Продолжить
-          </button>
-        </div>
+        {/* Кнопка */}
+        <button
+          onClick={onClose}
+          className="w-full px-4 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-semibold text-base touch-manipulation"
+        >
+          Продолжить
+        </button>
       </div>
     </div>
   );

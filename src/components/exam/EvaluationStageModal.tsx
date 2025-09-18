@@ -479,8 +479,8 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
     },
     {
       id: 'project-defense',
-      title: 'Защита проектов',
-      description: 'Презентация и защита проектных решений',
+      title: 'Защита проекта',
+      description: 'Презентация и защита проектного решения',
       icon: Users,
       color: 'blue',
       bgGradient: 'from-blue-50 to-indigo-50',
@@ -834,8 +834,14 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
       <CaseEvaluationModal
         isOpen={showCaseEvaluation}
         onClose={() => {
+          console.log('🔄 Закрываем CaseEvaluationModal');
           setShowCaseEvaluation(false);
           setShowCaseSelection(false);
+          // Закрываем основное модальное окно после закрытия оценки кейса с небольшой задержкой
+          setTimeout(() => {
+            console.log('🔄 Вызываем основной onClose');
+            onClose();
+          }, 100);
         }}
         participantId={participantId}
         participantName={participantName}
