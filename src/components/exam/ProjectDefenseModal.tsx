@@ -474,7 +474,7 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
               <div className="text-right">
                 <div
                   className="text-2xl font-bold"
-                  style={{ color: getScoreColor(getTotalScore()) }}
+                  style={{ color: colorFor(getTotalScore()) }}
                 >
                   {getTotalScore().toFixed(1)}
                 </div>

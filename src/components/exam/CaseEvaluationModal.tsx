@@ -472,18 +472,34 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
       overflow: hidden !important;
     }
     
-    /* iPhone-специфичные стили */
-    @supports (-webkit-touch-callout: none) {
+    /* Специальные стили для iPhone */
+    @media screen and (max-width: 768px) {
       .case-evaluation-modal {
         -webkit-overflow-scrolling: touch !important;
+        -webkit-transform: translate3d(0, 0, 0) !important;
+        transform: translate3d(0, 0, 0) !important;
       }
       
-      .case-evaluation-modal footer button {
+      .case-evaluation-modal header {
+        -webkit-transform: translateZ(0) !important;
+        transform: translateZ(0) !important;
+        will-change: transform !important;
+      }
+      
+      .case-evaluation-modal button {
         -webkit-tap-highlight-color: transparent !important;
+        -webkit-touch-callout: none !important;
+        -webkit-user-select: none !important;
         user-select: none !important;
         touch-action: manipulation !important;
-        min-height: 48px !important;
-        padding-bottom: 8px !important;
+      }
+      
+      /* Убираем safe area для полноэкранного режима */
+      .case-evaluation-modal {
+        padding-top: 0px !important;
+        padding-left: 0px !important;
+        padding-right: 0px !important;
+        padding-bottom: 0px !important;
       }
     }
   `;
@@ -496,6 +512,8 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
       <div 
         className="case-evaluation-modal fixed inset-0 z-[10002] overflow-y-auto bg-white" 
         style={{ 
+          paddingTop: 'env(safe-area-inset-top, 0px)',
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
           pointerEvents: 'auto'
         }}
       >
@@ -524,7 +542,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
                 <div className="text-[11px] text-gray-400">средний балл</div>
               </div>
               <button
-                onPointerUp={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }}
+                onPointerUp={onClose}
                 className="p-2 rounded-lg hover:bg-gray-50 active:bg-gray-100"
                 aria-label="Закрыть"
                 style={{
@@ -612,7 +630,10 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
               ← Назад
             </button>
             <button
-              onPointerUp={handleSaveClick}
+              onPointerUp={() => { 
+                console.log('CaseEvaluationModal Submit button clicked:', { canSave });
+                if (canSave) handleSaveClick(); 
+              }}
               disabled={!canSave}
               className={`flex-1 px-4 py-2.5 rounded-lg font-semibold text-sm ${
                 !canSave
