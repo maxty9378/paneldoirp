@@ -192,7 +192,7 @@ export const PresentationAssignmentModal: React.FC<PresentationAssignmentModalPr
   const duplicates = getDuplicateNumbers();
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10002] p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[5002] p-4">
       <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[85vh] overflow-hidden">
         {/* Заголовок */}
         <div className="bg-emerald-600 text-white p-6">

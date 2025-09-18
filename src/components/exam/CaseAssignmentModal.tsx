@@ -157,7 +157,7 @@ export const CaseAssignmentModal: React.FC<CaseAssignmentModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-[4999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="relative max-w-4xl w-full max-h-[90vh] overflow-hidden rounded-3xl bg-white shadow-2xl">
         {/* Заголовок */}
         <div className="relative bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 p-6 text-white">

@@ -155,7 +155,7 @@
 @layer components {
   /* Адаптивные модальные окна */
   .modal-mobile {
-    @apply fixed inset-0 z-[9999] flex items-end xs:items-center justify-center bg-black/50 backdrop-blur-sm p-0 xs:p-4;
+    @apply fixed inset-0 z-[4999] flex items-end xs:items-center justify-center bg-black/50 backdrop-blur-sm p-0 xs:p-4;
   }
   
   .modal-content-mobile {

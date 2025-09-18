@@ -12,7 +12,7 @@ export function LoadingOverlay({
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-md transition-opacity duration-300">
+    <div className="fixed inset-0 z-[4999] flex items-center justify-center bg-black/60 backdrop-blur-md transition-opacity duration-300">
       <div className="w-[min(92vw,420px)] rounded-2xl bg-white/95 backdrop-blur-xl p-8 shadow-2xl border border-white/20 animate-scale-in">
         <div className="flex items-center justify-center mb-6">
           <div className="relative">

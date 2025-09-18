@@ -144,7 +144,7 @@ const MobileTooltip: React.FC<{
     <ModalPortal>
       {/* СПОТЛАЙТ: четыре панели вокруг цели — клики по ним закрывают подсказку.
           «Окно» над карточкой пустое, поэтому блок не затемняется и кликается. */}
-      <div className="fixed inset-0 z-[10000] pointer-events-none">
+      <div className="fixed inset-0 z-[5000] pointer-events-none">
         {/* Верхняя панель */}
         <div
           className="fixed left-0 bg-black/20 pointer-events-auto"
@@ -183,7 +183,7 @@ const MobileTooltip: React.FC<{
 
       {/* Сам тултип */}
       <div
-        className="fixed z-[10001] bg-white rounded-xl shadow-2xl p-4 sm:max-w-[280px] max-w-[240px]"
+        className="fixed z-[5001] bg-white rounded-xl shadow-2xl p-4 sm:max-w-[280px] max-w-[240px]"
         style={{
           top: `${position.top}px`,
           left: `${position.left}px`,
@@ -533,7 +533,7 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
           @media (max-width: 768px) {
             [data-tour="case-solving-card"] {
               position: relative !important;
-              z-index: 1000 !important;
+              z-index: 500 !important;
               transform: translateZ(0) !important; /* Принудительное создание слоя для GPU */
               will-change: transform !important;
             }
@@ -561,7 +561,7 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
           }
         `}
       </style>
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-2 xs:p-4">
+      <div className="fixed inset-0 z-[4999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-2 xs:p-4">
       <div 
         className={`relative max-w-lg w-full max-h-[70vh] overflow-hidden rounded-2xl bg-white shadow-2xl transform transition-all duration-500 ease-out ${
         isOpen && !showCaseEvaluation ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-full opacity-0 scale-95'

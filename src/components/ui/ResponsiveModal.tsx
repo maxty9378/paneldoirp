@@ -46,7 +46,7 @@ export const ResponsiveModal: React.FC<ResponsiveModalProps> = ({
   };
 
   return (
-    <div className={`fixed inset-0 z-[9999] flex ${isMobile ? 'items-end' : 'items-center'} justify-center bg-black/50 backdrop-blur-sm p-0 xs:p-4`}>
+    <div className={`fixed inset-0 z-[4999] flex ${isMobile ? 'items-end' : 'items-center'} justify-center bg-black/50 backdrop-blur-sm p-0 xs:p-4`}>
       <div className={`
         relative w-full ${maxWidthClasses[maxWidth]} max-h-[95vh] xs:max-h-[90vh] 
         overflow-hidden ${isMobile ? 'rounded-t-3xl' : 'rounded-2xl xs:rounded-3xl'} 
