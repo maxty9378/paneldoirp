@@ -30,134 +30,131 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[10005] flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-[#06A478] to-[#059669] px-6 py-4 text-white">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Calendar className="w-6 h-6" />
-              <h2 className="text-xl font-bold">{examTitle}</h2>
+    <>
+      {/* Фуллскрин слой */}
+      <div 
+        className="schedule-modal fixed inset-0 z-[10005] overflow-y-auto bg-white" 
+        style={{ 
+          pointerEvents: 'auto'
+        }}
+      >
+        {/* Шапка (sticky top) */}
+        <header 
+          className="sticky top-0 z-10 border-b border-gray-100 bg-white/80 backdrop-blur-sm"
+          style={{ paddingTop: '0px' }}
+        >
+          <div className="px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-emerald-700" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs text-gray-500">Расписание экзамена</div>
+                <div className="text-base font-semibold truncate">{examTitle}</div>
+              </div>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-white/20 rounded-full transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={onClose}
+                onPointerUp={onClose}
+                className="p-2 rounded-lg hover:bg-gray-50 active:bg-gray-100"
+                aria-label="Закрыть"
+                style={{
+                  minWidth: '44px',
+                  minHeight: '44px',
+                  WebkitTapHighlightColor: 'transparent',
+                  touchAction: 'manipulation',
+                  userSelect: 'none'
+                }}
+              >
+                <X className="w-6 h-6 text-gray-700 pointer-events-none" />
+              </button>
+            </div>
           </div>
-        </div>
+        </header>
 
-        {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-          {!schedule || schedule.length === 0 ? (
-            <div className="text-center py-12">
-              <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">Расписание не настроено</p>
-            </div>
-          ) : (
-            <div className="relative">
-              {/* Timeline line */}
-              <div className="absolute left-8 top-0 bottom-0 w-1 bg-gradient-to-b from-[#06A478]/30 via-[#06A478]/60 to-[#06A478]/30 z-0"></div>
-              
-              <div className="space-y-6">
+        {/* Контент */}
+        <main className="px-4 pt-3">
+          <div className="space-y-3">
+            {!schedule || schedule.length === 0 ? (
+              <div className="text-center py-12">
+                <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500 text-lg">Расписание не настроено</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
                 {schedule.map((item, index) => (
-                  <div key={item.id || index} className="group relative">
-                    {/* Timeline dot */}
-                    <div className="absolute left-6 top-6 w-4 h-4 bg-white border-4 border-[#06A478] rounded-full shadow-lg z-20 group-hover:scale-125 transition-transform duration-200"></div>
-                    
-                    {/* Content card */}
-                    <div className="ml-12 relative">
-                      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 group-hover:border-[#06A478]/30 group-hover:-translate-y-1 overflow-hidden">
-                        {/* Card header */}
-                        <div className="bg-gradient-to-r from-[#06A478]/5 via-[#06A478]/10 to-[#06A478]/5 px-6 py-4 border-b border-[#06A478]/20">
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
-                            <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-                              <div className="flex items-center space-x-2">
-                                <div className="bg-[#06A478] text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm">
-                                  {item.time || item.startTime || 'Время не указано'}
-                                </div>
-                                {item.endTime && (
-                                  <>
-                                    <div className="flex items-center text-[#06A478]/60">
-                                      <div className="w-6 bg-[#06A478]/30 h-0.5"></div>
-                                      <div className="w-2 h-2 bg-[#06A478]/50 rounded-full mx-1"></div>
-                                      <div className="w-6 bg-[#06A478]/30 h-0.5"></div>
-                                    </div>
-                                    <div className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium border border-gray-200">
-                                      {item.endTime}
-                                    </div>
-                                  </>
-                                )}
-                                {item.duration && (
-                                  <div className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium border border-gray-200">
-                                    {item.duration}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            
-                            <div className="flex items-center justify-end">
-                              {item.type && (
-                                <div className="bg-gradient-to-r from-[#06A478]/10 to-[#06A478]/20 text-[#06A478] px-4 py-2 rounded-lg text-sm font-medium border border-[#06A478]/30">
-                                  {item.type}
-                                </div>
-                              )}
-                            </div>
-                          </div>
+                  <div key={item.id || index} className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg text-sm font-bold">
+                          {item.time || item.startTime || 'Время не указано'}
                         </div>
-                        
-                        {/* Card content */}
-                        <div className="p-6">
-                          <h4 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-[#06A478] transition-colors">
-                            {item.title}
-                          </h4>
-                          {item.description && (
-                            <div className="mt-3">
-                              <p className="text-gray-600 leading-relaxed">
-                                {item.description}
-                              </p>
-                            </div>
-                          )}
-                          
-                          {/* Additional info */}
-                          <div className="mt-4 flex flex-wrap gap-4 text-sm text-gray-600">
-                            {item.location && (
-                              <div className="flex items-center gap-2">
-                                <MapPin className="h-4 w-4" />
-                                <span>{item.location}</span>
-                              </div>
-                            )}
-                            {item.speaker && (
-                              <div className="flex items-center gap-2">
-                                <User className="h-4 w-4" />
-                                <span>{item.speaker}</span>
-                              </div>
-                            )}
+                        {item.endTime && (
+                          <div className="text-gray-500 text-sm">
+                            — {item.endTime}
                           </div>
-                        </div>
+                        )}
+                        {item.duration && (
+                          <div className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium">
+                            {item.duration}
+                          </div>
+                        )}
                       </div>
+                      {item.type && (
+                        <div className="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg text-sm font-medium">
+                          {item.type}
+                        </div>
+                      )}
+                    </div>
+                    
+                    <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                      {item.title}
+                    </h4>
+                    
+                    {item.description && (
+                      <p className="text-gray-600 text-sm leading-relaxed mb-3">
+                        {item.description}
+                      </p>
+                    )}
+                    
+                    {/* Additional info */}
+                    <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                      {item.location && (
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4" />
+                          <span>{item.location}</span>
+                        </div>
+                      )}
+                      {item.speaker && (
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4" />
+                          <span>{item.speaker}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-        </div>
+            )}
 
-        {/* Footer */}
-        <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-          <div className="flex justify-end">
-            <button
-              onClick={onClose}
-              className="px-6 py-2 bg-[#06A478] text-white rounded-lg hover:bg-[#059669] transition-colors font-medium"
-            >
-              Закрыть
-            </button>
+            {/* Кнопки действий */}
+            <div className="mt-6 px-4 pb-6">
+              <div className="flex gap-2">
+                <button
+                  onClick={onClose}
+                  onPointerUp={onClose}
+                  className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium"
+                  style={{ minHeight: '48px', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
+                >
+                  Назад
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
+        </main>
       </div>
-    </div>
+    </>
   );
 };
 
