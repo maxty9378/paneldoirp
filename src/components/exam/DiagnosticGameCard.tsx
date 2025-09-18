@@ -272,6 +272,7 @@ export const DiagnosticGameCard: React.FC<DiagnosticGameCardProps> = ({
       <DossierModal
         isOpen={showDossier}
         onClose={() => setShowDossier(false)}
+        onBack={() => setShowDossier(false)}
         user={participant.user}
         dossier={participant.dossier ? {
           ...participant.dossier,

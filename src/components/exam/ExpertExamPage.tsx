@@ -1327,6 +1327,10 @@ const ExpertExamPage: React.FC = () => {
           <DossierModal
             isOpen={!!selectedParticipantId}
             onClose={() => setSelectedParticipantId(null)}
+            onBack={() => {
+              setSelectedParticipantId(null);
+              setActiveTab('participants');
+            }}
             user={selectedParticipant.user}
             dossier={selectedParticipant.dossier ? { ...selectedParticipant.dossier, user_id: selectedParticipant.user.id } : undefined}
           />

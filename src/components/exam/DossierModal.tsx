@@ -35,6 +35,7 @@ interface User {
 interface DossierModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onBack?: () => void; // Новый prop для кнопки "Назад"
   user: User;
   dossier?: DossierData;
   loading?: boolean;
@@ -53,6 +54,7 @@ const SkeletonAvatar: React.FC = () => (
 export const DossierModal: React.FC<DossierModalProps> = ({
   isOpen,
   onClose,
+  onBack,
   user,
   dossier,
   loading = false,
@@ -739,12 +741,20 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    onClose();
+                    if (onBack) {
+                      onBack();
+                    } else {
+                      onClose();
+                    }
                   }}
                   onPointerUp={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    onClose();
+                    if (onBack) {
+                      onBack();
+                    } else {
+                      onClose();
+                    }
                   }}
                   className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium"
                   style={{ minHeight: '48px', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
