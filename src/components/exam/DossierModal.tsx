@@ -295,26 +295,19 @@ export const DossierModal: React.FC<DossierModalProps> = ({
   return (
     <>
       <style>{dossierStyles}</style>
-      <div className="dossier-modal fixed inset-0 z-[10002] flex flex-col bg-white" style={{ 
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        margin: 0,
-        padding: 0,
-        paddingTop: '0px',
-        paddingLeft: '0px',
-        paddingRight: '0px',
-        paddingBottom: '0px',
-        transform: 'translate3d(0, 0, 0)',
-        backfaceVisibility: 'hidden',
-        willChange: 'transform',
-        WebkitTransform: 'translate3d(0, 0, 0)',
-        WebkitBackfaceVisibility: 'hidden',
-        WebkitOverflowScrolling: 'touch'
-      }}>
+      
+      {/* Фуллскрин слой */}
+      <div 
+        className="dossier-modal fixed inset-0 z-[10002] overflow-y-auto bg-white" 
+        style={{ 
+          pointerEvents: 'auto'
+        }}
+      >
         {/* Шапка (sticky top) */}
-        <header className="sticky top-0 z-10 border-b border-gray-100 bg-white">
+        <header 
+          className="sticky top-0 z-10 border-b border-gray-100 bg-white/80 backdrop-blur-sm"
+          style={{ paddingTop: '0px' }}
+        >
           <div className="px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
@@ -325,61 +318,16 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                 <div className="text-base font-semibold truncate">{user.full_name}</div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              {!isEditing ? (
-                isAdmin ? (
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="p-2 rounded-lg hover:bg-gray-50 active:bg-gray-100 touch-manipulation"
-                    aria-label="Редактировать"
-                    style={{
-                      minWidth: '44px',
-                      minHeight: '44px',
-                      zIndex: 1000,
-                      position: 'relative',
-                      WebkitTapHighlightColor: 'transparent',
-                      WebkitTouchCallout: 'none',
-                      WebkitUserSelect: 'none',
-                      userSelect: 'none'
-                    }}
-                  >
-                    <Edit className="w-5 h-5 text-gray-700 pointer-events-none" />
-                  </button>
-                ) : null
-              ) : (
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 text-sm font-medium"
-                  >
-                    {isSaving ? 'Сохранение...' : 'Сохранить'}
-                  </button>
-                  <button
-                    onClick={handleCancel}
-                    className="px-3 py-1.5 bg-gray-500 text-white rounded-lg hover:bg-gray-600 text-sm font-medium"
-                  >
-                    Отмена
-                  </button>
-                </div>
-              )}
+            <div className="flex items-center gap-4">
               <button
-                onClick={onClose}
-                onTouchEnd={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onClose();
-                }}
-                className="p-2 rounded-lg hover:bg-gray-50 active:bg-gray-100 touch-manipulation"
+                onPointerUp={onClose}
+                className="p-2 rounded-lg hover:bg-gray-50 active:bg-gray-100"
                 aria-label="Закрыть"
                 style={{
                   minWidth: '44px',
                   minHeight: '44px',
-                  zIndex: 1000,
-                  position: 'relative',
                   WebkitTapHighlightColor: 'transparent',
-                  WebkitTouchCallout: 'none',
-                  WebkitUserSelect: 'none',
+                  touchAction: 'manipulation',
                   userSelect: 'none'
                 }}
               >
@@ -389,8 +337,9 @@ export const DossierModal: React.FC<DossierModalProps> = ({
           </div>
         </header>
 
-        {/* Контент (скролл) */}
-        <main className="flex-1 overflow-y-auto px-4 pt-3 pb-32">
+        {/* Контент */}
+        <main className="px-4 pt-3">
+          <div className="space-y-3">
           {loading ? (
             // Скелетон загрузки
             <div className="space-y-6">
@@ -746,17 +695,49 @@ export const DossierModal: React.FC<DossierModalProps> = ({
           )}
         </main>
 
-        {/* Футер (sticky bottom) */}
-        <footer className="sticky bottom-0 z-10 border-t border-gray-100 bg-white px-4 py-4 pb-safe-bottom">
-          <div className="flex gap-2">
-            <button
-              onClick={onClose}
-              className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
-            >
-              ← Назад
-            </button>
+            {/* Кнопки действий */}
+            <div className="mt-6 px-4 pb-6">
+              <div className="flex gap-2">
+                {!isEditing ? (
+                  isAdmin ? (
+                    <button
+                      onClick={() => setIsEditing(true)}
+                      className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-medium"
+                      style={{ minHeight: '48px', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
+                    >
+                      Редактировать
+                    </button>
+                  ) : null
+                ) : (
+                  <>
+                    <button
+                      onClick={handleSave}
+                      disabled={isSaving}
+                      className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 text-sm font-medium"
+                      style={{ minHeight: '48px', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
+                    >
+                      {isSaving ? 'Сохранение...' : 'Сохранить'}
+                    </button>
+                    <button
+                      onClick={handleCancel}
+                      className="flex-1 px-4 py-2.5 bg-gray-500 text-white rounded-lg hover:bg-gray-600 text-sm font-medium"
+                      style={{ minHeight: '48px', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
+                    >
+                      Отмена
+                    </button>
+                  </>
+                )}
+                <button
+                  onPointerUp={onClose}
+                  className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium"
+                  style={{ minHeight: '48px', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
+                >
+                  Назад
+                </button>
+              </div>
+            </div>
           </div>
-        </footer>
+        </main>
       </div>
     </>
   );
