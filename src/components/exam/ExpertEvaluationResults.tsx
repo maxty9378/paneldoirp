@@ -68,6 +68,10 @@ interface ExpertEvaluationResultsProps {
 
 const ExpertEvaluationResults: React.FC<ExpertEvaluationResultsProps> = ({ examEventId }) => {
   const { userProfile } = useAuth();
+  
+  // Отладочная информация
+  console.log('ExpertEvaluationResults - userProfile:', userProfile);
+  console.log('ExpertEvaluationResults - userProfile.role:', userProfile?.role);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [caseEvaluations, setCaseEvaluations] = useState<CaseEvaluation[]>([]);
   const [diagnosticGameEvaluations, setDiagnosticGameEvaluations] = useState<DiagnosticGameEvaluation[]>([]);
@@ -127,11 +131,11 @@ const ExpertEvaluationResults: React.FC<ExpertEvaluationResultsProps> = ({ examE
 
       setParticipants(participantsList);
 
-      // Загружаем всех экспертов из базы данных
+      // Загружаем всех экспертов и администраторов из базы данных
       const { data: expertsData, error: expertsError } = await supabase
         .from('users')
         .select('id, full_name, email')
-        .eq('role', 'expert');
+        .in('role', ['expert', 'administrator']);
 
       if (expertsError) {
         console.warn('Ошибка загрузки экспертов:', expertsError);
@@ -358,18 +362,27 @@ const ExpertEvaluationResults: React.FC<ExpertEvaluationResultsProps> = ({ examE
                        type === 'project' ? 'project_defense_evaluations' :
                        'diagnostic_game_evaluations';
 
+      console.log('Удаляем оценку:', { evaluationId, type, tableName });
+
       const { error } = await supabase
         .from(tableName)
         .delete()
         .eq('id', evaluationId);
 
-      if (error) throw error;
+      console.log('Результат удаления:', { error });
 
+      if (error) {
+        console.error('Ошибка Supabase при удалении:', error);
+        throw error;
+      }
+
+      console.log('Оценка успешно удалена, обновляем данные...');
+      
       // Обновляем локальное состояние
       await fetchEvaluationData();
     } catch (err) {
       console.error('Ошибка удаления оценки:', err);
-      setError('Не удалось удалить оценку');
+      setError(`Не удалось удалить оценку: ${err instanceof Error ? err.message : 'Неизвестная ошибка'}`);
     }
   };
 
@@ -418,26 +431,9 @@ const ExpertEvaluationResults: React.FC<ExpertEvaluationResultsProps> = ({ examE
 
   // Функция для получения оценок участника от конкретного эксперта
   const getParticipantEvaluationsByExpert = (evaluations: any[], participantId: string, evaluatorId: string) => {
-    const found = evaluations.filter(evaluation => 
+    return evaluations.filter(evaluation => 
       evaluation.reservist_id === participantId && evaluation.evaluator_id === evaluatorId
     );
-    
-    // Отладка для конкретной записи
-    if (evaluatorId === 'f10774ae-754d-4b44-92a4-a57a2ece733c') {
-      console.log('Ищем оценки для участника:', participantId, 'эксперта:', evaluatorId);
-      console.log('Все оценки:', evaluations.map(e => ({
-        id: e.id,
-        reservist_id: e.reservist_id,
-        evaluator_id: e.evaluator_id,
-        criteria_scores: e.criteria_scores
-      })));
-      console.log('Найдено оценок:', found.length);
-      if (found.length > 0) {
-        console.log('Первая найденная оценка:', found[0]);
-      }
-    }
-    
-    return found;
   };
 
   // Компонент для редактирования оценок
@@ -789,15 +785,6 @@ const ExpertEvaluationResults: React.FC<ExpertEvaluationResultsProps> = ({ examE
                 {evaluators.map(evaluator => {
                   const evaluations = getParticipantEvaluationsByExpert(projectDefenseEvaluations, participant.id, evaluator.id);
                   
-                  // Отладка для конкретной записи
-                  if (evaluator.id === 'f10774ae-754d-4b44-92a4-a57a2ece733c' && participant.id === 'dfcee232-69ee-4ddf-a561-8f2b6e244edd') {
-                    console.log('Отображение в таблице для участника:', participant.id, 'эксперта:', evaluator.id);
-                    console.log('Найдено оценок:', evaluations.length);
-                    if (evaluations.length > 0) {
-                      console.log('Отображаем оценку:', evaluations[0]);
-                    }
-                  }
-                  
                   return (
                     <td key={evaluator.id} className="px-1 py-2 text-center">
                       {evaluations.length > 0 ? (
@@ -808,7 +795,14 @@ const ExpertEvaluationResults: React.FC<ExpertEvaluationResultsProps> = ({ examE
                                 <div className="text-gray-500 text-xs">
                                   Защита проекта
                                 </div>
-                                {userProfile?.role === 'administrator' && (
+                                {(() => {
+                                  console.log('Проверяем условие отображения кнопок для project evaluation:', {
+                                    userProfileRole: userProfile?.role,
+                                    isAdministrator: userProfile?.role === 'administrator',
+                                    evaluationId: evaluation.id
+                                  });
+                                  return userProfile?.role === 'administrator';
+                                })() && (
                                   <div className="flex space-x-1">
                                     <button
                                       onClick={() => startEditing(evaluation, 'project')}
@@ -818,7 +812,10 @@ const ExpertEvaluationResults: React.FC<ExpertEvaluationResultsProps> = ({ examE
                                       <Edit2 className="h-3 w-3" />
                                     </button>
                                     <button
-                                      onClick={() => deleteEvaluation(evaluation.id, 'project')}
+                                      onClick={() => {
+                                        console.log('Кнопка удаления нажата для project evaluation:', evaluation.id);
+                                        deleteEvaluation(evaluation.id, 'project');
+                                      }}
                                       className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
                                       title="Удалить оценку"
                                     >
@@ -914,7 +911,14 @@ const ExpertEvaluationResults: React.FC<ExpertEvaluationResultsProps> = ({ examE
                                 <div className="text-gray-500 text-xs">
                                   Диагностическая игра
                                 </div>
-                                {userProfile?.role === 'administrator' && (
+                                {(() => {
+                                  console.log('Проверяем условие отображения кнопок для diagnostic evaluation:', {
+                                    userProfileRole: userProfile?.role,
+                                    isAdministrator: userProfile?.role === 'administrator',
+                                    evaluationId: evaluation.id
+                                  });
+                                  return userProfile?.role === 'administrator';
+                                })() && (
                                   <div className="flex space-x-1">
                                     <button
                                       onClick={() => startEditing(evaluation, 'diagnostic')}
@@ -924,7 +928,10 @@ const ExpertEvaluationResults: React.FC<ExpertEvaluationResultsProps> = ({ examE
                                       <Edit2 className="h-3 w-3" />
                                     </button>
                                     <button
-                                      onClick={() => deleteEvaluation(evaluation.id, 'diagnostic')}
+                                      onClick={() => {
+                                        console.log('Кнопка удаления нажата для diagnostic evaluation:', evaluation.id);
+                                        deleteEvaluation(evaluation.id, 'diagnostic');
+                                      }}
                                       className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
                                       title="Удалить оценку"
                                     >
