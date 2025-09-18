@@ -449,7 +449,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
       bottom: 0 !important;
       margin: 0 !important;
       padding: 0 !important;
-      z-index: 9998 !important;
+      z-index: 10002 !important;
       background: white !important;
     }
     
@@ -460,7 +460,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
       left: 0 !important;
       right: 0 !important;
       bottom: 0 !important;
-      z-index: 9998 !important;
+      z-index: 10002 !important;
       background: white !important;
     }
     
