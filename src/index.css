@@ -374,6 +374,18 @@ body.mobile-menu-open {
   }
 }
 
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
 @keyframes float {
   0%, 100% {
     transform: translateY(0px);
@@ -401,6 +413,12 @@ body.mobile-menu-open {
 
 .animate-float {
   animation: float 3s ease-in-out infinite;
+}
+
+.animate-gradient-shift {
+  background: linear-gradient(45deg, #3B82F6, #06B6D4, #3B82F6, #1D4ED8);
+  background-size: 300% 300%;
+  animation: gradient-shift 4s ease-in-out infinite;
 }
 
 /* Стеклянный морфизм */

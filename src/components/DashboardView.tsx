@@ -30,12 +30,12 @@ function EventCard({ event }: { event: EventWithDetails }) {
   
   // Статус мероприятия
   const STATUS_MAP = {
-    draft: { label: '', tone: 'text-white bg-slate-500', ring: 'ring-slate-500', dot: 'bg-slate-500', Icon: Pause },
-    published: { label: '', tone: 'text-white bg-emerald-500', ring: 'ring-emerald-500', dot: 'bg-emerald-500', Icon: Play },
-    active: { label: 'Активно', tone: 'text-emerald-700 bg-emerald-50', ring: 'ring-emerald-200', dot: 'bg-emerald-500', Icon: () => <div className="h-3.5 w-3.5 rounded bg-emerald-500" /> },
-    ongoing: { label: 'Идёт', tone: 'text-indigo-700 bg-indigo-50', ring: 'ring-indigo-200', dot: 'bg-indigo-500', Icon: Loader2 },
-    completed: { label: '', tone: 'text-white bg-blue-500', ring: 'ring-blue-500', dot: 'bg-blue-500', Icon: CheckCircle2 },
-    cancelled: { label: '', tone: 'text-white bg-rose-500', ring: 'ring-rose-500', dot: 'bg-rose-500', Icon: XCircle },
+    draft: { label: '', tone: 'text-slate-600 bg-slate-100', ring: 'ring-slate-200', dot: 'bg-slate-400', Icon: Pause },
+    published: { label: '', tone: 'text-[#06A478] bg-[#06A478]/10', ring: 'ring-[#06A478]/20', dot: 'bg-[#06A478]', Icon: Play },
+    active: { label: 'Активно', tone: 'text-[#06A478] bg-[#06A478]/10', ring: 'ring-[#06A478]/20', dot: 'bg-[#06A478]', Icon: () => <div className="h-3.5 w-3.5 rounded-full bg-[#06A478]" /> },
+    ongoing: { label: 'Идёт', tone: 'text-blue-600 bg-blue-50', ring: 'ring-blue-200', dot: 'bg-blue-500', Icon: Loader2 },
+    completed: { label: '', tone: 'text-slate-600 bg-slate-100', ring: 'ring-slate-200', dot: 'bg-slate-400', Icon: CheckCircle2 },
+    cancelled: { label: '', tone: 'text-rose-600 bg-rose-50', ring: 'ring-rose-200', dot: 'bg-rose-400', Icon: XCircle },
   };
   
   const status = STATUS_MAP[event.status as keyof typeof STATUS_MAP] || STATUS_MAP.draft;
@@ -52,29 +52,37 @@ function EventCard({ event }: { event: EventWithDetails }) {
   
   const typeInfo = event.type
     ? TYPE_LABELS[event.type as keyof typeof TYPE_LABELS] || { label: event.event_type?.name_ru || 'Мероприятие', icon: Info }
-    : { label: event.event_type?.name_ru || 'Мероприятие', icon: Info };
+    : { 
+        label: event.event_type?.name === 'exam_talent_reserve' ? 'Экзамен' : (event.event_type?.name_ru || 'Мероприятие'), 
+        icon: event.event_type?.name === 'exam_talent_reserve' ? CheckCircle2 : Info 
+      };
   
   const TypeIcon = typeInfo.icon;
   
   // Цветовые классы для типа
-  const getTypeChipClasses = (type: string) => {
+  const getTypeChipClasses = (type: string, eventTypeName?: string) => {
+    // Специальная обработка для экзамена кадрового резерва
+    if (eventTypeName === 'exam_talent_reserve') {
+      return 'animate-gradient-shift text-white ring-0 shadow-lg';
+    }
+    
     const typeColors = {
-      training: 'bg-blue-500 text-white ring-blue-500',
-      webinar: 'bg-blue-100 text-blue-700 ring-blue-200',
-      workshop: 'bg-purple-100 text-purple-700 ring-purple-200',
-      exam: 'bg-rose-100 text-rose-700 ring-rose-200',
-      other: 'bg-amber-100 text-amber-700 ring-amber-200',
+      training: 'bg-blue-50 text-blue-700 ring-blue-200',
+      webinar: 'bg-indigo-50 text-indigo-700 ring-indigo-200',
+      workshop: 'bg-purple-50 text-purple-700 ring-purple-200',
+      exam: 'bg-rose-50 text-rose-700 ring-rose-200',
+      other: 'bg-amber-50 text-amber-700 ring-amber-200',
     };
-    return typeColors[type as keyof typeof typeColors] || 'bg-slate-100 text-slate-700 ring-slate-200';
+    return typeColors[type as keyof typeof typeColors] || 'bg-slate-50 text-slate-700 ring-slate-200';
   };
   
   // Акцент даты
   const DateAccent = ({ date }: { date: Date | null }) => {
     if (!date) {
       return (
-        <div className="rounded-xl bg-slate-50 px-4 py-3 text-center ring-1 ring-slate-200">
-          <div className="text-[11px] text-slate-500">Дата</div>
-          <div className="text-sm font-semibold text-slate-700">Не указана</div>
+        <div className="rounded-2xl bg-slate-50/80 backdrop-blur-sm px-4 py-3 text-center border border-slate-200/50">
+          <div className="text-[11px] text-slate-500 font-medium">Дата</div>
+          <div className="text-sm font-semibold text-slate-600">Не указана</div>
         </div>
       );
     }
@@ -87,12 +95,12 @@ function EventCard({ event }: { event: EventWithDetails }) {
     const monthWithCorrectEnding = month.endsWith('ь') ? month.slice(0, -1) + 'я' : month;
 
     return (
-      <div className="rounded-2xl ring-1 px-4 py-3 bg-gradient-to-br from-emerald-50 to-emerald-100 ring-emerald-200 shadow-sm text-center relative">
+      <div className="rounded-2xl border border-[#06A478]/20 px-4 py-3 bg-gradient-to-br from-[#06A478]/5 to-[#06A478]/10 backdrop-blur-sm text-center relative shadow-sm">
         <div className="flex items-end justify-center gap-1 leading-none">
-          <span className="text-3xl md:text-4xl font-extrabold text-slate-900">{day}</span>
+          <span className="text-2xl md:text-3xl font-bold text-slate-900">{day}</span>
         </div>
-        <div className="mt-1 text-[14px] font-medium text-slate-500">{monthWithCorrectEnding}</div>
-        <div className="mt-2 text-[12px] font-semibold text-slate-900">
+        <div className="mt-1 text-[12px] font-medium text-slate-600">{monthWithCorrectEnding}</div>
+        <div className="mt-2 text-[11px] font-semibold text-slate-700">
           {time}
         </div>
       </div>
@@ -101,7 +109,7 @@ function EventCard({ event }: { event: EventWithDetails }) {
   
   return (
     <article
-      className="group relative overflow-hidden rounded-2xl bg-white border border-white/60 p-4 shadow-[0_1px_2px_rgba(2,8,23,0.06)] hover:shadow-[0_10px_30px_rgba(2,8,23,0.08)] transition-all flex flex-col h-full"
+      className="group relative overflow-hidden rounded-3xl bg-white/80 backdrop-blur-sm border border-slate-200/50 p-5 shadow-sm hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-300 flex flex-col h-full hover:scale-[1.02] hover:border-slate-300/60"
     >
       {/* Верх: дата-время + статус/тип */}
       <header className="mb-3 flex items-start justify-between gap-3 flex-shrink-0">
@@ -110,6 +118,14 @@ function EventCard({ event }: { event: EventWithDetails }) {
             {/* Статус */}
             <div className="flex flex-wrap items-center gap-2">
               {(() => {
+                const { userProfile } = useAuth();
+                const isExpert = userProfile?.role === 'expert';
+                
+                // Для экспертов не показываем статус
+                if (isExpert) {
+                  return null;
+                }
+                
                 const isIconOnly = !label;
                 const badgeClass = `inline-flex items-center gap-1 text-[10px] font-semibold ring-1 shadow-sm ${
                   isIconOnly ? 'h-7 w-7 justify-center rounded-lg p-0' : 'rounded-full px-2 py-0.5'
@@ -127,7 +143,7 @@ function EventCard({ event }: { event: EventWithDetails }) {
             
             {/* Тип мероприятия */}
             <div className="flex items-center gap-2">
-              <span className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1 text-[11px] font-semibold ring-1 shadow-sm ${getTypeChipClasses(event.type || 'other')}`}>
+              <span className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1 text-[11px] font-semibold ring-1 shadow-sm ${getTypeChipClasses(event.type || 'other', event.event_type?.name)}`}>
                 <TypeIcon className="h-3.5 w-3.5" />
                 {typeInfo.label}
               </span>
@@ -135,7 +151,7 @@ function EventCard({ event }: { event: EventWithDetails }) {
           </div>
 
           {/* Название */}
-          <h3 className="line-clamp-2 text-lg font-bold leading-tight text-slate-900">
+          <h3 className="text-lg font-bold leading-tight text-slate-900">
             {event.title}
           </h3>
         </div>
@@ -149,8 +165,8 @@ function EventCard({ event }: { event: EventWithDetails }) {
       {/* Описание */}
       <div className="flex-1">
         {event.description && (
-          <div className="mb-4 rounded-xl bg-slate-50/70 p-3 ring-1 ring-slate-200">
-            <p className="line-clamp-3 text-sm leading-relaxed text-slate-700">
+          <div className="mb-4 rounded-2xl bg-slate-50/60 backdrop-blur-sm p-4 border border-slate-200/40">
+            <p className="line-clamp-3 text-sm leading-relaxed text-slate-600">
               {event.description}
             </p>
           </div>
@@ -171,11 +187,10 @@ function EventCard({ event }: { event: EventWithDetails }) {
             return (
               <button 
                 onClick={() => window.location.href = `/expert-exam/${event.id}`}
-                className="w-full justify-center relative overflow-hidden bg-gradient-to-r from-[#06A478] via-[#059669] to-[#06A478] hover:from-[#059669] hover:via-[#047857] hover:to-[#059669] text-white font-medium py-2.5 px-4 rounded-lg transition-all duration-300 shadow-sm hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#06A478] focus:ring-offset-2"
+                className="w-full justify-center relative overflow-hidden bg-gradient-to-r from-[#06A478] to-[#059669] hover:from-[#059669] hover:to-[#047857] text-white font-medium py-3 px-4 rounded-2xl transition-all duration-300 shadow-sm hover:shadow-md hover:shadow-[#06A478]/25 focus:outline-none focus:ring-2 focus:ring-[#06A478]/20 focus:ring-offset-2 group"
                 title="Перейти к оценке"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-[shimmer_3s_ease-in-out_infinite]"></div>
-                <span className="text-sm font-medium relative z-10">Перейти к оценке</span>
+                <span className="text-sm font-medium relative z-10 group-hover:scale-105 transition-transform duration-200">Перейти к оценке</span>
               </button>
             );
           }
@@ -185,37 +200,26 @@ function EventCard({ event }: { event: EventWithDetails }) {
             return (
               <button 
                 onClick={() => window.location.href = `/expert-exam/${event.id}`}
-                className="w-full justify-center relative overflow-hidden bg-gradient-to-r from-[#06A478] via-[#059669] to-[#06A478] hover:from-[#059669] hover:via-[#047857] hover:to-[#059669] text-white font-medium py-2.5 px-4 rounded-lg transition-all duration-300 shadow-sm hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#06A478] focus:ring-offset-2"
+                className="w-full justify-center relative overflow-hidden bg-gradient-to-r from-[#06A478] to-[#059669] hover:from-[#059669] hover:to-[#047857] text-white font-medium py-3 px-4 rounded-2xl transition-all duration-300 shadow-sm hover:shadow-md hover:shadow-[#06A478]/25 focus:outline-none focus:ring-2 focus:ring-[#06A478]/20 focus:ring-offset-2 group"
                 title="Перейти к оценке"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-[shimmer_3s_ease-in-out_infinite]"></div>
-                <span className="text-sm font-medium relative z-10">Перейти к оценке</span>
+                <span className="text-sm font-medium relative z-10 group-hover:scale-105 transition-transform duration-200">Перейти к оценке</span>
               </button>
             );
           }
           
-          // Для экспертов все мероприятия ведут на страницу эксперта
+          // Для экспертов не показываем кнопку
           if (isExpert) {
-            return (
-              <button 
-                onClick={() => window.location.href = `/expert-exam/36520f72-c191-4e32-ba02-aa17c482c50b`}
-                className="w-full justify-center relative overflow-hidden bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-600 hover:via-teal-600 hover:to-emerald-700 text-white font-medium py-2.5 px-4 rounded-lg transition-all duration-300 shadow-sm hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
-                title="Открыть"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-[shimmer_3s_ease-in-out_infinite]"></div>
-                <span className="text-sm font-medium relative z-10">Открыть</span>
-              </button>
-            );
+            return null;
           }
           
           return (
             <button 
               onClick={() => window.location.href = `/event/${event.id}`}
-              className="w-full justify-center relative overflow-hidden bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-600 hover:via-teal-600 hover:to-emerald-700 text-white font-medium py-2.5 px-4 rounded-lg transition-all duration-300 shadow-sm hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+              className="w-full justify-center relative overflow-hidden bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white font-medium py-3 px-4 rounded-2xl transition-all duration-300 shadow-sm hover:shadow-md hover:shadow-slate-500/25 focus:outline-none focus:ring-2 focus:ring-slate-500/20 focus:ring-offset-2 group"
               title="Открыть"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-[shimmer_3s_ease-in-out_infinite]"></div>
-              <span className="text-sm font-medium relative z-10">Открыть</span>
+              <span className="text-sm font-medium relative z-10 group-hover:scale-105 transition-transform duration-200">Открыть</span>
             </button>
           );
         })()}
@@ -486,26 +490,26 @@ export function DashboardView() {
   return (
     <div className="space-y-6 pb-24 md:pb-8 pb-safe-bottom">
       {/* Welcome Section */}
-      <section className="bg-gradient-to-r from-sns-500 to-sns-600 rounded-2xl p-5 sm:p-8 text-white shadow-md relative overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+      <section className="bg-gradient-to-br from-[#06A478] via-[#059669] to-[#047857] rounded-3xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold mb-1">
-              {getGreeting()}, {extractFirstName(userProfile?.full_name || 'Пользователь')}!
+            <h1 className="text-xl sm:text-2xl font-semibold mb-2 text-white">
+              {getGreeting()}, {extractFirstName(userProfile?.full_name || 'Пользователь')}
             </h1>
-            <p className="text-white/90 text-base sm:text-lg mb-2">
+            <p className="text-white/90 text-sm sm:text-base mb-3 leading-relaxed">
               {motivationalMessage}
             </p>
-            <div className="flex items-center space-x-2 text-white/80 text-sm">
-              <Shield size={16} />
-              <span>
-                Роль: {userProfile?.role ? USER_ROLE_LABELS[userProfile.role] : 'Не определена'}
+            <div className="flex items-center space-x-2 text-white/80 text-xs">
+              <Shield size={14} />
+              <span className="font-medium">
+                Ваша роль - {userProfile?.role ? USER_ROLE_LABELS[userProfile.role] : 'Не определена'}
               </span>
             </div>
           </div>
-          <div className="flex flex-wrap gap-4 mt-2 sm:mt-0">
-            <div className="flex items-center space-x-2">
-              <Calendar size={20} />
-              <span>
+          <div className="flex items-center space-x-3 mt-2 sm:mt-0">
+            <div className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm rounded-xl px-3 py-2 border border-white/30">
+              <Calendar size={16} className="text-white/90" />
+              <span className="text-sm font-medium text-white">
                 {new Date().toLocaleDateString('ru-RU', {
                   weekday: 'short',
                   day: 'numeric',
@@ -515,8 +519,10 @@ export function DashboardView() {
             </div>
           </div>
         </div>
-        {/* Декоративный круг для красоты */}
-        <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-white/10 rounded-full pointer-events-none" />
+        {/* Декоративные элементы */}
+        <div className="absolute -top-4 -right-4 w-24 h-24 bg-white/10 rounded-full pointer-events-none" />
+        <div className="absolute -bottom-6 -left-6 w-32 h-32 bg-white/5 rounded-full pointer-events-none" />
+        <div className="absolute top-1/2 -right-8 w-16 h-16 bg-white/5 rounded-full pointer-events-none" />
       </section>
 
       {/* Stats Grid */}
@@ -556,7 +562,7 @@ export function DashboardView() {
       {/* <AchievementSection /> */}
 
       {/* Upcoming Events as Cards */}
-      <section>
+      <section className="mt-4">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
             Ближайшие мероприятия
@@ -565,59 +571,56 @@ export function DashboardView() {
             <button 
               onClick={() => fetchUserEvents(true)}
               disabled={eventsLoading}
-              className="text-sns-500 hover:text-sns-600 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 text-slate-400 hover:text-slate-600 transition-colors text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed bg-slate-50/50 hover:bg-slate-100/80 px-2 py-1.5 rounded-lg border border-slate-200/60 hover:border-slate-300/80"
             >
-              <RefreshCw className={`w-4 h-4 inline mr-1 ${eventsLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${eventsLoading ? 'animate-spin' : ''}`} />
               Обновить
-            </button>
-            <button className="text-sns-500 hover:text-sns-600 transition-colors text-sm font-medium">
-              Смотреть все
             </button>
           </div>
         </div>
         
         {eventsLoading ? (
-          <div className="flex items-center justify-center py-8">
+          <div className="flex items-center justify-center py-12 mb-32 md:mb-20">
             <div className="flex flex-col items-center">
-              <div className="w-8 h-8 border-4 border-sns-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-              <p className="text-gray-600">Загрузка мероприятий...</p>
+              <div className="w-8 h-8 border-3 border-[#06A478] border-t-transparent rounded-full animate-spin mb-4"></div>
+              <p className="text-slate-600 font-medium">Загрузка мероприятий...</p>
             </div>
           </div>
         ) : eventsError ? (
-          <div className="text-center py-8">
+          <div className="text-center py-12 mb-32 md:mb-20">
             <XCircle className="mx-auto text-red-500 mb-4" size={48} />
-            <p className="text-red-600 mb-4">{eventsError}</p>
-            <div className="flex flex-col sm:flex-row gap-2 justify-center">
+            <p className="text-red-600 mb-4 font-medium">{eventsError}</p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <button 
                 onClick={() => fetchUserEvents(true)}
-                className="inline-flex items-center px-4 py-2 bg-sns-500 text-white rounded-lg hover:bg-sns-600 transition-colors text-sm font-medium"
+                className="inline-flex items-center px-4 py-2 bg-[#06A478] text-white rounded-2xl hover:bg-[#059669] transition-colors text-sm font-medium shadow-sm hover:shadow-md"
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Попробовать снова
               </button>
               <button 
                 onClick={() => fetchUserEvents()}
-                className="inline-flex items-center px-4 py-2 text-sns-500 border border-sns-500 rounded-lg hover:bg-sns-50 transition-colors text-sm font-medium"
+                className="inline-flex items-center px-4 py-2 text-slate-600 border border-slate-300 rounded-2xl hover:bg-slate-50 transition-colors text-sm font-medium"
               >
                 Загрузить из кэша
               </button>
             </div>
           </div>
         ) : upcomingEvents.length === 0 ? (
-          <div className="text-center py-8">
-            <BookOpen size={48} className="mx-auto text-gray-400 mb-4" />
-            <p className="text-gray-600 mb-2">У вас пока нет предстоящих мероприятий</p>
-            <p className="text-sm text-gray-500 mb-4">Обратитесь к администратору для записи на мероприятия</p>
+          <div className="text-center py-12 mb-32 md:mb-20">
+            <BookOpen size={48} className="mx-auto text-slate-400 mb-4" />
+            <p className="text-slate-600 mb-2 font-medium">У вас пока нет предстоящих мероприятий</p>
+            <p className="text-sm text-slate-500 mb-6">Обратитесь к администратору для записи на мероприятия</p>
             <button 
               onClick={() => fetchUserEvents(true)}
-              className="inline-flex items-center px-4 py-2 text-sns-500 border border-sns-500 rounded-lg hover:bg-sns-50 transition-colors text-sm font-medium"
+              className="inline-flex items-center px-4 py-2 text-slate-600 border border-slate-300 rounded-2xl hover:bg-slate-50 transition-colors text-sm font-medium"
             >
               <RefreshCw className="w-4 h-4 mr-2" />
               Обновить
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-32 md:mb-20 mt-4 md:mt-0" style={{ lineHeight: '1.2' }}>
             {upcomingEvents.map((event) => (
               <EventCard key={event.id} event={event} />
             ))}
