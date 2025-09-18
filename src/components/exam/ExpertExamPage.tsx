@@ -224,6 +224,7 @@ const ExpertExamPage: React.FC = () => {
           location,
           start_date,
           end_date,
+          detailed_schedule,
           event_types (*),
           talent_category: talent_categories (*)
         `)
