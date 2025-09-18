@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
-import { Calendar, Clock, MapPin, Users, ArrowLeft, ChevronRight, Loader2, AlertOctagon, RefreshCw } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, ArrowLeft, ChevronRight, Loader2, AlertOctagon, RefreshCw, UserPlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import AddReservistToScheduleModal from './AddReservistToScheduleModal';
 
 interface DetailedScheduleItem {
   id?: string;
@@ -48,6 +49,8 @@ const ExpertSchedulePage: React.FC = () => {
   const [exams, setExams] = useState<ExamEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showAddReservistModal, setShowAddReservistModal] = useState(false);
+  const [selectedExam, setSelectedExam] = useState<ExamEvent | null>(null);
 
   useEffect(() => {
     console.log('🔄 useEffect triggered:', {
@@ -195,6 +198,16 @@ const ExpertSchedulePage: React.FC = () => {
     }
   };
 
+  const handleAddReservist = (exam: ExamEvent) => {
+    setSelectedExam(exam);
+    setShowAddReservistModal(true);
+  };
+
+  const handleReservistAdded = () => {
+    // Обновляем данные после добавления резервиста
+    fetchExpertExams();
+  };
+
 
   // Отладочная информация
   console.log('🔍 ExpertSchedulePage render:', {
@@ -267,6 +280,20 @@ const ExpertSchedulePage: React.FC = () => {
                 </div>
               </div>
             </div>
+            
+            {/* Кнопка добавления резервиста для администраторов */}
+            {userProfile?.role === 'administrator' && exams.length > 0 && (
+              <button
+                onClick={() => handleAddReservist(exams[0])}
+                className="px-4 py-2 text-white rounded-lg transition-all duration-200 font-semibold text-sm flex items-center gap-2 shadow-lg hover:shadow-xl active:scale-[0.98]"
+                style={{ 
+                  background: 'linear-gradient(to right, #06A478, #059669)',
+                }}
+              >
+                <UserPlus className="w-4 h-4" />
+                Добавить резервиста
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -426,6 +453,18 @@ const ExpertSchedulePage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Модальное окно добавления резервиста */}
+      {selectedExam && (
+        <AddReservistToScheduleModal
+          isOpen={showAddReservistModal}
+          onClose={() => setShowAddReservistModal(false)}
+          examId={selectedExam.id}
+          examTitle={selectedExam.title}
+          scheduleItems={selectedExam.detailed_schedule || []}
+          onSuccess={handleReservistAdded}
+        />
+      )}
     </div>
   );
 };

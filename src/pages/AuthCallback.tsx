@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { isIOS, getOptimizedTimeouts, optimizedDelay } from '../utils/mobileOptimization';
 
 // Расширяем window для флага обработки
 declare global {
@@ -32,9 +33,12 @@ export default function AuthCallback() {
         console.log('Search params:', window.location.search);
         console.log('Hash params:', window.location.hash);
         
+        // Получаем оптимизированные настройки
+        const timeouts = getOptimizedTimeouts();
+        
         // Добавляем общий таймаут для всего процесса
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Auth callback timeout after 15 seconds')), 15000)
+          setTimeout(() => reject(new Error(`Auth callback timeout after ${timeouts.authTimeout/1000} seconds`)), timeouts.authTimeout)
         );
         
         const authPromise = (async () => {
@@ -195,6 +199,10 @@ export default function AuthCallback() {
               window.authCallbackProcessing = false; // сбросить флаг до ухода
               
               console.log('🚀 Auth successful, staying on page...');
+              
+              // Используем оптимизированную задержку перед завершением
+              await optimizedDelay(timeouts.sessionDelay);
+              
               // Убираем принудительный редирект - пусть React Router обработает переход
               return;
             }

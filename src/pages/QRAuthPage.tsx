@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Loader2, CheckCircle, AlertCircle, ShieldCheck, QrCode } from 'lucide-react';
+import { ShieldCheck, QrCode } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { isIOS, getOptimizedTimeouts, getMobileHeaders, optimizedDelay } from '../utils/mobileOptimization';
+import { QRStatusIndicator } from '../components/QRStatusIndicator';
 
 type Status = 'loading' | 'success' | 'error';
 type Step = 'qr' | 'auth' | 'profile';
@@ -56,9 +58,13 @@ export default function QRAuthPage() {
       }
 
       try {
+        // Получаем оптимизированные настройки
+        const timeouts = getOptimizedTimeouts();
+        const mobileHeaders = getMobileHeaders();
+        
         // шаг 1: запрос к edge-функции
         safeSet(setStep, 'qr');
-        safeSet(setMessage, 'Проверяем токен доступа…');
+        safeSet(setMessage, isIOS ? 'Проверяем токен…' : 'Проверяем токен доступа…');
 
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
         const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -69,16 +75,23 @@ export default function QRAuthPage() {
         abortRef.current?.abort();
         abortRef.current = new AbortController();
 
-        const res = await fetch(`${supabaseUrl}/functions/v1/auth-by-qr-token`, {
+        // Используем оптимизированные таймауты
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Превышено время ожидания')), timeouts.fetchTimeout)
+        );
+
+        const fetchPromise = fetch(`${supabaseUrl}/functions/v1/auth-by-qr-token`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
+            ...mobileHeaders,
             'apikey': anonKey,
             'Authorization': `Bearer ${anonKey}`,
           },
           body: JSON.stringify({ token }),
           signal: abortRef.current.signal,
         });
+
+        const res = await Promise.race([fetchPromise, timeoutPromise]) as Response;
 
         if (!res.ok) {
           let errBody: any = {};
@@ -100,13 +113,15 @@ export default function QRAuthPage() {
 
         // шаг 2: авторизация
         safeSet(setStep, 'auth');
-        safeSet(setMessage, 'Подтверждаем вход…');
+        safeSet(setMessage, isIOS ? 'Входим в систему…' : 'Подтверждаем вход…');
 
         // включим глобальный флаг, чтобы App/useAuth не дёргали профиль
         (window as any).authCallbackProcessing = true;
 
         if (data.redirectUrl) {
           // magic-link – редиректим, на той стороне /auth/callback скушает токены
+          // Используем оптимизированную задержку
+          await optimizedDelay(timeouts.sessionDelay);
           window.location.replace(data.redirectUrl);
           return;
         } else if (data.accessToken && data.refreshToken) {
@@ -121,12 +136,15 @@ export default function QRAuthPage() {
           safeSet(setMessage, 'Готово! Перенаправляем…');
 
           try { window.history.replaceState({}, '', '/'); } catch {}
-          setTimeout(() => navigate('/'), 600);
+          // Используем оптимизированную задержку
+          setTimeout(() => navigate('/'), timeouts.redirectDelay);
           return;
         } else if (data.action_link) {
+          await optimizedDelay(timeouts.sessionDelay);
           window.location.replace(data.action_link);
           return;
         } else if (data.url) {
+          await optimizedDelay(timeouts.sessionDelay);
           window.location.replace(data.url);
           return;
         } else {
@@ -151,18 +169,6 @@ export default function QRAuthPage() {
   }, [token]);
 
   const isLoading = status === 'loading';
-  const icon =
-    status === 'error' ? <AlertCircle className="mx-auto text-red-500" size={48} /> :
-    status === 'success' ? <CheckCircle className="mx-auto text-emerald-400" size={48} /> :
-    <Loader2 className="mx-auto animate-spin text-emerald-400" size={40} />;
-
-  const title =
-    status === 'error' ? 'Не удалось войти' :
-    status === 'success' ? 'Авторизация успешна' :
-    step === 'qr' ? 'Проверяем QR-токен' :
-    step === 'auth' ? 'Подтверждаем вход' :
-    'Загружаем профиль';
-
   const progress = isLoading ? (step === 'qr' ? 30 : step === 'auth' ? 70 : 100) : 100;
 
   // expert-режим — если путь /auth/qr/*
@@ -207,29 +213,25 @@ export default function QRAuthPage() {
           </div>
 
           {/* основной блок */}
-          <div className="flex flex-col items-center gap-5 py-4">
-            <div className="h-14 w-14 rounded-2xl bg-white/5 flex items-center justify-center">
-              {icon}
-            </div>
+          <QRStatusIndicator 
+            status={status}
+            step={step}
+            message={message}
+            isIOS={isIOS}
+          />
 
-            <div className="text-center">
-              <h2 className="text-xl font-medium">{title}</h2>
-              <p className="mt-1 text-white/70 text-sm">{message}</p>
-            </div>
-
-            <div className="w-full mt-2">
-              <ProgressBar value={progress} />
-            </div>
-
-            {status === 'error' && (
-              <button
-                onClick={() => navigate('/')}
-                className="mt-2 inline-flex items-center justify-center rounded-xl bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/20 transition-colors"
-              >
-                На главную
-              </button>
-            )}
+          <div className="w-full mt-2">
+            <ProgressBar value={progress} />
           </div>
+
+          {status === 'error' && (
+            <button
+              onClick={() => navigate('/')}
+              className="mt-4 inline-flex items-center justify-center rounded-xl bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/20 transition-colors"
+            >
+              На главную
+            </button>
+          )}
 
           {/* подсказка для экспертов */}
           {isExpert && status === 'loading' && (
