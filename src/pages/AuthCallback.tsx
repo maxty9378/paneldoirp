@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 // Расширяем window для флага обработки
@@ -10,7 +9,6 @@ declare global {
 }
 
 export default function AuthCallback() {
-  const navigate = useNavigate();
   const once = useRef(false);
 
   useEffect(() => {
@@ -31,7 +29,7 @@ export default function AuthCallback() {
           console.log('✅ AuthCallback: User already authenticated:', session.user.email);
           console.log('🔄 AuthCallback: Redirecting to home without processing tokens');
           window.authCallbackProcessing = false;
-          navigate('/');
+          window.location.href = '/';
           return;
         }
         
@@ -125,18 +123,10 @@ export default function AuthCallback() {
       console.log('🔄 AuthCallback: softHome() called');
       // Снимаем флаг обработки перед навигацией
       window.authCallbackProcessing = false;
-      console.log('🔄 AuthCallback: Flag cleared, about to navigate');
-      // Немедленное перенаправление без задержек
-      navigate('/');
-      console.log('🔄 AuthCallback: navigate() called');
-      
-      // Дополнительная страховка - сбрасываем флаг через таймаут
-      setTimeout(() => {
-        if (window.authCallbackProcessing) {
-          console.log('🔄 AuthCallback: Force clearing flag after timeout');
-          window.authCallbackProcessing = false;
-        }
-      }, 1000);
+      console.log('🔄 AuthCallback: Flag cleared, about to reload');
+      // Простая перезагрузка страницы вместо navigate()
+      window.location.href = '/';
+      console.log('🔄 AuthCallback: location.href set');
     }
 
     function hardHome() {
@@ -147,16 +137,8 @@ export default function AuthCallback() {
       // аварийно разруливаем возможные «полупроводы»
       window.location.replace('/');
       console.log('🔄 AuthCallback: location.replace() called');
-      
-      // Дополнительная страховка - сбрасываем флаг через таймаут
-      setTimeout(() => {
-        if (window.authCallbackProcessing) {
-          console.log('🔄 AuthCallback: Force clearing flag after timeout');
-          window.authCallbackProcessing = false;
-        }
-      }, 1000);
     }
-  }, [navigate]);
+  }, []); // Убираем navigate из зависимостей, так как используем window.location
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
