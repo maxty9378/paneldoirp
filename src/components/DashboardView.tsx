@@ -89,7 +89,11 @@ function EventCard({ event }: { event: EventWithDetails }) {
 
     const day = date.toLocaleDateString('ru-RU', { day: '2-digit' });
     const month = date.toLocaleDateString('ru-RU', { month: 'long' });
-    const time = new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit' }).format(date);
+    const time = new Intl.DateTimeFormat('ru-RU', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      timeZone: 'Europe/Moscow'
+    }).format(date);
     
     // Исправляем окончания месяцев
     const monthWithCorrectEnding = month.endsWith('ь') ? month.slice(0, -1) + 'я' : month;
