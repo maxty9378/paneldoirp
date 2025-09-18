@@ -320,6 +320,7 @@ export const DossierModal: React.FC<DossierModalProps> = ({
             </div>
             <div className="flex items-center gap-4">
               <button
+                onClick={onClose}
                 onPointerUp={onClose}
                 className="p-2 rounded-lg hover:bg-gray-50 active:bg-gray-100"
                 aria-label="Закрыть"
@@ -693,7 +694,6 @@ export const DossierModal: React.FC<DossierModalProps> = ({
               </div>
             </div>
           )}
-        </main>
 
             {/* Кнопки действий */}
             <div className="mt-6 px-4 pb-6">
@@ -728,6 +728,7 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                   </>
                 )}
                 <button
+                  onClick={onClose}
                   onPointerUp={onClose}
                   className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium"
                   style={{ minHeight: '48px', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
