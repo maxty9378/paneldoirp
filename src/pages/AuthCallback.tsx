@@ -2,6 +2,13 @@ import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
+// Расширяем window для флага обработки
+declare global {
+  interface Window {
+    authCallbackProcessing?: boolean;
+  }
+}
+
 export default function AuthCallback() {
   const navigate = useNavigate();
   const once = useRef(false);
@@ -9,6 +16,9 @@ export default function AuthCallback() {
   useEffect(() => {
     if (once.current) return;
     once.current = true;
+
+    // Устанавливаем флаг обработки
+    window.authCallbackProcessing = true;
 
     (async () => {
       try {
@@ -84,11 +94,15 @@ export default function AuthCallback() {
     }
 
     function softHome() {
-      // даём движку дописать сессию, потом SPA-перенаправление
-      requestAnimationFrame(() => navigate('/'));
+      // Снимаем флаг обработки перед навигацией
+      window.authCallbackProcessing = false;
+      // Немедленное перенаправление без задержек
+      navigate('/');
     }
 
     function hardHome() {
+      // Снимаем флаг обработки
+      window.authCallbackProcessing = false;
       // аварийно разруливаем возможные «полупроводы»
       window.location.replace('/');
     }

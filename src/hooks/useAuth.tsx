@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { getUserFromCache, cacheUserProfile, clearUserCache, isCachedUserValid } from '../lib/userCache';
 import { Session } from '@supabase/supabase-js';
@@ -92,7 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       fetchUserProfile(session.user.id, { foreground: false })
         .catch(e => console.warn('post-auth bg fetch failed', e));
     }
-  }, [session?.user, userProfile]);
+  }, [session?.user, userProfile, fetchUserProfile]);
 
   // Обработчик для восстановления сессии при возвращении в приложение
   useEffect(() => {
@@ -248,7 +248,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 
   // Главная функция профиля — single-flight + backoff + длинный timeout
-  const fetchUserProfile = async (userId: string, {foreground = true}: {foreground?: boolean} = {}) => {
+  const fetchUserProfile = useCallback(async (userId: string, {foreground = true}: {foreground?: boolean} = {}) => {
     if (!userId) {
       setAuthError('Не удалось получить ID пользователя');
       setLoading(false);
@@ -382,7 +382,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     inFlightProfile.current = runner;
     await runner;
-  };
+  }, [isAuthFlowPath]);
 
   // Retry mechanism
   const retryFetchProfile = async () => {
