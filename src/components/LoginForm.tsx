@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, Loader2, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { QuickLoginModal } from './QuickLoginModal';
+import { hasCachedUsers } from '../lib/userCache';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -11,6 +13,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showQuickLogin, setShowQuickLogin] = useState(false);
 
   const { signIn, user, loading, authError } = useAuth();
   
@@ -38,6 +41,13 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
     }
     
     setIsSubmitting(false);
+  };
+
+  const handleQuickLogin = async (email: string, password: string) => {
+    const result = await signIn(email, password);
+    if (!result.error && onSuccess) {
+      onSuccess();
+    }
   };
 
   if (showSuccessScreen) {
@@ -173,6 +183,30 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           </div>
         </form>
 
+        {/* Быстрый вход */}
+        {hasCachedUsers() && (
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">или</span>
+              </div>
+            </div>
+            
+            <button
+              type="button"
+              data-quick-login
+              onClick={() => setShowQuickLogin(true)}
+              className="mt-4 w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#06A478] focus:ring-offset-2 transition-all duration-200"
+            >
+              <Clock className="h-5 w-5 mr-2 text-[#06A478]" />
+              <span>Быстрый вход</span>
+            </button>
+          </div>
+        )}
+
         {/* Футер */}
         <div className="mt-8 text-center">
           <p className="text-xs text-gray-500">
@@ -190,6 +224,13 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           </div>
         </div>
       </div>
+
+      {/* Модальное окно быстрого входа */}
+      <QuickLoginModal
+        isOpen={showQuickLogin}
+        onClose={() => setShowQuickLogin(false)}
+        onLogin={handleQuickLogin}
+      />
     </div>
   );
 }

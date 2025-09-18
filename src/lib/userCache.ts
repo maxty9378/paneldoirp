@@ -1,64 +1,110 @@
-// Create a function to get cached user profile with validation
-export const getUserFromCache = () => {
-  try {
-    const cachedProfile = localStorage.getItem('sns-user-profile');
-    if (cachedProfile) {
-      const user = JSON.parse(cachedProfile);
-      // Проверяем, что кэш не устарел (максимум 24 часа)
-      const cacheTime = localStorage.getItem('sns-user-profile-time');
-      if (cacheTime) {
-        const timeDiff = Date.now() - parseInt(cacheTime);
-        const maxAge = 24 * 60 * 60 * 1000; // 24 часа
-        if (timeDiff > maxAge) {
-          console.log('User profile cache expired, clearing');
-          clearUserCache();
-          return null;
-        }
-      }
-      console.log('User profile loaded from cache:', user.id);
-      return user;
-    }
-  } catch (e) {
-    console.warn('Failed to get user profile from cache:', e);
-    clearUserCache(); // Очищаем поврежденный кэш
-  }
-  return null;
-};
+interface CachedUser {
+  id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  last_sign_in_at: string;
+  avatar_url?: string;
+}
 
-// Create a function to store user profile in cache with timestamp
-export const cacheUserProfile = (user: any) => {
+const CACHED_USERS_KEY = 'cached_users';
+const MAX_CACHED_USERS = 5; // Максимум 5 сохраненных пользователей
+
+export function saveUserToCache(user: CachedUser): void {
   try {
-    const userData = {
+    const cached = localStorage.getItem(CACHED_USERS_KEY);
+    let users: CachedUser[] = cached ? JSON.parse(cached) : [];
+    
+    // Удаляем пользователя, если он уже есть
+    users = users.filter(u => u.id !== user.id);
+    
+    // Добавляем пользователя в начало списка
+    users.unshift({
       ...user,
-      _cachedAt: Date.now()
-    };
-    localStorage.setItem('sns-user-profile', JSON.stringify(userData));
-    localStorage.setItem('sns-user-profile-time', Date.now().toString());
-    console.log('User profile cached successfully', user.id);
-  } catch (e) {
-    console.warn('Failed to cache user profile:', e);
+      last_sign_in_at: new Date().toISOString()
+    });
+    
+    // Ограничиваем количество сохраненных пользователей
+    if (users.length > MAX_CACHED_USERS) {
+      users = users.slice(0, MAX_CACHED_USERS);
+    }
+    
+    localStorage.setItem(CACHED_USERS_KEY, JSON.stringify(users));
+  } catch (error) {
+    console.error('Ошибка сохранения пользователя в кэш:', error);
   }
-};
+}
 
-// Create a function to clear user profile cache
-export const clearUserCache = () => {
+export function getCachedUsers(): CachedUser[] {
   try {
-    // Also clear other caches
-    localStorage.removeItem('sns-admin-data-cache');
-    localStorage.removeItem('sns-user-profile');
-    localStorage.removeItem('sns-user-profile-time');
-    console.log('User profile cache cleared');
-  } catch (e) {
-    console.warn('Failed to clear user profile cache:', e);
+    const cached = localStorage.getItem(CACHED_USERS_KEY);
+    if (cached) {
+      const users = JSON.parse(cached);
+      // Сортируем по дате последнего входа (новые сверху)
+      return users.sort((a: CachedUser, b: CachedUser) => 
+        new Date(b.last_sign_in_at).getTime() - new Date(a.last_sign_in_at).getTime()
+      );
+    }
+  } catch (error) {
+    console.error('Ошибка загрузки кэшированных пользователей:', error);
   }
-};
+  return [];
+}
 
-// Create a function to check if cached user is still valid
-export const isCachedUserValid = (user: any) => {
-  if (!user || !user.id) return false;
+export function removeUserFromCache(userId: string): void {
+  try {
+    const cached = localStorage.getItem(CACHED_USERS_KEY);
+    if (cached) {
+      const users = JSON.parse(cached);
+      const filteredUsers = users.filter((user: CachedUser) => user.id !== userId);
+      localStorage.setItem(CACHED_USERS_KEY, JSON.stringify(filteredUsers));
+    }
+  } catch (error) {
+    console.error('Ошибка удаления пользователя из кэша:', error);
+  }
+}
+
+export function clearUserCache(): void {
+  try {
+    localStorage.removeItem(CACHED_USERS_KEY);
+  } catch (error) {
+    console.error('Ошибка очистки кэша пользователей:', error);
+  }
+}
+
+export function hasCachedUsers(): boolean {
+  const users = getCachedUsers();
+  return users.length > 0;
+}
+
+// Функции для совместимости с существующим кодом
+export function getUserFromCache(userId: string): CachedUser | null {
+  const users = getCachedUsers();
+  return users.find(user => user.id === userId) || null;
+}
+
+export function cacheUserProfile(user: any): void {
+  if (user && user.id && user.email && user.full_name) {
+    saveUserToCache({
+      id: user.id,
+      email: user.email,
+      full_name: user.full_name,
+      role: user.role || 'employee',
+      last_sign_in_at: new Date().toISOString(),
+      avatar_url: user.avatar_url
+    });
+  }
+}
+
+export function isCachedUserValid(user: CachedUser): boolean {
+  if (!user || !user.id || !user.email || !user.full_name) {
+    return false;
+  }
   
-  // Проверяем, что у пользователя есть основные поля
-  const requiredFields = ['id', 'full_name', 'role', 'subdivision', 'status'];
-  return requiredFields.every(field => user[field] !== undefined && user[field] !== null);
-};
+  // Проверяем, что пользователь был активен не более 30 дней назад
+  const lastSignIn = new Date(user.last_sign_in_at);
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   
+  return lastSignIn > thirtyDaysAgo;
+}

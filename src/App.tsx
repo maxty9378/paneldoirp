@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './hooks/useAuth';
 import { supabase } from './lib/supabase';
 import { Layout } from './components/Layout';
 import { LoginForm } from './components/LoginForm';
+import { hasCachedUsers } from './lib/userCache';
 import { CreateEventModal } from './components/events/CreateEventModal';
 import { DashboardView } from './components/DashboardView';
 import { AdminView } from './components/AdminView';
@@ -56,6 +57,7 @@ function AppContent() {
     retryFetchProfile
   } = useAuth();
   const [showCreateEventModal, setShowCreateEventModal] = useState(false);
+  const [showQuickLoginOnLogout, setShowQuickLoginOnLogout] = useState(false);
   const navigate = useNavigate();
 
   // Логика для показа глобального оверлея - упрощенная
@@ -66,6 +68,20 @@ function AppContent() {
     (loadingPhase === 'initializing') ||
     (loadingPhase === 'session-fetch') ||
     (loadingPhase === 'auth-change');
+
+  // Показываем модальное окно быстрого входа при разлогинивании, если есть сохраненные пользователи
+  useEffect(() => {
+    if (!user && !loading && hasCachedUsers() && !isAuthFlow) {
+      // Небольшая задержка, чтобы пользователь увидел, что он разлогинился
+      const timer = setTimeout(() => {
+        setShowQuickLoginOnLogout(true);
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    } else {
+      setShowQuickLoginOnLogout(false);
+    }
+  }, [user, loading, isAuthFlow]);
 
   // Проверяем magic link параметры и перенаправляем на callback
   useEffect(() => {
@@ -393,6 +409,63 @@ function AppContent() {
         }}
         editingEvent={editingEvent}
       />
+      
+      {/* Модальное окно быстрого входа при разлогинивании */}
+      {showQuickLoginOnLogout && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-2">
+                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                    <span className="text-blue-600 text-sm font-bold">👋</span>
+                  </div>
+                  <h3 className="text-lg font-semibold">Быстрый вход</h3>
+                </div>
+                <button
+                  onClick={() => setShowQuickLoginOnLogout(false)}
+                  className="text-gray-400 hover:text-gray-600 text-xl font-bold"
+                >
+                  ×
+                </button>
+              </div>
+              
+              <div className="text-center mb-6">
+                <p className="text-gray-600 mb-4">
+                  Вы вышли из системы. Хотите войти снова?
+                </p>
+                <p className="text-sm text-gray-500">
+                  Выберите аккаунт для быстрого входа или войдите заново
+                </p>
+              </div>
+              
+              <div className="space-y-3">
+                <button
+                  onClick={() => {
+                    setShowQuickLoginOnLogout(false);
+                    // Показываем модальное окно быстрого входа из LoginForm
+                    const quickLoginBtn = document.querySelector('[data-quick-login]') as HTMLButtonElement;
+                    if (quickLoginBtn) {
+                      quickLoginBtn.click();
+                    }
+                  }}
+                  className="w-full flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <span className="mr-2">⚡</span>
+                  Выбрать из сохраненных
+                </button>
+                
+                <button
+                  onClick={() => setShowQuickLoginOnLogout(false)}
+                  className="w-full px-4 py-3 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Войти заново
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
     </>
   );

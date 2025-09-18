@@ -420,13 +420,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession(null);
     setRetryCount(0);
     setLoadingPhase('reset');
-    clearUserCache();
     
-    // Очищаем весь localStorage и sessionStorage
+    // Очищаем sessionStorage, но сохраняем кэш пользователей для быстрого входа
     try {
-      localStorage.clear();
+      // Сохраняем кэш пользователей перед очисткой
+      const cachedUsers = localStorage.getItem('cached_users');
+      
+      // Очищаем sessionStorage полностью
       sessionStorage.clear();
-      console.log('🧹 Cleared localStorage and sessionStorage');
+      
+      // Очищаем localStorage, но восстанавливаем кэш пользователей
+      localStorage.clear();
+      
+      if (cachedUsers) {
+        localStorage.setItem('cached_users', cachedUsers);
+        console.log('💾 Сохранили кэш пользователей для быстрого входа');
+      }
+      
+      console.log('🧹 Cleared sessionStorage, preserved user cache');
     } catch (error) {
       console.warn('⚠️ Could not clear storage:', error);
     }
@@ -466,6 +477,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         console.log('✅ Email sign in success');
         setAuthError(null);
+        
+        // Сохраняем пользователя в кэш для быстрого входа
+        if (result.data?.user) {
+          cacheUserProfile(result.data.user);
+        }
+        
         return result;
       } else {
         // SAP авторизация
@@ -503,6 +520,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         console.log('✅ SAP sign in success');
         setAuthError(null);
+        
+        // Сохраняем пользователя в кэш для быстрого входа
+        if (result.data?.user) {
+          cacheUserProfile(result.data.user);
+        }
+        
         return result;
       }
     } catch (error: any) {
@@ -537,18 +560,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // 1) Сначала разлогиниваем на сервере
     const result = await supabase.auth.signOut();
 
-    // 2) После успешного ответа — чистим состояние и кэш
+    // 2) После успешного ответа — чистим состояние, но сохраняем кэш пользователей
     setUser(null);
     setUserProfile(null);
     setSession(null);
     setAuthError(null);
     setRetryCount(0);
     setLoadingPhase('logged-out');
-    clearUserCache();
     
+    // Сохраняем кэш пользователей перед очисткой
     try {
-      localStorage.clear();
+      const cachedUsers = localStorage.getItem('cached_users');
+      
+      // Очищаем sessionStorage полностью
       sessionStorage.clear();
+      
+      // Очищаем localStorage, но восстанавливаем кэш пользователей
+      localStorage.clear();
+      
+      if (cachedUsers) {
+        localStorage.setItem('cached_users', cachedUsers);
+        console.log('💾 Сохранили кэш пользователей для быстрого входа');
+      }
+      
+      console.log('🧹 Cleared sessionStorage, preserved user cache');
     } catch (e) {
       console.warn('⚠️ Could not clear storage:', e);
     }

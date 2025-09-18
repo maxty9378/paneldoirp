@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Отладка кэша быстрого входа</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        .log { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 3px; font-family: monospace; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h1>Отладка кэша быстрого входа</h1>
+    
+    <div class="section">
+        <h3>1. Проверка текущего кэша</h3>
+        <button onclick="checkCache()">Проверить кэш</button>
+        <div id="cacheResult" class="log"></div>
+    </div>
+
+    <div class="section">
+        <h3>2. Добавить тестового пользователя</h3>
+        <button onclick="addTestUser()">Добавить тестового пользователя</button>
+        <div id="addResult" class="log"></div>
+    </div>
+
+    <div class="section">
+        <h3>3. Симуляция выхода из системы</h3>
+        <button onclick="simulateLogout()">Симулировать выход</button>
+        <div id="logoutResult" class="log"></div>
+    </div>
+
+    <div class="section">
+        <h3>4. Очистка кэша</h3>
+        <button onclick="clearCache()">Очистить кэш</button>
+        <div id="clearResult" class="log"></div>
+    </div>
+
+    <script>
+        function log(elementId, message, isError = false) {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const className = isError ? 'error' : 'success';
+            element.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function checkCache() {
+            const resultDiv = document.getElementById('cacheResult');
+            resultDiv.innerHTML = '';
+            
+            try {
+                const cached = localStorage.getItem('cached_users');
+                if (cached) {
+                    const users = JSON.parse(cached);
+                    log('cacheResult', `✅ Найдено пользователей в кэше: ${users.length}`);
+                    users.forEach((user, i) => {
+                        log('cacheResult', `${i + 1}. ${user.full_name} (${user.email}) - ${user.role}`);
+                    });
+                } else {
+                    log('cacheResult', '❌ Кэш пуст', true);
+                }
+            } catch (error) {
+                log('cacheResult', `❌ Ошибка чтения кэша: ${error.message}`, true);
+            }
+        }
+
+        function addTestUser() {
+            const resultDiv = document.getElementById('addResult');
+            resultDiv.innerHTML = '';
+            
+            try {
+                const testUser = {
+                    id: 'test-user-' + Date.now(),
+                    email: 'test@example.com',
+                    full_name: 'Тестовый Пользователь',
+                    role: 'employee',
+                    last_sign_in_at: new Date().toISOString(),
+                    avatar_url: null
+                };
+                
+                const cached = localStorage.getItem('cached_users');
+                let users = cached ? JSON.parse(cached) : [];
+                
+                // Удаляем если уже есть
+                users = users.filter(u => u.id !== testUser.id);
+                
+                // Добавляем в начало
+                users.unshift(testUser);
+                
+                // Ограничиваем количество
+                if (users.length > 10) {
+                    users = users.slice(0, 10);
+                }
+                
+                localStorage.setItem('cached_users', JSON.stringify(users));
+                log('addResult', `✅ Тестовый пользователь добавлен: ${testUser.full_name}`);
+                log('addResult', `📊 Всего пользователей в кэше: ${users.length}`);
+                
+            } catch (error) {
+                log('addResult', `❌ Ошибка: ${error.message}`, true);
+            }
+        }
+
+        function simulateLogout() {
+            const resultDiv = document.getElementById('logoutResult');
+            resultDiv.innerHTML = '';
+            
+            try {
+                log('logoutResult', '🔄 Симулируем выход из системы...');
+                
+                // Сохраняем кэш пользователей перед очисткой
+                const cachedUsers = localStorage.getItem('cached_users');
+                log('logoutResult', `💾 Сохранено пользователей перед очисткой: ${cachedUsers ? JSON.parse(cachedUsers).length : 0}`);
+                
+                // Очищаем sessionStorage
+                sessionStorage.clear();
+                log('logoutResult', '🧹 sessionStorage очищен');
+                
+                // Очищаем localStorage
+                localStorage.clear();
+                log('logoutResult', '🧹 localStorage очищен');
+                
+                // Восстанавливаем кэш пользователей
+                if (cachedUsers) {
+                    localStorage.setItem('cached_users', cachedUsers);
+                    const restoredUsers = JSON.parse(cachedUsers);
+                    log('logoutResult', `✅ Кэш пользователей восстановлен: ${restoredUsers.length} пользователей`);
+                    restoredUsers.forEach((user, i) => {
+                        log('logoutResult', `${i + 1}. ${user.full_name} (${user.email})`);
+                    });
+                } else {
+                    log('logoutResult', '❌ Нечего восстанавливать - кэш был пуст', true);
+                }
+                
+            } catch (error) {
+                log('logoutResult', `❌ Ошибка: ${error.message}`, true);
+            }
+        }
+
+        function clearCache() {
+            const resultDiv = document.getElementById('clearResult');
+            resultDiv.innerHTML = '';
+            
+            try {
+                localStorage.removeItem('cached_users');
+                log('clearResult', '✅ Кэш очищен');
+            } catch (error) {
+                log('clearResult', `❌ Ошибка: ${error.message}`, true);
+            }
+        }
+
+        // Проверяем кэш при загрузке страницы
+        window.onload = function() {
+            checkCache();
+        };
+    </script>
+</body>
+</html>

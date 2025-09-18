@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест быстрого входа</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        .log { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 3px; font-family: monospace; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h1>Тест функционала быстрого входа</h1>
+    
+    <div class="test-section">
+        <h3>1. Тест сохранения пользователя в кэш</h3>
+        <button onclick="testSaveUser()">Сохранить тестового пользователя</button>
+        <div id="saveResult" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>2. Тест загрузки кэшированных пользователей</h3>
+        <button onclick="testLoadUsers()">Загрузить пользователей</button>
+        <div id="loadResult" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>3. Тест удаления пользователя</h3>
+        <button onclick="testRemoveUser()">Удалить первого пользователя</button>
+        <div id="removeResult" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>4. Очистка кэша</h3>
+        <button onclick="testClearCache()">Очистить весь кэш</button>
+        <div id="clearResult" class="log"></div>
+    </div>
+
+    <script>
+        // Имитируем функции из userCache.ts
+        function saveUserToCache(user) {
+            try {
+                const cached = localStorage.getItem('cached_users');
+                let users = cached ? JSON.parse(cached) : [];
+                
+                // Удаляем пользователя, если он уже есть
+                users = users.filter(u => u.id !== user.id);
+                
+                // Добавляем пользователя в начало списка
+                users.unshift({
+                    ...user,
+                    last_sign_in_at: new Date().toISOString()
+                });
+                
+                // Ограничиваем количество сохраненных пользователей
+                if (users.length > 5) {
+                    users = users.slice(0, 5);
+                }
+                
+                localStorage.setItem('cached_users', JSON.stringify(users));
+                return true;
+            } catch (error) {
+                console.error('Ошибка сохранения пользователя в кэш:', error);
+                return false;
+            }
+        }
+
+        function getCachedUsers() {
+            try {
+                const cached = localStorage.getItem('cached_users');
+                if (cached) {
+                    const users = JSON.parse(cached);
+                    return users.sort((a, b) => 
+                        new Date(b.last_sign_in_at).getTime() - new Date(a.last_sign_in_at).getTime()
+                    );
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки кэшированных пользователей:', error);
+            }
+            return [];
+        }
+
+        function removeUserFromCache(userId) {
+            try {
+                const cached = localStorage.getItem('cached_users');
+                if (cached) {
+                    const users = JSON.parse(cached);
+                    const filteredUsers = users.filter(user => user.id !== userId);
+                    localStorage.setItem('cached_users', JSON.stringify(filteredUsers));
+                    return true;
+                }
+            } catch (error) {
+                console.error('Ошибка удаления пользователя из кэша:', error);
+            }
+            return false;
+        }
+
+        function clearUserCache() {
+            try {
+                localStorage.removeItem('cached_users');
+                return true;
+            } catch (error) {
+                console.error('Ошибка очистки кэша пользователей:', error);
+            }
+            return false;
+        }
+
+        function log(elementId, message, isError = false) {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const className = isError ? 'error' : 'success';
+            element.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function testSaveUser() {
+            const resultDiv = document.getElementById('saveResult');
+            resultDiv.innerHTML = '';
+            
+            const testUser = {
+                id: 'test-user-' + Date.now(),
+                email: 'test@example.com',
+                full_name: 'Тестовый Пользователь',
+                role: 'employee',
+                avatar_url: null
+            };
+            
+            const success = saveUserToCache(testUser);
+            if (success) {
+                log('saveResult', `✅ Пользователь сохранен: ${testUser.full_name} (${testUser.email})`);
+            } else {
+                log('saveResult', '❌ Ошибка сохранения пользователя', true);
+            }
+        }
+
+        function testLoadUsers() {
+            const resultDiv = document.getElementById('loadResult');
+            resultDiv.innerHTML = '';
+            
+            const users = getCachedUsers();
+            if (users.length > 0) {
+                log('loadResult', `✅ Найдено пользователей: ${users.length}`);
+                users.forEach((user, i) => {
+                    log('loadResult', `${i + 1}. ${user.full_name} (${user.email}) - ${user.role}`);
+                });
+            } else {
+                log('loadResult', '❌ Нет сохраненных пользователей', true);
+            }
+        }
+
+        function testRemoveUser() {
+            const resultDiv = document.getElementById('removeResult');
+            resultDiv.innerHTML = '';
+            
+            const users = getCachedUsers();
+            if (users.length > 0) {
+                const userToRemove = users[0];
+                const success = removeUserFromCache(userToRemove.id);
+                if (success) {
+                    log('removeResult', `✅ Пользователь удален: ${userToRemove.full_name}`);
+                } else {
+                    log('removeResult', '❌ Ошибка удаления пользователя', true);
+                }
+            } else {
+                log('removeResult', '❌ Нет пользователей для удаления', true);
+            }
+        }
+
+        function testClearCache() {
+            const resultDiv = document.getElementById('clearResult');
+            resultDiv.innerHTML = '';
+            
+            const success = clearUserCache();
+            if (success) {
+                log('clearResult', '✅ Кэш очищен');
+            } else {
+                log('clearResult', '❌ Ошибка очистки кэша', true);
+            }
+        }
+
+        // Загружаем пользователей при загрузке страницы
+        window.onload = function() {
+            testLoadUsers();
+        };
+    </script>
+</body>
+</html>

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Calendar, Users, BookOpen, TrendingUp, Award, Shield, MapPin, Link as LinkIcon, Video, CalendarDays, Users2, CheckCircle2, Info, Play, Pause, Loader2, XCircle } from 'lucide-react';
+import { Calendar, Users, BookOpen, TrendingUp, Award, Shield, MapPin, Link as LinkIcon, Video, CalendarDays, Users2, CheckCircle2, Info, Play, Pause, Loader2, XCircle, RefreshCw } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { getDeclension } from '../utils/textUtils';
+import { getCachedEvents, setCachedEvents, clearEventsCache } from '../lib/eventsCache';
 import { Event, USER_ROLE_LABELS } from '../types';
 import { supabase } from '../lib/supabase';
 // import { AchievementSection } from './achievements';
@@ -300,29 +301,32 @@ export function DashboardView() {
     return messages[Math.floor(Math.random() * messages.length)];
   }, [userProfile?.role]); // Пересчитываем только при изменении роли
 
-  // Загрузка мероприятий пользователя
-  const fetchUserEvents = async () => {
-    if (!user?.id) return;
+  // Загрузка мероприятий пользователя с кэшированием
+  const fetchUserEvents = async (forceRefresh = false) => {
+    if (!user?.id || !userProfile?.role) return;
     
     try {
+      // Проверяем кэш, если не принудительное обновление
+      if (!forceRefresh) {
+        const cachedEvents = getCachedEvents(user.id, userProfile.role);
+        if (cachedEvents) {
+          setUpcomingEvents(cachedEvents);
+          setEventsLoading(false);
+          setEventsError(null);
+          return;
+        }
+      }
+
       setEventsLoading(true);
       setEventsError(null);
 
       const isAdmin = userProfile?.role && ['administrator', 'moderator', 'trainer'].includes(userProfile.role);
       const isExpert = userProfile?.role === 'expert';
       
-      // Сначала проверим, есть ли вообще мероприятия в базе
-      const { data: allEvents, error: allEventsError } = await supabase
-        .from('events')
-        .select('id, title, status, start_date')
-        .limit(5);
-      
-      console.log('All events check - data:', allEvents, 'error:', allEventsError);
-      
       let query;
       
       if (isAdmin) {
-        // Администраторы видят все мероприятия (как в EventsView)
+        // Администраторы видят все мероприятия
         query = supabase
           .from('events')
           .select(`
@@ -364,14 +368,10 @@ export function DashboardView() {
 
       console.log('Dashboard fetchEvents - isAdmin:', isAdmin, 'user:', user?.id, 'userProfile:', userProfile?.role);
       console.log('Dashboard fetchEvents - data length:', data?.length, 'data:', data, 'error:', error);
-      
-      if (data && data.length > 0) {
-        console.log('First event sample:', data[0]);
-      }
 
       if (error) {
         console.error('Error fetching events:', error);
-        setEventsError('Ошибка загрузки мероприятий');
+        setEventsError(`Ошибка загрузки мероприятий: ${error.message}`);
         return;
       }
 
@@ -388,11 +388,17 @@ export function DashboardView() {
           ...event,
           participants_count: 0 // Пока не показываем количество участников для простоты
         }));
+        
         setUpcomingEvents(eventsWithDetails);
+        // Сохраняем в кэш
+        setCachedEvents(eventsWithDetails, user.id, userProfile.role);
+      } else {
+        setUpcomingEvents([]);
+        setCachedEvents([], user.id, userProfile.role);
       }
     } catch (error) {
       console.error('Error fetching events:', error);
-      setEventsError('Ошибка загрузки мероприятий');
+      setEventsError(`Произошла ошибка: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
     } finally {
       setEventsLoading(false);
     }
@@ -459,6 +465,8 @@ export function DashboardView() {
 
   useEffect(() => {
     if (user && userProfile) {
+      // Очищаем кэш при смене пользователя
+      clearEventsCache();
       fetchUserEvents();
       fetchStats();
     }
@@ -553,9 +561,19 @@ export function DashboardView() {
           <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
             Ближайшие мероприятия
           </h2>
-          <button className="text-sns-500 hover:text-sns-600 transition-colors text-sm font-medium">
-            Смотреть все
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => fetchUserEvents(true)}
+              disabled={eventsLoading}
+              className="text-sns-500 hover:text-sns-600 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={`w-4 h-4 inline mr-1 ${eventsLoading ? 'animate-spin' : ''}`} />
+              Обновить
+            </button>
+            <button className="text-sns-500 hover:text-sns-600 transition-colors text-sm font-medium">
+              Смотреть все
+            </button>
+          </div>
         </div>
         
         {eventsLoading ? (
@@ -567,19 +585,36 @@ export function DashboardView() {
           </div>
         ) : eventsError ? (
           <div className="text-center py-8">
+            <XCircle className="mx-auto text-red-500 mb-4" size={48} />
             <p className="text-red-600 mb-4">{eventsError}</p>
-            <button 
-              onClick={fetchUserEvents}
-              className="text-sns-500 hover:text-sns-600 transition-colors text-sm font-medium"
-            >
-              Попробовать снова
-            </button>
+            <div className="flex flex-col sm:flex-row gap-2 justify-center">
+              <button 
+                onClick={() => fetchUserEvents(true)}
+                className="inline-flex items-center px-4 py-2 bg-sns-500 text-white rounded-lg hover:bg-sns-600 transition-colors text-sm font-medium"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Попробовать снова
+              </button>
+              <button 
+                onClick={() => fetchUserEvents()}
+                className="inline-flex items-center px-4 py-2 text-sns-500 border border-sns-500 rounded-lg hover:bg-sns-50 transition-colors text-sm font-medium"
+              >
+                Загрузить из кэша
+              </button>
+            </div>
           </div>
         ) : upcomingEvents.length === 0 ? (
           <div className="text-center py-8">
             <BookOpen size={48} className="mx-auto text-gray-400 mb-4" />
             <p className="text-gray-600 mb-2">У вас пока нет предстоящих мероприятий</p>
-            <p className="text-sm text-gray-500">Обратитесь к администратору для записи на мероприятия</p>
+            <p className="text-sm text-gray-500 mb-4">Обратитесь к администратору для записи на мероприятия</p>
+            <button 
+              onClick={() => fetchUserEvents(true)}
+              className="inline-flex items-center px-4 py-2 text-sns-500 border border-sns-500 rounded-lg hover:bg-sns-50 transition-colors text-sm font-medium"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Обновить
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
