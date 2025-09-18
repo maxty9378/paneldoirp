@@ -513,7 +513,6 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
         className="case-evaluation-modal fixed inset-0 z-[10002] overflow-y-auto bg-white" 
         style={{ 
           paddingTop: 'env(safe-area-inset-top, 0px)',
-          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
           pointerEvents: 'auto'
         }}
       >

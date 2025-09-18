@@ -74,8 +74,8 @@
   left: 0;
   right: 0;
   z-index: 1000;
-  /* Учитываем safe zone для iPhone */
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  /* Отступ снизу */
+  padding-bottom: 0px;
   /* Плавная анимация скрытия */
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
               opacity 0.3s ease-in-out,
@@ -101,7 +101,7 @@
 /* Дополнительная поддержка для iPhone с вырезами */
 @supports (padding: max(0px)) {
   .mobile-exam-nav-container {
-    padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px);
+    padding-bottom: 8px;
   }
 }
 

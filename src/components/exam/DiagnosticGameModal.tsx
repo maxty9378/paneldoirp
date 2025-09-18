@@ -527,7 +527,6 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
         className="case-evaluation-modal fixed inset-0 z-[10002] overflow-y-auto bg-white" 
         style={{ 
           paddingTop: 'env(safe-area-inset-top, 0px)',
-          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
           pointerEvents: 'auto'
         }}
       >
@@ -630,7 +629,7 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
         {/* Футер (sticky bottom) */}
         <footer 
           className="sticky bottom-0 z-10 border-t border-gray-100 bg-white/80 backdrop-blur-sm"
-          style={{ paddingBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))' }}
+          style={{ paddingBottom: '8px' }}
         >
           <div className="px-4 pt-3 pb-3">
             <div className="flex gap-2">

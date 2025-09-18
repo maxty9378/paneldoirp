@@ -131,7 +131,7 @@
   }
   
   .safe-area-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-bottom: 0px;
   }
   
   .safe-area-left {
@@ -188,7 +188,7 @@
   }
   
   .pb-safe-bottom {
-    padding-bottom: max(env(safe-area-inset-bottom), 0px);
+    padding-bottom: 0px;
   }
   
   .pl-safe-left {
@@ -204,7 +204,7 @@
   }
   
   .mb-safe-bottom {
-    margin-bottom: max(env(safe-area-inset-bottom), 0px);
+    margin-bottom: 0px;
   }
 }
 

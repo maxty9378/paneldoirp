@@ -69,8 +69,8 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
         display: 'flex',
         justifyContent: 'center',
         padding: '0 16px', // Боковые отступы для контейнера
-        // Дополнительные отступы для safe zone
-        paddingBottom: isHidden ? '0' : 'env(safe-area-inset-bottom, 8px)',
+        // Дополнительные отступы
+        paddingBottom: isHidden ? '0' : '8px',
       }}>
       <nav 
         className="mobile-exam-nav"

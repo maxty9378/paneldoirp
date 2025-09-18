@@ -135,8 +135,8 @@ const MobileLayout: React.FC = () => {
         // Фиксированная высота для предсказуемости
         // Если на странице оценки/досье, убираем отступ для нижнего меню
         paddingBottom: isEvaluationOrDossierPage 
-          ? 'calc(16px + env(safe-area-inset-bottom, 0px))'
-          : 'calc(80px + env(safe-area-inset-bottom, 0px))'
+          ? '16px'
+          : '80px'
       }}>
         {/* React Router будет рендерить здесь нужную страницу (ExpertExamPage и т.д.) */}
         <Outlet context={{ setIsNavHidden }} />
@@ -150,7 +150,7 @@ const MobileLayout: React.FC = () => {
             position: 'fixed',
             left: 'env(safe-area-inset-left, 0px)',
             right: 'env(safe-area-inset-right, 0px)',
-            bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+            bottom: '16px',
             zIndex: 1000,               // ниже модальных окон
             backgroundColor: 'transparent',
             // геометрия футера
