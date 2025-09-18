@@ -10,6 +10,8 @@ import { EvaluationStageModal } from './EvaluationStageModal';
 import { ProjectDefenseModal } from './ProjectDefenseModal';
 import { DiagnosticGameModal } from './DiagnosticGameModal';
 import ExpertEvaluationResults from './ExpertEvaluationResults';
+import { FloatingActionButton } from '../ui/FloatingActionButton';
+import { ScheduleModal } from './ScheduleModal';
 
 interface ExamEvent {
   id: string;
@@ -113,6 +115,7 @@ const ExpertExamPage: React.FC = () => {
   };
   
   const [activeTab, setActiveTab] = useState<'participants' | 'evaluations' | 'schedule' | 'results'>(getActiveTabFromUrl);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
 
   // Синхронизируем activeTab с URL
   useEffect(() => {
@@ -1391,6 +1394,24 @@ const ExpertExamPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Floating Action Button for Schedule */}
+      <FloatingActionButton
+        onClick={() => setShowScheduleModal(true)}
+        icon={<Calendar className="w-5 h-5" />}
+        label="Расписание"
+        position="bottom-right"
+        size="md"
+        color="primary"
+      />
+
+      {/* Schedule Modal */}
+      <ScheduleModal
+        isOpen={showScheduleModal}
+        onClose={() => setShowScheduleModal(false)}
+        schedule={exam?.detailed_schedule || []}
+        examTitle={exam?.title || 'Расписание экзамена'}
+      />
 
     </div>
   );

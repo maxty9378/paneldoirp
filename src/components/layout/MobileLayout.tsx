@@ -142,8 +142,8 @@ const MobileLayout: React.FC = () => {
         <Outlet context={{ setIsNavHidden }} />
       </main>
 
-      {/* 2. ОБЛАСТЬ НАВИГАЦИИ (ФИКСИРОВАНА) */}
-      {isMobile && !isEvaluationOrDossierPage && !isModalOpen && !isMobileMenuOpen && (
+      {/* 2. ОБЛАСТЬ НАВИГАЦИИ (ФИКСИРОВАНА) - ОТКЛЮЧЕНА */}
+      {/* {isMobile && !isEvaluationOrDossierPage && !isModalOpen && !isMobileMenuOpen && (
         <footer
           style={{
             // ДЕЛАЕМ ФИКСИРОВАННЫМ, чтобы быть НАД браузерным UI
@@ -166,7 +166,7 @@ const MobileLayout: React.FC = () => {
             userRole={userProfile?.role}
           />
         </footer>
-      )}
+      )} */}
     </div>
   );
 };
