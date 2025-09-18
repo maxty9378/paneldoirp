@@ -188,6 +188,11 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
       hasExistingEvaluation: !!existingEvaluation
     });
     
+    // Уведомляем о состоянии модального окна
+    window.dispatchEvent(new CustomEvent('modalStateChange', {
+      detail: { isOpen }
+    }));
+    
     if (isOpen && participantId && examId && user?.id) {
       loadExistingEvaluation();
     }
