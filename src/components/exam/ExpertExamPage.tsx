@@ -318,6 +318,7 @@ const ExpertExamPage: React.FC = () => {
       );
       
       console.log('✅ Участники с досье загружены:', participantsWithDossiers.length);
+      console.log('🔄 Обновляем состояние participants:', participantsWithDossiers.map(p => p.user.full_name));
       setParticipants(participantsWithDossiers);
     } catch (err) {
       console.error('Ошибка загрузки участников:', err);
@@ -468,11 +469,12 @@ const ExpertExamPage: React.FC = () => {
     try {
       console.log('🗑️ Удаляем участника из экзамена:', participantId);
       
-      const { error } = await supabase
+      const { error, count } = await supabase
         .from('event_participants')
         .delete()
         .eq('event_id', id)
-        .eq('user_id', participantId);
+        .eq('user_id', participantId)
+        .select('*', { count: 'exact' });
       
       if (error) {
         console.error('❌ Ошибка удаления участника:', error);
@@ -480,10 +482,21 @@ const ExpertExamPage: React.FC = () => {
         return;
       }
       
-      console.log('✅ Участник успешно удален');
+      console.log('✅ Участник успешно удален, удалено записей:', count);
       
-      // Обновляем список участников
+      if (count === 0) {
+        console.warn('⚠️ Участник не был найден в базе данных');
+        alert('Участник не был найден в базе данных');
+        return;
+      }
+      
+      // Принудительно обновляем список участников
+      console.log('🔄 Обновляем список участников...');
       await fetchParticipants();
+      
+      // Дополнительно обновляем состояние, если fetchParticipants не сработал
+      setParticipants(prev => prev.filter(p => p.user.id !== participantId));
+      console.log('✅ Список участников обновлен');
       
     } catch (err) {
       console.error('❌ Ошибка удаления участника:', err);
