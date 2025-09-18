@@ -155,7 +155,7 @@ function EventCard({ event }: { event: EventWithDetails }) {
           </div>
 
           {/* Название */}
-          <h3 className="text-lg font-bold leading-tight text-slate-900 whitespace-pre-line">
+          <h3 className="text-lg font-bold leading-tight text-slate-900">
             {event.title}
           </h3>
         </div>
@@ -170,7 +170,7 @@ function EventCard({ event }: { event: EventWithDetails }) {
       <div className="flex-1">
         {event.description && (
           <div className="mb-4 rounded-2xl bg-slate-50/60 backdrop-blur-sm p-4 border border-slate-200/40">
-            <p className="line-clamp-3 text-sm leading-relaxed text-slate-600">
+            <p className="line-clamp-3 text-sm leading-relaxed text-slate-600 whitespace-pre-line">
               {event.description}
             </p>
           </div>
