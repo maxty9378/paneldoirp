@@ -333,19 +333,21 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
     setSaved(false);
   };
 
-  const totalScore = useMemo(() => {
+  const getTotalScore = () => {
     const vals = Object.values(evaluation.criteria_scores).filter(v => v > 0);
     if (!vals.length) return 0;
     const avg = vals.reduce((s, v) => s + v, 0) / vals.length;
     const result = Math.round(avg * 10) / 10;
-    console.log('🔢 CaseEvaluationModal totalScore calculated:', {
+    console.log('🔢 CaseEvaluationModal getTotalScore calculated:', {
       criteria_scores: evaluation.criteria_scores,
       validScores: vals,
       average: avg,
       result
     });
     return result;
-  }, [evaluation.criteria_scores]);
+  };
+
+  const totalScore = useMemo(() => getTotalScore(), [evaluation.criteria_scores]);
 
   // Готовность к отправке считаем напрямую из критериев, без округления
   const hasAnyScore = useMemo(
@@ -375,7 +377,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
     }
 
     if (hasExistingEvaluation && !saved) {
-      console.log('🔄 Показываем подтверждение изменения существующей оценки с totalScore:', totalScore);
+      console.log('🔄 Показываем подтверждение изменения существующей оценки с totalScore:', getTotalScore());
       // Принудительно обновляем состояние перед показом модального окна
       setTimeout(() => {
         setShowChangeConfirmModal(true);
@@ -428,7 +430,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
 
       setSaved(true);
       setHasExistingEvaluation(true); // Теперь у нас есть существующая оценка
-      console.log('🎉 Показываем модальное окно успеха с totalScore:', totalScore);
+      console.log('🎉 Показываем модальное окно успеха с totalScore:', getTotalScore());
       // Принудительно обновляем состояние перед показом модального окна
       setTimeout(() => {
         setShowSuccessModal(true);
@@ -698,7 +700,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
         onEdit={handleEditEvaluation}
         participantName={participantName}
         caseNumber={caseNumber}
-        totalScore={totalScore}
+        totalScore={getTotalScore()}
         evaluationType="Решение кейса"
         onRemoveEvaluation={async () => {
           await onRemoveEvaluation?.(participantId, caseNumber);
@@ -715,7 +717,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
         }}
         participantName={participantName}
         evaluationType="Решение кейса"
-        totalScore={totalScore}
+        totalScore={getTotalScore()}
       />
       
     </>

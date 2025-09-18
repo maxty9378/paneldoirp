@@ -186,7 +186,7 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
     });
     
     if (hasExistingEvaluation && !saved) {
-      console.log('🔄 Показываем подтверждение изменения существующей оценки с totalScore:', totalScore);
+      console.log('🔄 Показываем подтверждение изменения существующей оценки с totalScore:', getTotalScore());
       setTimeout(() => {
         setShowChangeConfirmModal(true);
       }, 0);
@@ -220,7 +220,7 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
       }
 
       setSaved(true);
-      console.log('🎉 Показываем модальное окно успеха с totalScore:', totalScore);
+      console.log('🎉 Показываем модальное окно успеха с totalScore:', getTotalScore());
       setTimeout(() => {
         setShowSuccessModal(true);
       }, 0);
@@ -289,20 +289,22 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
     return '#dc2626'; // red-600
   };
 
-  const totalScore = useMemo(() => {
+  const getTotalScore = () => {
     const scores = Object.values(evaluation.criteria_scores) as number[];
     const validScores = scores.filter(s => s > 0);
     if (validScores.length === 0) return 0;
     const avg = validScores.reduce((s, x) => s + x, 0) / validScores.length;
     const result = Math.round(avg * 10) / 10;
-    console.log('🔢 ProjectDefenseModal totalScore calculated:', {
+    console.log('🔢 ProjectDefenseModal getTotalScore calculated:', {
       criteria_scores: evaluation.criteria_scores,
       validScores,
       average: avg,
       result
     });
     return result;
-  }, [evaluation.criteria_scores]);
+  };
+
+  const totalScore = useMemo(() => getTotalScore(), [evaluation.criteria_scores]);
 
   const canSave = totalScore > 0 && !saving;
   
