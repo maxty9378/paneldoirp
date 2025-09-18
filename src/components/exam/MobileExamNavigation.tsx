@@ -45,8 +45,8 @@ const MobileExamNavigation: React.FC<MobileExamNavigationProps> = ({
     {
       id: 'participants' as const,
       icon: Users,
-      label: 'Оценка',
-      count: 0 // Убираем счетчик для Оценки
+      label: 'Резервисты',
+      count: 0
     },
     {
       id: 'schedule' as const,

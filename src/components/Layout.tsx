@@ -43,6 +43,14 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
 
+  // Отправляем событие о состоянии мобильного меню
+  useEffect(() => {
+    const event = new CustomEvent('mobileMenuStateChange', {
+      detail: { isOpen: isMobileMenuOpen }
+    });
+    window.dispatchEvent(event);
+  }, [isMobileMenuOpen]);
+
   // Слушаем изменения вкладки экзамена
   useEffect(() => {
     const handleExamTabChange = (event: CustomEvent) => {

@@ -10,6 +10,12 @@ interface ModalStateChangeEvent extends CustomEvent {
   };
 }
 
+interface MobileMenuStateChangeEvent extends CustomEvent {
+  detail: {
+    isOpen: boolean;
+  };
+}
+
 // Определяем, какая вкладка активна, на основе текущего URL
 const getActiveTabFromPathname = (pathname: string) => {
   if (pathname.includes('/schedule')) return 'schedule';
@@ -23,6 +29,7 @@ const MobileLayout: React.FC = () => {
   const [isNavHidden, setIsNavHidden] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -46,6 +53,19 @@ const MobileLayout: React.FC = () => {
     
     return () => {
       window.removeEventListener('modalStateChange', handleModalStateChange as EventListener);
+    };
+  }, []);
+
+  // Слушаем события о состоянии мобильного меню
+  useEffect(() => {
+    const handleMobileMenuStateChange = (event: MobileMenuStateChangeEvent) => {
+      setIsMobileMenuOpen(event.detail.isOpen);
+    };
+
+    window.addEventListener('mobileMenuStateChange', handleMobileMenuStateChange as EventListener);
+    
+    return () => {
+      window.removeEventListener('mobileMenuStateChange', handleMobileMenuStateChange as EventListener);
     };
   }, []);
 
@@ -123,7 +143,7 @@ const MobileLayout: React.FC = () => {
       </main>
 
       {/* 2. ОБЛАСТЬ НАВИГАЦИИ (ФИКСИРОВАНА) - только на мобильных и не на страницах оценки/досье */}
-      {isMobile && !isEvaluationOrDossierPage && !isModalOpen && (
+      {isMobile && !isEvaluationOrDossierPage && !isModalOpen && !isMobileMenuOpen && (
         <footer
           style={{
             // ДЕЛАЕМ ФИКСИРОВАННЫМ, чтобы быть НАД браузерным UI

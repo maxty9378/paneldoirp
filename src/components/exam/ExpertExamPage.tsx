@@ -841,19 +841,6 @@ const ExpertExamPage: React.FC = () => {
                 Резервисты ({participants.length})
               </button>
               <button
-                onClick={() => navigate(`/expert-exam/${id}/evaluations`)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === 'evaluations'
-                    ? 'border-[#06A478] text-[#06A478]'
-                    : isDarkMode 
-                      ? 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <Star className="w-4 h-4 inline mr-2" />
-                Оценки
-              </button>
-              <button
                 onClick={() => navigate(`/expert-exam/${id}/schedule`)}
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === 'schedule'
