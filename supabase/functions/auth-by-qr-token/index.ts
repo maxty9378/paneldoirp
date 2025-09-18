@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
 }
 
 serve(async (req) => {
@@ -51,15 +51,47 @@ serve(async (req) => {
 
     console.log('🔍 Looking up QR token:', token.substring(0, 8) + '...')
 
-    // Находим активный токен
-    const { data: qrToken, error: tokenError } = await supabaseAdmin
-      .from('user_qr_tokens')
-      .select('user_id')
-      .eq('token', token)
-      .eq('is_active', true)
-      .single()
+    // Находим активный токен - используем прямой SQL запрос для обхода RLS
+    let qrToken: any = null;
+    let tokenError: any = null;
 
-    if (tokenError || !qrToken) {
+    try {
+      // Сначала пробуем RPC функцию
+      const rpcResult = await supabaseAdmin
+        .rpc('get_qr_token_user', { token_param: token })
+      
+      console.log('🔍 RPC result:', rpcResult)
+      
+      if (rpcResult.data && rpcResult.data.length > 0) {
+        qrToken = { user_id: rpcResult.data[0].user_id }
+      } else {
+        tokenError = rpcResult.error
+      }
+    } catch (e) {
+      console.log('🔄 RPC failed, trying direct query...')
+      tokenError = e
+    }
+
+    // Если RPC не работает, попробуем прямой запрос
+    if (!qrToken) {
+      console.log('🔄 Trying direct query...')
+      const directResult = await supabaseAdmin
+        .from('user_qr_tokens')
+        .select('user_id')
+        .eq('token', token)
+        .eq('is_active', true)
+        .single()
+      
+      console.log('🔍 Direct query result:', directResult)
+      
+      if (directResult.data) {
+        qrToken = directResult.data
+      } else {
+        tokenError = directResult.error
+      }
+    }
+
+    if (!qrToken || !qrToken.user_id) {
       console.error('❌ Invalid or expired token:', tokenError)
       throw new Error('Invalid or expired QR token')
     }
@@ -81,13 +113,14 @@ serve(async (req) => {
     console.log('✅ User found:', user.email)
 
     // Генерируем magic link - перенаправляем напрямую на /auth/callback
-    const finalRedirectUrl = 'https://paneldoirp.vercel.app/auth/callback'
+    const finalRedirectUrl = Deno.env.get('PUBLIC_APP_URL') || 'https://paneldoirp.vercel.app'
+    const callbackUrl = `${finalRedirectUrl}/auth/callback`
     
     const { data, error } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email: user.email!,
       options: {
-        redirectTo: finalRedirectUrl
+        redirectTo: callbackUrl
       }
     })
 
@@ -102,7 +135,7 @@ serve(async (req) => {
     // Возвращаем magic link в JSON
     const response = {
       success: true,
-      redirectUrl: data.properties?.action_link || finalRedirectUrl,
+      redirectUrl: data.properties?.action_link || callbackUrl,
       needsActivation: true
     };
     

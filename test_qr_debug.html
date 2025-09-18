@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Отладка QR авторизации</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        input { padding: 8px; margin: 5px; width: 300px; }
+        .log { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 3px; font-family: monospace; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h1>Отладка QR авторизации экспертов</h1>
+    
+    <div class="section">
+        <h3>1. Получить QR токены из базы</h3>
+        <button onclick="getQRTokens()">Получить токены</button>
+        <div id="tokensResult" class="log"></div>
+    </div>
+
+    <div class="section">
+        <h3>2. Тест авторизации по QR</h3>
+        <input type="text" id="tokenInput" placeholder="QR токен">
+        <button onclick="testQRAuth()">Тест авторизации</button>
+        <div id="authResult" class="log"></div>
+    </div>
+
+    <div class="section">
+        <h3>3. Проверка пользователей</h3>
+        <button onclick="checkUsers()">Проверить пользователей</button>
+        <div id="usersResult" class="log"></div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+        
+        const SUPABASE_URL = 'https://oaockmesooydvausfoca.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hb2NrbWVzb295ZHZhdXNmb2NhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY5NzQ4NzMsImV4cCI6MjA1MjU1MDg3M30.GhDbwgQ1cqFc4oUuPo-GaQpDY2zFACbLVniNY_OSCpTJKML3KR5D2hfWaquL2AOhG0BmCR1EYiW5d_Y4ZB2F2Q';
+        
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        function log(elementId, message, isError = false) {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const className = isError ? 'error' : 'success';
+            element.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            element.scrollTop = element.scrollHeight;
+        }
+
+        window.getQRTokens = async function() {
+            const resultDiv = document.getElementById('tokensResult');
+            resultDiv.innerHTML = '';
+            
+            try {
+                log('tokensResult', 'Получаем QR токены из базы...');
+                
+                const { data: tokens, error } = await supabase
+                    .from('user_qr_tokens')
+                    .select('token, user_id, created_at, is_active')
+                    .eq('is_active', true)
+                    .limit(10);
+                
+                if (error) {
+                    log('tokensResult', `❌ Ошибка: ${error.message}`, true);
+                    return;
+                }
+                
+                if (!tokens || tokens.length === 0) {
+                    log('tokensResult', '❌ Нет активных QR токенов в базе!', true);
+                    return;
+                }
+                
+                log('tokensResult', `✅ Найдено токенов: ${tokens.length}`);
+                
+                tokens.forEach((token, i) => {
+                    log('tokensResult', `${i + 1}. Токен: ${token.token.substring(0, 8)}... (пользователь: ${token.user_id})`);
+                });
+                
+                // Заполняем поле ввода первым токеном
+                document.getElementById('tokenInput').value = tokens[0].token;
+                
+            } catch (error) {
+                log('tokensResult', `❌ Ошибка: ${error.message}`, true);
+            }
+        };
+
+        window.testQRAuth = async function() {
+            const token = document.getElementById('tokenInput').value;
+            const resultDiv = document.getElementById('authResult');
+            resultDiv.innerHTML = '';
+
+            if (!token) {
+                log('authResult', '❌ Введите токен', true);
+                return;
+            }
+
+            try {
+                log('authResult', `Тестируем авторизацию с токеном: ${token.substring(0, 8)}...`);
+                
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/auth-by-qr-token`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    },
+                    body: JSON.stringify({ token })
+                });
+
+                log('authResult', `Статус ответа: ${response.status}`);
+                
+                const data = await response.json();
+                log('authResult', `Ответ сервера: ${JSON.stringify(data, null, 2)}`);
+                
+                if (!response.ok || !data.success) {
+                    log('authResult', `❌ Ошибка авторизации: ${data.error}`, true);
+                } else {
+                    log('authResult', `✅ Авторизация успешна!`);
+                    log('authResult', `Redirect URL: ${data.redirectUrl}`);
+                }
+            } catch (error) {
+                log('authResult', `❌ Ошибка: ${error.message}`, true);
+            }
+        };
+
+        window.checkUsers = async function() {
+            const resultDiv = document.getElementById('usersResult');
+            resultDiv.innerHTML = '';
+
+            try {
+                log('usersResult', 'Проверяем пользователей в auth.users...');
+                
+                const { data: users, error } = await supabase.auth.admin.listUsers();
+                
+                if (error) {
+                    log('usersResult', `❌ Ошибка: ${error.message}`, true);
+                    return;
+                }
+                
+                log('usersResult', `✅ Найдено пользователей: ${users.users.length}`);
+                
+                users.users.forEach((user, i) => {
+                    log('usersResult', `${i + 1}. ${user.email} (ID: ${user.id})`);
+                });
+                
+            } catch (error) {
+                log('usersResult', `❌ Ошибка: ${error.message}`, true);
+            }
+        };
+    </script>
+</body>
+</html>

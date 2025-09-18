@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест QR авторизации</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        input { padding: 8px; margin: 5px; width: 300px; }
+        .log { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 3px; font-family: monospace; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>Тест QR авторизации экспертов</h1>
+    
+    <div class="test-section">
+        <h3>1. Генерация QR токена</h3>
+        <input type="email" id="emailInput" placeholder="Email эксперта" value="doirp@sns.ru">
+        <button onclick="generateQR()">Сгенерировать QR</button>
+        <div id="qrResult" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>2. Тест авторизации по QR</h3>
+        <input type="text" id="tokenInput" placeholder="QR токен">
+        <button onclick="testQRAuth()">Тест авторизации</button>
+        <div id="authResult" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>3. Проверка сессии</h3>
+        <button onclick="checkSession()">Проверить сессию</button>
+        <div id="sessionResult" class="log"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://oaockmesooydvausfoca.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hb2NrbWVzb295ZHZhdXNmb2NhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY5NzQ4NzMsImV4cCI6MjA1MjU1MDg3M30.GhDbwgQ1cqFc4oUuPo-GaQpDY2zFACbLVniNY_OSCpTJKML3KR5D2hfWaquL2AOhG0BmCR1EYiW5d_Y4ZB2F2Q';
+
+        function log(elementId, message, isError = false) {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const className = isError ? 'error' : 'success';
+            element.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+        }
+
+        async function generateQR() {
+            const email = document.getElementById('emailInput').value;
+            const resultDiv = document.getElementById('qrResult');
+            resultDiv.innerHTML = '';
+
+            try {
+                log('qrResult', `Генерируем QR для: ${email}`);
+                
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-persistent-qr`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    },
+                    body: JSON.stringify({ email })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log('qrResult', `✅ QR сгенерирован: ${data.persistentUrl}`);
+                    log('qrResult', `Токен: ${data.token}`);
+                    document.getElementById('tokenInput').value = data.token;
+                } else {
+                    log('qrResult', `❌ Ошибка: ${data.error}`, true);
+                }
+            } catch (error) {
+                log('qrResult', `❌ Ошибка: ${error.message}`, true);
+            }
+        }
+
+        async function testQRAuth() {
+            const token = document.getElementById('tokenInput').value;
+            const resultDiv = document.getElementById('authResult');
+            resultDiv.innerHTML = '';
+
+            if (!token) {
+                log('authResult', '❌ Введите токен', true);
+                return;
+            }
+
+            try {
+                log('authResult', `Тестируем авторизацию с токеном: ${token.substring(0, 8)}...`);
+                
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/auth-by-qr-token`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    },
+                    body: JSON.stringify({ token })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    log('authResult', `✅ Авторизация успешна!`);
+                    log('authResult', `Redirect URL: ${data.redirectUrl}`);
+                    log('authResult', `Нужна активация: ${data.needsActivation}`);
+                } else {
+                    log('authResult', `❌ Ошибка авторизации: ${data.error}`, true);
+                }
+            } catch (error) {
+                log('authResult', `❌ Ошибка: ${error.message}`, true);
+            }
+        }
+
+        async function checkSession() {
+            const resultDiv = document.getElementById('sessionResult');
+            resultDiv.innerHTML = '';
+
+            try {
+                // Простая проверка через Supabase JS
+                const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+                const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                
+                const { data, error } = await supabase.auth.getSession();
+                
+                if (error) {
+                    log('sessionResult', `❌ Ошибка сессии: ${error.message}`, true);
+                } else if (data.session) {
+                    log('sessionResult', `✅ Сессия активна!`);
+                    log('sessionResult', `Пользователь: ${data.session.user.email}`);
+                    log('sessionResult', `ID: ${data.session.user.id}`);
+                } else {
+                    log('sessionResult', `❌ Нет активной сессии`);
+                }
+            } catch (error) {
+                log('sessionResult', `❌ Ошибка: ${error.message}`, true);
+            }
+        }
+    </script>
+</body>
+</html>

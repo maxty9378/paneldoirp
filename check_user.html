@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Check User</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Проверка пользователя</h1>
+    <div id="result"></div>
+    
+    <script>
+        const supabaseUrl = 'https://oaockmesooydvausfoca.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hb2NrbWVzb295ZHZhdXNmb2NhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY5NzQ4NzMsImV4cCI6MjA1MjU1MDg3M30.GhDbwgQ1cqFc4oUuPo-GaQpDY2zFACbLVniNY_OSCpTJKML3KR5D2hfWaquL2AOhG0BmCR1EYiW5d_Y4ZB2F2Q';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        
+        async function checkUser() {
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                // Проверяем сессию
+                const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+                resultDiv.innerHTML += `<p>Session: ${sessionError ? 'Error: ' + sessionError.message : 'OK'}</p>`;
+                
+                // Пробуем авторизоваться
+                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                    email: 'doirp@sns.ru',
+                    password: 'test123'
+                });
+                
+                if (authError) {
+                    resultDiv.innerHTML += `<p style="color: red;">Auth Error: ${authError.message}</p>`;
+                } else {
+                    resultDiv.innerHTML += `<p style="color: green;">Auth Success: ${authData.user?.email}</p>`;
+                }
+                
+            } catch (e) {
+                resultDiv.innerHTML += `<p style="color: red;">Exception: ${e.message}</p>`;
+            }
+        }
+        
+        checkUser();
+    </script>
+</body>
+</html>

@@ -61,7 +61,8 @@ serve(async (req) => {
     if (existingTokens && existingTokens.length > 0) {
       console.log('🔄 Returning existing token')
       const existingToken = existingTokens[0]
-      const persistentUrl = `https://paneldoirp.vercel.app/auth/qr/${existingToken.token}`
+      const baseUrl = Deno.env.get('PUBLIC_APP_URL') || 'https://paneldoirp.vercel.app'
+      const persistentUrl = `${baseUrl}/auth/qr/${existingToken.token}`
       
       return new Response(
         JSON.stringify({ 
@@ -104,7 +105,8 @@ serve(async (req) => {
       throw new Error('Failed to save QR token')
     }
 
-    const persistentUrl = `https://paneldoirp.vercel.app/auth/qr/${token}`
+    const baseUrl = Deno.env.get('PUBLIC_APP_URL') || 'https://paneldoirp.vercel.app'
+    const persistentUrl = `${baseUrl}/auth/qr/${token}`
     
     console.log('✅ Persistent QR URL generated:', persistentUrl)
 

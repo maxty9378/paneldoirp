@@ -683,3 +683,76 @@ a:hover, a:focus {
   animation: pulse-smooth 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+/* Мобильная оптимизация для формы входа */
+@media (max-width: 768px) {
+  .login-container {
+    padding: 1rem;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+  
+  .login-form {
+    padding: 1.5rem;
+    border-radius: 1.5rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  }
+  
+  .login-form input {
+    font-size: 16px; /* Предотвращает зум на iOS */
+    padding: 0.875rem 1rem;
+    border-radius: 0.75rem;
+  }
+  
+  .login-form button {
+    padding: 0.875rem 1rem;
+    font-size: 1rem;
+    border-radius: 0.75rem;
+    min-height: 48px;
+  }
+  
+  .login-form h1 {
+    font-size: 1.5rem;
+    line-height: 1.3;
+  }
+  
+  .login-form p {
+    font-size: 0.875rem;
+  }
+  
+  .login-icon {
+    width: 3.5rem;
+    height: 3.5rem;
+  }
+  
+  .login-icon svg {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+}
+
+/* Дополнительная оптимизация для очень маленьких экранов */
+@media (max-width: 480px) {
+  .login-container {
+    padding: 0.75rem;
+  }
+  
+  .login-form {
+    padding: 1.25rem;
+    border-radius: 1.25rem;
+  }
+  
+  .login-form h1 {
+    font-size: 1.375rem;
+  }
+  
+  .login-icon {
+    width: 3rem;
+    height: 3rem;
+  }
+  
+  .login-icon svg {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+}
+

@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ShieldCheck, QrCode } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import { isIOS, getOptimizedTimeouts, getMobileHeaders, optimizedDelay } from '../utils/mobileOptimization';
+import { isIOS } from '../utils/mobileOptimization';
 import { QRStatusIndicator } from '../components/QRStatusIndicator';
 
 type Status = 'loading' | 'success' | 'error';
@@ -41,11 +40,8 @@ export default function QRAuthPage() {
   const alive = useRef(true);
   useEffect(() => () => { alive.current = false; }, []);
 
-  // для отмены запроса, если пользователь уйдет со страницы
-  const abortRef = useRef<AbortController | null>(null);
-
   // helper: безопасно ставим состояние
-  const safeSet = <T,>(setter: React.Dispatch<React.SetStateAction<T>>, v: T) => {
+  const safeSet = (setter: React.Dispatch<React.SetStateAction<any>>, v: any) => {
     if (alive.current) setter(v);
   };
 
@@ -58,109 +54,57 @@ export default function QRAuthPage() {
       }
 
       try {
-        // Получаем оптимизированные настройки
-        const timeouts = getOptimizedTimeouts();
-        const mobileHeaders = getMobileHeaders();
-        
-        // шаг 1: запрос к edge-функции
         safeSet(setStep, 'qr');
-        safeSet(setMessage, isIOS ? 'Проверяем токен…' : 'Проверяем токен доступа…');
+        safeSet(setMessage, 'Проверяем токен…');
 
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
         const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
         if (!supabaseUrl || !anonKey) {
-          throw new Error('Не настроены переменные окружения VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY');
+          throw new Error('Не настроены переменные окружения');
         }
 
-        abortRef.current?.abort();
-        abortRef.current = new AbortController();
-
-        // Используем оптимизированные таймауты
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Превышено время ожидания')), timeouts.fetchTimeout)
-        );
-
-        const fetchPromise = fetch(`${supabaseUrl}/functions/v1/auth-by-qr-token`, {
+        // Простой запрос без сложных таймаутов
+        const res = await fetch(`${supabaseUrl}/functions/v1/auth-by-qr-token`, {
           method: 'POST',
           headers: {
-            ...mobileHeaders,
+            'Content-Type': 'application/json',
             'apikey': anonKey,
             'Authorization': `Bearer ${anonKey}`,
           },
           body: JSON.stringify({ token }),
-          signal: abortRef.current.signal,
         });
 
-        const res = await Promise.race([fetchPromise, timeoutPromise]) as Response;
-
         if (!res.ok) {
-          let errBody: any = {};
-          try { errBody = await res.json(); } catch {}
-          throw new Error(errBody?.error || `HTTP ${res.status} ${res.statusText}`);
-        }
-
-        const contentType = res.headers.get('content-type') || '';
-        if (!contentType.includes('application/json')) {
-          const text = await res.text();
-          console.error('Ожидался JSON, пришло:', contentType, text.slice(0, 300));
-          throw new Error('Ожидался JSON-ответ от edge-функции. Проверьте VITE_SUPABASE_URL.');
+          const errorText = await res.text();
+          console.error('QR auth server error:', res.status, errorText);
+          throw new Error(`Ошибка сервера: ${res.status} - ${errorText}`);
         }
 
         const data = await res.json();
         if (!data?.success) {
-          throw new Error(data?.error || 'Неожиданный ответ от сервера');
+          throw new Error(data?.error || 'Ошибка авторизации');
         }
 
-        // шаг 2: авторизация
+        // Проверяем наличие redirectUrl
+        if (!data.redirectUrl) {
+          throw new Error('Не получен URL для перенаправления');
+        }
+
+        // Простой редирект на magic link
         safeSet(setStep, 'auth');
-        safeSet(setMessage, isIOS ? 'Входим в систему…' : 'Подтверждаем вход…');
-
-        // включим глобальный флаг, чтобы App/useAuth не дёргали профиль
+        safeSet(setMessage, 'Перенаправляем…');
+        
         (window as any).authCallbackProcessing = true;
-
-        if (data.redirectUrl) {
-          // magic-link – редиректим, на той стороне /auth/callback скушает токены
-          // Используем оптимизированную задержку
-          await optimizedDelay(timeouts.sessionDelay);
-          window.location.replace(data.redirectUrl);
-          return;
-        } else if (data.accessToken && data.refreshToken) {
-          // прямые токены
-          const { error: sessionError } = await supabase.auth.setSession({
-            access_token: data.accessToken,
-            refresh_token: data.refreshToken,
-          });
-          if (sessionError) throw new Error(`Ошибка установки сессии: ${sessionError.message}`);
-
-          safeSet(setStatus, 'success');
-          safeSet(setMessage, 'Готово! Перенаправляем…');
-
-          try { window.history.replaceState({}, '', '/'); } catch {}
-          // Используем оптимизированную задержку
-          setTimeout(() => navigate('/'), timeouts.redirectDelay);
-          return;
-        } else if (data.action_link) {
-          await optimizedDelay(timeouts.sessionDelay);
-          window.location.replace(data.action_link);
-          return;
-        } else if (data.url) {
-          await optimizedDelay(timeouts.sessionDelay);
-          window.location.replace(data.url);
-          return;
-        } else {
-          console.error('Unexpected keys:', Object.keys(data));
-          throw new Error('Неожиданный формат ответа от сервера');
-        }
+        
+        // Немедленный редирект без задержек
+        window.location.replace(data.redirectUrl);
+        
       } catch (e: any) {
         console.error('QR auth error:', e);
         if (!alive.current) return;
         safeSet(setStatus, 'error');
-        safeSet(setMessage, e?.message || 'Ошибка при обработке QR-токена');
-        // мягкий откат на главную
-        setTimeout(() => navigate('/'), 2500);
-      } finally {
-        // если не было моментального редиректа (прямые токены), снимем флаг чуть позже
-        setTimeout(() => { (window as any).authCallbackProcessing = false; }, 1500);
+        safeSet(setMessage, e?.message || 'Ошибка авторизации');
+        setTimeout(() => navigate('/'), 3000);
       }
     };
 
