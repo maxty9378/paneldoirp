@@ -134,6 +134,32 @@ const ExpertSchedulePage: React.FC = () => {
     }
   };
 
+  // Функция для проверки, активен ли блок расписания сейчас
+  const isCurrentlyActive = (startTime: string, endTime: string) => {
+    try {
+      const now = new Date();
+      const currentTime = now.toLocaleTimeString('ru-RU', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Europe/Moscow'
+      });
+
+      // Создаем объекты времени для сравнения
+      const [currentHour, currentMinute] = currentTime.split(':').map(Number);
+      const [startHour, startMinute] = startTime.split(':').map(Number);
+      const [endHour, endMinute] = endTime.split(':').map(Number);
+
+      const currentMinutes = currentHour * 60 + currentMinute;
+      const startMinutes = startHour * 60 + startMinute;
+      const endMinutes = endHour * 60 + endMinute;
+
+      return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+    } catch (error) {
+      console.error('Error checking current time:', error);
+      return false;
+    }
+  };
+
   if (loading || !userProfile) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -155,7 +181,13 @@ const ExpertSchedulePage: React.FC = () => {
           <p className="text-gray-600 mb-4">{error}</p>
           <button
             onClick={fetchExpertExams}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="px-4 py-2 text-white rounded-lg transition-all duration-200 font-semibold"
+            style={{ 
+              backgroundColor: '#06A478',
+              ':hover': { backgroundColor: '#059669' }
+            }}
+            onMouseEnter={(e) => e.target.style.backgroundColor = '#059669'}
+            onMouseLeave={(e) => e.target.style.backgroundColor = '#06A478'}
           >
             Попробовать снова
           </button>
@@ -165,10 +197,10 @@ const ExpertSchedulePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
               <button
@@ -178,9 +210,9 @@ const ExpertSchedulePage: React.FC = () => {
                 <ArrowLeft className="w-5 h-5 text-gray-600" />
               </button>
               <div className="flex items-center">
-                <Calendar className="w-6 h-6 text-blue-600 mr-3" />
+                <Calendar className="w-6 h-6 mr-3" style={{ color: '#06A478' }} />
                 <div>
-                  <h1 className="text-xl font-semibold text-gray-900">Расписание экзаменов</h1>
+                  <h1 className="text-xl font-semibold text-gray-900" style={{ lineHeight: '1.1' }}>Расписание экзаменов</h1>
                   <p className="text-sm text-gray-500">
                     {userProfile?.role === 'administrator' 
                       ? 'Все экзамены кадрового резерва' 
@@ -195,7 +227,7 @@ const ExpertSchedulePage: React.FC = () => {
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+      <div className="max-w-7xl mx-auto py-8">
         
         {exams.length === 0 ? (
           <div className="text-center py-12 px-4">
@@ -221,9 +253,9 @@ const ExpertSchedulePage: React.FC = () => {
                 <div className="p-4 border-b border-gray-100">
                   <div className="space-y-4">
                     {/* Название мероприятия */}
-                    <h2 className="text-lg font-semibold text-gray-900 leading-tight" style={{ lineHeight: '1.1' }}>
-                      {exam.title}
-                    </h2>
+                            <h2 className="text-lg font-semibold text-gray-900" style={{ lineHeight: '1.1' }}>
+                              {exam.title}
+                            </h2>
                     
                     {/* Дата */}
                     <div className="flex items-center text-sm text-gray-500">
@@ -235,11 +267,7 @@ const ExpertSchedulePage: React.FC = () => {
 
                 {/* Детальное расписание */}
                 <div className="p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                    <Calendar className="w-5 h-5 mr-2 text-blue-600" />
-                    Расписание экзамена
-                  </h3>
-                  <div className="space-y-3">
+                  <div className="grid grid-cols-1 gap-y-2">
                     {(() => {
                       // Используем данные из базы или fallback на стандартное расписание
                       const scheduleData = exam.detailed_schedule && exam.detailed_schedule.length > 0 
@@ -256,37 +284,71 @@ const ExpertSchedulePage: React.FC = () => {
                             { startTime: '17:35', endTime: '18:00', title: 'Подведение итогов комплексного экзамена', duration: '25 мин', description: 'Заключительное слово ЧЭК, вручение дипломов и наград выпускникам, фуршет' }
                           ];
 
-                      return scheduleData.map((item, index) => (
-                        <div key={item.id || index} className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-3">
-                              <div className="bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg text-sm font-bold">
-                                {item.time || item.startTime || 'Время не указано'}
+                      return scheduleData.map((item, index) => {
+                        const isActive = isCurrentlyActive(item.startTime || '', item.endTime || '');
+                        return (
+                          <div key={item.id || index} className="group relative">
+                            {/* Content card */}
+                            <div className="relative">
+                              <div className={`bg-white rounded-2xl border shadow-sm hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1 overflow-hidden ${
+                                isActive 
+                                  ? 'border-[#06A478] shadow-lg ring-2 ring-[#06A478]/20' 
+                                  : 'border-gray-100 group-hover:border-[#06A478]/30'
+                              }`}>
+                              {/* Card header with gradient */}
+                              <div className={`px-4 py-2.5 border-b ${
+                                isActive 
+                                  ? 'bg-gradient-to-r from-[#06A478]/10 via-[#06A478]/15 to-[#06A478]/10 border-[#06A478]/30' 
+                                  : 'bg-gradient-to-r from-[#06A478]/5 via-[#06A478]/10 to-[#06A478]/5 border-[#06A478]/20'
+                              }`}>
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-2">
+                                    <div className={`px-2.5 py-1 rounded-md text-xs font-bold ${
+                                      isActive 
+                                        ? 'bg-[#06A478] text-white' 
+                                        : 'bg-[#06A478] text-white'
+                                    }`}>
+                                      {item.time || item.startTime || 'Время не указано'}
+                                    </div>
+                                    {item.endTime && (
+                                      <>
+                                        <span className="text-[#06A478]/60 text-xs">—</span>
+                                        <div className="bg-gray-100 text-gray-700 px-2.5 py-1 rounded-md text-xs font-medium">
+                                          {item.endTime}
+                                        </div>
+                                      </>
+                                    )}
+                                    {isActive && (
+                                      <div className="bg-[#06A478] text-white px-2.5 py-1 rounded-md text-xs font-bold animate-pulse">
+                                        Идёт сейчас
+                                      </div>
+                                    )}
+                                  </div>
+                                  {item.duration && (
+                                    <div className="bg-gray-100 text-gray-700 px-2.5 py-1 rounded-md text-xs font-medium">
+                                      {item.duration}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                              {item.endTime && (
-                                <div className="text-gray-500 text-sm">
-                                  — {item.endTime}
-                                </div>
-                              )}
-                              {item.duration && (
-                                <div className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium">
-                                  {item.duration}
-                                </div>
-                              )}
+                              
+                              {/* Card content */}
+                              <div className="px-4 py-3">
+                                <h4 className="text-base font-semibold text-gray-900 mb-1.5" style={{ lineHeight: '1.1' }}>
+                                  {item.title}
+                                </h4>
+                                
+                                {item.description && (
+                                  <p className="text-gray-600 text-sm" style={{ lineHeight: '1.1' }}>
+                                    {item.description}
+                                  </p>
+                                )}
+                              </div>
                             </div>
                           </div>
-                          
-                          <h4 className="text-lg font-semibold text-gray-900 mb-2">
-                            {item.title}
-                          </h4>
-                          
-                          {item.description && (
-                            <p className="text-gray-600 text-sm leading-relaxed mb-3">
-                              {item.description}
-                            </p>
-                          )}
                         </div>
-                      ));
+                        );
+                      });
                     })()}
                   </div>
                 </div>
@@ -295,12 +357,16 @@ const ExpertSchedulePage: React.FC = () => {
                 <div className="p-4 bg-gray-50 border-t border-gray-100">
                   <button
                     onClick={() => navigate(`/expert-exam/${exam.id}`)}
-                    className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-semibold text-sm shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-2"
+                    className="w-full px-6 py-3 text-white rounded-lg transition-all duration-200 font-semibold text-sm shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-2"
                     style={{ 
                       minHeight: '48px',
                       WebkitTapHighlightColor: 'transparent',
-                      touchAction: 'manipulation'
+                      touchAction: 'manipulation',
+                      background: 'linear-gradient(to right, #06A478, #059669)',
+                      ':hover': { background: 'linear-gradient(to right, #059669, #048A5A)' }
                     }}
+                    onMouseEnter={(e) => e.target.style.background = 'linear-gradient(to right, #059669, #048A5A)'}
+                    onMouseLeave={(e) => e.target.style.background = 'linear-gradient(to right, #06A478, #059669)'}
                   >
                     <Calendar className="w-4 h-4" />
                     Перейти к экзамену
