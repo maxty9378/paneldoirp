@@ -169,7 +169,7 @@ function EventCard({ event }: { event: EventWithDetails }) {
       {/* Описание */}
       <div className="flex-1">
         {event.description && (
-          <div className="mb-4 rounded-2xl bg-slate-50/60 backdrop-blur-sm p-4 border border-slate-200/40">
+          <div className="mb-4 rounded-2xl bg-slate-50/60 backdrop-blur-sm p-4 border border-slate-200/40 shimmer-text">
             <p className="line-clamp-3 text-sm leading-relaxed text-slate-600 whitespace-pre-line">
               {event.description}
             </p>

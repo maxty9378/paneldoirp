@@ -922,22 +922,27 @@ const ExpertExamPage: React.FC = () => {
                     <p className="text-gray-500">Резервисты не добавлены</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                    {participants.map((participant) => (
-                      <CompactDossierCard
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 sm:gap-4">
+                    {participants.map((participant, index) => (
+                      <div 
                         key={participant.id}
-                        participant={participant}
-                        dossier={participant.dossier ? { ...participant.dossier, user_id: participant.user.id } : undefined}
-                        onRate={() => {
-                          setSelectedParticipantForEvaluation(participant);
-                          setShowEvaluationModal(true);
-                        }}
-                        onViewDossier={(participantId) => {
-                          setSelectedParticipantId(participantId);
-                        }}
-                        onRemove={removeParticipant}
-                        showRemoveButton={userProfile?.role === 'administrator'}
-                      />
+                        className={`card-enter ${index < 6 ? `card-stagger-${(index % 6) + 1}` : ''}`}
+                        style={{ opacity: 0 }}
+                      >
+                        <CompactDossierCard
+                          participant={participant}
+                          dossier={participant.dossier ? { ...participant.dossier, user_id: participant.user.id } : undefined}
+                          onRate={() => {
+                            setSelectedParticipantForEvaluation(participant);
+                            setShowEvaluationModal(true);
+                          }}
+                          onViewDossier={(participantId) => {
+                            setSelectedParticipantId(participantId);
+                          }}
+                          onRemove={removeParticipant}
+                          showRemoveButton={userProfile?.role === 'administrator'}
+                        />
+                      </div>
                     ))}
                   </div>
                 )}

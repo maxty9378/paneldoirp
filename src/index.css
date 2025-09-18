@@ -701,6 +701,79 @@ a:hover, a:focus {
   animation: pulse-smooth 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+/* Стреклянный эффект для описания как в iOS 26 */
+@keyframes shimmer-text {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer-text {
+  position: relative;
+  color: #475569; /* text-slate-600 */
+}
+
+.shimmer-text::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(148, 163, 184, 0.1) 25%,
+    rgba(148, 163, 184, 0.2) 50%,
+    rgba(148, 163, 184, 0.1) 75%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-text 3s ease-in-out infinite;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* Современные анимации для карточек */
+@keyframes card-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes card-hover {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    transform: translateY(-2px) scale(1.01);
+  }
+}
+
+.card-enter {
+  animation: card-enter 0.4s ease-out forwards;
+}
+
+.card-hover {
+  animation: card-hover 0.3s ease-out forwards;
+}
+
+/* Плавное появление карточек с задержкой */
+.card-stagger-1 { animation-delay: 0.1s; }
+.card-stagger-2 { animation-delay: 0.2s; }
+.card-stagger-3 { animation-delay: 0.3s; }
+.card-stagger-4 { animation-delay: 0.4s; }
+.card-stagger-5 { animation-delay: 0.5s; }
+.card-stagger-6 { animation-delay: 0.6s; }
+
 /* Мобильная оптимизация для формы входа */
 @media (max-width: 768px) {
   .login-container {

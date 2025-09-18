@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { User as UserIcon } from 'lucide-react';
+import { User as UserIcon, MapPin } from 'lucide-react';
 
 type Edu = { level?: string; institution?: string; specialty?: string };
 interface DossierData {
@@ -44,25 +44,6 @@ function splitName(full: string) {
   return { top: parts[0], bottom: parts.slice(1).join(' ') };
 }
 
-// Функция для склонения возраста
-const getAgeText = (age: number): string => {
-  const lastDigit = age % 10;
-  const lastTwoDigits = age % 100;
-  
-  if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
-    return `${age} лет`;
-  }
-  
-  if (lastDigit === 1) {
-    return `${age} год`;
-  }
-  
-  if (lastDigit >= 2 && lastDigit <= 4) {
-    return `${age} года`;
-  }
-  
-  return `${age} лет`;
-};
 
 
 export const CompactDossierCard: React.FC<DossierCardProps> = ({
@@ -89,25 +70,26 @@ export const CompactDossierCard: React.FC<DossierCardProps> = ({
   return (
     <div
       className="
-        relative overflow-hidden rounded-[28px]
-        bg-white border border-gray-100/80
-        shadow-[0_8px_32px_rgba(0,0,0,0.08)]
-        hover:shadow-[0_12px_48px_rgba(0,0,0,0.12)]
-        p-5 md:p-6
+        relative overflow-hidden rounded-3xl
+        bg-white/90 backdrop-blur-sm border border-slate-200/60
+        shadow-[0_4px_20px_rgba(0,0,0,0.08)]
+        hover:shadow-[0_8px_32px_rgba(0,0,0,0.12)]
+        hover:shadow-slate-200/50
+        p-4 sm:p-5 md:p-6
         h-fit
         group
         transition-all duration-300 ease-out
-        hover:scale-[1.02]
-        backdrop-blur-sm
-        min-h-[200px]
+        hover:scale-[1.01] hover:border-slate-300/80
+        min-h-[180px] sm:min-h-[200px]
+        active:scale-[0.99]
       "
       role="group"
     >
       {/* верх: фото + текст */}
-      <div className="flex gap-5">
+      <div className="flex gap-3 sm:gap-4 md:gap-5">
         {/* фото как на макете: вертикальный прямоугольник с мягкими углами */}
         <div className="relative shrink-0">
-          <div className="h-[160px] w-[120px] rounded-2xl bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200/60 overflow-hidden shadow-sm group-hover:shadow-md transition-all duration-300">
+          <div className="h-[140px] w-[100px] sm:h-[160px] sm:w-[115px] md:h-[180px] md:w-[130px] rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200/60 overflow-hidden shadow-sm group-hover:shadow-md transition-all duration-300">
             {dossier?.photo_url ? (
               <img
                 src={dossier.photo_url}
@@ -136,47 +118,41 @@ export const CompactDossierCard: React.FC<DossierCardProps> = ({
         </div>
 
         {/* текстовая колонка */}
-        <div className="min-w-0 flex-1">
-          {/* ФИО: фамилия на первой строке, имя на второй */}
-          <div className="mb-1 leading-none">
-            <div 
-              className="text-[16px] sm:text-[20px] font-extrabold tracking-wide uppercase truncate" 
-              style={{ 
-                color: '#06A478',
-                fontFamily: 'SNS, sans-serif'
-              }}
-            >
-              {nameParts.top}
-            </div>
-            {nameParts.bottom ? (
+        <div className="min-w-0 flex-1 flex flex-col justify-between">
+          <div>
+            {/* ФИО: фамилия на первой строке, имя на второй */}
+            <div className="mb-2 leading-tight">
               <div 
-                className="text-[16px] sm:text-[20px] font-extrabold tracking-wide uppercase truncate" 
+                className="text-base sm:text-lg md:text-xl font-bold tracking-wide uppercase truncate" 
                 style={{ 
                   color: '#06A478',
                   fontFamily: 'SNS, sans-serif'
                 }}
               >
-                {nameParts.bottom}
+                {nameParts.top}
               </div>
-            ) : null}
-          </div>
-
-          {/* должность и филиал — как две строки без иконок, читаемая межстрочка */}
-          <div className="text-[16px] text-gray-900 leading-tight">
-            {position}
-          </div>
-          {territory ? (
-            <div className="text-[16px] text-gray-900 leading-tight">
-              {territory}
+              {nameParts.bottom ? (
+                <div 
+                  className="text-base sm:text-lg md:text-xl font-bold tracking-wide uppercase truncate" 
+                  style={{ 
+                    color: '#06A478',
+                    fontFamily: 'SNS, sans-serif'
+                  }}
+                >
+                  {nameParts.bottom}
+                </div>
+              ) : null}
             </div>
-          ) : null}
 
-          {/* возраст-пилюля */}
-          <div className="mt-2">
-            {typeof age === 'number' && age > 0 ? (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-white text-[12px] font-medium shadow-sm group-hover:shadow-md transition-all duration-300 group-hover:scale-105" style={{ backgroundColor: '#06A478' }}>
-                {getAgeText(age)}
-              </span>
+            {/* должность и филиал — как две строки без иконок, читаемая межстрочка */}
+            <div className="text-sm sm:text-base text-slate-700 leading-relaxed mb-1">
+              {position}
+            </div>
+            {territory ? (
+              <div className="flex items-center gap-1.5 text-sm sm:text-base text-slate-600 leading-relaxed">
+                <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                <span>{territory}</span>
+              </div>
             ) : null}
           </div>
         </div>
@@ -184,17 +160,18 @@ export const CompactDossierCard: React.FC<DossierCardProps> = ({
 
 
       {/* кнопки как на макете: широкие пилюли одна над другой с равными отступами */}
-      <div className="mt-4 space-y-3">
+      <div className="mt-4 space-y-2 sm:space-y-3">
         <button
           onClick={() => onViewDossier?.(participant.user.id)}
           className="
-            w-full h-12 rounded-[20px]
-            bg-gray-50 text-gray-400 text-[16px] font-normal
-            border border-gray-100
-            hover:bg-gray-100 hover:text-gray-500 hover:border-gray-200
-            active:bg-gray-150
-            focus:outline-none focus-visible:ring-1 focus-visible:ring-gray-300/30
+            w-full h-10 sm:h-11 rounded-2xl
+            bg-slate-50/80 text-slate-500 text-sm sm:text-base font-medium
+            border border-slate-200/60
+            hover:bg-slate-100/80 hover:text-slate-600 hover:border-slate-300/80
+            active:bg-slate-200/80 active:scale-[0.98]
+            focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300/30
             transition-all duration-200 ease-out
+            backdrop-blur-sm
           "
           aria-label="Досье резервиста"
         >
@@ -205,12 +182,12 @@ export const CompactDossierCard: React.FC<DossierCardProps> = ({
           <button
             onClick={() => onRate?.(participant.user.id)}
             className="
-              flex-1 h-12 rounded-[20px]
-              text-white text-[16px] font-semibold
-              shadow-lg shadow-black/10
-              hover:shadow-xl hover:shadow-black/20 hover:scale-[1.02]
-              active:scale-[0.98] active:shadow-md
-              focus:outline-none focus-visible:ring-4 focus-visible:ring-opacity-30
+              flex-1 h-10 sm:h-11 rounded-2xl
+              text-white text-sm sm:text-base font-semibold
+              shadow-sm shadow-slate-200/50
+              hover:shadow-md hover:shadow-slate-300/50 hover:scale-[1.01]
+              active:scale-[0.98] active:shadow-sm
+              focus:outline-none focus-visible:ring-2 focus-visible:ring-[#06A478]/30
               transition-all duration-300 ease-out
               inline-flex items-center justify-center gap-2
               relative overflow-hidden
@@ -226,12 +203,12 @@ export const CompactDossierCard: React.FC<DossierCardProps> = ({
             <button
               onClick={() => onRemove(participant.user.id)}
               className="
-                h-12 px-4 rounded-[20px]
-                text-white text-[16px] font-semibold
-                shadow-lg shadow-black/10
-                hover:shadow-xl hover:shadow-black/20 hover:scale-[1.02]
-                active:scale-[0.98] active:shadow-md
-                focus:outline-none focus-visible:ring-4 focus-visible:ring-opacity-30
+                h-10 sm:h-11 px-3 sm:px-4 rounded-2xl
+                text-white text-sm sm:text-base font-semibold
+                shadow-sm shadow-red-200/50
+                hover:shadow-md hover:shadow-red-300/50 hover:scale-[1.01]
+                active:scale-[0.98] active:shadow-sm
+                focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300/30
                 transition-all duration-300 ease-out
                 inline-flex items-center justify-center gap-2
                 relative overflow-hidden
@@ -247,9 +224,9 @@ export const CompactDossierCard: React.FC<DossierCardProps> = ({
 
       {/* мягкие круглые углы у всей карточки и лёгкий блик для объёма */}
       <div 
-        className="pointer-events-none absolute -bottom-12 -right-12 h-40 w-40 rounded-full blur-2xl" 
+        className="pointer-events-none absolute -bottom-8 -right-8 h-32 w-32 rounded-full blur-2xl opacity-60 group-hover:opacity-80 transition-opacity duration-300" 
         style={{ 
-          background: 'radial-gradient(circle, rgba(6, 164, 120, 0.4) 0%, rgba(6, 164, 120, 0.1) 50%, transparent 100%)',
+          background: 'radial-gradient(circle, rgba(6, 164, 120, 0.3) 0%, rgba(6, 164, 120, 0.1) 50%, transparent 100%)',
           WebkitBackfaceVisibility: 'hidden',
           backfaceVisibility: 'hidden',
           transform: 'translateZ(0)',
