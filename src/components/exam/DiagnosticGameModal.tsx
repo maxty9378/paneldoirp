@@ -628,14 +628,14 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
 
         {/* Футер (sticky bottom) */}
         <footer 
-          className="sticky bottom-0 z-10 border-t border-gray-100 bg-white/80 backdrop-blur-sm"
+          className="sticky bottom-0 z-20 border-t border-gray-100 bg-white/80 backdrop-blur-sm"
           style={{ paddingBottom: '8px' }}
         >
           <div className="px-4 pt-3 pb-3">
-            <div className="flex gap-2">
+            <div className="flex gap-2 relative">
           <button
             onPointerUp={onClose}
-            className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium"
+            className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium relative z-10"
             style={{ minHeight: '48px', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
           >
             ← Назад
@@ -646,7 +646,7 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
                 if (canSave) handleSaveClick(); 
               }}
               disabled={!canSave}
-              className={`flex-1 px-4 py-2.5 rounded-lg font-semibold text-sm ${
+              className={`flex-1 px-4 py-2.5 rounded-lg font-semibold text-sm relative z-10 ${
                 !canSave
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg hover:shadow-xl'
