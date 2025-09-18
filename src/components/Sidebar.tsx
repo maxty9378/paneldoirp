@@ -36,7 +36,7 @@ const navigationItems: NavItem[] = [
     icon: <BookOpen />, 
     href: '/events', 
     description: 'Управление мероприятиями',
-    roles: ['employee', 'supervisor', 'trainer', 'expert', 'moderator', 'administrator'] 
+    roles: ['employee', 'supervisor', 'trainer', 'moderator', 'administrator'] 
   },
   { 
     id: 'tests', 
@@ -136,6 +136,14 @@ const navigationItems: NavItem[] = [
     href: '/admin', 
     description: 'Системные настройки',
     roles: ['administrator'] 
+  },
+  { 
+    id: 'schedule', 
+    label: 'Расписание', 
+    icon: <Calendar />, 
+    href: '/expert-schedule', 
+    description: 'Расписание экзаменов',
+    roles: ['expert', 'administrator'] 
   },
 ];
 

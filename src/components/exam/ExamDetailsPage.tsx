@@ -46,6 +46,26 @@ interface Expert {
   email: string;
 }
 
+// Функция для склонения возраста
+const getAgeText = (age: number): string => {
+  const lastDigit = age % 10;
+  const lastTwoDigits = age % 100;
+  
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
+    return `${age} лет`;
+  }
+  
+  if (lastDigit === 1) {
+    return `${age} год`;
+  }
+  
+  if (lastDigit >= 2 && lastDigit <= 4) {
+    return `${age} года`;
+  }
+  
+  return `${age} лет`;
+};
+
 const ExamDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -200,6 +220,9 @@ const ExamDetailsPage: React.FC = () => {
             sap_number,
             position:positions(name),
             territory:territories(name)
+          ),
+          dossier:participant_dossiers(
+            age
           )
         `)
         .eq('event_id', examId);
@@ -880,7 +903,9 @@ const ExamDetailsPage: React.FC = () => {
                         <div>
                           <p className="font-semibold text-gray-900">{participant.user?.full_name || 'Не указано'}</p>
                           <p className="text-sm text-gray-600">{participant.user?.position?.name || 'Должность не указана'}</p>
-                          <p className="text-xs text-gray-500">{participant.user?.email}</p>
+                          <p className="text-xs text-gray-500">
+                            {participant.dossier?.age ? getAgeText(participant.dossier.age) : 'Возраст не указан'}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-4">

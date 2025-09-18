@@ -44,6 +44,26 @@ function splitName(full: string) {
   return { top: parts[0], bottom: parts.slice(1).join(' ') };
 }
 
+// Функция для склонения возраста
+const getAgeText = (age: number): string => {
+  const lastDigit = age % 10;
+  const lastTwoDigits = age % 100;
+  
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
+    return `${age} лет`;
+  }
+  
+  if (lastDigit === 1) {
+    return `${age} год`;
+  }
+  
+  if (lastDigit >= 2 && lastDigit <= 4) {
+    return `${age} года`;
+  }
+  
+  return `${age} лет`;
+};
+
 
 export const CompactDossierCard: React.FC<DossierCardProps> = ({
   participant,
@@ -155,7 +175,7 @@ export const CompactDossierCard: React.FC<DossierCardProps> = ({
           <div className="mt-2">
             {typeof age === 'number' && age > 0 ? (
               <span className="inline-flex items-center px-2.5 py-1 rounded-full text-white text-[12px] font-medium shadow-sm group-hover:shadow-md transition-all duration-300 group-hover:scale-105" style={{ backgroundColor: '#06A478' }}>
-                {age} лет
+                {getAgeText(age)}
               </span>
             ) : null}
           </div>

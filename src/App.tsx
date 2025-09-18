@@ -19,6 +19,7 @@ import { TestingView } from './components/admin/TestingView';
 import { TrainerTerritoriesView } from './components/TrainerTerritoriesView';
 import { ExamReservePage, ExamDetailsPage, ExpertExamPage } from './components/exam';
 import CaseEvaluationPage from './components/exam/CaseEvaluationPage';
+import ExpertSchedulePage from './components/exam/ExpertSchedulePage';
 import ExpertRouteGuard from './components/ExpertRouteGuard';
 import MobileLayout from './components/layout/MobileLayout';
 import { Loader2, RefreshCw, AlertOctagon } from 'lucide-react';
@@ -132,6 +133,7 @@ function AppContent() {
     if (location.pathname.startsWith('/create-event')) return 'create-event';
     if (location.pathname.startsWith('/exam-management')) return 'exam-reserve';
     if (location.pathname.startsWith('/exam-reserve')) return 'exam-reserve';
+    if (location.pathname.startsWith('/expert-schedule')) return 'schedule';
     return 'dashboard';
   };
   const currentView = getCurrentView();
@@ -318,6 +320,7 @@ function AppContent() {
         <Route path="/employees" element={<EmployeesView />} />
         <Route path="/exam-reserve" element={<ExamReservePage />} />
         <Route path="/exam-details/:id" element={<ExamDetailsPage />} />
+        <Route path="/expert-schedule" element={<ExpertSchedulePage />} />
         
         {/* Роуты с мобильным меню */}
         <Route element={<MobileLayout />}>

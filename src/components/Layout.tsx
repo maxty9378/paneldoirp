@@ -125,6 +125,7 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
       case 'testing': navigate('/testing'); break;
       case 'admin': navigate('/admin'); break;
       case 'trainer-territories': navigate('/trainer-territories'); break;
+      case 'schedule': navigate('/expert-schedule'); break;
       default: navigate('/');
     }
     setIsMobileMenuOpen(false);
@@ -148,6 +149,7 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
       case 'tasks': return 'Горящие задачи';
       case 'admin': return 'Администрирование';
       case 'trainer-territories': return 'Филиалы тренеров';
+      case 'schedule': return 'Расписание';
       default: return 'SNS Learning';
     }
   };

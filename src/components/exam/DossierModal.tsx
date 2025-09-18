@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, MapPin, Calendar, Briefcase, Award, GraduationCap, Clock, Mail, Phone, Building, Edit, Save } from 'lucide-react';
+import { X, User, MapPin, Calendar, Briefcase, Award, GraduationCap, Clock, Phone, Building, Edit, Save } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -9,6 +9,7 @@ interface DossierData {
   photo_url?: string;
   phone?: string;
   location?: string;
+  age?: number;
   experience_in_position?: string;
   education?: string | {
     level?: string;
@@ -41,6 +42,26 @@ interface DossierModalProps {
   loading?: boolean;
   onModalStateChange?: (isOpen: boolean) => void;
 }
+
+// Функция для склонения возраста
+const getAgeText = (age: number): string => {
+  const lastDigit = age % 10;
+  const lastTwoDigits = age % 100;
+  
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
+    return `${age} лет`;
+  }
+  
+  if (lastDigit === 1) {
+    return `${age} год`;
+  }
+  
+  if (lastDigit >= 2 && lastDigit <= 4) {
+    return `${age} года`;
+  }
+  
+  return `${age} лет`;
+};
 
 // Компонент скелетона для загрузки
 const SkeletonLine: React.FC<{ className?: string }> = ({ className = "" }) => (
@@ -421,8 +442,10 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                   {/* Контактная информация */}
                   <div className="space-y-2">
                     <div className="flex items-center gap-3">
-                      <Mail className="w-4 h-4 text-gray-500" />
-                      <span className="text-gray-700">{user.email}</span>
+                      <Calendar className="w-4 h-4 text-gray-500" />
+                      <span className="text-gray-700">
+                        {dossier?.age ? getAgeText(dossier.age) : 'Возраст не указан'}
+                      </span>
                     </div>
                     {isEditing ? (
                       <>
