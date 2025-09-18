@@ -768,6 +768,8 @@ export function EventsList({ onCreateEvent }: EventsListProps) {
                       
                       // Отладка
                       console.log('EventsList - Event:', event.title, 'Type:', event.event_types?.name, 'IsExpert:', isExpert, 'IsAdmin:', isAdmin, 'IsExam:', isExamTalentReserve, 'IsExpertForThisExam:', isExpertForThisExam);
+                      console.log('EventsList - userProfile:', userProfile);
+                      console.log('EventsList - event.event_types:', event.event_types);
                       
                       // Для администраторов: если это экзамен, показываем кнопку "Оценить"
                       if (isAdmin && isExamTalentReserve) {
