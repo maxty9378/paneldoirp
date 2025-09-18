@@ -85,15 +85,34 @@ function AppContent() {
 
   // Проверяем auth параметры и перенаправляем на callback
   useEffect(() => {
+    console.log('🔄 App: Checking auth params');
     const { hash, search, pathname } = window.location;
+    console.log('🔄 App: Current URL:', window.location.href);
+    console.log('🔄 App: Pathname:', pathname);
+    console.log('🔄 App: Search:', search);
+    console.log('🔄 App: Hash:', hash);
 
     const hasPKCE = search.includes('code=');
     const hasHashTokens = hash.includes('access_token') || hash.includes('refresh_token') || hash.includes('token=');
     const hasSearchMagic = search.includes('token=') && search.includes('type=magiclink');
 
+    console.log('🔄 App: hasPKCE:', hasPKCE);
+    console.log('🔄 App: hasHashTokens:', hasHashTokens);
+    console.log('🔄 App: hasSearchMagic:', hasSearchMagic);
+
+    // Если пользователь уже авторизован, не перенаправляем на callback
+    if (user && (hasPKCE || hasHashTokens || hasSearchMagic)) {
+      console.log('✅ App: User already authenticated, cleaning URL without redirect');
+      // Просто очищаем URL от auth параметров
+      const cleanUrl = window.location.origin + window.location.pathname;
+      window.history.replaceState({}, '', cleanUrl);
+      return;
+    }
+
     if ((hasPKCE || hasHashTokens || hasSearchMagic) && pathname !== '/auth/callback') {
       const suffix = hasPKCE ? search : hash || search;
       console.log('🔄 Auth params detected, redirecting to /auth/callback...');
+      console.log('🔄 App: Redirecting to:', '/auth/callback' + suffix);
       window.location.replace('/auth/callback' + suffix);
     } else {
       console.log('ℹ️ No magic link tokens found');

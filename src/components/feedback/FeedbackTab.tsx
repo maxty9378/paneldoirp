@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { MessageSquare, CheckCircle, PlusCircle, Star, BarChart, BarChart3, Users, TrendingUp, Award, FileText } from 'lucide-react';
@@ -57,7 +57,7 @@ export function FeedbackTab({ eventId, adminStatOnly = false }: FeedbackTabProps
     } else if (eventId && !userProfile?.id) {
       console.log('User profile not loaded yet');
     }
-  }, [eventId, userProfile?.id]);
+  }, [eventId, userProfile?.id, checkFeedbackStatus]);
 
   useEffect(() => {
     if (isTrainer && eventId) {
@@ -69,7 +69,7 @@ export function FeedbackTab({ eventId, adminStatOnly = false }: FeedbackTabProps
     console.log('FeedbackTab: feedbackStats', feedbackStats, 'averageRating', averageRating);
   }, [feedbackStats, averageRating]);
 
-  const checkFeedbackStatus = async () => {
+  const checkFeedbackStatus = useCallback(async () => {
     setLoading(true);
     try {
       console.log('Checking feedback status for event:', eventId, 'user:', userProfile?.id);
@@ -164,7 +164,7 @@ export function FeedbackTab({ eventId, adminStatOnly = false }: FeedbackTabProps
     } finally {
       setLoading(false);
     }
-  };
+  }, [eventId, userProfile?.id]);
 
   const fetchFeedbackStats = async () => {
     try {

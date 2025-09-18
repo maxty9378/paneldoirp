@@ -631,6 +631,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let isRefreshing = false;
     
     console.log('🔐 Auth provider initialized');
+    console.log('🔐 useAuth: window.authCallbackProcessing =', window.authCallbackProcessing);
     
     // Initialize authentication
     const initializeAuth = async () => {
@@ -639,6 +640,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('⏳ AuthCallback is processing, skipping initialization');
         setLoadingPhase('auth-change');
         setLoading(true);
+        return;
+      }
+      
+      // Проверяем, есть ли уже активная сессия
+      const { data: { session: existingSession } } = await supabase.auth.getSession();
+      if (existingSession?.user && user) {
+        console.log('✅ User already authenticated and profile loaded, skipping initialization');
+        setLoadingPhase('complete');
+        setLoading(false);
         return;
       }
       
@@ -762,6 +772,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!isMounted) return;
       
       console.log('🔄 Auth state changed:', event, session?.user?.id?.substring(0, 8));
+      console.log('🔄 useAuth: window.authCallbackProcessing =', window.authCallbackProcessing);
       setSession(session);
       
       // Запускаем или останавливаем периодическое обновление
@@ -903,13 +914,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Return cleanup function
     return () => {
+      console.log('🔐 useAuth: Cleanup function called');
       isMounted = false;
       if (refreshInterval) {
+        console.log('🔐 useAuth: Clearing refresh interval');
         clearInterval(refreshInterval);
       }
+      console.log('🔐 useAuth: Unsubscribing from auth changes');
       authSubscription?.data?.subscription?.unsubscribe?.();
+      console.log('🔐 useAuth: Cleanup completed');
     };
-  }, []);
+  }, [fetchUserProfile]);
 
   // УДАЛЕН аварийный таймер - он был причиной проблем
 
