@@ -243,7 +243,6 @@ export const CaseAssignmentModal: React.FC<CaseAssignmentModalProps> = ({
                       <input
                         type="number"
                         min="1"
-                        max="999"
                         placeholder="№ кейса"
                         className="w-24 px-3 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         onKeyPress={(e) => {
