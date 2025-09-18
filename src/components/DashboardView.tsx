@@ -155,7 +155,7 @@ function EventCard({ event }: { event: EventWithDetails }) {
           </div>
 
           {/* Название */}
-          <h3 className="text-lg font-bold leading-tight text-slate-900">
+          <h3 className="text-lg font-bold leading-tight text-slate-900 whitespace-pre-line">
             {event.title}
           </h3>
         </div>
