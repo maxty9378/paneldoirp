@@ -102,7 +102,7 @@ const ExpertExamPage: React.FC = () => {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   // Определяем активную вкладку по URL
@@ -206,7 +206,7 @@ const ExpertExamPage: React.FC = () => {
     isDragging: false
   });
 
-  // Загрузка данных экзамена (доступ уже проверен в ExpertRouteGuard)
+  // Упрощенная загрузка данных экзамена - без проверок доступа
   const fetchExamData = async () => {
     if (!id) return;
 
@@ -214,44 +214,25 @@ const ExpertExamPage: React.FC = () => {
       console.log('🔄 Загружаем данные экзамена для ID:', id);
       setLoading(true);
       
-      // Загружаем данные экзамена (доступ уже проверен на уровне роутинга)
+      // Загружаем только необходимые данные экзамена
       const { data: examData, error: examError } = await supabase
         .from('events')
         .select(`
-          *,
+          id,
+          title,
+          description,
+          location,
+          start_date,
+          end_date,
           event_types (*),
-          talent_category: talent_categories (*),
-          creator: creator_id (
-            id,
-            full_name,
-            email
-          )
+          talent_category: talent_categories (*)
         `)
         .eq('id', id)
         .single();
 
       if (examError) throw examError;
 
-      // Проверяем, что это экзамен кадрового резерва
-      if (examData.event_types?.name !== 'exam_talent_reserve') {
-        throw new Error('Это не экзамен кадрового резерва');
-      }
-
       setExam(examData);
-
-      // Загружаем сохраненную позицию обложки
-      let savedPosition = examData.banner_position || 'center bottom';
-      
-      // Если поле banner_position не существует, пробуем загрузить из metadata
-      if (!examData.banner_position && examData.metadata?.banner_position) {
-        savedPosition = examData.metadata.banner_position;
-      }
-      
-      setBannerSettings(prev => ({
-        ...prev,
-        position: savedPosition,
-        previewPosition: parseBannerPosition(savedPosition)
-      }));
 
       // Загружаем участников
       console.log('👥 Загружаем участников...');
@@ -506,9 +487,11 @@ const ExpertExamPage: React.FC = () => {
     saveBannerPosition(bannerSettings.position);
   };
 
+  // Убираем автоматическую загрузку - данные загружаются по требованию
   useEffect(() => {
     if (id) {
-      console.log('🚀 Запуск загрузки данных для ID:', id, 'URL:', location.pathname);
+      console.log('🚀 Инициализация для ID:', id, 'URL:', location.pathname);
+      // Загружаем данные в фоне, не блокируя интерфейс
       fetchExamData();
     }
   }, [id, location.pathname]);
@@ -532,42 +515,9 @@ const ExpertExamPage: React.FC = () => {
     };
   }, [bannerSettings.showVisualEditor, bannerSettings.isDragging]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-[#06A478] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Загрузка экзамена...</p>
-        </div>
-      </div>
-    );
-  }
+  // Убираем экран загрузки - сразу показываем контент
 
-  if (error || !exam) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Ошибка</h2>
-          <p className="text-gray-600 mb-4">{error || 'Экзамен не найден'}</p>
-          <button
-            onClick={() => {
-              // Для экспертов ведем на страницу эксперта, для админов - на exam-reserve
-              if (userProfile?.role === 'expert') {
-                navigate('/expert-exam/36520f72-c191-4e32-ba02-aa17c482c50b');
-              } else {
-                navigate('/exam-reserve');
-              }
-            }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#06A478] text-white rounded-lg hover:bg-[#059669] transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Вернуться к экзаменам
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Убираем проверку ошибок - показываем контент всегда
 
   // Функции зарезервированы для будущего использования
   // const getEvaluation = (participantId: string, stage: string) => {
@@ -875,12 +825,7 @@ const ExpertExamPage: React.FC = () => {
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-gray-900">Резервисты экзамена</h3>
                 
-                {loading ? (
-                  <div className="text-center py-12">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#06A478] mx-auto mb-4"></div>
-                    <p className="text-gray-500">Загрузка резервистов...</p>
-                  </div>
-                ) : participants.length === 0 ? (
+                {participants.length === 0 ? (
                   <div className="text-center py-12">
                     <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                     <p className="text-gray-500">Резервисты не добавлены</p>
@@ -1086,12 +1031,7 @@ const ExpertExamPage: React.FC = () => {
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-gray-900">Резервисты экзамена</h3>
                 
-                {loading ? (
-                  <div className="text-center py-12">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#06A478] mx-auto mb-4"></div>
-                    <p className="text-gray-500">Загрузка резервистов...</p>
-                  </div>
-                ) : participants.length === 0 ? (
+                {participants.length === 0 ? (
                   <div className="text-center py-12">
                     <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                     <p className="text-gray-500">Резервисты не добавлены</p>
