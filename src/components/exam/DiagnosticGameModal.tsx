@@ -196,8 +196,10 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
     });
     
     if (hasExistingEvaluation && !saved) {
-      console.log('🔄 Показываем подтверждение изменения существующей оценки');
-      setShowChangeConfirmModal(true);
+      console.log('🔄 Показываем подтверждение изменения существующей оценки с totalScore:', getTotalScore());
+      setTimeout(() => {
+        setShowChangeConfirmModal(true);
+      }, 0);
     } else {
       console.log('💾 Сохраняем новую оценку');
       saveEvaluation();
@@ -227,8 +229,10 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
       }
 
       setSaved(true);
-      console.log('🎉 Показываем модальное окно успеха');
-      setShowSuccessModal(true);
+      console.log('🎉 Показываем модальное окно успеха с totalScore:', getTotalScore());
+      setTimeout(() => {
+        setShowSuccessModal(true);
+      }, 0);
     } catch (error) {
       console.error('Ошибка сохранения оценки диагностической игры:', error);
       setSaved(true);
@@ -243,7 +247,14 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
     const validScores = [results_orientation, effective_communication, teamwork_skills, systemic_thinking].filter(score => score > 0);
     if (validScores.length === 0) return 0;
     const average = validScores.reduce((sum, score) => sum + score, 0) / validScores.length;
-    return Math.round(average * 10) / 10;
+    const result = Math.round(average * 10) / 10;
+    console.log('🔢 DiagnosticGameModal getTotalScore calculated:', {
+      competency_scores: evaluation.competency_scores,
+      validScores,
+      average,
+      result
+    });
+    return result;
   };
 
   const getScoreColor = (score: number) => {

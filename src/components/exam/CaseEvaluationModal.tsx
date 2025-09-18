@@ -337,7 +337,14 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
     const vals = Object.values(evaluation.criteria_scores).filter(v => v > 0);
     if (!vals.length) return 0;
     const avg = vals.reduce((s, v) => s + v, 0) / vals.length;
-    return Math.round(avg * 10) / 10;
+    const result = Math.round(avg * 10) / 10;
+    console.log('🔢 CaseEvaluationModal totalScore calculated:', {
+      criteria_scores: evaluation.criteria_scores,
+      validScores: vals,
+      average: avg,
+      result
+    });
+    return result;
   }, [evaluation.criteria_scores]);
 
   // Готовность к отправке считаем напрямую из критериев, без округления
@@ -368,8 +375,11 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
     }
 
     if (hasExistingEvaluation && !saved) {
-      console.log('🔄 Показываем подтверждение изменения существующей оценки');
-      setShowChangeConfirmModal(true);
+      console.log('🔄 Показываем подтверждение изменения существующей оценки с totalScore:', totalScore);
+      // Принудительно обновляем состояние перед показом модального окна
+      setTimeout(() => {
+        setShowChangeConfirmModal(true);
+      }, 0);
       return;
     }
     // Новая оценка или без изменений — сохраняем
@@ -418,8 +428,11 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
 
       setSaved(true);
       setHasExistingEvaluation(true); // Теперь у нас есть существующая оценка
-      console.log('🎉 Показываем модальное окно успеха');
-      setShowSuccessModal(true);
+      console.log('🎉 Показываем модальное окно успеха с totalScore:', totalScore);
+      // Принудительно обновляем состояние перед показом модального окна
+      setTimeout(() => {
+        setShowSuccessModal(true);
+      }, 0);
     } catch (e) {
       console.error('❌ Ошибка сохранения:', e);
       alert(`Ошибка сохранения: ${e instanceof Error ? e.message : 'Неизвестная ошибка'}`);

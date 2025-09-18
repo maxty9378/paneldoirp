@@ -186,8 +186,10 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
     });
     
     if (hasExistingEvaluation && !saved) {
-      console.log('🔄 Показываем подтверждение изменения существующей оценки');
-      setShowChangeConfirmModal(true);
+      console.log('🔄 Показываем подтверждение изменения существующей оценки с totalScore:', totalScore);
+      setTimeout(() => {
+        setShowChangeConfirmModal(true);
+      }, 0);
     } else {
       console.log('💾 Сохраняем новую оценку');
       saveEvaluation();
@@ -218,8 +220,10 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
       }
 
       setSaved(true);
-      console.log('🎉 Показываем модальное окно успеха');
-      setShowSuccessModal(true);
+      console.log('🎉 Показываем модальное окно успеха с totalScore:', totalScore);
+      setTimeout(() => {
+        setShowSuccessModal(true);
+      }, 0);
     } catch (error) {
       console.error('Ошибка сохранения оценки защиты проекта:', error);
       setSaved(true);
@@ -290,7 +294,14 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
     const validScores = scores.filter(s => s > 0);
     if (validScores.length === 0) return 0;
     const avg = validScores.reduce((s, x) => s + x, 0) / validScores.length;
-    return Math.round(avg * 10) / 10;
+    const result = Math.round(avg * 10) / 10;
+    console.log('🔢 ProjectDefenseModal totalScore calculated:', {
+      criteria_scores: evaluation.criteria_scores,
+      validScores,
+      average: avg,
+      result
+    });
+    return result;
   }, [evaluation.criteria_scores]);
 
   const canSave = totalScore > 0 && !saving;

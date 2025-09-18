@@ -24,6 +24,8 @@ export const EvaluationSuccessModal: React.FC<EvaluationSuccessModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  console.log('🎉 EvaluationSuccessModal received totalScore:', totalScore);
+
   const getScoreColor = (score: number) => {
     if (score >= 4) return 'text-green-600';
     if (score >= 3) return 'text-yellow-600';
