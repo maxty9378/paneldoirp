@@ -33,6 +33,16 @@ interface ExamEvent {
     name: string;
     name_ru: string;
   };
+  participants?: Array<{
+    id: string;
+    user: {
+      id: string;
+      full_name: string;
+    };
+    presentation_number?: {
+      presentation_number: number;
+    };
+  }>;
 }
 
 const ExpertSchedulePage: React.FC = () => {
@@ -69,7 +79,12 @@ const ExpertSchedulePage: React.FC = () => {
           detailed_schedule,
           expert_emails,
           event_types(name, name_ru),
-          talent_categories(name, name_ru)
+          talent_categories(name, name_ru),
+          participants:exam_participants(
+            id,
+            user:users(id, full_name),
+            presentation_number:presentation_assignments(presentation_number)
+          )
         `)
         .eq('event_types.name', 'exam_talent_reserve')
         .order('start_date', { ascending: true });
@@ -158,6 +173,15 @@ const ExpertSchedulePage: React.FC = () => {
       console.error('Error checking current time:', error);
       return false;
     }
+  };
+
+  // Функция для получения резервиста по номеру выступления
+  const getReservistByPresentationNumber = (exam: ExamEvent, presentationNumber: number) => {
+    if (!exam.participants) return null;
+    
+    return exam.participants.find(participant => 
+      participant.presentation_number?.presentation_number === presentationNumber
+    );
   };
 
   if (loading || !userProfile) {
@@ -286,6 +310,19 @@ const ExpertSchedulePage: React.FC = () => {
 
                       return scheduleData.map((item, index) => {
                         const isActive = isCurrentlyActive(item.startTime || '', item.endTime || '');
+                        
+                        // Определяем номер выступления для каждого этапа
+                        let presentationNumber = null;
+                        if (item.title.includes('Решение и защита прикладных кейсов')) {
+                          presentationNumber = 1; // Первый резервист
+                        } else if (item.title.includes('Защита проекта')) {
+                          presentationNumber = 2; // Второй резервист
+                        } else if (item.title.includes('Диагностическая игра')) {
+                          presentationNumber = 3; // Третий резервист
+                        }
+                        
+                        const reservist = presentationNumber ? getReservistByPresentationNumber(exam, presentationNumber) : null;
+                        
                         return (
                           <div key={item.id || index} className="group relative">
                             {/* Content card */}
@@ -339,9 +376,32 @@ const ExpertSchedulePage: React.FC = () => {
                                 </h4>
                                 
                                 {item.description && (
-                                  <p className="text-gray-600 text-sm" style={{ lineHeight: '1.1' }}>
+                                  <p className="text-gray-600 text-sm mb-2" style={{ lineHeight: '1.1' }}>
                                     {item.description}
                                   </p>
+                                )}
+                                
+                                {/* Показываем резервиста для всех этапов с выступлениями */}
+                                {presentationNumber && reservist && (
+                                  <div className="mt-2 p-2 bg-[#06A478]/5 rounded-lg border border-[#06A478]/20">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-2 h-2 bg-[#06A478] rounded-full"></div>
+                                      <span className="text-sm font-medium text-[#06A478]">
+                                        Выступает: {reservist.user.full_name}
+                                      </span>
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {presentationNumber && !reservist && (
+                                  <div className="mt-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                      <span className="text-sm text-gray-500">
+                                        Резервист не назначен
+                                      </span>
+                                    </div>
+                                  </div>
                                 )}
                               </div>
                             </div>
