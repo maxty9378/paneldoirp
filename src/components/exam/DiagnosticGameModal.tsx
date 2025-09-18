@@ -210,6 +210,7 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
     setSaving(true);
     try {
       const evaluationData = {
+        ...(evaluation.id && { id: evaluation.id }), // Добавляем id если он есть
         exam_event_id: examId,
         reservist_id: participantId,
         evaluator_id: user?.id,
