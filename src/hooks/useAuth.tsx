@@ -72,11 +72,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [retryCount, setRetryCount] = useState(0);
 
   // Хелпер для проверки авторизационного флоу
-  const isAuthFlowPath = () => {
+  const isAuthFlowPath = useCallback(() => {
     if (typeof window === 'undefined') return false;
     const p = window.location.pathname || '';
     return p.startsWith('/auth/');
-  };
+  }, []);
 
   // single-flight
   const inFlightProfile = useRef<Promise<User | null> | null>(null);
@@ -264,7 +264,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Страховка: не загружаем профиль во время авторизации
-    if (isAuthFlowPath() || window.authCallbackProcessing) {
+    if (window.location.pathname.startsWith('/auth/') || window.authCallbackProcessing) {
       console.log('⏭ Bypass fetchUserProfile during auth flow');
       return;
     }
@@ -405,11 +405,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     inFlightProfile.current = runner;
     await runner;
-  }, [isAuthFlowPath]);
+  }, []);
 
   // Резюмирование после коллбэка - дотянуть профиль после /auth/*
   useEffect(() => {
-    if (!isAuthFlowPath() && session?.user && !userProfile) {
+    if (!window.location.pathname.startsWith('/auth/') && session?.user && !userProfile) {
       console.log('🔄 Post-auth: fetching profile after callback');
       fetchUserProfile(session.user.id, { foreground: false })
         .catch(e => console.warn('post-auth bg fetch failed', e));
@@ -640,6 +640,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('⏳ AuthCallback is processing, skipping initialization');
         setLoadingPhase('auth-change');
         setLoading(true);
+        
+        // Дополнительная страховка - сбрасываем флаг через таймаут
+        setTimeout(() => {
+          if (window.authCallbackProcessing) {
+            console.log('🔄 useAuth: Force clearing flag after timeout');
+            window.authCallbackProcessing = false;
+          }
+        }, 2000);
         return;
       }
       
@@ -666,7 +674,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session?.user) {
           console.log('✅ Initial session found');
           
-          if (isAuthFlowPath() || window.authCallbackProcessing) {
+          if (window.location.pathname.startsWith('/auth/') || window.authCallbackProcessing) {
             console.log('⏸ Skip initial profile fetch during auth flow');
             setLoadingPhase('ready');
             setLoading(false);
@@ -701,14 +709,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               fetchUserProfile(session.user.id, { foreground: false })
                 .catch(e => console.warn('bg profile update failed', e));
             } else {
-              // Загружаем профиль
-              setLoadingPhase('profile-fetch');
-              fetchUserProfile(session.user.id, { foreground: true })
-                .catch(e => {
-                  console.warn('initial profile fetch failed', e);
-                  setLoadingPhase('complete');
-                  setLoading(false);
-                });
+              // Загружаем профиль в фоне
+              setLoadingPhase('ready');
+              setLoading(false);
+              fetchUserProfile(session.user.id, { foreground: false })
+                .catch(e => console.warn('initial profile fetch failed', e));
             }
           }
         } else {
@@ -799,7 +804,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // не дёргаем профиль, пока коллбэк ещё жуёт токены или мы на /auth/*
-      if (window.authCallbackProcessing || isAuthFlowPath()) {
+      if (window.authCallbackProcessing || window.location.pathname.startsWith('/auth/')) {
         console.log('⏸ Skip profile fetch during auth flow');
         setLoadingPhase('ready');
         setLoading(false);

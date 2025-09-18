@@ -129,6 +129,14 @@ export default function AuthCallback() {
       // Немедленное перенаправление без задержек
       navigate('/');
       console.log('🔄 AuthCallback: navigate() called');
+      
+      // Дополнительная страховка - сбрасываем флаг через таймаут
+      setTimeout(() => {
+        if (window.authCallbackProcessing) {
+          console.log('🔄 AuthCallback: Force clearing flag after timeout');
+          window.authCallbackProcessing = false;
+        }
+      }, 1000);
     }
 
     function hardHome() {
@@ -139,6 +147,14 @@ export default function AuthCallback() {
       // аварийно разруливаем возможные «полупроводы»
       window.location.replace('/');
       console.log('🔄 AuthCallback: location.replace() called');
+      
+      // Дополнительная страховка - сбрасываем флаг через таймаут
+      setTimeout(() => {
+        if (window.authCallbackProcessing) {
+          console.log('🔄 AuthCallback: Force clearing flag after timeout');
+          window.authCallbackProcessing = false;
+        }
+      }, 1000);
     }
   }, [navigate]);
 

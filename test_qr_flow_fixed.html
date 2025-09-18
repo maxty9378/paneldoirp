@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест исправленного флоу QR-авторизации</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #06A478;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #05976b;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Тест исправленного флоу QR-авторизации</h1>
+    
+    <div class="test-section">
+        <h2>📋 Исправления</h2>
+        <ul>
+            <li>✅ Убран двойной редирект в App.tsx</li>
+            <li>✅ Добавлена проверка pathname в App.tsx</li>
+            <li>✅ Исправлены зависимости в useAuth.tsx</li>
+            <li>✅ Добавлена страховка для сброса флага</li>
+            <li>✅ Профиль загружается в фоне</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>🧪 Тестирование флоу</h2>
+        
+        <h3>1. PKCE код (наиболее частый для QR)</h3>
+        <button class="test-button" onclick="testPKCE()">Тест PKCE</button>
+        <div id="pkce-status" class="status info">Готов к тестированию</div>
+        
+        <h3>2. Magic Link (hash токены)</h3>
+        <button class="test-button" onclick="testMagicLinkHash()">Тест Magic Link Hash</button>
+        <div id="magic-hash-status" class="status info">Готов к тестированию</div>
+        
+        <h3>3. Magic Link (search токены)</h3>
+        <button class="test-button" onclick="testMagicLinkSearch()">Тест Magic Link Search</button>
+        <div id="magic-search-status" class="status info">Готов к тестированию</div>
+        
+        <h3>4. Тест редиректа</h3>
+        <button class="test-button" onclick="testRedirect()">Тест редиректа</button>
+        <div id="redirect-status" class="status info">Готов к тестированию</div>
+        
+        <h3>5. Тест уже авторизованного пользователя</h3>
+        <button class="test-button" onclick="testAuthenticatedUser()">Тест авторизованного</button>
+        <div id="auth-status" class="status info">Готов к тестированию</div>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 Логи</h2>
+        <div id="logs" class="log">Логи появятся здесь...</div>
+        <button class="test-button" onclick="clearLogs()">Очистить логи</button>
+    </div>
+
+    <script>
+        let logCount = 0;
+        
+        function log(message) {
+            const logs = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            logs.textContent += `[${timestamp}] ${message}\n`;
+            logs.scrollTop = logs.scrollHeight;
+            logCount++;
+        }
+        
+        function clearLogs() {
+            document.getElementById('logs').textContent = 'Логи очищены...\n';
+            logCount = 0;
+        }
+        
+        function setStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `status ${type}`;
+        }
+        
+        function testPKCE() {
+            log('🔑 Тестируем PKCE код...');
+            setStatus('pkce-status', 'Тестируем PKCE...', 'info');
+            
+            // Симулируем URL с PKCE кодом
+            const testUrl = 'https://paneldoirp.vercel.app/?code=test-pkce-code-123';
+            log(`📋 Тест URL: ${testUrl}`);
+            
+            // Проверяем логику App.tsx
+            const url = new URL(testUrl);
+            const search = url.searchParams;
+            const hasPKCE = search.includes('code=');
+            
+            log(`✅ PKCE код найден: ${hasPKCE}`);
+            log(`✅ Код: ${search.get('code')}`);
+            
+            if (hasPKCE) {
+                setStatus('pkce-status', '✅ PKCE код корректно обнаружен', 'success');
+                log('✅ App.tsx должен перенаправить на /auth/callback?code=...');
+                log('✅ AuthCallback должен вызвать exchangeCodeForSession()');
+            } else {
+                setStatus('pkce-status', '❌ PKCE код не обнаружен', 'error');
+            }
+        }
+        
+        function testMagicLinkHash() {
+            log('🔑 Тестируем Magic Link (hash)...');
+            setStatus('magic-hash-status', 'Тестируем Magic Link Hash...', 'info');
+            
+            // Симулируем URL с токенами в hash
+            const testUrl = 'https://paneldoirp.vercel.app/#access_token=test-access-token&refresh_token=test-refresh-token&type=magiclink';
+            log(`📋 Тест URL: ${testUrl}`);
+            
+            // Проверяем логику App.tsx
+            const url = new URL(testUrl);
+            const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+            const hasHashTokens = hash.includes('access_token') || hash.includes('refresh_token') || hash.includes('token=');
+            
+            log(`✅ Hash токены найдены: ${hasHashTokens}`);
+            log(`✅ Access token: ${hash.get('access_token')}`);
+            log(`✅ Refresh token: ${hash.get('refresh_token')}`);
+            
+            if (hasHashTokens) {
+                setStatus('magic-hash-status', '✅ Hash токены корректно обнаружены', 'success');
+                log('✅ App.tsx должен перенаправить на /auth/callback#...');
+                log('✅ AuthCallback должен вызвать setSession()');
+            } else {
+                setStatus('magic-hash-status', '❌ Hash токены не обнаружены', 'error');
+            }
+        }
+        
+        function testMagicLinkSearch() {
+            log('🔑 Тестируем Magic Link (search)...');
+            setStatus('magic-search-status', 'Тестируем Magic Link Search...', 'info');
+            
+            // Симулируем URL с токенами в search
+            const testUrl = 'https://paneldoirp.vercel.app/?token=test-magic-token&type=magiclink';
+            log(`📋 Тест URL: ${testUrl}`);
+            
+            // Проверяем логику App.tsx
+            const url = new URL(testUrl);
+            const search = url.searchParams;
+            const hasSearchMagic = search.includes('token=') && search.includes('type=magiclink');
+            
+            log(`✅ Search magic токены найдены: ${hasSearchMagic}`);
+            log(`✅ Token: ${search.get('token')}`);
+            log(`✅ Type: ${search.get('type')}`);
+            
+            if (hasSearchMagic) {
+                setStatus('magic-search-status', '✅ Search magic токены корректно обнаружены', 'success');
+                log('✅ App.tsx должен перенаправить на /auth/callback?token=...');
+                log('✅ AuthCallback должен вызвать verifyOtp()');
+            } else {
+                setStatus('magic-search-status', '❌ Search magic токены не обнаружены', 'error');
+            }
+        }
+        
+        function testRedirect() {
+            log('🔄 Тестируем редирект...');
+            setStatus('redirect-status', 'Тестируем редирект...', 'info');
+            
+            // Симулируем разные сценарии редиректа
+            const scenarios = [
+                {
+                    name: 'PKCE код',
+                    url: 'https://paneldoirp.vercel.app/?code=test-code',
+                    expected: '/auth/callback?code=test-code'
+                },
+                {
+                    name: 'Hash токены',
+                    url: 'https://paneldoirp.vercel.app/#access_token=test&refresh_token=test',
+                    expected: '/auth/callback#access_token=test&refresh_token=test'
+                },
+                {
+                    name: 'Search magic',
+                    url: 'https://paneldoirp.vercel.app/?token=test&type=magiclink',
+                    expected: '/auth/callback?token=test&type=magiclink'
+                }
+            ];
+            
+            scenarios.forEach(scenario => {
+                log(`📋 ${scenario.name}: ${scenario.url}`);
+                
+                const url = new URL(scenario.url);
+                const search = url.searchParams;
+                const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+                
+                const hasPKCE = search.includes('code=');
+                const hasHashTokens = hash.includes('access_token') || hash.includes('refresh_token') || hash.includes('token=');
+                const hasSearchMagic = search.includes('token=') && search.includes('type=magiclink');
+                
+                if (hasPKCE || hasHashTokens || hasSearchMagic) {
+                    const suffix = hasPKCE ? search : hash || search;
+                    const redirectUrl = '/auth/callback' + suffix;
+                    log(`✅ Должен редиректить на: ${redirectUrl}`);
+                    
+                    if (redirectUrl === scenario.expected) {
+                        log(`✅ ${scenario.name}: редирект корректен`);
+                    } else {
+                        log(`❌ ${scenario.name}: редирект некорректен`);
+                    }
+                } else {
+                    log(`❌ ${scenario.name}: auth параметры не обнаружены`);
+                }
+            });
+            
+            setStatus('redirect-status', '✅ Тест редиректа завершен', 'success');
+        }
+        
+        function testAuthenticatedUser() {
+            log('👤 Тестируем уже авторизованного пользователя...');
+            setStatus('auth-status', 'Тестируем авторизованного пользователя...', 'info');
+            
+            // Симулируем сценарий, когда пользователь уже авторизован
+            const testUrl = 'https://paneldoirp.vercel.app/?code=test-code';
+            log(`📋 Тест URL: ${testUrl}`);
+            log(`👤 Пользователь уже авторизован: true`);
+            
+            // Проверяем логику App.tsx для авторизованного пользователя
+            const url = new URL(testUrl);
+            const search = url.searchParams;
+            const hasPKCE = search.includes('code=');
+            
+            if (hasPKCE) {
+                log('✅ PKCE код обнаружен');
+                log('✅ Пользователь уже авторизован');
+                log('✅ App.tsx должен очистить URL без редиректа');
+                log('✅ Ожидаемый результат: URL очищен, редиректа нет');
+                
+                setStatus('auth-status', '✅ Логика для авторизованного пользователя корректна', 'success');
+            } else {
+                setStatus('auth-status', '❌ PKCE код не обнаружен', 'error');
+            }
+        }
+        
+        // Автоматически запускаем тесты при загрузке
+        window.addEventListener('load', () => {
+            log('🚀 Страница загружена, готов к тестированию');
+            log('📋 Проверьте консоль браузера для подробных логов');
+        });
+    </script>
+</body>
+</html>

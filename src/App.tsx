@@ -100,15 +100,21 @@ function AppContent() {
     console.log('🔄 App: hasHashTokens:', hasHashTokens);
     console.log('🔄 App: hasSearchMagic:', hasSearchMagic);
 
-    // Если пользователь уже авторизован, не перенаправляем на callback
+    // Если мы уже на /auth/callback, не делаем редирект
+    if (pathname === '/auth/callback') {
+      console.log('ℹ️ Already on /auth/callback, skipping redirect');
+      return;
+    }
+
+    // Если есть auth параметры, но пользователь уже авторизован, просто очищаем URL
     if (user && (hasPKCE || hasHashTokens || hasSearchMagic)) {
       console.log('✅ App: User already authenticated, cleaning URL without redirect');
-      // Просто очищаем URL от auth параметров
       const cleanUrl = window.location.origin + window.location.pathname;
       window.history.replaceState({}, '', cleanUrl);
       return;
     }
 
+    // Если есть auth параметры и мы не на callback, перенаправляем
     if ((hasPKCE || hasHashTokens || hasSearchMagic) && pathname !== '/auth/callback') {
       const suffix = hasPKCE ? search : hash || search;
       console.log('🔄 Auth params detected, redirecting to /auth/callback...');
@@ -133,7 +139,7 @@ function AppContent() {
     };
 
     checkStoredSession();
-  }, []);
+  }, [user]); // Добавляем user в зависимости
   
   const [editingEvent, setEditingEvent] = useState<any>(null);
   // Удаляем testAttemptDetails и связанные функции
