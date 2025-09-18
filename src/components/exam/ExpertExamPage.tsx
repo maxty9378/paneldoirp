@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useOutletContext, useLocation } from 'react-router-dom';
-import { ArrowLeft, Calendar, MapPin, Users, Target, User, Star, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, Target, User, Star, AlertCircle, RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 // import DossierCard from './DossierCard';
@@ -515,9 +515,49 @@ const ExpertExamPage: React.FC = () => {
     };
   }, [bannerSettings.showVisualEditor, bannerSettings.isDragging]);
 
-  // Убираем экран загрузки - сразу показываем контент
+  // Показываем заглушку, если данные еще не загружены или идет загрузка
+  if (!exam || loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-[#06A478]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-8 h-8 border-4 border-[#06A478] border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Загрузка экзамена</h2>
+            <p className="text-gray-600">Подготавливаем данные для работы...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  // Убираем проверку ошибок - показываем контент всегда
+  // Показываем ошибку, если что-то пошло не так
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-8 h-8 text-red-600" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Ошибка загрузки</h2>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <button
+              onClick={() => {
+                setError(null);
+                fetchExamData();
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-[#06A478] text-white rounded-lg hover:bg-[#059669] transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Попробовать снова
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Функции зарезервированы для будущего использования
   // const getEvaluation = (participantId: string, stage: string) => {
