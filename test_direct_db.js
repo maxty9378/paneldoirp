@@ -53,3 +53,5 @@ async function testDirectDB() {
 // Запускаем тест
 testDirectDB();
 
+
+

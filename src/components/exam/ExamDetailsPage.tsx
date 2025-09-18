@@ -1015,8 +1015,12 @@ const ExamDetailsPage: React.FC = () => {
         onClose={() => setShowPresentationAssignmentModal(false)}
         examId={id || ''}
         participants={reservists}
-        onAssignmentSaved={() => {
+        onAssignmentSaved={async () => {
           setShowPresentationAssignmentModal(false);
+          // Перезагружаем данные участников после сохранения назначений
+          if (id) {
+            await fetchReservists(id);
+          }
         }}
       />
     </div>

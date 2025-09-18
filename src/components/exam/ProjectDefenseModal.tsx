@@ -89,6 +89,8 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
 
   const loadAssignedPresentationNumber = async () => {
     try {
+      console.log('🔍 Загружаем номер выступления для:', { examId, participantId });
+      
       const { data, error } = await supabase
         .from('presentation_assignments')
         .select('presentation_number')
@@ -96,16 +98,22 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
         .eq('participant_id', participantId)
         .single();
 
+      console.log('📊 Результат загрузки номера выступления:', { data, error });
+
       if (error && error.code !== 'PGRST116') {
-        console.error('Ошибка загрузки номера выступления:', error);
+        console.error('❌ Ошибка загрузки номера выступления:', error);
         return;
       }
 
       if (data) {
+        console.log('✅ Назначенный номер выступления:', data.presentation_number);
         setAssignedPresentationNumber(data.presentation_number);
+      } else {
+        console.log('ℹ️ Номер выступления не назначен для участника');
+        setAssignedPresentationNumber(null);
       }
     } catch (error) {
-      console.error('Ошибка загрузки номера выступления:', error);
+      console.error('❌ Ошибка загрузки номера выступления:', error);
     }
   };
 
@@ -535,7 +543,15 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
                       </div>
                     </div>
                     <div className="h-10 w-10 rounded-lg border-2 border-emerald-500 bg-emerald-500 text-white shadow-lg flex items-center justify-center font-semibold text-lg">
-                      {assignedPresentationNumber || evaluation.presentation_number}
+                      {(() => {
+                        const displayNumber = assignedPresentationNumber || evaluation.presentation_number;
+                        console.log('🎯 Отображаем номер выступления:', {
+                          assignedPresentationNumber,
+                          evaluationPresentationNumber: evaluation.presentation_number,
+                          displayNumber
+                        });
+                        return displayNumber;
+                      })()}
                     </div>
                   </div>
                 </div>

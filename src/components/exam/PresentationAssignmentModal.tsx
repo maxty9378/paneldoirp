@@ -120,23 +120,10 @@ export const PresentationAssignmentModal: React.FC<PresentationAssignmentModalPr
     ));
   };
 
-  // Проверка на дублирующие номера
-  const getDuplicateNumbers = () => {
-    const numbers = assignments.map(a => a.presentation_number).filter(n => n > 0);
-    const duplicates = numbers.filter((num, index) => numbers.indexOf(num) !== index);
-    return new Set(duplicates);
-  };
 
   // Сохранение назначений
   const saveAssignments = async () => {
     if (!user?.id) return;
-
-    // Проверка на дубликаты
-    const duplicates = getDuplicateNumbers();
-    if (duplicates.size > 0) {
-      setError(`Обнаружены дублирующиеся номера: ${Array.from(duplicates).join(', ')}`);
-      return;
-    }
 
     // Проверка на пустые номера
     const emptyNumbers = assignments.filter(a => a.presentation_number <= 0);
@@ -145,37 +132,56 @@ export const PresentationAssignmentModal: React.FC<PresentationAssignmentModalPr
       return;
     }
 
+    // Автоматически исправляем дубликаты при сохранении, сохраняя порядок администратора
+    const validAssignments = assignments.filter(a => a.presentation_number > 0);
+    
+    // Сортируем по номеру выступления, чтобы сохранить намерение администратора
+    const sortedAssignments = [...validAssignments].sort((a, b) => a.presentation_number - b.presentation_number);
+    
+    // Переназначаем номера последовательно, сохраняя порядок
+    const uniqueAssignments = sortedAssignments.map((assignment, index) => ({
+      ...assignment,
+      presentation_number: index + 1
+    }));
+
     setSaving(true);
     setError(null);
 
     try {
-      // Фильтруем только назначения с номерами больше 0
-      const validAssignments = assignments.filter(a => a.presentation_number > 0);
+      console.log('💾 Сохраняем назначения:', {
+        examId,
+        assignments: uniqueAssignments,
+        assignedBy: user.id
+      });
 
-      // Используем функцию batch assignment
+      // Используем функцию batch assignment с исправленными номерами
       const { data, error } = await supabase.rpc('assign_presentation_numbers_batch', {
         p_exam_event_id: examId,
-        p_assignments: JSON.stringify(validAssignments),
+        p_assignments: JSON.stringify(uniqueAssignments),
         p_assigned_by: user.id
       });
 
+      console.log('📊 Результат сохранения:', { data, error });
+
       if (error) {
-        console.error('Ошибка сохранения назначений:', error);
-        setError('Ошибка сохранения назначений. Возможно, таблица не создана.');
+        console.error('❌ Ошибка сохранения назначений:', error);
+        setError(`Ошибка сохранения назначений: ${error.message}`);
         return;
       }
 
       // Проверяем результат функции
       if (data && data.length > 0 && !data[0].success) {
+        console.error('❌ Функция вернула ошибку:', data[0].message);
         setError(data[0].message);
         return;
       }
 
+      console.log('✅ Назначения успешно сохранены');
       onAssignmentSaved?.();
       onClose();
     } catch (err) {
-      console.error('Ошибка сохранения назначений:', err);
-      setError('Произошла ошибка при сохранении назначений');
+      console.error('❌ Ошибка сохранения назначений:', err);
+      setError(`Произошла ошибка при сохранении назначений: ${err instanceof Error ? err.message : 'Неизвестная ошибка'}`);
     } finally {
       setSaving(false);
     }
@@ -188,8 +194,6 @@ export const PresentationAssignmentModal: React.FC<PresentationAssignmentModalPr
   }, [isOpen, examId, participants]);
 
   if (!isOpen) return null;
-
-  const duplicates = getDuplicateNumbers();
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[5002] p-4">
@@ -262,16 +266,10 @@ export const PresentationAssignmentModal: React.FC<PresentationAssignmentModalPr
                   const participant = participants.find(p => p.user.id === assignment.participant_id);
                   if (!participant) return null;
 
-                  const isDuplicate = duplicates.has(assignment.presentation_number);
-
                   return (
                     <div
                       key={assignment.participant_id}
-                      className={`flex items-center gap-4 p-4 border rounded-xl transition-all ${
-                        isDuplicate 
-                          ? 'border-red-300 bg-red-50' 
-                          : 'border-gray-200 bg-white hover:border-emerald-300'
-                      }`}
+                      className="flex items-center gap-4 p-4 border border-gray-200 bg-white hover:border-emerald-300 rounded-xl transition-all"
                     >
                       {/* Номер выступления */}
                       <div className="flex items-center gap-2">
@@ -285,11 +283,7 @@ export const PresentationAssignmentModal: React.FC<PresentationAssignmentModalPr
                             assignment.participant_id, 
                             parseInt(e.target.value) || 0
                           )}
-                          className={`w-20 px-3 py-2 border rounded-lg text-center font-semibold ${
-                            isDuplicate 
-                              ? 'border-red-300 bg-red-50 text-red-700' 
-                              : 'border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500'
-                          }`}
+                          className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-center font-semibold focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         />
                       </div>
 
@@ -308,13 +302,6 @@ export const PresentationAssignmentModal: React.FC<PresentationAssignmentModalPr
                           </div>
                         </div>
                       </div>
-
-                      {/* Индикатор дублирования */}
-                      {isDuplicate && (
-                        <div className="text-red-500">
-                          <AlertCircle className="w-5 h-5" />
-                        </div>
-                      )}
                     </div>
                   );
                 })}
@@ -332,9 +319,9 @@ export const PresentationAssignmentModal: React.FC<PresentationAssignmentModalPr
           </button>
           <button
             onClick={saveAssignments}
-            disabled={saving || duplicates.size > 0}
+            disabled={saving}
             className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${
-              saving || duplicates.size > 0
+              saving
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg hover:shadow-xl'
             }`}

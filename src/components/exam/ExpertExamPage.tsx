@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useOutletContext, useLocation } from 'react-router-dom';
-import { ArrowLeft, Calendar, MapPin, Users, Target, User, Star, AlertCircle, RefreshCw } from 'lucide-react';
+import { Calendar, MapPin, Users, Target, User, Star, AlertCircle, RefreshCw, Hash } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 // import DossierCard from './DossierCard';
@@ -9,6 +9,7 @@ import { DossierModal } from './DossierModal';
 import { EvaluationStageModal } from './EvaluationStageModal';
 import { ProjectDefenseModal } from './ProjectDefenseModal';
 import { DiagnosticGameModal } from './DiagnosticGameModal';
+import { PresentationAssignmentModal } from './PresentationAssignmentModal';
 import ExpertEvaluationResults from './ExpertEvaluationResults';
 import { FloatingActionButton } from '../ui/FloatingActionButton';
 import { ScheduleModal } from './ScheduleModal';
@@ -147,10 +148,11 @@ const ExpertExamPage: React.FC = () => {
   const [showProjectDefenseModal, setShowProjectDefenseModal] = useState(false);
   const [showDiagnosticGameModal, setShowDiagnosticGameModal] = useState(false);
   const [showEvaluationResults, setShowEvaluationResults] = useState(false);
+  const [showPresentationAssignmentModal, setShowPresentationAssignmentModal] = useState(false);
   const [isAnyModalOpen, setIsAnyModalOpen] = useState(false);
   
   // Вычисляем состояние открытых модалок
-  const computedModalOpen = showEvaluationModal || showProjectDefenseModal || showDiagnosticGameModal || showEvaluationResults || !!selectedParticipantId;
+  const computedModalOpen = showEvaluationModal || showProjectDefenseModal || showDiagnosticGameModal || showEvaluationResults || showPresentationAssignmentModal || !!selectedParticipantId;
   
   // Отслеживание открытых модальных окон
   useEffect(() => {
@@ -227,6 +229,8 @@ const ExpertExamPage: React.FC = () => {
           location,
           start_date,
           end_date,
+          status,
+          created_at,
           detailed_schedule,
           event_types (*),
           talent_category: talent_categories (*)
@@ -236,7 +240,7 @@ const ExpertExamPage: React.FC = () => {
 
       if (examError) throw examError;
 
-      setExam(examData);
+      setExam(examData as unknown as ExamEvent);
 
       // Загружаем участников
       console.log('👥 Загружаем участников...');
@@ -471,10 +475,9 @@ const ExpertExamPage: React.FC = () => {
       
       const { error, count } = await supabase
         .from('event_participants')
-        .delete()
+        .delete({ count: 'exact' })
         .eq('event_id', id)
-        .eq('user_id', participantId)
-        .select('*', { count: 'exact' });
+        .eq('user_id', participantId);
       
       if (error) {
         console.error('❌ Ошибка удаления участника:', error);
@@ -770,8 +773,15 @@ const ExpertExamPage: React.FC = () => {
                   
                   {/* Кнопки действий */}
                   <div className="mt-4 flex flex-wrap gap-2">
-                    
-                    {/* Кнопки для администраторов */}
+                    {userProfile?.role === 'administrator' && (
+                      <button
+                        onClick={() => setShowPresentationAssignmentModal(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors shadow-lg hover:shadow-xl"
+                      >
+                        <Hash className="w-4 h-4" />
+                        Назначить номера выступлений
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1471,6 +1481,19 @@ const ExpertExamPage: React.FC = () => {
         onClose={() => setShowScheduleModal(false)}
         schedule={exam?.detailed_schedule || []}
         examTitle={exam?.title || 'Расписание экзамена'}
+      />
+
+      {/* Presentation Assignment Modal */}
+      <PresentationAssignmentModal
+        isOpen={showPresentationAssignmentModal}
+        onClose={() => setShowPresentationAssignmentModal(false)}
+        examId={id || ''}
+        participants={participants}
+        onAssignmentSaved={async () => {
+          setShowPresentationAssignmentModal(false);
+          // Перезагружаем данные участников после сохранения назначений
+          await fetchParticipants();
+        }}
       />
 
     </div>
