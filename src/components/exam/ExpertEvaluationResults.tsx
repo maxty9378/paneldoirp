@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Star, Users, Target, Award, TrendingUp, MessageSquare, Calendar } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import '../../styles/scrollbar.css';
 
 interface Participant {
   id: string;
@@ -111,7 +112,18 @@ const ExpertEvaluationResults: React.FC<ExpertEvaluationResultsProps> = ({ examE
 
       setParticipants(participantsList);
 
-      // Пропускаем загрузку оценок ТП - этот блок не используется
+      // Загружаем всех экспертов из базы данных
+      const { data: expertsData, error: expertsError } = await supabase
+        .from('users')
+        .select('id, full_name, email')
+        .eq('role', 'expert');
+
+      if (expertsError) {
+        console.warn('Ошибка загрузки экспертов:', expertsError);
+        setEvaluators([]);
+      } else {
+        setEvaluators(expertsData || []);
+      }
 
       // Загружаем оценки кейсов
       const { data: caseData, error: caseError } = await supabase
@@ -150,29 +162,6 @@ const ExpertEvaluationResults: React.FC<ExpertEvaluationResultsProps> = ({ examE
         setProjectDefenseEvaluations([]);
       } else {
         setProjectDefenseEvaluations(projectData || []);
-      }
-
-      // Загружаем данные экспертов
-      const allEvaluatorIds = new Set<string>();
-      [...(caseData || []), ...(diagnosticData || []), ...(projectData || [])]
-        .forEach(evaluation => {
-          if (evaluation.evaluator_id) {
-            allEvaluatorIds.add(evaluation.evaluator_id);
-          }
-        });
-
-      if (allEvaluatorIds.size > 0) {
-        const { data: evaluatorsData, error: evaluatorsError } = await supabase
-          .from('users')
-          .select('id, full_name, email')
-          .in('id', Array.from(allEvaluatorIds));
-
-        if (evaluatorsError) {
-          console.warn('Ошибка загрузки данных экспертов:', evaluatorsError);
-          setEvaluators([]);
-        } else {
-          setEvaluators(evaluatorsData || []);
-        }
       }
 
     } catch (err) {
@@ -242,271 +231,332 @@ const ExpertEvaluationResults: React.FC<ExpertEvaluationResultsProps> = ({ examE
     );
   }
 
+  // Функция для получения всех уникальных экспертов по этапу
+  const getUniqueEvaluatorsForStage = (evaluations: any[]) => {
+    return Array.from(new Set(evaluations.map(evaluation => evaluation.evaluator_id)));
+  };
+
+  // Функция для получения оценок участника от конкретного эксперта
+  const getParticipantEvaluationsByExpert = (evaluations: any[], participantId: string, evaluatorId: string) => {
+    return evaluations.filter(evaluation => 
+      evaluation.reservist_id === participantId && evaluation.evaluator_id === evaluatorId
+    );
+  };
+
+  // Функция для рендера таблицы оценок кейсов
+  const renderCaseEvaluationsTable = () => {
+    if (evaluators.length === 0) {
+      return (
+        <div className="text-center py-8 text-gray-500">
+          <MessageSquare className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+          <p>Эксперты не найдены</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+        <table className="min-w-full bg-white border border-gray-200 rounded-lg" style={{ minWidth: `${evaluators.length * 120 + 180}px` }}>
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 border-b border-gray-200 w-36 sticky left-0 bg-gray-50 z-20 shadow-sm">
+                Участник
+              </th>
+              {evaluators.map(evaluator => (
+                <th key={evaluator.id} className="px-2 py-2 text-center text-xs font-semibold text-gray-900 border-b border-gray-200 min-w-24">
+                  <div className="text-center">
+                    <div className="font-medium text-xs truncate" title={evaluator.full_name}>{evaluator.full_name}</div>
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {participants.map(participant => (
+              <tr key={participant.id} className="hover:bg-gray-50">
+                <td className="px-3 py-2 whitespace-nowrap sticky left-0 bg-white z-10 shadow-sm">
+                  <div>
+                    <div className="text-xs font-medium text-gray-900 truncate" title={participant.full_name}>{participant.full_name}</div>
+                    <div className="text-xs text-gray-500">{participant.sap_number}</div>
+                  </div>
+                </td>
+                {evaluators.map(evaluator => {
+                  const evaluations = getParticipantEvaluationsByExpert(caseEvaluations, participant.id, evaluator.id);
+                  return (
+                    <td key={evaluator.id} className="px-1 py-2 text-center">
+                      {evaluations.length > 0 ? (
+                        <div className="space-y-1">
+                          {evaluations.map((evaluation, index) => (
+                            <div key={evaluation.id} className="text-xs">
+                              <div className="text-gray-500 mb-1 text-xs">
+                                Кейс {evaluation.case_number}
+                              </div>
+                              <div className="flex justify-center space-x-0.5">
+                                <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${getScoreColor(evaluation.criteria_scores.correctness)}`}>
+                                  {evaluation.criteria_scores.correctness}
+                                </span>
+                                <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${getScoreColor(evaluation.criteria_scores.clarity)}`}>
+                                  {evaluation.criteria_scores.clarity}
+                                </span>
+                                <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${getScoreColor(evaluation.criteria_scores.independence)}`}>
+                                  {evaluation.criteria_scores.independence}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          <div className="text-xs">
+                            <div className="text-gray-400 mb-1 text-xs">Кейс 1</div>
+                            <div className="flex justify-center space-x-0.5">
+                              <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-400">
+                                0
+                              </span>
+                              <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-400">
+                                0
+                              </span>
+                              <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-400">
+                                0
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-xs">
+                            <div className="text-gray-400 mb-1 text-xs">Кейс 2</div>
+                            <div className="flex justify-center space-x-0.5">
+                              <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-400">
+                                0
+                              </span>
+                              <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-400">
+                                0
+                              </span>
+                              <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-400">
+                                0
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+  // Функция для рендера таблицы оценок защиты проектов
+  const renderProjectDefenseTable = () => {
+    if (evaluators.length === 0) {
+      return (
+        <div className="text-center py-8 text-gray-500">
+          <Award className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+          <p>Эксперты не найдены</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+        <table className="min-w-full bg-white border border-gray-200 rounded-lg" style={{ minWidth: `${evaluators.length * 120 + 180}px` }}>
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 border-b border-gray-200 w-36 sticky left-0 bg-gray-50 z-20 shadow-sm">
+                Участник
+              </th>
+              {evaluators.map(evaluator => (
+                <th key={evaluator.id} className="px-2 py-2 text-center text-xs font-semibold text-gray-900 border-b border-gray-200 min-w-24">
+                  <div className="text-center">
+                    <div className="font-medium text-xs truncate" title={evaluator.full_name}>{evaluator.full_name}</div>
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {participants.map(participant => (
+              <tr key={participant.id} className="hover:bg-gray-50">
+                <td className="px-3 py-2 whitespace-nowrap sticky left-0 bg-white z-10 shadow-sm">
+                  <div>
+                    <div className="text-xs font-medium text-gray-900 truncate" title={participant.full_name}>{participant.full_name}</div>
+                    <div className="text-xs text-gray-500">{participant.sap_number}</div>
+                  </div>
+                </td>
+                {evaluators.map(evaluator => {
+                  const evaluations = getParticipantEvaluationsByExpert(projectDefenseEvaluations, participant.id, evaluator.id);
+                  return (
+                    <td key={evaluator.id} className="px-1 py-2 text-center">
+                      {evaluations.length > 0 ? (
+                        <div className="space-y-1">
+                          {evaluations.map((evaluation, index) => (
+                            <div key={evaluation.id} className="text-xs">
+                              <div className="flex justify-center space-x-0.5">
+                                <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${getScoreColor(evaluation.criteria_scores.goal_achievement)}`}>
+                                  {evaluation.criteria_scores.goal_achievement}
+                                </span>
+                                <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${getScoreColor(evaluation.criteria_scores.topic_development)}`}>
+                                  {evaluation.criteria_scores.topic_development}
+                                </span>
+                                <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${getScoreColor(evaluation.criteria_scores.document_quality)}`}>
+                                  {evaluation.criteria_scores.document_quality}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex justify-center space-x-0.5">
+                          <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-400">
+                            0
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-400">
+                            0
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-400">
+                            0
+                          </span>
+                        </div>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+  // Функция для рендера таблицы оценок диагностической игры
+  const renderDiagnosticGameTable = () => {
+    if (evaluators.length === 0) {
+      return (
+        <div className="text-center py-8 text-gray-500">
+          <TrendingUp className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+          <p>Эксперты не найдены</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+        <table className="min-w-full bg-white border border-gray-200 rounded-lg" style={{ minWidth: `${evaluators.length * 120 + 180}px` }}>
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 border-b border-gray-200 w-36 sticky left-0 bg-gray-50 z-20 shadow-sm">
+                Участник
+              </th>
+              {evaluators.map(evaluator => (
+                <th key={evaluator.id} className="px-2 py-2 text-center text-xs font-semibold text-gray-900 border-b border-gray-200 min-w-24">
+                  <div className="text-center">
+                    <div className="font-medium text-xs truncate" title={evaluator.full_name}>{evaluator.full_name}</div>
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {participants.map(participant => (
+              <tr key={participant.id} className="hover:bg-gray-50">
+                <td className="px-3 py-2 whitespace-nowrap sticky left-0 bg-white z-10 shadow-sm">
+                  <div>
+                    <div className="text-xs font-medium text-gray-900 truncate" title={participant.full_name}>{participant.full_name}</div>
+                    <div className="text-xs text-gray-500">{participant.sap_number}</div>
+                  </div>
+                </td>
+                {evaluators.map(evaluator => {
+                  const evaluations = getParticipantEvaluationsByExpert(diagnosticGameEvaluations, participant.id, evaluator.id);
+                  return (
+                    <td key={evaluator.id} className="px-1 py-2 text-center">
+                      {evaluations.length > 0 ? (
+                        <div className="space-y-1">
+                          {evaluations.map((evaluation, index) => (
+                            <div key={evaluation.id} className="text-xs">
+                              <div className="flex justify-center space-x-0.5">
+                                <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${getScoreColor(evaluation.competency_scores.results_orientation)}`}>
+                                  {evaluation.competency_scores.results_orientation}
+                                </span>
+                                <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${getScoreColor(evaluation.competency_scores.effective_communication)}`}>
+                                  {evaluation.competency_scores.effective_communication}
+                                </span>
+                                <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${getScoreColor(evaluation.competency_scores.teamwork_skills)}`}>
+                                  {evaluation.competency_scores.teamwork_skills}
+                                </span>
+                                <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${getScoreColor(evaluation.competency_scores.systemic_thinking)}`}>
+                                  {evaluation.competency_scores.systemic_thinking}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex justify-center space-x-0.5">
+                          <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-400">
+                            0
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-400">
+                            0
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-400">
+                            0
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-400">
+                            0
+                          </span>
+                        </div>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-8">
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-          <Award className="mr-3 text-blue-600" />
+          <Award className="mr-3 text-[#06A478]" />
           Результаты оценки экспертов
         </h2>
 
-        {participants.map((participant) => (
-          <div key={participant.id} className="mb-8 border-b border-gray-100 pb-8 last:border-b-0">
-            <div className="mb-6">
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                {participant.full_name}
-              </h3>
-              <div className="text-sm text-gray-600 space-y-1">
-                <p><strong>Email:</strong> {participant.email}</p>
-                <p><strong>SAP номер:</strong> {participant.sap_number}</p>
-                {participant.position && <p><strong>Должность:</strong> {participant.position.name}</p>}
-                {participant.territory && <p><strong>Территория:</strong> {participant.territory.name}</p>}
-              </div>
-            </div>
+        {/* Этап 1: Решение кейсов */}
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+            <MessageSquare className="mr-3 text-[#06A478]" />
+            Этап 1: Решение кейсов
+          </h3>
+          <p className="text-sm text-gray-600 mb-4">Оценка решения прикладных кейсов по критериям: правильность, ясность, самостоятельность</p>
+          {renderCaseEvaluationsTable()}
+        </div>
 
-            {/* Блок 1: Оценки кейсов */}
-            <div className="mb-6">
-              <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                <MessageSquare className="mr-2 text-blue-600" />
-                Блок 1: Оценки решения кейсов
-              </h4>
-              
-              {caseEvaluations.filter(evaluation => evaluation.reservist_id === participant.id).length > 0 ? (
-                <div className="space-y-4">
-                  {caseEvaluations
-                    .filter(evaluation => evaluation.reservist_id === participant.id)
-                    .map((evaluation) => (
-                      <div key={evaluation.id} className="bg-gray-50 rounded-lg p-4">
-                        <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <p className="font-medium text-gray-900">
-                              Эксперт: {getEvaluatorById(evaluation.evaluator_id)?.full_name || 'Неизвестный эксперт'}
-                            </p>
-                            <p className="text-sm text-gray-600">
-                              Кейс №{evaluation.case_number}
-                            </p>
-                            <p className="text-sm text-gray-600">
-                              {new Date(evaluation.created_at).toLocaleDateString('ru-RU')}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-lg font-bold text-blue-600">
-                              {((evaluation.criteria_scores.correctness + evaluation.criteria_scores.clarity + evaluation.criteria_scores.independence) / 3).toFixed(2)}/5.0
-                            </span>
-                            <p className="text-sm text-gray-600">Средняя оценка</p>
-                          </div>
-                        </div>
+        {/* Этап 2: Защита проектов */}
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+            <Award className="mr-3 text-[#06A478]" />
+            Этап 2: Защита проектов
+          </h3>
+          <p className="text-sm text-gray-600 mb-4">Оценка презентации и защиты проектов по критериям: достижение цели, проработка темы, качество документов</p>
+          {renderProjectDefenseTable()}
+        </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="text-center">
-                            <p className="text-sm text-gray-600 mb-1">Правильность</p>
-                            <span className={`inline-block px-3 py-1 rounded text-sm font-medium ${getScoreColor(evaluation.criteria_scores.correctness)}`}>
-                              {evaluation.criteria_scores.correctness}/5
-                            </span>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-sm text-gray-600 mb-1">Ясность</p>
-                            <span className={`inline-block px-3 py-1 rounded text-sm font-medium ${getScoreColor(evaluation.criteria_scores.clarity)}`}>
-                              {evaluation.criteria_scores.clarity}/5
-                            </span>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-sm text-gray-600 mb-1">Самостоятельность</p>
-                            <span className={`inline-block px-3 py-1 rounded text-sm font-medium ${getScoreColor(evaluation.criteria_scores.independence)}`}>
-                              {evaluation.criteria_scores.independence}/5
-                            </span>
-                          </div>
-                        </div>
-
-                        {evaluation.comments && (
-                          <div className="mt-3 p-3 bg-blue-50 rounded border-l-4 border-blue-400">
-                            <p className="text-sm text-blue-800">
-                              <strong>Комментарии:</strong> {evaluation.comments}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                </div>
-              ) : (
-                <p className="text-gray-500 italic">Оценки кейсов не найдены</p>
-              )}
-            </div>
-
-            {/* Блок 2: Оценки диагностической игры */}
-            <div className="mb-6">
-              <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                <TrendingUp className="mr-2 text-purple-600" />
-                Блок 2: Оценки диагностической игры
-              </h4>
-              
-              {(() => {
-                // Получаем уникальных экспертов для этого участника
-                const uniqueEvaluators = Array.from(
-                  new Set(
-                    diagnosticGameEvaluations
-                      .filter(evaluation => evaluation.reservist_id === participant.id)
-                      .map(evaluation => evaluation.evaluator_id)
-                  )
-                );
-
-                if (uniqueEvaluators.length === 0) return null;
-
-                return (
-                  <div className="space-y-4">
-                    {uniqueEvaluators.map((evaluatorId) => {
-                      const latestEvaluation = getLatestEvaluation(diagnosticGameEvaluations, participant.id, evaluatorId);
-                      if (!latestEvaluation) return null;
-
-                      return (
-                        <div key={`${participant.id}-${evaluatorId}`} className="bg-gray-50 rounded-lg p-4">
-                          <div className="flex justify-between items-start mb-3">
-                            <div>
-                              <p className="font-medium text-gray-900">
-                                Эксперт: {getEvaluatorById(evaluatorId)?.full_name || 'Неизвестный эксперт'}
-                              </p>
-                              <p className="text-sm text-gray-600">
-                                {new Date(latestEvaluation.created_at).toLocaleDateString('ru-RU')}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <span className="text-lg font-bold text-blue-600">
-                                {((latestEvaluation.competency_scores.results_orientation + latestEvaluation.competency_scores.effective_communication + latestEvaluation.competency_scores.teamwork_skills + latestEvaluation.competency_scores.systemic_thinking) / 4).toFixed(2)}/5.0
-                              </span>
-                              <p className="text-sm text-gray-600">Средняя оценка</p>
-                            </div>
-                          </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <div className="flex justify-between">
-                              <span className="text-sm">Ориентация на результат:</span>
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${getScoreColor(latestEvaluation.competency_scores.results_orientation)}`}>
-                                {latestEvaluation.competency_scores.results_orientation}/5
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm">Эффективная коммуникация:</span>
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${getScoreColor(latestEvaluation.competency_scores.effective_communication)}`}>
-                                {latestEvaluation.competency_scores.effective_communication}/5
-                              </span>
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <div className="flex justify-between">
-                              <span className="text-sm">Навыки командной работы:</span>
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${getScoreColor(latestEvaluation.competency_scores.teamwork_skills)}`}>
-                                {latestEvaluation.competency_scores.teamwork_skills}/5
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm">Системное мышление:</span>
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${getScoreColor(latestEvaluation.competency_scores.systemic_thinking)}`}>
-                                {latestEvaluation.competency_scores.systemic_thinking}/5
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                          {latestEvaluation.comments && (
-                            <div className="mt-3 p-3 bg-blue-50 rounded border-l-4 border-blue-400">
-                              <p className="text-sm text-blue-800">
-                                <strong>Комментарии:</strong> {latestEvaluation.comments}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
-            </div>
-
-            {/* Блок 3: Оценки защиты проектов */}
-            <div className="mb-6">
-              <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                <Award className="mr-2 text-orange-600" />
-                Блок 3: Оценки защиты проектов
-              </h4>
-              
-              {(() => {
-                // Получаем уникальных экспертов для этого участника
-                const uniqueEvaluators = Array.from(
-                  new Set(
-                    projectDefenseEvaluations
-                      .filter(evaluation => evaluation.reservist_id === participant.id)
-                      .map(evaluation => evaluation.evaluator_id)
-                  )
-                );
-
-                if (uniqueEvaluators.length === 0) return null;
-
-                return (
-                  <div className="space-y-4">
-                    {uniqueEvaluators.map((evaluatorId) => {
-                      const latestEvaluation = getLatestEvaluation(projectDefenseEvaluations, participant.id, evaluatorId);
-                      if (!latestEvaluation) return null;
-
-                      return (
-                        <div key={`${participant.id}-${evaluatorId}`} className="bg-gray-50 rounded-lg p-4">
-                          <div className="flex justify-between items-start mb-3">
-                            <div>
-                              <p className="font-medium text-gray-900">
-                                Эксперт: {getEvaluatorById(evaluatorId)?.full_name || 'Неизвестный эксперт'}
-                              </p>
-                              <p className="text-sm text-gray-600">
-                                Выступление №{latestEvaluation.presentation_number}
-                              </p>
-                              <p className="text-sm text-gray-600">
-                                {new Date(latestEvaluation.created_at).toLocaleDateString('ru-RU')}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <span className="text-lg font-bold text-blue-600">
-                                {((latestEvaluation.criteria_scores.goal_achievement + latestEvaluation.criteria_scores.topic_development + latestEvaluation.criteria_scores.document_quality) / 3).toFixed(2)}/5.0
-                              </span>
-                              <p className="text-sm text-gray-600">Средняя оценка</p>
-                            </div>
-                          </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="text-center">
-                            <p className="text-sm text-gray-600 mb-1">Достижение цели</p>
-                            <span className={`inline-block px-3 py-1 rounded text-sm font-medium ${getScoreColor(latestEvaluation.criteria_scores.goal_achievement)}`}>
-                              {latestEvaluation.criteria_scores.goal_achievement}/5
-                            </span>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-sm text-gray-600 mb-1">Проработка темы</p>
-                            <span className={`inline-block px-3 py-1 rounded text-sm font-medium ${getScoreColor(latestEvaluation.criteria_scores.topic_development)}`}>
-                              {latestEvaluation.criteria_scores.topic_development}/5
-                            </span>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-sm text-gray-600 mb-1">Качество документов</p>
-                            <span className={`inline-block px-3 py-1 rounded text-sm font-medium ${getScoreColor(latestEvaluation.criteria_scores.document_quality)}`}>
-                              {latestEvaluation.criteria_scores.document_quality}/5
-                            </span>
-                          </div>
-                        </div>
-
-                          {latestEvaluation.comments && (
-                            <div className="mt-3 p-3 bg-blue-50 rounded border-l-4 border-blue-400">
-                              <p className="text-sm text-blue-800">
-                                <strong>Комментарии:</strong> {latestEvaluation.comments}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-        ))}
+        {/* Этап 3: Диагностическая игра */}
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+            <TrendingUp className="mr-3 text-[#06A478]" />
+            Этап 3: Диагностическая игра
+          </h3>
+          <p className="text-sm text-gray-600 mb-4">Оценка управленческих компетенций: ориентация на результат, эффективная коммуникация, навыки командной работы, системное мышление</p>
+          {renderDiagnosticGameTable()}
+        </div>
 
         {participants.length === 0 && (
           <div className="text-center py-8">
