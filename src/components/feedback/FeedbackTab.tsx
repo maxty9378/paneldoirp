@@ -57,7 +57,7 @@ export function FeedbackTab({ eventId, adminStatOnly = false }: FeedbackTabProps
     } else if (eventId && !userProfile?.id) {
       console.log('User profile not loaded yet');
     }
-  }, [eventId, userProfile?.id, checkFeedbackStatus]);
+  }, [eventId, userProfile?.id]);
 
   useEffect(() => {
     if (isTrainer && eventId) {

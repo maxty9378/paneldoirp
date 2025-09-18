@@ -414,7 +414,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       fetchUserProfile(session.user.id, { foreground: false })
         .catch(e => console.warn('post-auth bg fetch failed', e));
     }
-  }, [session?.user, userProfile, fetchUserProfile]);
+  }, [session?.user, userProfile]);
 
   // Retry mechanism
   const retryFetchProfile = async () => {
@@ -924,7 +924,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       authSubscription?.data?.subscription?.unsubscribe?.();
       console.log('🔐 useAuth: Cleanup completed');
     };
-  }, [fetchUserProfile]);
+  }, []);
 
   // УДАЛЕН аварийный таймер - он был причиной проблем
 
