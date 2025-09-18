@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { getUserFromCache, cacheUserProfile, clearUserCache } from '../lib/userCache';
+import { getUserFromCache, cacheUserProfile, clearUserCache, isCachedUserValid } from '../lib/userCache';
 import { Session } from '@supabase/supabase-js';
 
 // Расширяем window для флага обработки
@@ -93,6 +93,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .catch(e => console.warn('post-auth bg fetch failed', e));
     }
   }, [session?.user, userProfile]);
+
+  // Обработчик для восстановления сессии при возвращении в приложение
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && !session?.user && !loading) {
+        console.log('🔄 App became visible, checking session...');
+        try {
+          const sessionResult = await getSessionSoft(10000);
+          if (sessionResult.data.session?.user) {
+            console.log('✅ Session restored on app visibility');
+            setSession(sessionResult.data.session);
+            
+            // Проверяем кэш профиля
+            const cachedUser = getUserFromCache();
+            if (cachedUser && cachedUser.id === sessionResult.data.session.user.id && isCachedUserValid(cachedUser)) {
+              console.log('✅ Using cached profile on app restore');
+              setUser(cachedUser);
+              setUserProfile(cachedUser);
+            } else {
+              // Загружаем профиль в фоне
+              fetchUserProfile(sessionResult.data.session.user.id, { foreground: false })
+                .catch(e => console.warn('bg profile fetch on restore failed', e));
+            }
+          }
+        } catch (e) {
+          console.warn('Session check on visibility change failed:', e);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [session?.user, loading]);
 
   // Оптимизированный delay с проверкой прерывания
   const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
@@ -265,7 +298,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // 1) кэш - показываем сразу и не ждем
         const cached = getUserFromCache();
-        if (cached && cached.id === userId) {
+        if (cached && cached.id === userId && isCachedUserValid(cached)) {
           console.log('✅ Using cached user profile:', cached.id);
           const cachedUser = { ...cached, position: cached.position || 'Должность не указана' };
           setUser(cachedUser);
@@ -562,7 +595,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } else {
             // Проверяем кэш профиля
             const cachedUser = getUserFromCache();
-            if (cachedUser && cachedUser.id === session.user.id) {
+            if (cachedUser && cachedUser.id === session.user.id && isCachedUserValid(cachedUser)) {
               console.log('✅ Using cached user profile');
               setUser(cachedUser);
               setUserProfile(cachedUser);
@@ -689,13 +722,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         
-        // Different user or no current user, fetch profile
-        console.log('🔄 Fetching profile for user:', session.user.id);
-        setLoadingPhase('complete');
-        setLoading(false);
-        // фоново, без блокировки интерфейса
-        fetchUserProfile(session.user.id, { foreground: false })
-          .catch(e => console.warn('bg profile fetch failed', e));
+        // Different user or no current user, try cache first
+        const cachedUser = getUserFromCache();
+        if (cachedUser && cachedUser.id === session.user.id && isCachedUserValid(cachedUser)) {
+          console.log('✅ Using cached profile for session restoration');
+          setUser(cachedUser);
+          setUserProfile(cachedUser);
+          setLoadingPhase('complete');
+          setLoading(false);
+          
+          // Тихо обновляем профиль в фоне
+          fetchUserProfile(session.user.id, { foreground: false })
+            .catch(e => console.warn('bg profile update failed', e));
+        } else {
+          // Fetch profile from server
+          console.log('🔄 Fetching profile for user:', session.user.id);
+          setLoadingPhase('complete');
+          setLoading(false);
+          // фоново, без блокировки интерфейса
+          fetchUserProfile(session.user.id, { foreground: false })
+            .catch(e => console.warn('bg profile fetch failed', e));
+        }
       } else {
         // Только если это явный SIGNED_OUT, сбрасываем состояние
         if (event === 'SIGNED_OUT') {

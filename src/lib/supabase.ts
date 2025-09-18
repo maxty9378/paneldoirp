@@ -22,6 +22,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     // Увеличиваем время жизни токенов
     jwtExpiry: 86400,            // 24 часа (в секундах)
     refreshTokenReuseInterval: 10, // 10 секунд для повторного использования refresh token
+    // Дополнительные настройки для мобильных устройств
+    storageOptions: {
+      // Настройки для localStorage
+      persist: true,
+      // Увеличиваем время жизни refresh token
+      refreshTokenExpiry: 7 * 24 * 60 * 60, // 7 дней
+    },
   },
 });
 
