@@ -45,3 +45,4 @@ export const testAuth = async () => {
     console.error('Auth test failed:', e);
   }
 };
+

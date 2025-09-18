@@ -83,32 +83,37 @@ function AppContent() {
     }
   }, [user, loading, isAuthFlow]);
 
-  // Проверяем magic link параметры и перенаправляем на callback
+  // Проверяем auth параметры и перенаправляем на callback
   useEffect(() => {
-    // Простая проверка: если есть токены в hash и мы НЕ на /auth/callback, перенаправляем
-    const hash = window.location.hash;
-    const search = window.location.search;
-    const pathname = window.location.pathname;
-    
-    console.log('🔍 App: Current URL:', window.location.href);
-    console.log('🔍 App: Hash:', hash);
-    console.log('🔍 App: Search:', search);
-    console.log('🔍 App: Pathname:', pathname);
-    
-    // Проверяем наличие magic link токенов в hash ИЛИ search параметрах
+    const { hash, search, pathname } = window.location;
+
+    const hasPKCE = search.includes('code=');
     const hasHashTokens = hash.includes('access_token') || hash.includes('refresh_token') || hash.includes('token=');
-    const hasSearchTokens = search.includes('token=') && search.includes('type=magiclink');
-    
-    if ((hasHashTokens || hasSearchTokens) && pathname !== '/auth/callback') {
-      console.log('🔄 Magic link tokens detected, redirecting to auth callback...');
-      const fullParams = hash || search; 
-      console.log('🔄 Redirecting with params:', fullParams);
-      window.location.replace('/auth/callback' + fullParams);
-    } else if (hasHashTokens || hasSearchTokens) {
-      console.log('✅ Already on auth callback page with tokens');
+    const hasSearchMagic = search.includes('token=') && search.includes('type=magiclink');
+
+    if ((hasPKCE || hasHashTokens || hasSearchMagic) && pathname !== '/auth/callback') {
+      const suffix = hasPKCE ? search : hash || search;
+      console.log('🔄 Auth params detected, redirecting to /auth/callback...');
+      window.location.replace('/auth/callback' + suffix);
     } else {
       console.log('ℹ️ No magic link tokens found');
     }
+
+    // Проверяем сохраненную сессию при загрузке
+    const checkStoredSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (session && !error) {
+          console.log('✅ Found stored session:', session.user.email);
+        } else {
+          console.log('ℹ️ No stored session found');
+        }
+      } catch (error) {
+        console.error('❌ Error checking stored session:', error);
+      }
+    };
+
+    checkStoredSession();
   }, []);
   
   const [editingEvent, setEditingEvent] = useState<any>(null);

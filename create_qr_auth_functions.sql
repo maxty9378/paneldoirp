@@ -34,3 +34,4 @@ BEGIN
     RAISE NOTICE 'Активных QR токенов: %', token_count;
   END;
 END $$;
+

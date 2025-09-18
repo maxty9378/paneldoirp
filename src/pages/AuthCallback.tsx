@@ -2,125 +2,104 @@ import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
-// Расширяем window для флага обработки
-declare global {
-  interface Window {
-    authCallbackProcessing?: boolean;
-  }
-}
-
 export default function AuthCallback() {
   const navigate = useNavigate();
-  const executedRef = useRef(false);
+  const once = useRef(false);
 
   useEffect(() => {
-    if (executedRef.current) return;
-    executedRef.current = true;
+    if (once.current) return;
+    once.current = true;
 
-    const handleAuthCallback = async () => {
+    (async () => {
       try {
-        console.log('🔄 Processing auth callback...');
-        
-        const urlParams = new URLSearchParams(window.location.search);
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        
-        // Проверяем ошибки
-        const error = urlParams.get('error') || hashParams.get('error');
-        if (error) {
-          console.error('❌ Auth error:', error);
-          window.location.replace('/');
-          return;
+        console.log('🔄 AuthCallback: start');
+        const url = new URL(window.location.href);
+        const search = url.searchParams;
+        const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+
+        // 1) PKCE: ?code=...
+        const authCode = search.get('code');
+        if (authCode) {
+          console.log('🔑 PKCE code detected, exchanging for session...');
+          const { data, error } = await supabase.auth.exchangeCodeForSession(authCode);
+          if (error) {
+            console.error('❌ exchangeCodeForSession error:', error);
+            return hardHome();
+          }
+          console.log('✅ PKCE session established for:', data.user?.email);
+
+          cleanupUrl();
+          return softHome();
         }
 
-        // Ищем токены в URL параметрах
-        const accessToken = urlParams.get('access_token') || hashParams.get('access_token');
-        const refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
-        
-        if (accessToken && refreshToken) {
-          console.log('✅ Tokens found, setting session...');
-          
-          const { error: sessionError } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken
+        // 2) Имплисит/магик-линк: в hash пришли access_token/refresh_token
+        const at = search.get('access_token') || hash.get('access_token');
+        const rt = search.get('refresh_token') || hash.get('refresh_token');
+        if (at && rt) {
+          console.log('🔑 Tokens detected in URL, setSession...');
+          const { error } = await supabase.auth.setSession({
+            access_token: at,
+            refresh_token: rt,
           });
-
-          if (sessionError) {
-            console.error('❌ Session error:', sessionError);
-            window.location.replace('/');
-            return;
+          if (error) {
+            console.error('❌ setSession error:', error);
+            return hardHome();
           }
+          console.log('✅ Session set via tokens');
 
-          console.log('✅ Session set successfully');
-          window.history.replaceState({}, '', '/');
-          window.location.replace('/');
-          return;
+          cleanupUrl();
+          return softHome();
         }
 
-        // Проверяем verification токен
-        const token = urlParams.get('token') || hashParams.get('token');
-        if (token) {
-          console.log('✅ Verification token found...');
-          
-          const { error: verifyError } = await supabase.auth.verifyOtp({
-            token_hash: token,
-            type: 'magiclink'
+        // 3) Магик-линк токен-хэш
+        const tokenHash = search.get('token') || hash.get('token');
+        if (tokenHash) {
+          console.log('🔑 token_hash detected, verifyOtp...');
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: 'magiclink',
           });
-
-          if (verifyError) {
-            console.error('❌ Verification error:', verifyError);
-            window.location.replace('/');
-            return;
+          if (error) {
+            console.error('❌ verifyOtp error:', error);
+            return hardHome();
           }
+          console.log('✅ OTP verified');
 
-          console.log('✅ Token verified successfully');
-          window.history.replaceState({}, '', '/');
-          window.location.replace('/');
-          return;
+          cleanupUrl();
+          return softHome();
         }
 
-        // Проверяем magic link токен в hash
-        const hashToken = window.location.hash.substring(1);
-        if (hashToken && hashToken.includes('access_token=')) {
-          console.log('✅ Magic link token found in hash...');
-          
-          const hashParams = new URLSearchParams(hashToken);
-          const accessToken = hashParams.get('access_token');
-          const refreshToken = hashParams.get('refresh_token');
-          
-          if (accessToken && refreshToken) {
-            console.log('✅ Tokens found in hash, setting session...');
-            
-            const { error: sessionError } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken
-            });
-
-            if (sessionError) {
-              console.error('❌ Session error:', sessionError);
-              window.location.replace('/');
-              return;
-            }
-
-            console.log('✅ Session set successfully from hash');
-            window.history.replaceState({}, '', '/');
-            window.location.replace('/');
-            return;
-          }
-        }
-
-        // Если ничего не найдено
-        console.log('❌ No auth tokens found');
-        window.location.replace('/');
-
-      } catch (error: any) {
-        console.error('❌ Auth callback error:', error);
-        window.location.replace('/');
+        // 4) Ничего не нашли — домой
+        console.log('ℹ️ No auth params found, go home');
+        hardHome();
+      } catch (e) {
+        console.error('❌ AuthCallback fatal:', e);
+        hardHome();
       }
-    };
+    })();
 
-    handleAuthCallback();
+    function cleanupUrl() {
+      // чистим урл от параметров, но без жёсткого перезагруза
+      window.history.replaceState({}, '', '/');
+    }
+
+    function softHome() {
+      // даём движку дописать сессию, потом SPA-перенаправление
+      requestAnimationFrame(() => navigate('/'));
+    }
+
+    function hardHome() {
+      // аварийно разруливаем возможные «полупроводы»
+      window.location.replace('/');
+    }
   }, [navigate]);
 
-  // Не показываем отдельную страницу - глобальный оверлей в App.tsx
-  return null;
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">Обработка авторизации...</p>
+      </div>
+    </div>
+  );
 }

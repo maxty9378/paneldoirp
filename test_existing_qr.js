@@ -79,3 +79,4 @@ async function testExistingQR() {
 
 // Запускаем тест
 testExistingQR();
+

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест сохранения сессии</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        input { padding: 8px; margin: 5px; width: 300px; }
+        .log { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 3px; font-family: monospace; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h1>Тест сохранения сессии после QR авторизации</h1>
+    
+    <div class="section">
+        <h3>1. Проверка текущей сессии</h3>
+        <button onclick="checkCurrentSession()">Проверить сессию</button>
+        <div id="sessionResult" class="log"></div>
+    </div>
+
+    <div class="section">
+        <h3>2. Тест QR авторизации</h3>
+        <input type="text" id="tokenInput" placeholder="QR токен">
+        <button onclick="testQRAuth()">Тест QR авторизации</button>
+        <div id="authResult" class="log"></div>
+    </div>
+
+    <div class="section">
+        <h3>3. Проверка localStorage</h3>
+        <button onclick="checkLocalStorage()">Проверить localStorage</button>
+        <button onclick="clearLocalStorage()">Очистить localStorage</button>
+        <div id="storageResult" class="log"></div>
+    </div>
+
+    <div class="section">
+        <h3>4. Тест перезагрузки страницы</h3>
+        <button onclick="reloadPage()">Перезагрузить страницу</button>
+        <p>После перезагрузки проверьте, сохранилась ли сессия</p>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+        
+        const SUPABASE_URL = 'https://oaockmesooydvausfoca.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hb2NrbWVzb295ZHZhdXNmb2NhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY5NzQ4NzMsImV4cCI6MjA1MjU1MDg3M30.GhDbwgQ1cqFc4oUuPo-GaQpDY2zFACbLVniNY_OSCpTJKML3KR5D2hfWaquL2AOhG0BmCR1EYiW5d_Y4ZB2F2Q';
+        
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            auth: {
+                persistSession: true,
+                autoRefreshToken: true,
+                detectSessionInUrl: true,
+                storage: window.localStorage,
+                storageKey: 'sns-session-v1',
+                flowType: 'pkce',
+            },
+        });
+        
+        function log(elementId, message, isError = false) {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const className = isError ? 'error' : 'success';
+            element.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            element.scrollTop = element.scrollHeight;
+        }
+
+        window.checkCurrentSession = async function() {
+            const resultDiv = document.getElementById('sessionResult');
+            resultDiv.innerHTML = '';
+            
+            try {
+                log('sessionResult', 'Проверяем текущую сессию...');
+                
+                const { data: { session }, error } = await supabase.auth.getSession();
+                
+                if (error) {
+                    log('sessionResult', `❌ Ошибка получения сессии: ${error.message}`, true);
+                    return;
+                }
+                
+                if (session) {
+                    log('sessionResult', `✅ Сессия найдена!`);
+                    log('sessionResult', `Пользователь: ${session.user.email}`);
+                    log('sessionResult', `ID: ${session.user.id}`);
+                    log('sessionResult', `Роль: ${session.user.user_metadata?.role || 'не указана'}`);
+                    log('sessionResult', `Истекает: ${new Date(session.expires_at * 1000).toLocaleString()}`);
+                } else {
+                    log('sessionResult', `❌ Нет активной сессии`);
+                }
+                
+            } catch (error) {
+                log('sessionResult', `❌ Ошибка: ${error.message}`, true);
+            }
+        };
+
+        window.testQRAuth = async function() {
+            const token = document.getElementById('tokenInput').value;
+            const resultDiv = document.getElementById('authResult');
+            resultDiv.innerHTML = '';
+
+            if (!token) {
+                log('authResult', '❌ Введите токен', true);
+                return;
+            }
+
+            try {
+                log('authResult', `Тестируем QR авторизацию с токеном: ${token.substring(0, 8)}...`);
+                
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/auth-by-qr-token`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    },
+                    body: JSON.stringify({ token })
+                });
+
+                const data = await response.json();
+                log('authResult', `Ответ сервера: ${JSON.stringify(data, null, 2)}`);
+                
+                if (!response.ok || !data.success) {
+                    log('authResult', `❌ Ошибка авторизации: ${data.error}`, true);
+                    return;
+                }
+
+                log('authResult', `✅ Авторизация успешна!`);
+                log('authResult', `Redirect URL: ${data.redirectUrl}`);
+                
+                // Симулируем переход по magic link
+                log('authResult', `Переходим по magic link...`);
+                window.open(data.redirectUrl, '_blank');
+                
+            } catch (error) {
+                log('authResult', `❌ Ошибка: ${error.message}`, true);
+            }
+        };
+
+        window.checkLocalStorage = function() {
+            const resultDiv = document.getElementById('storageResult');
+            resultDiv.innerHTML = '';
+            
+            try {
+                log('storageResult', 'Проверяем localStorage...');
+                
+                const sessionKey = 'sns-session-v1';
+                const sessionData = localStorage.getItem(sessionKey);
+                
+                if (sessionData) {
+                    log('storageResult', `✅ Данные сессии найдены в localStorage`);
+                    try {
+                        const parsed = JSON.parse(sessionData);
+                        log('storageResult', `Пользователь: ${parsed.currentSession?.user?.email || 'не найден'}`);
+                        log('storageResult', `Истекает: ${parsed.currentSession?.expires_at ? new Date(parsed.currentSession.expires_at * 1000).toLocaleString() : 'не указано'}`);
+                    } catch (e) {
+                        log('storageResult', `Данные сессии (сырые): ${sessionData.substring(0, 100)}...`);
+                    }
+                } else {
+                    log('storageResult', `❌ Нет данных сессии в localStorage`);
+                }
+                
+                // Показываем все ключи localStorage
+                log('storageResult', `Все ключи localStorage:`);
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    log('storageResult', `- ${key}`);
+                }
+                
+            } catch (error) {
+                log('storageResult', `❌ Ошибка: ${error.message}`, true);
+            }
+        };
+
+        window.clearLocalStorage = function() {
+            const resultDiv = document.getElementById('storageResult');
+            
+            try {
+                localStorage.clear();
+                log('storageResult', `✅ localStorage очищен`);
+            } catch (error) {
+                log('storageResult', `❌ Ошибка очистки: ${error.message}`, true);
+            }
+        };
+
+        window.reloadPage = function() {
+            window.location.reload();
+        };
+
+        // Автоматически проверяем сессию при загрузке
+        window.checkCurrentSession();
+    </script>
+</body>
+</html>

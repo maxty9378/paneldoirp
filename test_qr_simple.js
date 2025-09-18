@@ -39,3 +39,4 @@ async function testQRAuth() {
 
 // Запускаем тест
 testQRAuth();
+

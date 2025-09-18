@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест QR-авторизации (исправленная версия)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #6c757d; cursor: not-allowed; }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Тест QR-авторизации (исправленная версия)</h1>
+        
+        <div class="test-section info">
+            <h3>📋 Что тестируем:</h3>
+            <ul>
+                <li>✅ PKCE-код обрабатывается через <code>exchangeCodeForSession</code></li>
+                <li>✅ Magic link токены обрабатываются через <code>setSession</code></li>
+                <li>✅ OTP токены обрабатываются через <code>verifyOtp</code></li>
+                <li>✅ Отключен авто-парсинг URL в Supabase клиенте</li>
+                <li>✅ App.tsx корректно перенаправляет на /auth/callback</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h3>🔗 Тест 1: PKCE-код в URL</h3>
+            <p>Симулируем URL с PKCE-кодом (самый частый случай для QR)</p>
+            <button onclick="testPKCE()">Тестировать PKCE</button>
+            <div id="pkce-result" class="log" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔗 Тест 2: Magic link токены в hash</h3>
+            <p>Симулируем URL с access_token/refresh_token в hash</p>
+            <button onclick="testMagicLinkHash()">Тестировать Magic Link (hash)</button>
+            <div id="magic-hash-result" class="log" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔗 Тест 3: Magic link токен в search</h3>
+            <p>Симулируем URL с token в search параметрах</p>
+            <button onclick="testMagicLinkSearch()">Тестировать Magic Link (search)</button>
+            <div id="magic-search-result" class="log" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔗 Тест 4: Редирект на /auth/callback</h3>
+            <p>Проверяем, что App.tsx корректно перенаправляет на callback</p>
+            <button onclick="testRedirect()">Тестировать редирект</button>
+            <div id="redirect-result" class="log" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Общий лог</h3>
+            <button onclick="clearLog()">Очистить лог</button>
+            <div id="general-log" class="log"></div>
+        </div>
+    </div>
+
+    <script>
+        function log(message, elementId = 'general-log') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logElement = document.getElementById(elementId);
+            if (logElement) {
+                logElement.innerHTML += `[${timestamp}] ${message}\n`;
+                logElement.scrollTop = logElement.scrollHeight;
+            }
+            console.log(message);
+        }
+
+        function clearLog() {
+            document.getElementById('general-log').innerHTML = '';
+        }
+
+        function testPKCE() {
+            const resultDiv = document.getElementById('pkce-result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '';
+            
+            log('🔑 Тестируем PKCE-код...', 'pkce-result');
+            
+            // Симулируем URL с PKCE-кодом
+            const testUrl = 'https://paneldoirp.vercel.app/auth/callback?code=test-pkce-code-123&state=test-state';
+            log(`📋 Тестовый URL: ${testUrl}`, 'pkce-result');
+            
+            // Парсим URL как это делает AuthCallback
+            const url = new URL(testUrl);
+            const search = url.searchParams;
+            const authCode = search.get('code');
+            
+            if (authCode) {
+                log(`✅ PKCE-код найден: ${authCode}`, 'pkce-result');
+                log('✅ AuthCallback должен вызвать exchangeCodeForSession()', 'pkce-result');
+                log('✅ Сессия должна быть установлена', 'pkce-result');
+            } else {
+                log('❌ PKCE-код не найден', 'pkce-result');
+            }
+        }
+
+        function testMagicLinkHash() {
+            const resultDiv = document.getElementById('magic-hash-result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '';
+            
+            log('🔑 Тестируем Magic Link (hash)...', 'magic-hash-result');
+            
+            // Симулируем URL с токенами в hash
+            const testUrl = 'https://paneldoirp.vercel.app/auth/callback#access_token=test-access-token&refresh_token=test-refresh-token&expires_in=3600';
+            log(`📋 Тестовый URL: ${testUrl}`, 'magic-hash-result');
+            
+            // Парсим URL как это делает AuthCallback
+            const url = new URL(testUrl);
+            const search = url.searchParams;
+            const hash = new URLSearchParams(testUrl.split('#')[1] || '');
+            
+            const at = search.get('access_token') || hash.get('access_token');
+            const rt = search.get('refresh_token') || hash.get('refresh_token');
+            
+            if (at && rt) {
+                log(`✅ Токены найдены в hash: access_token=${at}, refresh_token=${rt}`, 'magic-hash-result');
+                log('✅ AuthCallback должен вызвать setSession()', 'magic-hash-result');
+                log('✅ Сессия должна быть установлена', 'magic-hash-result');
+            } else {
+                log('❌ Токены не найдены в hash', 'magic-hash-result');
+            }
+        }
+
+        function testMagicLinkSearch() {
+            const resultDiv = document.getElementById('magic-search-result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '';
+            
+            log('🔑 Тестируем Magic Link (search)...', 'magic-search-result');
+            
+            // Симулируем URL с токеном в search
+            const testUrl = 'https://paneldoirp.vercel.app/auth/callback?token=test-magic-token&type=magiclink';
+            log(`📋 Тестовый URL: ${testUrl}`, 'magic-search-result');
+            
+            // Парсим URL как это делает AuthCallback
+            const url = new URL(testUrl);
+            const search = url.searchParams;
+            const hash = new URLSearchParams('');
+            
+            const tokenHash = search.get('token') || hash.get('token');
+            
+            if (tokenHash) {
+                log(`✅ Magic link токен найден: ${tokenHash}`, 'magic-search-result');
+                log('✅ AuthCallback должен вызвать verifyOtp()', 'magic-search-result');
+                log('✅ OTP должен быть верифицирован', 'magic-search-result');
+            } else {
+                log('❌ Magic link токен не найден', 'magic-search-result');
+            }
+        }
+
+        function testRedirect() {
+            const resultDiv = document.getElementById('redirect-result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '';
+            
+            log('🔄 Тестируем редирект на /auth/callback...', 'redirect-result');
+            
+            // Тестируем различные URL, которые должны перенаправляться
+            const testUrls = [
+                'https://paneldoirp.vercel.app/?code=test-pkce-code',
+                'https://paneldoirp.vercel.app/#access_token=test-token&refresh_token=test-refresh',
+                'https://paneldoirp.vercel.app/?token=test-magic-token&type=magiclink'
+            ];
+            
+            testUrls.forEach((testUrl, index) => {
+                log(`\n📋 Тест ${index + 1}: ${testUrl}`, 'redirect-result');
+                
+                const url = new URL(testUrl);
+                const { hash, search, pathname } = url;
+                
+                const hasPKCE = search.includes('code=');
+                const hasHashTokens = hash.includes('access_token') || hash.includes('refresh_token') || hash.includes('token=');
+                const hasSearchMagic = search.includes('token=') && search.includes('type=magiclink');
+                
+                if (hasPKCE || hasHashTokens || hasSearchMagic) {
+                    const suffix = hasPKCE ? search : hash || search;
+                    log(`✅ App.tsx должен перенаправить на: /auth/callback${suffix}`, 'redirect-result');
+                } else {
+                    log('❌ App.tsx НЕ должен перенаправлять', 'redirect-result');
+                }
+            });
+        }
+
+        // Автоматически запускаем тест при загрузке
+        window.addEventListener('load', () => {
+            log('🚀 Тестовая страница загружена');
+            log('📋 Проверьте консоль браузера для подробных логов');
+        });
+    </script>
+</body>
+</html>

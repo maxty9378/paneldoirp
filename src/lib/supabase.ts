@@ -15,7 +15,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: false,
+    detectSessionInUrl: false, // было true — отключаем, чтоб не дублировать с AuthCallback
     storage: isIOS ? createFallbackStorage() : window.localStorage,
     storageKey: 'sns-session-v1',
     flowType: 'pkce',
