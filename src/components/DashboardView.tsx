@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Calendar, Users, BookOpen, TrendingUp, Award, Shield, MapPin, Link as LinkIcon, Video, CalendarDays, Users2, CheckCircle2, Info, Play, Pause, Loader2, XCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { getDeclension } from '../utils/textUtils';
@@ -275,7 +275,8 @@ export function DashboardView() {
     return parts.length > 1 ? parts[1] : parts[0];
   }
 
-  const getMotivationalMessage = () => {
+  // Фиксируем мотивационное сообщение с помощью useMemo
+  const motivationalMessage = useMemo(() => {
     // Специальные сообщения для экспертов
     if (userProfile?.role === 'expert') {
       const expertMessages = [
@@ -297,7 +298,7 @@ export function DashboardView() {
       'Инвестируйте в свое будущее'
     ];
     return messages[Math.floor(Math.random() * messages.length)];
-  };
+  }, [userProfile?.role]); // Пересчитываем только при изменении роли
 
   // Загрузка мероприятий пользователя
   const fetchUserEvents = async () => {
@@ -484,7 +485,7 @@ export function DashboardView() {
               {getGreeting()}, {extractFirstName(userProfile?.full_name || 'Пользователь')}!
             </h1>
             <p className="text-white/90 text-base sm:text-lg mb-2">
-              {getMotivationalMessage()}
+              {motivationalMessage}
             </p>
             <div className="flex items-center space-x-2 text-white/80 text-sm">
               <Shield size={16} />

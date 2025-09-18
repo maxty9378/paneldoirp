@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import snsLogo from '../assets/sns-logo.svg';
-import { User, LogOut, Settings, Camera, Menu, Search, Bell, ChevronDown, Home, Calendar, Users, FileText } from 'lucide-react';
+import { User, LogOut, Settings, Camera, Menu, Search, Bell, ChevronDown } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { AvatarModal } from './profile/AvatarModal';
 import { supabase } from '../lib/supabase';
@@ -86,13 +86,6 @@ export function Header({ onMobileMenuToggle }: HeaderProps) {
     }
   };
 
-  // Быстрые действия для мобильной навигации
-  const quickActions = [
-    { id: 'dashboard', label: 'Главная', icon: <Home size={20} />, path: '/' },
-    { id: 'events', label: 'Мероприятия', icon: <Calendar size={20} />, path: '/events' },
-    { id: 'tests', label: 'Тесты', icon: <FileText size={20} />, path: '/testing' },
-    { id: 'employees', label: 'Сотрудники', icon: <Users size={20} />, path: '/employees' },
-  ];
 
   return (
     <>
@@ -219,25 +212,6 @@ export function Header({ onMobileMenuToggle }: HeaderProps) {
                         </div>
                       </div>
 
-                      {/* Быстрые действия */}
-                      <div className="p-3">
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2 px-2">Быстрый доступ</p>
-                        <div className="grid grid-cols-2 gap-2">
-                          {quickActions.map((action) => (
-                                                         <button
-                               key={action.id}
-                               onClick={() => {
-                                 navigate(action.path);
-                                 setShowMobileMenu(false);
-                               }}
-                               className="flex items-center space-x-2 p-3 text-left rounded-xl hover:bg-gray-50 transition-all duration-200 active:scale-95"
-                             >
-                              <div className="text-gray-600">{action.icon}</div>
-                              <span className="text-sm font-medium text-gray-700">{action.label}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
 
                       {/* Действия */}
                       <div className="p-3 border-t border-gray-100">

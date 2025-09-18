@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Calendar, User as UserIcon } from 'lucide-react';
+import { User as UserIcon } from 'lucide-react';
 
 type Edu = { level?: string; institution?: string; specialty?: string };
 interface DossierData {
@@ -44,15 +44,6 @@ function splitName(full: string) {
   return { top: parts[0], bottom: parts.slice(1).join(' ') };
 }
 
-function calcExperienceText(days?: number, fallback?: string) {
-  if (fallback) return fallback;
-  if (!days || days <= 0) return '';
-  const years = Math.floor(days / 365);
-  const months = Math.floor((days % 365) / 30);
-  const y = years > 0 ? `${years} ${years === 1 ? 'год' : years < 5 ? 'года' : 'лет'}` : '';
-  const m = months > 0 ? `${months} ${months === 1 ? 'месяц' : months < 5 ? 'месяца' : 'месяцев'}` : '';
-  return [y, m].filter(Boolean).join(' ');
-}
 
 export const CompactDossierCard: React.FC<DossierCardProps> = ({
   participant,
@@ -66,7 +57,6 @@ export const CompactDossierCard: React.FC<DossierCardProps> = ({
   const position = dossier?.position || participant?.user?.position?.name || 'Должность';
   const territory = dossier?.territory || participant?.user?.territory?.name || '';
   const age = dossier?.age;
-  const exp = calcExperienceText(participant?.user?.work_experience_days, dossier?.experience_in_position);
 
   const initials = useMemo(() => {
     const [a, b] = (participant?.user?.full_name || '')
@@ -127,10 +117,10 @@ export const CompactDossierCard: React.FC<DossierCardProps> = ({
 
         {/* текстовая колонка */}
         <div className="min-w-0 flex-1">
-          {/* ФИО: две строки, капслок, фирменный зелёный */}
+          {/* ФИО: фамилия на первой строке, имя на второй */}
           <div className="mb-1 leading-none">
             <div 
-              className="text-[20px] font-extrabold tracking-wide uppercase break-words" 
+              className="text-[16px] sm:text-[20px] font-extrabold tracking-wide uppercase truncate" 
               style={{ 
                 color: '#06A478',
                 fontFamily: 'SNS, sans-serif'
@@ -140,7 +130,7 @@ export const CompactDossierCard: React.FC<DossierCardProps> = ({
             </div>
             {nameParts.bottom ? (
               <div 
-                className="text-[20px] font-extrabold tracking-wide uppercase break-words" 
+                className="text-[16px] sm:text-[20px] font-extrabold tracking-wide uppercase truncate" 
                 style={{ 
                   color: '#06A478',
                   fontFamily: 'SNS, sans-serif'
@@ -172,15 +162,6 @@ export const CompactDossierCard: React.FC<DossierCardProps> = ({
         </div>
       </div>
 
-      {/* стаж в должности - выровнен по левой стороне на уровень фото */}
-      {exp ? (
-        <div className="mt-3 flex items-center text-[15px] text-gray-600 group-hover:text-gray-700 transition-colors duration-300">
-          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 group-hover:bg-gray-200 transition-colors duration-300 mr-2">
-            <Calendar className="w-3.5 h-3.5 text-gray-500" />
-          </div>
-          <span className="font-medium">{exp} в должности {position.toLowerCase().includes('супервайзер') ? 'СНС-Зеленоград' : ''}</span>
-        </div>
-      ) : null}
 
       {/* кнопки как на макете: широкие пилюли одна над другой с равными отступами */}
       <div className="mt-4 space-y-3">
@@ -245,7 +226,16 @@ export const CompactDossierCard: React.FC<DossierCardProps> = ({
       </div>
 
       {/* мягкие круглые углы у всей карточки и лёгкий блик для объёма */}
-      <div className="pointer-events-none absolute -bottom-12 -right-12 h-40 w-40 rounded-full blur-2xl" style={{ backgroundColor: '#06A478', opacity: 0.3 }} />
+      <div 
+        className="pointer-events-none absolute -bottom-12 -right-12 h-40 w-40 rounded-full blur-2xl" 
+        style={{ 
+          background: 'radial-gradient(circle, rgba(6, 164, 120, 0.4) 0%, rgba(6, 164, 120, 0.1) 50%, transparent 100%)',
+          WebkitBackfaceVisibility: 'hidden',
+          backfaceVisibility: 'hidden',
+          transform: 'translateZ(0)',
+          willChange: 'transform'
+        }} 
+      />
     </div>
   );
 };

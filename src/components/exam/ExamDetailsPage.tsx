@@ -768,26 +768,32 @@ const ExamDetailsPage: React.FC = () => {
                 </div>
                 
                 {/* Список экспертов */}
-                <div className="space-y-3">
+                <div className="space-y-0">
                   {experts.map((expert, index) => (
-                    <div key={index} className="flex items-center p-4 bg-gray-50 rounded-lg">
-                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                        <User className="w-5 h-5 text-blue-600" />
+                    <div key={index}>
+                      <div className="flex items-center p-4 bg-gray-50 rounded-lg">
+                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                          <User className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-gray-900 truncate">{expert.fullName}</p>
+                          <p className="text-sm text-gray-600 truncate">{expert.position}</p>
+                        </div>
+                        <div className="flex items-center text-gray-500 mr-4">
+                          <Mail className="w-4 h-4 mr-2" />
+                          <span className="text-sm truncate">{expert.email}</span>
+                        </div>
+                        <button
+                          onClick={() => handleRemoveExpert(index)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
                       </div>
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-900">{expert.fullName}</p>
-                        <p className="text-sm text-gray-600">{expert.position}</p>
-                      </div>
-                      <div className="flex items-center text-gray-500 mr-4">
-                        <Mail className="w-4 h-4 mr-2" />
-                        <span className="text-sm">{expert.email}</span>
-                      </div>
-                      <button
-                        onClick={() => handleRemoveExpert(index)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
+                      {/* Разделительная линия между экспертами */}
+                      {index < experts.length - 1 && (
+                        <div className="mx-4 border-b border-gray-200"></div>
+                      )}
                     </div>
                   ))}
                 </div>

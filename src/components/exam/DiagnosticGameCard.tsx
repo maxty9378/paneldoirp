@@ -124,10 +124,10 @@ export const DiagnosticGameCard: React.FC<DiagnosticGameCardProps> = ({
 
         {/* текстовая колонка */}
         <div className="min-w-0 flex-1">
-          {/* ФИО */}
+          {/* ФИО: фамилия на первой строке, имя на второй */}
           <div className="mb-1 leading-none">
             <div 
-              className="text-[24px] font-extrabold tracking-wide uppercase truncate" 
+              className="text-[18px] sm:text-[24px] font-extrabold tracking-wide uppercase truncate" 
               style={{ 
                 color: '#06A478',
                 fontFamily: 'SNS, sans-serif'
@@ -137,7 +137,7 @@ export const DiagnosticGameCard: React.FC<DiagnosticGameCardProps> = ({
             </div>
             {nameParts.bottom ? (
               <div 
-                className="text-[24px] font-extrabold tracking-wide uppercase truncate" 
+                className="text-[18px] sm:text-[24px] font-extrabold tracking-wide uppercase truncate" 
                 style={{ 
                   color: '#06A478',
                   fontFamily: 'SNS, sans-serif'
