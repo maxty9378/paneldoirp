@@ -457,6 +457,40 @@ const ExpertExamPage: React.FC = () => {
     }
   };
 
+  // Функция удаления участника из экзамена
+  const removeParticipant = async (participantId: string) => {
+    if (!id || !participantId) return;
+    
+    if (!confirm('Вы уверены, что хотите удалить этого участника из экзамена?')) {
+      return;
+    }
+    
+    try {
+      console.log('🗑️ Удаляем участника из экзамена:', participantId);
+      
+      const { error } = await supabase
+        .from('event_participants')
+        .delete()
+        .eq('event_id', id)
+        .eq('user_id', participantId);
+      
+      if (error) {
+        console.error('❌ Ошибка удаления участника:', error);
+        alert('Ошибка удаления участника: ' + error.message);
+        return;
+      }
+      
+      console.log('✅ Участник успешно удален');
+      
+      // Обновляем список участников
+      await fetchParticipants();
+      
+    } catch (err) {
+      console.error('❌ Ошибка удаления участника:', err);
+      alert('Ошибка удаления участника');
+    }
+  };
+
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!bannerSettings.showVisualEditor) return;
     
@@ -888,6 +922,8 @@ const ExpertExamPage: React.FC = () => {
                         onViewDossier={(participantId) => {
                           setSelectedParticipantId(participantId);
                         }}
+                        onRemove={removeParticipant}
+                        showRemoveButton={userProfile?.role === 'administrator'}
                       />
                     ))}
                   </div>
@@ -1094,6 +1130,8 @@ const ExpertExamPage: React.FC = () => {
                         onViewDossier={(participantId) => {
                           setSelectedParticipantId(participantId);
                         }}
+                        onRemove={removeParticipant}
+                        showRemoveButton={userProfile?.role === 'administrator'}
                       />
                     ))}
                   </div>

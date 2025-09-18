@@ -33,6 +33,8 @@ interface DossierCardProps {
   dossier?: DossierData;
   onRate?: (participantId: string) => void;
   onViewDossier?: (participantId: string) => void;
+  onRemove?: (participantId: string) => void;
+  showRemoveButton?: boolean;
 }
 
 function splitName(full: string) {
@@ -56,7 +58,9 @@ export const CompactDossierCard: React.FC<DossierCardProps> = ({
   participant,
   dossier,
   onRate,
-  onViewDossier
+  onViewDossier,
+  onRemove,
+  showRemoveButton = false
 }) => {
   const nameParts = useMemo(() => splitName(participant?.user?.full_name || ''), [participant]);
   const position = dossier?.position || participant?.user?.position?.name || 'Должность';
@@ -196,25 +200,48 @@ export const CompactDossierCard: React.FC<DossierCardProps> = ({
           Досье резервиста
         </button>
 
-        <button
-          onClick={() => onRate?.(participant.user.id)}
-          className="
-            w-full h-12 rounded-[20px]
-            text-white text-[16px] font-semibold
-            shadow-lg shadow-black/10
-            hover:shadow-xl hover:shadow-black/20 hover:scale-[1.02]
-            active:scale-[0.98] active:shadow-md
-            focus:outline-none focus-visible:ring-4 focus-visible:ring-opacity-30
-            transition-all duration-300 ease-out
-            inline-flex items-center justify-center gap-2
-            relative overflow-hidden
-          "
-          style={{ backgroundColor: '#06A478' }}
-          aria-label="Поставить оценку"
-        >
-          <span className="relative z-10">Поставить оценку</span>
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out" />
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => onRate?.(participant.user.id)}
+            className="
+              flex-1 h-12 rounded-[20px]
+              text-white text-[16px] font-semibold
+              shadow-lg shadow-black/10
+              hover:shadow-xl hover:shadow-black/20 hover:scale-[1.02]
+              active:scale-[0.98] active:shadow-md
+              focus:outline-none focus-visible:ring-4 focus-visible:ring-opacity-30
+              transition-all duration-300 ease-out
+              inline-flex items-center justify-center gap-2
+              relative overflow-hidden
+            "
+            style={{ backgroundColor: '#06A478' }}
+            aria-label="Поставить оценку"
+          >
+            <span className="relative z-10">Поставить оценку</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out" />
+          </button>
+          
+          {showRemoveButton && onRemove && (
+            <button
+              onClick={() => onRemove(participant.user.id)}
+              className="
+                h-12 px-4 rounded-[20px]
+                text-white text-[16px] font-semibold
+                shadow-lg shadow-black/10
+                hover:shadow-xl hover:shadow-black/20 hover:scale-[1.02]
+                active:scale-[0.98] active:shadow-md
+                focus:outline-none focus-visible:ring-4 focus-visible:ring-opacity-30
+                transition-all duration-300 ease-out
+                inline-flex items-center justify-center gap-2
+                relative overflow-hidden
+              "
+              style={{ backgroundColor: '#dc2626' }}
+              aria-label="Удалить участника"
+            >
+              <span className="relative z-10">×</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* мягкие круглые углы у всей карточки и лёгкий блик для объёма */}
