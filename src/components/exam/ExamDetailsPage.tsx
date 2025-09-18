@@ -407,6 +407,46 @@ const ExamDetailsPage: React.FC = () => {
     }
   };
 
+  // Удаление участника из экзамена
+  const removeParticipantFromExam = async (participantId: string) => {
+    if (!confirm('Вы уверены, что хотите удалить этого участника из экзамена?')) {
+      return;
+    }
+
+    try {
+      console.log('🗑️ Удаляем участника из экзамена:', participantId);
+      
+      const { error, count } = await supabase
+        .from('event_participants')
+        .delete({ count: 'exact' })
+        .eq('event_id', id)
+        .eq('user_id', participantId);
+      
+      if (error) {
+        console.error('❌ Ошибка удаления участника:', error);
+        alert('Ошибка удаления участника: ' + error.message);
+        return;
+      }
+      
+      console.log('✅ Участник успешно удален, удалено записей:', count);
+      
+      if (count === 0) {
+        console.warn('⚠️ Участник не был найден в базе данных');
+        alert('Участник не был найден в базе данных');
+        return;
+      }
+      
+      // Обновляем список участников
+      console.log('🔄 Обновляем список участников...');
+      await fetchReservists(id!);
+      console.log('✅ Список участников обновлен');
+      
+    } catch (err) {
+      console.error('❌ Ошибка удаления участника:', err);
+      alert('Ошибка удаления участника');
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ru-RU', {
       year: 'numeric',
@@ -837,9 +877,20 @@ const ExamDetailsPage: React.FC = () => {
                           <p className="text-xs text-gray-500">{participant.user?.email}</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm text-gray-600">SAP: {participant.user?.sap_number || 'Не указан'}</p>
-                        <p className="text-xs text-gray-500">{participant.user?.territory?.name || 'Территория не указана'}</p>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <p className="text-sm text-gray-600">SAP: {participant.user?.sap_number || 'Не указан'}</p>
+                          <p className="text-xs text-gray-500">{participant.user?.territory?.name || 'Территория не указана'}</p>
+                        </div>
+                        {userProfile?.role === 'administrator' && (
+                          <button
+                            onClick={() => removeParticipantFromExam(participant.user.id)}
+                            className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Удалить участника из экзамена"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))
