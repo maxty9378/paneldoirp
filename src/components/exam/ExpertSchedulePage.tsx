@@ -39,9 +39,6 @@ interface ExamEvent {
       id: string;
       full_name: string;
     };
-    presentation_number?: {
-      presentation_number: number;
-    };
   }>;
 }
 
@@ -53,8 +50,16 @@ const ExpertSchedulePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log('🔄 useEffect triggered:', {
+      userProfileEmail: userProfile?.email,
+      userProfileRole: userProfile?.role
+    });
+    
     if (userProfile?.email) {
+      console.log('🚀 Starting fetchExpertExams...');
       fetchExpertExams();
+    } else {
+      console.log('⏸️ Skipping fetchExpertExams - no email');
     }
   }, [userProfile?.email]);
 
@@ -66,6 +71,7 @@ const ExpertSchedulePage: React.FC = () => {
 
     try {
       setLoading(true);
+      setError(null); // Сбрасываем предыдущие ошибки
       
       let query = supabase
         .from('events')
@@ -80,10 +86,9 @@ const ExpertSchedulePage: React.FC = () => {
           expert_emails,
           event_types(name, name_ru),
           talent_categories(name, name_ru),
-          participants:exam_participants(
+          participants:event_participants(
             id,
-            user:users(id, full_name),
-            presentation_number:presentation_assignments(presentation_number)
+            user:users(id, full_name)
           )
         `)
         .eq('event_types.name', 'exam_talent_reserve')
@@ -99,11 +104,26 @@ const ExpertSchedulePage: React.FC = () => {
 
       if (examError) {
         console.error('❌ Ошибка загрузки экзаменов:', examError);
-        setError('Ошибка загрузки расписания');
+        console.error('❌ Детали ошибки:', {
+          code: examError.code,
+          message: examError.message,
+          details: examError.details,
+          hint: examError.hint
+        });
+        setError(`Ошибка загрузки расписания: ${examError.message}`);
         return;
       }
 
-      setExams(examData || []);
+      console.log('✅ Экзамены загружены:', examData);
+      console.log('📊 Количество экзаменов:', examData?.length || 0);
+      
+      if (!examData || examData.length === 0) {
+        console.log('⚠️ Нет данных об экзаменах');
+        setError('Нет доступных экзаменов');
+        return;
+      }
+      
+      setExams(examData);
     } catch (err) {
       console.error('❌ Ошибка fetchExpertExams:', err);
       setError('Ошибка загрузки расписания');
@@ -175,14 +195,14 @@ const ExpertSchedulePage: React.FC = () => {
     }
   };
 
-  // Функция для получения резервиста по номеру выступления
-  const getReservistByPresentationNumber = (exam: ExamEvent, presentationNumber: number) => {
-    if (!exam.participants) return null;
-    
-    return exam.participants.find(participant => 
-      participant.presentation_number?.presentation_number === presentationNumber
-    );
-  };
+
+  // Отладочная информация
+  console.log('🔍 ExpertSchedulePage render:', {
+    loading,
+    userProfile: userProfile?.email,
+    examsCount: exams.length,
+    error
+  });
 
   if (loading || !userProfile) {
     return (
@@ -198,6 +218,7 @@ const ExpertSchedulePage: React.FC = () => {
   }
 
   if (error) {
+    console.log('❌ Показываем ошибку:', error);
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -311,17 +332,7 @@ const ExpertSchedulePage: React.FC = () => {
                       return scheduleData.map((item, index) => {
                         const isActive = isCurrentlyActive(item.startTime || '', item.endTime || '');
                         
-                        // Определяем номер выступления для каждого этапа
-                        let presentationNumber = null;
-                        if (item.title.includes('Решение и защита прикладных кейсов')) {
-                          presentationNumber = 1; // Первый резервист
-                        } else if (item.title.includes('Защита проекта')) {
-                          presentationNumber = 2; // Второй резервист
-                        } else if (item.title.includes('Диагностическая игра')) {
-                          presentationNumber = 3; // Третий резервист
-                        }
-                        
-                        const reservist = presentationNumber ? getReservistByPresentationNumber(exam, presentationNumber) : null;
+                        // Убираем отображение резервистов
                         
                         return (
                           <div key={item.id || index} className="group relative">
@@ -381,28 +392,6 @@ const ExpertSchedulePage: React.FC = () => {
                                   </p>
                                 )}
                                 
-                                {/* Показываем резервиста для всех этапов с выступлениями */}
-                                {presentationNumber && reservist && (
-                                  <div className="mt-2 p-2 bg-[#06A478]/5 rounded-lg border border-[#06A478]/20">
-                                    <div className="flex items-center gap-2">
-                                      <div className="w-2 h-2 bg-[#06A478] rounded-full"></div>
-                                      <span className="text-sm font-medium text-[#06A478]">
-                                        Выступает: {reservist.user.full_name}
-                                      </span>
-                                    </div>
-                                  </div>
-                                )}
-                                
-                                {presentationNumber && !reservist && (
-                                  <div className="mt-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
-                                    <div className="flex items-center gap-2">
-                                      <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                                      <span className="text-sm text-gray-500">
-                                        Резервист не назначен
-                                      </span>
-                                    </div>
-                                  </div>
-                                )}
                               </div>
                             </div>
                           </div>
