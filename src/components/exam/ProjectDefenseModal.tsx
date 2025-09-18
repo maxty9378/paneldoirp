@@ -233,13 +233,6 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
     }
   };
 
-  const getTotalScore = () => {
-    const { goal_achievement, topic_development, document_quality } = evaluation.criteria_scores;
-    const validScores = [goal_achievement, topic_development, document_quality].filter(score => score > 0);
-    if (validScores.length === 0) return 0;
-    const average = validScores.reduce((sum, score) => sum + score, 0) / validScores.length;
-    return Math.round(average * 10) / 10;
-  };
 
   const getScoreColor = (score: number) => {
     if (score >= 4) return 'text-green-600';
