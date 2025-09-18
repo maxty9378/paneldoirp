@@ -131,11 +131,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isSessionValid = (session: any) => {
     if (!session?.user) return false;
     
-    // Проверяем, что токен не истек (с запасом в 5 минут)
+    // Проверяем, что токен не истек (с запасом в 1 час для более мягкой проверки)
     const now = Math.floor(Date.now() / 1000);
     const expiresAt = session.expires_at;
     
-    if (expiresAt && now >= expiresAt - 300) {
+    if (expiresAt && now >= expiresAt - 3600) {
       console.log('⚠️ Session token expires soon, will refresh');
       return false;
     }
@@ -525,6 +525,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Main effect for authentication state management
   useEffect(() => {
     let isMounted = true;
+    let refreshInterval: NodeJS.Timeout | null = null;
     
     console.log('🔐 Auth provider initialized');
     
@@ -599,12 +600,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Start initialization
     initializeAuth();
 
+    // Периодическое обновление токенов (каждые 30 минут)
+    const startTokenRefresh = () => {
+      if (refreshInterval) clearInterval(refreshInterval);
+      
+      refreshInterval = setInterval(async () => {
+        if (!isMounted) return;
+        
+        try {
+          const { data: { session: currentSession } } = await supabase.auth.getSession();
+          if (currentSession?.user && !isSessionValid(currentSession)) {
+            console.log('🔄 Periodic token refresh triggered');
+            const { data, error } = await supabase.auth.refreshSession();
+            if (error) {
+              console.warn('Periodic refresh failed:', error);
+            } else if (data.session) {
+              console.log('✅ Periodic refresh successful');
+              setSession(data.session);
+            }
+          }
+        } catch (e) {
+          console.warn('Periodic refresh error:', e);
+        }
+      }, 30 * 60 * 1000); // 30 минут
+    };
+
     // Listen for auth changes
     const authSubscription = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
       
       console.log('🔄 Auth state changed:', event, session?.user?.id?.substring(0, 8));
       setSession(session);
+      
+      // Запускаем или останавливаем периодическое обновление
+      if (session?.user) {
+        startTokenRefresh();
+      } else {
+        if (refreshInterval) {
+          clearInterval(refreshInterval);
+          refreshInterval = null;
+        }
+      }
       
       // INITIAL_SESSION обрабатывается в initializeAuth, пропускаем
       if (event === 'INITIAL_SESSION') {
@@ -648,14 +684,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setLoading(false);
         } else if (session?.user && !isSessionValid(session)) {
           console.log('⚠️ Session invalid, attempting refresh');
-          // Попробуем обновить токен
-          supabase.auth.refreshSession().catch(e => {
-            console.warn('Failed to refresh session:', e);
-            setLoadingPhase('logged-out');
-            setUser(null);
-            setUserProfile(null);
-            setLoading(false);
-          });
+          // Попробуем обновить токен с повторными попытками
+          const refreshSession = async (attempts = 0) => {
+            try {
+              const { data, error } = await supabase.auth.refreshSession();
+              if (error) throw error;
+              
+              if (data.session) {
+                console.log('✅ Session refreshed successfully');
+                setSession(data.session);
+                return;
+              }
+            } catch (e) {
+              console.warn(`Failed to refresh session (attempt ${attempts + 1}):`, e);
+              if (attempts < 2) {
+                // Повторяем попытку через 2 секунды
+                setTimeout(() => refreshSession(attempts + 1), 2000);
+              } else {
+                console.warn('All refresh attempts failed, signing out');
+                setLoadingPhase('logged-out');
+                setUser(null);
+                setUserProfile(null);
+                setLoading(false);
+              }
+            }
+          };
+          
+          refreshSession();
         } else {
           console.log('ℹ️ No session but not signed out, keeping current state');
           // Не сбрасываем состояние при других событиях (например, TOKEN_REFRESHED)
@@ -666,6 +721,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Return cleanup function
     return () => {
       isMounted = false;
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
       authSubscription?.data?.subscription?.unsubscribe?.();
     };
   }, []);

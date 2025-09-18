@@ -19,6 +19,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storageKey: 'sns-session-v1', // стабильный ключ для сессий
     flowType: 'pkce',            // используем PKCE для лучшей безопасности
     debug: false,                 // отключаем отладку в продакшене
+    // Увеличиваем время жизни токенов
+    jwtExpiry: 86400,            // 24 часа (в секундах)
+    refreshTokenReuseInterval: 10, // 10 секунд для повторного использования refresh token
   },
 });
 
