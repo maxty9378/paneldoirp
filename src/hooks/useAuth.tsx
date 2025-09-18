@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { getUserFromCache, cacheUserProfile, clearUserCache, isCachedUserValid } from '../lib/userCache';
+import { getUserFromCache, cacheUserProfile, isCachedUserValid } from '../lib/userCache';
 import { Session } from '@supabase/supabase-js';
 
 // Расширяем window для флага обработки
@@ -85,14 +85,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const userRef = useRef<User | null>(null);
   useEffect(() => { userRef.current = user; }, [user]);
 
-  // Резюмирование после коллбэка - дотянуть профиль после /auth/*
-  useEffect(() => {
-    if (!isAuthFlowPath() && session?.user && !userProfile) {
-      console.log('🔄 Post-auth: fetching profile after callback');
-      fetchUserProfile(session.user.id, { foreground: false })
-        .catch(e => console.warn('post-auth bg fetch failed', e));
-    }
-  }, [session?.user, userProfile, fetchUserProfile]);
 
   // Обработчик для восстановления сессии при возвращении в приложение
   useEffect(() => {
@@ -106,11 +98,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setSession(sessionResult.data.session);
             
             // Проверяем кэш профиля
-            const cachedUser = getUserFromCache();
-            if (cachedUser && cachedUser.id === sessionResult.data.session.user.id && isCachedUserValid(cachedUser)) {
+            const cachedUser = getUserFromCache(sessionResult.data.session.user.id);
+            if (cachedUser && isCachedUserValid(cachedUser)) {
               console.log('✅ Using cached profile on app restore');
-              setUser(cachedUser);
-              setUserProfile(cachedUser);
+              // Преобразуем CachedUser в User
+              const userFromCache: User = {
+                ...cachedUser,
+                role: cachedUser.role as 'employee' | 'supervisor' | 'trainer' | 'expert' | 'moderator' | 'administrator',
+                subdivision: 'management_company',
+                status: 'active',
+                work_experience_days: 0,
+                is_active: true,
+                department: 'management_company',
+                phone: '',
+                sap_number: undefined,
+                position_id: undefined,
+                branch_id: undefined,
+                territory_id: undefined,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              };
+              setUser(userFromCache);
+              setUserProfile(userFromCache);
             } else {
               // Загружаем профиль в фоне
               fetchUserProfile(sessionResult.data.session.user.id, { foreground: false })
@@ -127,8 +136,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [session?.user, loading]);
 
-  // Оптимизированный delay с проверкой прерывания
-  const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
   // Utility function to create fallback user
   const createFallbackUser = (
@@ -297,12 +304,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         // 1) кэш - показываем сразу и не ждем
-        const cached = getUserFromCache();
-        if (cached && cached.id === userId && isCachedUserValid(cached)) {
+        const cached = getUserFromCache(userId);
+        if (cached && isCachedUserValid(cached)) {
           console.log('✅ Using cached user profile:', cached.id);
-          const cachedUser = { ...cached, position: cached.position || 'Должность не указана' };
-          setUser(cachedUser);
-          setUserProfile(cachedUser);
+          // Преобразуем CachedUser в User
+          const userFromCache: User = {
+            ...cached,
+            role: cached.role as 'employee' | 'supervisor' | 'trainer' | 'expert' | 'moderator' | 'administrator',
+            subdivision: 'management_company',
+            status: 'active',
+            work_experience_days: 0,
+            is_active: true,
+            department: 'management_company',
+            phone: '',
+            sap_number: undefined,
+            position_id: undefined,
+            branch_id: undefined,
+            territory_id: undefined,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          setUser(userFromCache);
+          setUserProfile(userFromCache);
 
           if (foreground) {
             // Показали кэш и ОДИН раз обновим из сети без рекурсии
@@ -325,7 +348,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 }
               })();
 
-            return cachedUser;
+            return userFromCache;
           }
 
           // Если это background-вызов — НЕ выходим здесь.
@@ -383,6 +406,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     inFlightProfile.current = runner;
     await runner;
   }, [isAuthFlowPath]);
+
+  // Резюмирование после коллбэка - дотянуть профиль после /auth/*
+  useEffect(() => {
+    if (!isAuthFlowPath() && session?.user && !userProfile) {
+      console.log('🔄 Post-auth: fetching profile after callback');
+      fetchUserProfile(session.user.id, { foreground: false })
+        .catch(e => console.warn('post-auth bg fetch failed', e));
+    }
+  }, [session?.user, userProfile, fetchUserProfile]);
 
   // Retry mechanism
   const retryFetchProfile = async () => {
@@ -486,14 +518,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return result;
       } else {
         // SAP авторизация
-        const { data: userData, error: userError } = await withTimeout(
-          () => supabase
+        const sapResult = await withTimeout(
+          () => Promise.resolve(supabase
             .from('users')
             .select('email')
             .eq('sap_number', identifier.trim())
-            .maybeSingle(),
+            .maybeSingle()),
           8000
         );
+        const { data: userData, error: userError } = sapResult as any;
 
         if (userError || !userData?.email) {
           const errorMsg = 'Пользователь с таким SAP номером не найден';
@@ -503,30 +536,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return { data: null, error: { message: errorMsg } };
         }
 
-        const result = await withTimeout(
+        const sapAuthResult = await withTimeout(
           () => supabase.auth.signInWithPassword({ email: userData.email, password }),
           10000
         );
         
-        if (result.error) {
-          const errorMessage = result.error.message.includes('Invalid login credentials') 
+        if ((sapAuthResult as any).error) {
+          const errorMessage = (sapAuthResult as any).error.message.includes('Invalid login credentials') 
             ? 'Неверный пароль для данного SAP номера'
-            : getAuthErrorMessage(result.error.message);
+            : getAuthErrorMessage((sapAuthResult as any).error.message);
           setAuthError(errorMessage);
           setLoading(false);
           setLoadingPhase('error');
-          return { data: result.data, error: { message: errorMessage } };
+          return { data: (sapAuthResult as any).data, error: { message: errorMessage } };
         }
         
         console.log('✅ SAP sign in success');
         setAuthError(null);
         
         // Сохраняем пользователя в кэш для быстрого входа
-        if (result.data?.user) {
-          cacheUserProfile(result.data.user);
+        if ((sapAuthResult as any).data?.user) {
+          cacheUserProfile((sapAuthResult as any).data.user);
         }
         
-        return result;
+        return sapAuthResult as any;
       }
     } catch (error: any) {
       console.error('❌ Error in signIn:', error);
@@ -628,12 +661,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setLoadingPhase('ready');
             setLoading(false);
           } else {
-            // Проверяем кэш профиля
-            const cachedUser = getUserFromCache();
-            if (cachedUser && cachedUser.id === session.user.id && isCachedUserValid(cachedUser)) {
-              console.log('✅ Using cached user profile');
-              setUser(cachedUser);
-              setUserProfile(cachedUser);
+  // Проверяем кэш профиля
+  const cachedUser = getUserFromCache(session.user.id);
+  if (cachedUser && isCachedUserValid(cachedUser)) {
+    console.log('✅ Using cached user profile');
+              // Преобразуем CachedUser в User
+              const userFromCache: User = {
+                ...cachedUser,
+                role: cachedUser.role as 'employee' | 'supervisor' | 'trainer' | 'expert' | 'moderator' | 'administrator',
+                subdivision: 'management_company',
+                status: 'active',
+                work_experience_days: 0,
+                is_active: true,
+                department: 'management_company',
+                phone: '',
+                sap_number: undefined,
+                position_id: undefined,
+                branch_id: undefined,
+                territory_id: undefined,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              };
+    setUser(userFromCache);
+    setUserProfile(userFromCache);
               setLoadingPhase('complete');
               setLoading(false);
               
@@ -758,11 +808,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         
         // Different user or no current user, try cache first
-        const cachedUser = getUserFromCache();
-        if (cachedUser && cachedUser.id === session.user.id && isCachedUserValid(cachedUser)) {
+        const cachedUser = getUserFromCache(session.user.id);
+        if (cachedUser && isCachedUserValid(cachedUser)) {
           console.log('✅ Using cached profile for session restoration');
-          setUser(cachedUser);
-          setUserProfile(cachedUser);
+              // Преобразуем CachedUser в User
+              const userFromCache: User = {
+                ...cachedUser,
+                role: cachedUser.role as 'employee' | 'supervisor' | 'trainer' | 'expert' | 'moderator' | 'administrator',
+                subdivision: 'management_company',
+                status: 'active',
+                work_experience_days: 0,
+                is_active: true,
+                department: 'management_company',
+                phone: '',
+                sap_number: undefined,
+                position_id: undefined,
+                branch_id: undefined,
+                territory_id: undefined,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              };
+          setUser(userFromCache);
+          setUserProfile(userFromCache);
           setLoadingPhase('complete');
           setLoading(false);
           

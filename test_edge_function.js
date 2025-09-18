@@ -65,3 +65,4 @@ async function testGenerateQR() {
 // Запускаем тесты
 testEdgeFunction();
 testGenerateQR();
+
