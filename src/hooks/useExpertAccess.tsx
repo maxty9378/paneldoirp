@@ -9,7 +9,7 @@ interface ExpertAccessCache {
   };
 }
 
-const CACHE_DURATION = 5 * 60 * 1000; // 5 минут
+const CACHE_DURATION = 15 * 60 * 1000; // 15 минут для экспертов
 const accessCache: ExpertAccessCache = {};
 
 export const useExpertAccess = (examId: string | undefined) => {

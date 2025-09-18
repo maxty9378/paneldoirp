@@ -127,8 +127,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } as User;
   };
 
-  // Оптимизированный getSession с разумным таймаутом
-  const getSessionSoft = async (timeoutMs = 15000) => {
+  // Проверка валидности сессии
+  const isSessionValid = (session: any) => {
+    if (!session?.user) return false;
+    
+    // Проверяем, что токен не истек (с запасом в 5 минут)
+    const now = Math.floor(Date.now() / 1000);
+    const expiresAt = session.expires_at;
+    
+    if (expiresAt && now >= expiresAt - 300) {
+      console.log('⚠️ Session token expires soon, will refresh');
+      return false;
+    }
+    
+    return true;
+  };
+
+  // Оптимизированный getSession с увеличенным таймаутом
+  const getSessionSoft = async (timeoutMs = 30000) => {
     try {
       const res = await withTimeout(() => supabase.auth.getSession(), timeoutMs);
       return res;
@@ -526,8 +542,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('📥 Starting session fetch');
       
       try {
-        // Получаем сессию с оптимизированным таймаутом
-        const sessionResult = await getSessionSoft(15000);
+        // Получаем сессию с увеличенным таймаутом
+        const sessionResult = await getSessionSoft(30000);
         if (!isMounted) return;
         
         const session = sessionResult.data.session;
@@ -603,9 +619,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       
-      // Обработка других событий (SIGNED_IN, SIGNED_OUT, etc.)
-      if (session?.user) {
-        console.log('✅ New session after auth change');
+      // Обработка других событий (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED, etc.)
+      if (session?.user && isSessionValid(session)) {
+        console.log('✅ Valid session found after auth change');
         
         // Check if user is the same as current user
         if (userRef.current?.id === session.user.id) {
@@ -615,18 +631,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         
-        // Different user, fetch profile in background
+        // Different user or no current user, fetch profile
+        console.log('🔄 Fetching profile for user:', session.user.id);
         setLoadingPhase('complete');
         setLoading(false);
         // фоново, без блокировки интерфейса
         fetchUserProfile(session.user.id, { foreground: false })
           .catch(e => console.warn('bg profile fetch failed', e));
       } else {
-        console.log('ℹ️ No session after auth change');
-        setLoadingPhase('logged-out');
-        setUser(null);
-        setUserProfile(null);
-        setLoading(false);
+        // Только если это явный SIGNED_OUT, сбрасываем состояние
+        if (event === 'SIGNED_OUT') {
+          console.log('ℹ️ User signed out, clearing state');
+          setLoadingPhase('logged-out');
+          setUser(null);
+          setUserProfile(null);
+          setLoading(false);
+        } else if (session?.user && !isSessionValid(session)) {
+          console.log('⚠️ Session invalid, attempting refresh');
+          // Попробуем обновить токен
+          supabase.auth.refreshSession().catch(e => {
+            console.warn('Failed to refresh session:', e);
+            setLoadingPhase('logged-out');
+            setUser(null);
+            setUserProfile(null);
+            setLoading(false);
+          });
+        } else {
+          console.log('ℹ️ No session but not signed out, keeping current state');
+          // Не сбрасываем состояние при других событиях (например, TOKEN_REFRESHED)
+        }
       }
     });
 

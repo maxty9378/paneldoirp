@@ -17,6 +17,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: false,    // мы сами обрабатываем токены в AuthCallback
     storage: window.localStorage, // явно указываем хранилище
     storageKey: 'sns-session-v1', // стабильный ключ для сессий
+    flowType: 'pkce',            // используем PKCE для лучшей безопасности
+    debug: false,                 // отключаем отладку в продакшене
   },
 });
 
