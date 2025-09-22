@@ -46,3 +46,4 @@ ALTER TABLE events ADD COLUMN IF NOT EXISTS expert_emails TEXT[];
 CREATE INDEX IF NOT EXISTS idx_events_talent_category ON events(talent_category_id);
 CREATE INDEX IF NOT EXISTS idx_events_group_name ON events(group_name);
 
+

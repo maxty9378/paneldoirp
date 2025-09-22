@@ -9,3 +9,4 @@ COMMENT ON COLUMN events.banner_position IS 'CSS background-position для об
 UPDATE events 
 SET banner_position = 'center bottom' 
 WHERE banner_position IS NULL;
+

@@ -51,3 +51,4 @@ export const ACHIEVEMENT_RARITY = {
   legendary: { name: 'Легендарное', color: 'text-yellow-600', bgColor: 'bg-yellow-100', borderColor: 'border-yellow-300' },
 } as const;
 
+
