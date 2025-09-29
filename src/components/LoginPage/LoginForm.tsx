@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, CheckCircle, AlertCircle } from 'lucide-react';
+import { Spinner } from '../ui/Spinner';
 import { useAuth } from '../../hooks/useAuth';
 
 interface LoginFormProps {
@@ -51,9 +52,14 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
             </div>
             <h2 className="text-2xl font-bold text-gray-800 mb-2">Добро пожаловать!</h2>
             <p className="text-gray-600 mb-6">{user.full_name || user.email}</p>
-            <div className="flex items-center justify-center">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600"></div>
-              <span className="ml-3 text-green-600 font-medium">Перенаправляем...</span>
+            <div className="flex items-center justify-center text-green-600">
+              <Spinner
+                size={20}
+                direction="horizontal"
+                iconClassName="text-green-600"
+                label="Перенаправляем..."
+                labelClassName="text-green-600 font-medium"
+              />
             </div>
           </div>
         </div>
@@ -67,9 +73,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
       <div className="w-full max-w-md mx-auto">
         <div className="bg-white rounded-2xl p-8 shadow-lg border">
           <div className="text-center">
-            <div className="mb-6">
-              <Loader2 className="h-12 w-12 text-[#06A478] animate-spin mx-auto" />
-            </div>
+            <Spinner size={48} className="mx-auto mb-6" label="Подождите" />
             <h2 className="text-xl font-semibold text-gray-800 mb-2">Обработка авторизации...</h2>
             <p className="text-gray-600">Пожалуйста, подождите</p>
           </div>
@@ -159,9 +163,14 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
               className="w-full bg-gradient-to-r from-[#06A478] to-[#4ade80] text-white py-3 px-4 rounded-lg font-medium hover:from-[#05976b] hover:to-[#22c55e] focus:outline-none focus:ring-2 focus:ring-[#06A478] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
             >
               {isSubmitting || loading ? (
-                <div className="flex items-center justify-center">
-                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                  <span>Авторизация...</span>
+                <div className="flex items-center justify-center text-white">
+                  <Spinner
+                    size={20}
+                    direction="horizontal"
+                    light
+                    label="Авторизация..."
+                    labelClassName="text-white"
+                  />
                 </div>
               ) : (
                 <span className="flex items-center justify-center">
