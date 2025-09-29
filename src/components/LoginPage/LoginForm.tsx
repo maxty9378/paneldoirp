@@ -104,6 +104,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
                 id="identifier"
                 name="identifier"
                 type="text"
+                inputMode="text"
                 required
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
