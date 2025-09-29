@@ -1,0 +1,48 @@
+# Зависимости
+node_modules
+npm-debug.log*
+
+# Сборка
+dist
+build
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Логи
+*.log
+
+# Временные файлы
+*.tmp
+*.temp
+
+# SQL файлы (не нужны в контейнере)
+*.sql
+
+# Документация
+*.md
+docs/
+
+# Тестовые файлы
+test_*
+*_test.*
+
+# Скрипты
+scripts/
+
+# Supabase (если не нужен в контейнере)
+supabase/
+
+# Vercel конфиг (не нужен для Docker)
+vercel.json
