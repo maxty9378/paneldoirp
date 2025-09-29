@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { Spinner } from '../components/ui/Spinner';
 import { supabase } from '../lib/supabase';
 
 // Расширяем window для флага обработки
@@ -141,10 +142,16 @@ export default function AuthCallback() {
   }, []); // Убираем navigate из зависимостей, так как используем window.location
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-        <p className="text-gray-600">Обработка авторизации...</p>
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+      <div className="text-center bg-white/95 backdrop-blur-xl px-8 py-6 rounded-3xl shadow-lg border border-white/60">
+        <Spinner
+          size={32}
+          className="mx-auto mb-4"
+          label="Подтверждаем вход"
+          labelClassName="text-slate-600"
+          iconClassName="text-blue-600"
+        />
+        <p className="text-gray-600 text-sm">Обработка авторизации...</p>
       </div>
     </div>
   );
