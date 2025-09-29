@@ -23,7 +23,7 @@ import CaseEvaluationPage from './components/exam/CaseEvaluationPage';
 import ExpertSchedulePage from './components/exam/ExpertSchedulePage';
 import ExpertRouteGuard from './components/ExpertRouteGuard';
 import MobileLayout from './components/layout/MobileLayout';
-import { Loader2, RefreshCw, AlertOctagon } from 'lucide-react';
+import { RefreshCw, AlertOctagon } from 'lucide-react';
 import TakeTestPage from './pages/TakeTestPage';
 import TestResultsPage from './pages/TestResultsPage';
 import EventTestResultsPage from './pages/EventTestResultsPage';
@@ -32,6 +32,7 @@ import EventTPEvaluation from './pages/EventTPEvaluation';
 import AuthCallback from './pages/AuthCallback';
 import QRAuthPage from './pages/QRAuthPage';
 import { LoadingOverlay } from './components/LoadingOverlay';
+import { Spinner } from './components/ui/Spinner';
 
 function EventDetailPage({ onStartTest }: { onStartTest: (testId: string, eventId: string, attemptId: string) => void }) {
   const { eventId } = useParams();
@@ -269,12 +270,10 @@ function AppContent() {
           <div className="absolute -bottom-40 -left-32 h-96 w-96 rounded-full bg-gradient-to-br from-[#4ade80]/10 to-[#86efac]/10" />
         </div>
         
-        <div className="relative z-10 bg-white rounded-2xl p-8 shadow-lg border max-w-md mx-auto">
+        <div className="relative z-10 bg-white/95 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/60 max-w-md mx-auto">
           <div className="text-center">
-            <div className="mb-6">
-              <Loader2 className="h-12 w-12 text-[#06A478] animate-spin mx-auto" />
-            </div>
-            
+            <Spinner size={48} className="mx-auto mb-6" label="Загружаем" />
+
             <h2 className="text-xl font-semibold text-gray-800 mb-2">Загрузка приложения</h2>
             <p className="text-gray-600 mb-4">
               {loadingPhase === 'initializing' && 'Инициализация...'}

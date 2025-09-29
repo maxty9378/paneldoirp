@@ -1,17 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Sidebar } from './Sidebar';
-import { SidebarToggleButton } from './SidebarToggleButton';
 import { Header } from './Header';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { 
-  LogOut, 
-  Calendar, 
+import {
   Menu,
-  X,
-  Bell
 } from 'lucide-react';
 import { clsx } from 'clsx';
+import { MobileNavBar, type MobileNavItem } from './navigation/MobileNavBar';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -21,13 +17,14 @@ interface LayoutProps {
 export function Layout({ children, currentView, testTitle }: LayoutProps & { testTitle?: string }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const toggleSidebar = () => setIsSidebarCollapsed((v) => !v);
-  const { user, signOut } = useAuth();
+  const { user, userProfile } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [examTabTitle, setExamTabTitle] = useState('Экзамен');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const role = userProfile?.role || user?.role || 'employee';
 
   // Отслеживание скролла для эффектов
   useEffect(() => {
@@ -91,10 +88,6 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
     };
   }, [isMobileMenuOpen]);
 
-  const handleSignOut = async () => {
-    await signOut();
-  };
-
   // Проверяем, находимся ли мы на странице теста
   const isTestPage = currentView === 'take-test';
   
@@ -102,11 +95,31 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
   const isExamPage = location.pathname.includes('/expert-exam/') || location.pathname.includes('/case-evaluation/');
   
   // Проверяем, находимся ли мы на страницах оценки или досье (где нужно скрыть меню)
-  const isEvaluationOrDossierPage = location.pathname.includes('/case-evaluation/') || 
+  const isEvaluationOrDossierPage = location.pathname.includes('/case-evaluation/') ||
                                    location.pathname.includes('/evaluations') ||
-                                   (location.pathname.includes('/expert-exam/') && 
-                                    (location.pathname.includes('/evaluations') || 
+                                   (location.pathname.includes('/expert-exam/') &&
+                                    (location.pathname.includes('/evaluations') ||
                                      location.pathname.includes('/dossiers')));
+
+  const canSeeTesting = ['trainer', 'moderator', 'administrator'].includes(role);
+  const canSeeEmployees = ['supervisor', 'trainer', 'administrator'].includes(role);
+
+  const mobileNavItems: MobileNavItem[] = [
+    { id: 'dashboard', label: 'Главная' },
+    { id: 'events', label: 'События' },
+  ];
+
+  if (canSeeTesting) {
+    mobileNavItems.push({ id: 'testing', label: 'Тесты' });
+  } else if (canSeeEmployees) {
+    mobileNavItems.push({ id: 'employees', label: 'Команда' });
+  }
+
+  if (!mobileNavItems.some((item) => item.id === 'calendar')) {
+    mobileNavItems.push({ id: 'calendar', label: 'Календарь' });
+  }
+
+  const showMobileNav = !isModalOpen && !isExamPage && !isEvaluationOrDossierPage && !isMobileMenuOpen;
 
   // Теперь Sidebar будет использовать navigate для перехода по роутам
   const handleMenuItemClick = (itemId: string) => {
@@ -335,10 +348,11 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
             "flex-1 overflow-auto transition-all duration-300",
             // Отступы для мобильной версии
             "pt-16 lg:pt-20",
+            showMobileNav ? "pb-28" : "pb-safe-bottom",
             // Отступы для десктопной версии
             isSidebarCollapsed ? "lg:ml-20" : "lg:ml-80"
           )}>
-          <div className="py-4 sm:py-6 pb-safe-bottom">
+          <div className="py-4 sm:py-6">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               {children}
             </div>
@@ -346,7 +360,12 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
         </main>
       </div>
 
-
+      <MobileNavBar
+        activeItem={currentView}
+        items={mobileNavItems}
+        onSelect={handleMenuItemClick}
+        isVisible={showMobileNav}
+      />
     </div>
   );
 }
