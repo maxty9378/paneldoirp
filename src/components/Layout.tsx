@@ -151,7 +151,6 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
       case 'events': return 'Мои мероприятия';
       case 'tests': return 'Тесты';
       case 'testing': return 'Тестирование';
-      case 'create-event': return 'Создание мероприятия';
       case 'calendar': return 'Календарь';
       case 'employees': return 'Мои сотрудники';
       case 'representatives': return 'Торговые представители';

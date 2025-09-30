@@ -177,7 +177,6 @@ function AppContent() {
     if (location.pathname.startsWith('/testing')) return 'tests';
     if (location.pathname.startsWith('/admin')) return 'admin';
     if (location.pathname.startsWith('/employees')) return 'employees';
-    if (location.pathname.startsWith('/create-event')) return 'create-event';
     if (location.pathname.startsWith('/exam-management')) return 'exam-reserve';
     if (location.pathname.startsWith('/exam-reserve')) return 'exam-reserve';
     if (location.pathname.startsWith('/expert-schedule')) return 'schedule';
@@ -404,20 +403,6 @@ function AppContent() {
             </ExpertRouteGuard>
           } />
         </Route>
-        <Route path="/create-event" element={
-          <div className="space-y-6">
-            <div className="flex items-center">
-              <button onClick={() => navigate('/events')} className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center transition-colors duration-200">
-                ← Назад к мероприятиям
-              </button>
-            </div>
-            <div className="text-center">
-              <button onClick={() => setShowCreateEventModal(true)} className="bg-sns-600 text-white px-6 py-3 rounded-xl hover:bg-sns-700">
-                Создать мероприятие
-              </button>
-            </div>
-          </div>
-        } />
         <Route path="/take-test" element={<TakeTestPage />} />
         <Route path="/test-results/:attemptId" element={<TestResultsPage />} />
         <Route path="/event-test-results/:eventId" element={<EventTestResultsPage />} />
