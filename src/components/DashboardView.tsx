@@ -144,11 +144,11 @@ function EventCard({ event, animationDelay = 0 }: { event: EventWithDetails; ani
     return typeColors[event.type || 'other'] || 'bg-slate-50 text-slate-700 ring-slate-200';
   }, [event.event_type?.name, event.type]);
 
-    return (
-      <article
-        className="dashboard-card-enter group relative flex h-full min-w-[260px] flex-col overflow-hidden rounded-[26px] border border-white/40 bg-white/70 p-5 shadow-[0_28px_60px_-36px_rgba(15,23,42,0.55)] backdrop-blur-2xl transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_48px_80px_-42px_rgba(15,23,42,0.45)] sm:min-w-0"
-        style={{ animationDelay: `${animationDelay}ms` }}
-      >
+  return (
+    <article
+      className="dashboard-card-enter group relative flex h-full min-w-[260px] flex-col overflow-hidden rounded-[26px] border border-white/40 bg-white/70 p-5 shadow-[0_28px_60px_-36px_rgba(15,23,42,0.55)] backdrop-blur-2xl transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_48px_80px_-42px_rgba(15,23,42,0.45)] sm:min-w-0"
+      style={{ animationDelay: `${animationDelay}ms` }}
+    >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(14,159,110,0.08),transparent_65%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
       <div className="relative flex h-full flex-col">
         <header className="mb-4 flex flex-shrink-0 items-start justify-between gap-3">
@@ -409,9 +409,9 @@ function HeroPanel({
                 </div>
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-semibold text-white">Истории достижений 2025</p>
+                <p className="text-sm font-semibold text-white">Мы рядом, чтобы помочь вам в развитии</p>
                 <p className="text-xs leading-relaxed text-white/70">
-                  Бейджи программы теперь живут в формате сторис: активируйте круг, чтобы раскрыть карточку прогресса и увидеть индивидуальные подсказки.
+                  Ачивки программы «Потенциал ГДФ» живут в формате сторис: активируйте круг, чтобы раскрыть прогресс и персональные подсказки на каждый этап.
                 </p>
               </div>
             </div>
@@ -419,17 +419,20 @@ function HeroPanel({
               <div className="rounded-xl border border-white/15 bg-white/8 p-3 shadow-[0_10px_24px_-18px_rgba(8,47,35,0.8)]">
                 <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/55">Активно</span>
                 <p className="mt-1 text-lg font-semibold text-white">{activeStoriesCount}</p>
-                <p>Истории в прогрессе</p>
+                <p>Ачивки в прогрессе</p>
               </div>
               <div className="rounded-xl border border-white/15 bg-white/8 p-3 shadow-[0_10px_24px_-18px_rgba(8,47,35,0.8)]">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/55">Ожидает</span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/55">В ожидании</span>
                 <p className="mt-1 text-lg font-semibold text-white">{upcomingStoriesCount}</p>
                 <p>Сторис скоро откроются</p>
               </div>
             </div>
             <div className="mt-4 flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-[11px] text-white/70">
-              <span>Следующая история</span>
-              <span className="font-semibold text-white">
+              <span className="inline-flex items-center gap-2">
+                <CalendarDays className="h-3.5 w-3.5" />
+                <span>Новые ачивки каждую неделю</span>
+              </span>
+              <span className="text-right font-semibold text-white">
                 {nextUpcomingStory ? nextUpcomingStory.title : 'Расписание обновляется'}
               </span>
             </div>
