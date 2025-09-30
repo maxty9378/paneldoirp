@@ -33,6 +33,7 @@ import AuthCallback from './pages/AuthCallback';
 import QRAuthPage from './pages/QRAuthPage';
 import { LoadingOverlay } from './components/LoadingOverlay';
 import { Spinner } from './components/ui/Spinner';
+import CreateEventPage from './pages/CreateEventPage';
 
 function EventDetailPage({ onStartTest }: { onStartTest: (testId: string, eventId: string, attemptId: string) => void }) {
   const { eventId } = useParams();
@@ -366,7 +367,7 @@ function AppContent() {
             // Логика для экзаменов резерва талантов будет обработана в EventCard
             navigate(`/event/${id}`);
           }
-        }} onEditEvent={id => handleEditEvent(id)} onCreateEvent={() => setShowCreateEventModal(true)} />} />
+        }} onEditEvent={id => handleEditEvent(id)} onCreateEvent={() => navigate('/create-event')} />} />
         <Route path="/event/:eventId" element={<EventDetailPage onStartTest={handleStartTest} />} />
         <Route path="/calendar" element={<CalendarView />} />
         <Route path="/representatives" element={<RepresentativesView />} />
@@ -404,20 +405,7 @@ function AppContent() {
             </ExpertRouteGuard>
           } />
         </Route>
-        <Route path="/create-event" element={
-          <div className="space-y-6">
-            <div className="flex items-center">
-              <button onClick={() => navigate('/events')} className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center transition-colors duration-200">
-                ← Назад к мероприятиям
-              </button>
-            </div>
-            <div className="text-center">
-              <button onClick={() => setShowCreateEventModal(true)} className="bg-sns-600 text-white px-6 py-3 rounded-xl hover:bg-sns-700">
-                Создать мероприятие
-              </button>
-            </div>
-          </div>
-        } />
+        <Route path="/create-event" element={<CreateEventPage />} />
         <Route path="/take-test" element={<TakeTestPage />} />
         <Route path="/test-results/:attemptId" element={<TestResultsPage />} />
         <Route path="/event-test-results/:eventId" element={<EventTestResultsPage />} />
