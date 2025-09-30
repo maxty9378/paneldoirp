@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  Calendar,
   Users,
   BookOpen,
   TrendingUp,
@@ -300,6 +299,36 @@ function HeroPanel({
     return parts.length > 1 ? parts[1] : parts[0];
   }, [fullName]);
 
+  const heroAchievements = useMemo(
+    () => [
+      {
+        id: 'momentum',
+        title: 'Старт программы',
+        description: '1 из 5 модулей',
+        accent: 'from-[#34d399] via-[#10b981] to-[#047857]',
+        emoji: '🚀',
+        progress: 20
+      },
+      {
+        id: 'community',
+        title: 'Сила сообщества',
+        description: '3 новых контакта',
+        accent: 'from-[#f59e0b] via-[#f97316] to-[#db2777]',
+        emoji: '🤝',
+        progress: 60
+      },
+      {
+        id: 'impact',
+        title: 'Личный импакт',
+        description: 'Рейтинг 4.8',
+        accent: 'from-[#a855f7] via-[#6366f1] to-[#4338ca]',
+        emoji: '🌟',
+        progress: 85
+      }
+    ],
+    []
+  );
+
   return (
     <section
       className="relative overflow-hidden rounded-[32px] border border-white/15 px-6 py-8 text-white shadow-[0_44px_120px_-70px_rgba(8,47,35,0.8)] sm:px-10 sm:py-10"
@@ -330,14 +359,47 @@ function HeroPanel({
           </div>
         </div>
 
-        <div className="flex flex-col items-start gap-4 sm:items-end">
-          <div className="rounded-2xl border border-white/20 bg-white/10 px-5 py-4 text-left text-sm font-medium text-white/85 backdrop-blur-md">
-            Поддерживаем ваш путь по программе «Потенциал ГДФ».
+        <div className="flex w-full max-w-[320px] flex-col gap-5 sm:items-end">
+          <div className="flex items-center justify-between gap-3 text-[10px] font-semibold uppercase tracking-[0.32em] text-white/50 sm:justify-end">
+            <span>Достижения 2025</span>
+            <div className="hidden items-center gap-1 text-white/40 sm:inline-flex">
+              <Sparkle className="h-3 w-3" />
+              <span className="tracking-[0.24em]">Live</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2 text-xs text-white/70">
-            <Calendar className="h-4 w-4" />
-            <span>Мы рядом, чтобы помочь вам в развитии</span>
+
+          <div className="flex flex-wrap justify-start gap-4 sm:justify-end">
+            {heroAchievements.map(achievement => (
+              <div
+                key={achievement.id}
+                className="group flex w-[92px] flex-col items-center gap-2 text-center"
+              >
+                <div className="relative">
+                  <div
+                    className={`absolute -inset-[3px] rounded-full bg-gradient-to-br ${achievement.accent} opacity-70 blur-sm transition duration-500 group-hover:opacity-100`}
+                  />
+                  <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-white/10 backdrop-blur-lg ring-1 ring-white/30">
+                    <span className="text-3xl leading-none">{achievement.emoji}</span>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold text-white">{achievement.title}</p>
+                  <p className="text-[10px] text-white/60">{achievement.description}</p>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20">
+                  <div
+                    className="h-full rounded-full bg-white/90 transition-all duration-500"
+                    style={{ width: `${achievement.progress}%` }}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
+
+          <button className="inline-flex items-center gap-2 self-start rounded-full bg-white/15 px-4 py-1.5 text-xs font-medium text-white/80 transition hover:bg-white/25 sm:self-end">
+            Смотреть истории достижений
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
     </section>
