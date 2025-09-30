@@ -329,83 +329,99 @@ function HeroPanel({
           </div>
         </div>
 
-        {/* Панель достижений 2025 */}
+        {/* Instagram Stories Style Achievements */}
         <div className="flex flex-col items-start gap-4 sm:items-end">
           <div className="relative w-full max-w-sm rounded-3xl border border-white/15 bg-gradient-to-br from-white/10 to-white/5 p-6 backdrop-blur-xl shadow-2xl">
-            {/* Декоративные элементы */}
-            <div className="absolute -top-2 -right-2 h-16 w-16 rounded-full bg-gradient-to-br from-yellow-400/20 to-orange-400/20 blur-xl"></div>
-            <div className="absolute -bottom-2 -left-2 h-12 w-12 rounded-full bg-gradient-to-br from-purple-400/20 to-pink-400/20 blur-lg"></div>
-            
-            {/* Заголовок с линией */}
-            <div className="relative flex items-center gap-4 mb-6">
-              <h3 className="text-xl font-bold text-white tracking-tight">Достижения</h3>
-              <div className="flex-1 h-px bg-gradient-to-r from-white/30 via-white/10 to-transparent"></div>
-            </div>
-            
-            {/* Ачивки в адаптивной сетке */}
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              {/* Первый шаг - активный */}
-              <div className="group flex flex-col items-center gap-3 cursor-pointer">
-                <div className="relative">
-                  {/* Внешнее свечение */}
-                  <div className="absolute -inset-2 rounded-full bg-gradient-to-r from-yellow-400/40 to-orange-400/40 blur-lg opacity-75 group-hover:opacity-100 transition-opacity"></div>
-                  {/* Основной значок */}
-                  <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-200 via-purple-100 to-purple-200 shadow-inner">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-400 via-yellow-500 to-orange-500 shadow-lg">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/90 backdrop-blur-sm">
-                        <span className="text-2xl">⭐</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <p className="text-sm font-semibold text-white text-center">Первый шаг</p>
+            {/* Instagram Stories Progress Bars */}
+            <div className="flex gap-2 mb-6">
+              <div className="flex-1 h-1 bg-white/20 rounded-full overflow-hidden">
+                <div className="h-full w-full bg-white rounded-full"></div>
               </div>
-
-              {/* Второй шаг - неактивный */}
-              <div className="group flex flex-col items-center gap-3 cursor-pointer">
-                <div className="relative">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-gray-300/60 via-gray-200/40 to-gray-300/60 shadow-inner">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-gray-400 to-gray-500 shadow-md">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/60 backdrop-blur-sm">
-                        <span className="text-2xl text-gray-600 opacity-70">⭐</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <p className="text-sm font-medium text-white/60 text-center">Второй шаг</p>
+              <div className="flex-1 h-1 bg-white/20 rounded-full overflow-hidden">
+                <div className="h-full w-0 bg-white rounded-full"></div>
               </div>
-
-              {/* Третий шаг - неактивный */}
-              <div className="group flex flex-col items-center gap-3 cursor-pointer">
-                <div className="relative">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-gray-300/60 via-gray-200/40 to-gray-300/60 shadow-inner">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-gray-400 to-gray-500 shadow-md">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/60 backdrop-blur-sm">
-                        <span className="text-2xl text-gray-600 opacity-70">⭐</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <p className="text-sm font-medium text-white/60 text-center">Третий шаг</p>
+              <div className="flex-1 h-1 bg-white/20 rounded-full overflow-hidden">
+                <div className="h-full w-0 bg-white rounded-full"></div>
               </div>
             </div>
-
-            {/* Кнопка в стиле 2025 */}
-            <button className="group relative w-full overflow-hidden rounded-2xl bg-gradient-to-r from-[#3E8074] via-[#4a8f81] to-[#3E8074] py-4 px-6 text-sm font-semibold text-white transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-[#3E8074]/25">
-              {/* Анимированный фон */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-              
-              <div className="relative flex items-center justify-center gap-3">
-                <span>Смотреть историю достижений</span>
-                <div className="h-5 w-5 rounded-lg bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors">
-                  <div className="grid grid-cols-2 gap-0.5">
-                    <div className="w-1 h-1 bg-white rounded-sm"></div>
-                    <div className="w-1 h-1 bg-white rounded-sm"></div>
-                    <div className="w-1 h-1 bg-white rounded-sm"></div>
-                    <div className="w-1 h-1 bg-white rounded-sm"></div>
-                  </div>
+            
+            {/* Stories Header */}
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 p-0.5">
+                <div className="h-full w-full rounded-full bg-gradient-to-br from-purple-200 to-purple-100 flex items-center justify-center">
+                  <span className="text-sm">⭐</span>
                 </div>
               </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Достижения</h3>
+                <p className="text-xs text-white/70">3 истории</p>
+              </div>
+            </div>
+            
+            {/* Stories Content - Instagram Style */}
+            <div className="space-y-4 mb-6">
+              {/* Story 1 - Active */}
+              <div className="group flex items-center gap-4 p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">
+                <div className="relative">
+                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-orange-500 p-0.5">
+                    <div className="h-full w-full rounded-full bg-white flex items-center justify-center">
+                      <span className="text-lg">⭐</span>
+                    </div>
+                  </div>
+                  <div className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-green-500 border-2 border-white"></div>
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-semibold text-white">Первый шаг</h4>
+                  <p className="text-xs text-white/70">Завершено • 2 мин назад</p>
+                </div>
+                <div className="text-white/50">
+                  <ArrowRight className="h-4 w-4" />
+                </div>
+              </div>
+
+              {/* Story 2 - Pending */}
+              <div className="group flex items-center gap-4 p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">
+                <div className="relative">
+                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-gray-400 to-gray-500 p-0.5">
+                    <div className="h-full w-full rounded-full bg-white/60 flex items-center justify-center">
+                      <span className="text-lg text-gray-600">⭐</span>
+                    </div>
+                  </div>
+                  <div className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-gray-400 border-2 border-white"></div>
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-semibold text-white/80">Второй шаг</h4>
+                  <p className="text-xs text-white/50">В ожидании</p>
+                </div>
+                <div className="text-white/30">
+                  <ArrowRight className="h-4 w-4" />
+                </div>
+              </div>
+
+              {/* Story 3 - Pending */}
+              <div className="group flex items-center gap-4 p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">
+                <div className="relative">
+                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-gray-400 to-gray-500 p-0.5">
+                    <div className="h-full w-full rounded-full bg-white/60 flex items-center justify-center">
+                      <span className="text-lg text-gray-600">⭐</span>
+                    </div>
+                  </div>
+                  <div className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-gray-400 border-2 border-white"></div>
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-semibold text-white/80">Третий шаг</h4>
+                  <p className="text-xs text-white/50">В ожидании</p>
+                </div>
+                <div className="text-white/30">
+                  <ArrowRight className="h-4 w-4" />
+                </div>
+              </div>
+            </div>
+
+            {/* Instagram Style Button */}
+            <button className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#3E8074] to-[#4a8f81] py-3 text-sm font-semibold text-white transition-all duration-300 hover:scale-[1.02] hover:shadow-lg">
+              <span>Смотреть все истории</span>
+              <ArrowRight className="h-4 w-4" />
             </button>
           </div>
         </div>
