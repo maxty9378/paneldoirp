@@ -329,6 +329,66 @@ function HeroPanel({
           </div>
         </div>
 
+        {/* Панель достижений */}
+        <div className="flex flex-col items-start gap-4 sm:items-end">
+          <div className="rounded-2xl border border-white/20 bg-white/10 px-5 py-4 backdrop-blur-md">
+            <div className="flex items-center gap-3 mb-4">
+              <h3 className="text-lg font-bold text-white">Достижения</h3>
+              <div className="flex-1 h-px bg-white/20"></div>
+            </div>
+            
+            <div className="flex justify-around text-center mb-4">
+              {/* Первый шаг - активный */}
+              <div className="flex flex-col items-center gap-2">
+                <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-purple-200 shadow-inner">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-yellow-500 shadow-lg">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/80 backdrop-blur-sm">
+                      <span className="text-2xl text-yellow-500">⭐</span>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-sm font-medium text-white">Первый шаг</p>
+              </div>
+
+              {/* Второй шаг - неактивный */}
+              <div className="flex flex-col items-center gap-2">
+                <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-gray-300/80 shadow-inner">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-gray-400 to-gray-500 shadow-md">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/50 backdrop-blur-sm">
+                      <span className="text-2xl text-gray-500 opacity-70">⭐</span>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-sm font-medium text-white/60">Второй шаг</p>
+              </div>
+
+              {/* Третий шаг - неактивный */}
+              <div className="flex flex-col items-center gap-2">
+                <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-gray-300/80 shadow-inner">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-gray-400 to-gray-500 shadow-md">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/50 backdrop-blur-sm">
+                      <span className="text-2xl text-gray-500 opacity-70">⭐</span>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-sm font-medium text-white/60">Третий шаг</p>
+              </div>
+            </div>
+
+            <button className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#3E8074]/80 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#4a8f81]">
+              Смотреть историю достижений
+              <div className="h-4 w-4 bg-white/80 rounded-sm flex items-center justify-center">
+                <div className="grid grid-cols-2 gap-0.5">
+                  <div className="w-1 h-1 bg-white rounded-sm"></div>
+                  <div className="w-1 h-1 bg-white rounded-sm"></div>
+                  <div className="w-1 h-1 bg-white rounded-sm"></div>
+                  <div className="w-1 h-1 bg-white rounded-sm"></div>
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+
       </div>
     </section>
   );
