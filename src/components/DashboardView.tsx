@@ -20,6 +20,7 @@ import {
   ArrowRight,
   Sparkle
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { getCachedEvents, setCachedEvents, clearEventsCache } from '../lib/eventsCache';
 import { Event, USER_ROLE_LABELS } from '../types';
@@ -300,6 +301,65 @@ function HeroPanel({
     return parts.length > 1 ? parts[1] : parts[0];
   }, [fullName]);
 
+  type StoryHighlight = {
+    id: string;
+    title: string;
+    description: string;
+    accent: string;
+    halo: string;
+    statusLabel: string;
+    progress?: number;
+    state: 'active' | 'upcoming';
+    Icon: LucideIcon;
+  };
+
+  const storyHighlights = useMemo<StoryHighlight[]>(
+    () => [
+      {
+        id: 'momentum',
+        title: 'Старт трека развития',
+        description:
+          'Вы зафиксировали цели и открыли доступ к модулю «Фокус». Продолжайте, чтобы увидеть индивидуальные рекомендации.',
+        accent: 'from-[#FDE68A] via-[#FBBF24] to-[#F59E0B]',
+        halo: 'from-[#FDE68A]/55 via-[#F59E0B]/45 to-[#F97316]/30',
+        statusLabel: 'Сейчас',
+        progress: 45,
+        state: 'active',
+        Icon: Award
+      },
+      {
+        id: 'community',
+        title: 'Сообщество наставников',
+        description:
+          'После завершения первого блока появится приглашение в закрытое сообщество с материалами и лучшими практиками.',
+        accent: 'from-white/20 via-white/12 to-white/8',
+        halo: 'from-white/0 via-white/0 to-white/0',
+        statusLabel: 'Скоро',
+        state: 'upcoming',
+        Icon: Users
+      },
+      {
+        id: 'insights',
+        title: 'Индексы прогресса',
+        description:
+          'Личный отчёт сформируется автоматически по итогам квартала и поможет скорректировать план развития.',
+        accent: 'from-white/20 via-white/12 to-white/8',
+        halo: 'from-white/0 via-white/0 to-white/0',
+        statusLabel: 'Скоро',
+        state: 'upcoming',
+        Icon: TrendingUp
+      }
+    ],
+    []
+  );
+
+  const [activeStoryId, setActiveStoryId] = useState<string>(() => storyHighlights[0]?.id ?? '');
+
+  const activeStory = useMemo(
+    () => storyHighlights.find(story => story.id === activeStoryId) ?? storyHighlights[0],
+    [activeStoryId, storyHighlights]
+  );
+
   return (
     <section
       className="relative overflow-hidden rounded-[32px] border border-white/15 px-6 py-8 text-white shadow-[0_44px_120px_-70px_rgba(8,47,35,0.8)] sm:px-10 sm:py-10"
@@ -328,9 +388,6 @@ function HeroPanel({
             <Shield className="h-4 w-4" />
             <span className="font-medium">Ваша роль — {roleLabel}</span>
           </div>
-        </div>
-
-        <div className="flex flex-col items-start gap-4 sm:items-end">
           <div className="rounded-2xl border border-white/20 bg-white/10 px-5 py-4 text-left text-sm font-medium text-white/85 backdrop-blur-md">
             Поддерживаем ваш путь по программе «Потенциал ГДФ».
           </div>
@@ -338,6 +395,98 @@ function HeroPanel({
             <Calendar className="h-4 w-4" />
             <span>Мы рядом, чтобы помочь вам в развитии</span>
           </div>
+        </div>
+
+        <div className="flex w-full max-w-[340px] flex-col gap-5 sm:items-end">
+          <div className="flex items-center justify-between gap-3 text-[10px] font-semibold uppercase tracking-[0.32em] text-white/50 sm:justify-end">
+            <span>Достижения 2025</span>
+            <div className="hidden items-center gap-1 text-white/40 sm:inline-flex">
+              <Sparkle className="h-3 w-3" />
+              <span className="tracking-[0.24em]">Live</span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-start gap-4 sm:justify-end">
+            {storyHighlights.map(story => {
+              const isActive = activeStory?.id === story.id;
+              const Icon = story.Icon;
+
+              return (
+                <button
+                  key={story.id}
+                  type="button"
+                  onMouseEnter={() => setActiveStoryId(story.id)}
+                  onFocus={() => setActiveStoryId(story.id)}
+                  onClick={() => setActiveStoryId(story.id)}
+                  className={`group relative flex h-20 w-20 items-center justify-center rounded-full transition duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-900/60 ${
+                    story.state === 'upcoming' ? 'cursor-default' : 'cursor-pointer'
+                  }`}
+                >
+                  <span className="sr-only">{story.title}</span>
+                  <div
+                    className={`absolute inset-0 rounded-full bg-gradient-to-br opacity-80 transition-opacity duration-300 ${
+                      isActive ? story.accent : 'from-white/18 via-white/12 to-white/8 opacity-60'
+                    }`}
+                  />
+                  <div
+                    className={`absolute -inset-2 rounded-full bg-gradient-to-br blur-lg transition-opacity duration-500 ${
+                      isActive ? story.halo : 'from-emerald-900/0 via-emerald-900/0 to-emerald-900/0'
+                    }`}
+                    aria-hidden
+                  />
+                  <div
+                    className={`relative flex h-[68px] w-[68px] items-center justify-center rounded-full border border-white/15 backdrop-blur-xl transition-colors duration-300 ${
+                      isActive
+                        ? 'bg-gradient-to-br from-white/35 via-white/15 to-white/5 text-emerald-950'
+                        : 'bg-emerald-950/40 text-white/45'
+                    }`}
+                  >
+                    <Icon className={`h-7 w-7 ${isActive ? 'text-emerald-900' : 'text-white/50'}`} />
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div
+            className="w-full overflow-hidden transition-all duration-500 ease-out"
+            style={{
+              maxHeight: activeStory ? 240 : 0,
+              opacity: activeStory ? 1 : 0
+            }}
+            aria-hidden={!activeStory}
+          >
+            {activeStory && (
+              <div className="rounded-2xl border border-white/20 bg-white/12 p-4 text-left text-white/85 backdrop-blur-lg">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-white">{activeStory.title}</p>
+                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/65">
+                    {activeStory.statusLabel}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-white/70">{activeStory.description}</p>
+                {typeof activeStory.progress === 'number' && (
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between text-[11px] text-white/60">
+                      <span>Прогресс</span>
+                      <span>{activeStory.progress}%</span>
+                    </div>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/15">
+                      <div
+                        className="h-full rounded-full bg-white transition-all duration-500"
+                        style={{ width: `${activeStory.progress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <button className="inline-flex items-center gap-2 self-start rounded-full bg-white/15 px-4 py-1.5 text-xs font-medium text-white/80 transition hover:bg-white/25 sm:self-end">
+            Смотреть истории достижений
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
     </section>
