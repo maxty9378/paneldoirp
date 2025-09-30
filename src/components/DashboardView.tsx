@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  Calendar,
   Users,
   BookOpen,
   TrendingUp,
@@ -360,6 +359,19 @@ function HeroPanel({
     [activeStoryId, storyHighlights]
   );
 
+  const activeStoriesCount = useMemo(
+    () => storyHighlights.filter(story => story.state === 'active').length,
+    [storyHighlights]
+  );
+  const upcomingStoriesCount = useMemo(
+    () => storyHighlights.filter(story => story.state === 'upcoming').length,
+    [storyHighlights]
+  );
+  const nextUpcomingStory = useMemo(
+    () => storyHighlights.find(story => story.state === 'upcoming'),
+    [storyHighlights]
+  );
+
   return (
     <section
       className="relative overflow-hidden rounded-[32px] border border-white/15 px-6 py-8 text-white shadow-[0_44px_120px_-70px_rgba(8,47,35,0.8)] sm:px-10 sm:py-10"
@@ -388,12 +400,39 @@ function HeroPanel({
             <Shield className="h-4 w-4" />
             <span className="font-medium">Ваша роль — {roleLabel}</span>
           </div>
-          <div className="rounded-2xl border border-white/20 bg-white/10 px-5 py-4 text-left text-sm font-medium text-white/85 backdrop-blur-md">
-            Поддерживаем ваш путь по программе «Потенциал ГДФ».
-          </div>
-          <div className="flex items-center gap-2 text-xs text-white/70">
-            <Calendar className="h-4 w-4" />
-            <span>Мы рядом, чтобы помочь вам в развитии</span>
+          <div className="rounded-2xl border border-white/20 bg-white/10 p-5 text-left text-white/85 backdrop-blur-md">
+            <div className="flex items-start gap-3">
+              <div className="relative">
+                <div className="absolute inset-0 rounded-full bg-emerald-300/35 blur-lg" aria-hidden />
+                <div className="relative flex h-11 w-11 items-center justify-center rounded-full bg-white/15 text-white">
+                  <Sparkle className="h-5 w-5" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-white">Истории достижений 2025</p>
+                <p className="text-xs leading-relaxed text-white/70">
+                  Бейджи программы теперь живут в формате сторис: активируйте круг, чтобы раскрыть карточку прогресса и увидеть индивидуальные подсказки.
+                </p>
+              </div>
+            </div>
+            <div className="mt-5 grid grid-cols-2 gap-3 text-[11px] text-white/70">
+              <div className="rounded-xl border border-white/15 bg-white/8 p-3 shadow-[0_10px_24px_-18px_rgba(8,47,35,0.8)]">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/55">Активно</span>
+                <p className="mt-1 text-lg font-semibold text-white">{activeStoriesCount}</p>
+                <p>Истории в прогрессе</p>
+              </div>
+              <div className="rounded-xl border border-white/15 bg-white/8 p-3 shadow-[0_10px_24px_-18px_rgba(8,47,35,0.8)]">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/55">Ожидает</span>
+                <p className="mt-1 text-lg font-semibold text-white">{upcomingStoriesCount}</p>
+                <p>Сторис скоро откроются</p>
+              </div>
+            </div>
+            <div className="mt-4 flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-[11px] text-white/70">
+              <span>Следующая история</span>
+              <span className="font-semibold text-white">
+                {nextUpcomingStory ? nextUpcomingStory.title : 'Расписание обновляется'}
+              </span>
+            </div>
           </div>
         </div>
 
