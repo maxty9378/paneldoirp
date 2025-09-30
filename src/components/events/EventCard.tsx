@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { 
+import {
   CalendarDays,
   Users2,
   CheckCircle2,
   Play,
-  ChevronRight,
+  ArrowRight,
   PencilLine,
   Trash2,
   Info,
@@ -15,6 +15,7 @@ import {
   Loader2,
   Video,
   Clock,
+  MapPin,
 } from 'lucide-react';
 import { SiZoom } from 'react-icons/si';
 import { TestsPendingReview } from '../admin/TestsPendingReview';
@@ -268,35 +269,53 @@ export function EventCard({
     }
   };
   const { label, tone: statusTone, ring, Icon: StatusIcon } = status;
-  const typeInfo = event.type
-    ? TYPE_LABELS[event.type] || { label: event.event_types?.name_ru || 'Мероприятие', icon: Info }
-    : { label: event.event_types?.name_ru || 'Мероприятие', icon: Info };
+  const typeInfo = useMemo(() => {
+    if (event.type) {
+      return TYPE_LABELS[event.type] || { label: event.event_types?.name_ru || 'Мероприятие', icon: Info };
+    }
+
+    if (event.event_types?.name === 'exam_talent_reserve') {
+      return { label: 'Экзамен', icon: CheckCircle2 };
+    }
+
+    return { label: event.event_types?.name_ru || 'Мероприятие', icon: Info };
+  }, [event.event_types?.name, event.event_types?.name_ru, event.type]);
+  const typeChipClasses = useMemo(
+    () => getTypeChipClasses(event.type || 'other', event.event_types || undefined),
+    [event.event_types, event.type]
+  );
   const irTone = toneForEvent(event);
+  const TypeIcon = typeInfo.icon;
+  const isZoomEvent = (event.location || '').toLowerCase().includes('zoom');
+  const hasStats =
+    event.test_completed_count !== undefined ||
+    event.test_pending_review_count !== undefined ||
+    event.test_not_passed_count !== undefined;
 
   return (
     <article
       className={cx(
-        'ir-card ir-ring', toneClass(irTone),
-        'group relative overflow-hidden rounded-2xl bg-white',
-        'border border-white/60 p-4 shadow-[0_1px_2px_rgba(2,8,23,0.06)]',
-        'hover:shadow-[0_10px_30px_rgba(2,8,23,0.08)] transition-all',
-        'flex flex-col h-full'
+        'ir-card ir-ring',
+        toneClass(irTone),
+        'group relative flex h-full min-w-[260px] flex-col overflow-hidden rounded-[26px]',
+        'border border-white/40 bg-white/70 p-5 shadow-[0_28px_60px_-36px_rgba(15,23,42,0.55)] backdrop-blur-2xl',
+        'transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_48px_80px_-42px_rgba(15,23,42,0.45)]'
       )}
       style={{ animationDelay: `${index * 40}ms` }}
     >
-      {/* Верх: дата-время + статус/тип */}
-      <header className="mb-3 flex items-start justify-between gap-3 flex-shrink-0">
-        <div className="flex flex-col gap-2 min-w-0">
-          <div className="flex flex-col gap-2">
-            {/* Первая строка: статус + ZOOM + время */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.18),transparent_70%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+      <div className="relative flex h-full flex-col">
+        {/* Верх: статус, тип, дата */}
+        <header className="mb-4 flex flex-shrink-0 items-start justify-between gap-4">
+          <div className="flex min-w-0 flex-col gap-3">
             <div className="flex flex-wrap items-center gap-2">
               {(() => {
                 const isIconOnly = !label;
                 const badgeClass = cx(
-                  'inline-flex items-center gap-1 text-[10px] font-semibold ring-1 shadow-sm',
-                  isIconOnly ? 'h-7 w-7 justify-center rounded-lg p-0' : 'rounded-full px-2 py-0.5',
-                  label ? statusTone : (event.type === 'training' ? getTypeBulletClasses(event.type) : statusTone),
-                  label ? ring : (event.type === 'training' ? '' : ring)
+                  'inline-flex items-center gap-1.5 text-[10px] font-semibold ring-1 shadow-sm',
+                  isIconOnly ? 'h-8 w-8 justify-center rounded-xl p-0' : 'rounded-full px-2.5 py-1',
+                  statusTone,
+                  ring
                 );
                 const iconSize = isIconOnly ? 'h-4 w-4' : 'h-3.5 w-3.5';
 
@@ -307,144 +326,145 @@ export function EventCard({
                   </span>
                 );
               })()}
-              {event.location && event.location.toLowerCase().includes('zoom') && (
-                <SiZoom className="h-10 w-10 text-blue-600 ml-2" />
-              )}
-            </div>
-            
-            {/* Вторая строка: тип мероприятия */}
-            <div className="flex items-center gap-2">
-              <span className={cx(
-                'inline-flex items-center gap-1.5 rounded-lg px-3 py-1 text-[11px] font-semibold ring-1 shadow-sm',
-                getTypeChipClasses(event.type || 'other', event.event_types || undefined)
-              )}>
-                {typeInfo.label}
+
+              <span
+                className={cx(
+                  'inline-flex items-center gap-1.5 rounded-xl px-3 py-1 text-[11px] font-semibold ring-1 shadow-sm backdrop-blur-sm',
+                  typeChipClasses
+                )}
+              >
+                <TypeIcon className="h-3.5 w-3.5" />
+                <span className="truncate">{typeInfo.label}</span>
               </span>
             </div>
-          </div>
 
-          {/* Название */}
-          <h3 className="line-clamp-2 text-lg font-bold leading-tight text-slate-900">
-              {event.title}
-            </h3>
-          </div>
+            <h3 className="line-clamp-2 text-lg font-semibold leading-tight text-slate-900">{event.title}</h3>
 
-        {/* Правый – акцент на дате/времени */}
-        <div className="shrink-0 w-[112px]">
-          <DateAccent date={d} tone={irTone} />
-        </div>
-      </header>
-
-      {/* Описание — коротко и безопасно */}
-      <div className="flex-1">
-        {event.description && (
-        <div className="mb-4 rounded-xl bg-slate-50/70 p-3 ring-1 ring-slate-200">
-          <p className="line-clamp-3 text-sm leading-relaxed text-slate-700">
-            {event.description}
-          </p>
-          </div>
-      )}
-
-        {/* Статистика тестов */}
-        {(event.test_completed_count !== undefined || event.test_pending_review_count !== undefined) && (
-          <div className="mb-4 rounded-xl bg-slate-50/70 p-3 ring-1 ring-slate-200">
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-sm font-medium text-slate-700">Статистика тестов</h4>
-              {event.test_pass_percent !== undefined && (
-                <span className="text-xs text-slate-500">
-                  Проходной балл: {event.test_pass_percent}%
+            {event.location && (
+              <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-slate-500">
+                {isZoomEvent ? <SiZoom className="h-4 w-4 text-sky-500" /> : <MapPin className="h-3.5 w-3.5" />}
+                <span className="truncate" title={event.location}>
+                  {event.location}
                 </span>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {event.test_completed_count !== undefined && (
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                  <span className="text-xs text-slate-600">
-                    Пройдено: {event.test_completed_count}
-                  </span>
-                </div>
-              )}
-              {event.test_not_passed_count !== undefined && event.test_not_passed_count > 0 && (
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                  <span className="text-xs text-slate-600">
-                    Не пройдено: {event.test_not_passed_count}
-                  </span>
-                </div>
-              )}
-              {event.test_pending_review_count !== undefined && event.test_pending_review_count > 0 && (
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-amber-500"></div>
-                  <span className="text-xs text-slate-600">
-                    На проверке: {event.test_pending_review_count}
-                  </span>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
-        )}
-          </div>
-          
-      {/* Низ: действия и сервисная инфа */}
-      <footer className="mt-auto flex-shrink-0">
-        {canCreateEvents ? (
-          <div className="flex items-center justify-between">
-            <div className="text-[9px] text-slate-400 opacity-60">
-              Создано: {event.created_at ? (() => {
-                const createdDate = new Date(event.created_at);
-                return `${createdDate.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })} ${new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit' }).format(createdDate)}`;
-              })() : 'Дата не указана'}
-            </div>
 
-            <div className="flex items-center gap-2">
-              {(event.test_pending_review_count ?? 0) > 0 && (
+          <div className="w-[112px] shrink-0">
+            <DateAccent date={d} tone={irTone} />
+          </div>
+        </header>
+
+        <div className="flex-1">
+          {event.description && (
+            <div className="mb-4 rounded-[20px] border border-slate-200/50 bg-slate-50/70 p-4 backdrop-blur-sm">
+              <p className="line-clamp-3 text-sm leading-relaxed text-slate-600">{event.description}</p>
+            </div>
+          )}
+
+          {hasStats && (
+            <div className="mb-4 rounded-[20px] border border-slate-200/50 bg-white/60 p-4 backdrop-blur-sm">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <h4 className="text-sm font-medium text-slate-700">Статистика тестов</h4>
+                {event.test_pass_percent !== undefined && (
+                  <span className="text-xs font-medium text-slate-500">Проходной балл: {event.test_pass_percent}%</span>
+                )}
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                {event.test_completed_count !== undefined && (
+                  <div className="flex items-center gap-2 rounded-xl bg-emerald-50/80 px-3 py-2 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <span>Пройдено: {event.test_completed_count}</span>
+                  </div>
+                )}
+                {event.test_not_passed_count !== undefined && event.test_not_passed_count > 0 && (
+                  <div className="flex items-center gap-2 rounded-xl bg-rose-50/80 px-3 py-2 text-xs font-medium text-rose-600 ring-1 ring-rose-200">
+                    <XCircle className="h-3.5 w-3.5" />
+                    <span>Не пройдено: {event.test_not_passed_count}</span>
+                  </div>
+                )}
+                {event.test_pending_review_count !== undefined && event.test_pending_review_count > 0 && (
+                  <div className="flex items-center gap-2 rounded-xl bg-amber-50/80 px-3 py-2 text-xs font-medium text-amber-600 ring-1 ring-amber-200">
+                    <Clock className="h-3.5 w-3.5" />
+                    <span>На проверке: {event.test_pending_review_count}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <footer className="mt-auto flex-shrink-0">
+          {canCreateEvents ? (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="text-[10px] font-medium text-slate-400">
+                Создано: {event.created_at
+                  ? (() => {
+                      const createdDate = new Date(event.created_at);
+                      const date = createdDate.toLocaleDateString('ru-RU', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                      });
+                      const time = new Intl.DateTimeFormat('ru-RU', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      }).format(createdDate);
+                      return `${date} ${time}`;
+                    })()
+                  : 'Дата не указана'}
+              </div>
+
+              <div className="flex items-center gap-2">
+                {(event.test_pending_review_count ?? 0) > 0 && (
+                  <button
+                    onClick={() => setShowTestReview(true)}
+                    className="btn-warning"
+                    title="Проверка тестов"
+                  >
+                    <Clock className="h-4 w-4" />
+                    <span className="text-sm font-medium">{event.test_pending_review_count}</span>
+                  </button>
+                )}
                 <button
-                  onClick={() => setShowTestReview(true)}
-                  className="btn-warning"
-                  title="Проверка тестов"
+                  onClick={() => onEditEvent?.(event.id)}
+                  className="btn-neutral"
+                  title="Редактировать"
                 >
-                  <Clock className="h-4 w-4" />
-                  <span className="text-sm font-medium">{event.test_pending_review_count}</span>
+                  <PencilLine className="h-4 w-4" />
                 </button>
-              )}
-              <button
-                onClick={() => onEditEvent?.(event.id)}
-                className="btn-neutral"
-                title="Редактировать"
-              >
-                <PencilLine className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => onDeleteEvent?.(event.id)}
-                className="btn-danger"
-                title="Удалить"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-              <button 
-                onClick={handleNavigate}
-                className="btn-primary"
-                title="Открыть"
-              >
-                <span className="text-sm font-medium">Открыть</span>
-                <ChevronRight className="h-4 w-4" />
-              </button>
+                <button
+                  onClick={() => onDeleteEvent?.(event.id)}
+                  className="btn-danger"
+                  title="Удалить"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+                <button onClick={handleNavigate} className="btn-primary" title="Открыть">
+                  <span className="inline-flex items-center gap-2 text-sm font-medium">
+                    Открыть
+                    <ArrowRight className="h-4 w-4" />
+                  </span>
+                </button>
+              </div>
             </div>
-          </div>
-        ) : (
-          <button 
-            onClick={handleNavigate}
-            className="w-full justify-center relative overflow-hidden bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-600 hover:via-teal-600 hover:to-emerald-700 text-white font-medium py-2.5 px-4 rounded-lg transition-all duration-300 shadow-sm hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
-            title="Открыть"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-[shimmer_3s_ease-in-out_infinite]"></div>
-            <span className="text-sm font-medium relative z-10">Открыть</span>
-          </button>
-        )}
-      </footer>
+          ) : (
+            <button
+              onClick={handleNavigate}
+              className="group/button relative w-full justify-center overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 py-3 px-4 text-white shadow-sm transition-all duration-300 hover:from-emerald-600 hover:via-teal-600 hover:to-emerald-700 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+              title="Открыть"
+            >
+              <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent opacity-0 transition-all duration-500 group-hover/button:translate-x-full group-hover/button:opacity-100" />
+              <span className="relative z-10 inline-flex items-center justify-center gap-2 text-sm font-medium">
+                Открыть
+                <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover/button:translate-x-0.5" />
+              </span>
+            </button>
+          )}
+        </footer>
 
-      {/* Модальное окно проверки тестов */}
+        {/* Модальное окно проверки тестов */}
       {showTestReview && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto m-4">
