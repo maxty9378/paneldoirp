@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  Calendar,
   Users,
   BookOpen,
   TrendingUp,
@@ -330,15 +329,6 @@ function HeroPanel({
           </div>
         </div>
 
-        <div className="flex flex-col items-start gap-4 sm:items-end">
-          <div className="rounded-2xl border border-white/20 bg-white/10 px-5 py-4 text-left text-sm font-medium text-white/85 backdrop-blur-md">
-            Поддерживаем ваш путь по программе «Потенциал ГДФ».
-          </div>
-          <div className="flex items-center gap-2 text-xs text-white/70">
-            <Calendar className="h-4 w-4" />
-            <span>Мы рядом, чтобы помочь вам в развитии</span>
-          </div>
-        </div>
       </div>
     </section>
   );
