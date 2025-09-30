@@ -6,17 +6,14 @@ import {
   CheckCircle2,
   Filter,
   ListFilter,
-  Loader2,
   Play,
   RefreshCw,
   Search,
-  Shield,
-  Sparkle,
   X
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
-import { Event, EVENT_TYPE_LABELS, USER_ROLE_LABELS } from '../types';
+import { Event, EVENT_TYPE_LABELS } from '../types';
 import { EventCard } from './events/EventCard';
 
 type SortBy = 'start_date' | 'title' | 'participants' | 'status' | 'created_at';
@@ -54,43 +51,9 @@ export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: Ev
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
   const [showFilters, setShowFilters] = useState(false);
-  const [heroGradientAngle, setHeroGradientAngle] = useState(120);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const role = userProfile?.role ?? user?.role ?? 'employee';
-
-  useEffect(() => {
-    const interval = window.setInterval(() => {
-      setHeroGradientAngle((prev) => (prev + 1) % 360);
-    }, 120);
-
-    return () => window.clearInterval(interval);
-  }, []);
-
-  const motivationalMessage = useMemo(() => {
-    if (role === 'expert') {
-      const phrases = [
-        'Спасибо за экспертную поддержку команды!',
-        'Ваша оценка помогает коллегам расти.',
-        'Вы делаете обучение точнее и эффективнее.'
-      ];
-      return phrases[Math.floor(Math.random() * phrases.length)];
-    }
-
-    const phrases = [
-      'Продолжайте развитие и поддерживайте команду знаниями.',
-      'Каждое мероприятие приближает нас к сильной команде.',
-      'Учиться и делиться опытом — ваша суперсила сегодня.'
-    ];
-    return phrases[Math.floor(Math.random() * phrases.length)];
-  }, [role]);
-
-  const greeting = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Доброе утро';
-    if (hour < 18) return 'Добрый день';
-    return 'Добрый вечер';
-  }, []);
 
   const fetchEvents = useCallback(
     async ({ silent = false }: FetchOptions = {}) => {
@@ -345,21 +308,34 @@ export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: Ev
     return <EventsError message={error} onRetry={() => fetchEvents()} />;
   }
 
-  const roleLabel = USER_ROLE_LABELS[role] ?? 'Сотрудник';
-  const fullName = userProfile?.full_name || user?.full_name || 'Коллега';
 
   return (
     <div className="space-y-8 pb-safe-bottom">
-      <HeroPanel
-        gradientAngle={heroGradientAngle}
-        greeting={greeting}
-        fullName={fullName}
-        motivationalMessage={motivationalMessage}
-        roleLabel={roleLabel}
-        insight={insight}
-        onRefresh={handleRefresh}
-        isRefreshing={isRefreshing}
-      />
+      {/* Header */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Мои мероприятия</h1>
+          <p className="text-gray-600 mt-2">
+            {['trainer', 'moderator', 'administrator'].includes(role)
+              ? 'Создание и управление обучающими мероприятиями'
+              : 'Просмотр мероприятий и участие в обучении'
+            }
+          </p>
+        </div>
+        {role !== 'expert' && (
+          <div className="flex items-center gap-3">
+            {['trainer', 'moderator', 'administrator'].includes(role) && (
+              <button 
+                onClick={onCreateEvent}
+                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-emerald-600 hover:to-emerald-700"
+              >
+                <CalendarDays className="h-4 w-4" />
+                Создать мероприятие
+              </button>
+            )}
+          </div>
+        )}
+      </div>
 
       <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <StatsCard
@@ -424,14 +400,6 @@ export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: Ev
             >
               <RefreshCw className="h-4 w-4" />
               Сбросить
-            </button>
-            <button
-              onClick={onCreateEvent}
-              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-emerald-600 hover:to-emerald-700"
-              disabled={!['trainer', 'moderator', 'administrator'].includes(role)}
-            >
-              <CalendarDays className="h-4 w-4" />
-              Создать мероприятие
             </button>
           </div>
         </div>
@@ -559,76 +527,6 @@ export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: Ev
   }
 }
 
-function HeroPanel({
-  gradientAngle,
-  greeting,
-  fullName,
-  motivationalMessage,
-  roleLabel,
-  insight,
-  onRefresh,
-  isRefreshing
-}: {
-  gradientAngle: number;
-  greeting: string;
-  fullName: string;
-  motivationalMessage: string;
-  roleLabel: string;
-  insight: string;
-  onRefresh: () => void;
-  isRefreshing: boolean;
-}) {
-  const firstName = useMemo(() => {
-    const parts = fullName.split(' ');
-    return parts.length > 1 ? parts[1] : parts[0];
-  }, [fullName]);
-
-  return (
-    <section
-      className="relative overflow-hidden rounded-[32px] border border-white/15 px-6 py-8 text-white shadow-[0_44px_120px_-70px_rgba(8,47,35,0.8)] sm:px-10 sm:py-10"
-      style={{
-        background: `linear-gradient(${gradientAngle}deg, rgba(11,138,103,0.95) 0%, rgba(8,115,86,0.9) 45%, rgba(6,93,70,0.95) 100%)`
-      }}
-    >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.22),transparent_55%)]" />
-      <div className="absolute -top-24 right-0 h-64 w-64 rounded-full bg-emerald-300/30 blur-3xl" />
-      <div className="absolute bottom-0 -left-20 h-72 w-72 rounded-full bg-emerald-500/20 blur-3xl" />
-      <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0)_40%)]" />
-
-      <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-        <div className="space-y-5">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-white/80">
-            <Sparkle className="h-3.5 w-3.5" />
-            <span>Центр мероприятий</span>
-          </div>
-          <div className="space-y-3">
-            <h1 className="text-[28px] font-semibold leading-tight sm:text-[34px]">
-              {greeting}, {firstName}!
-            </h1>
-            <p className="max-w-xl text-sm leading-relaxed text-white/85 sm:text-base">{motivationalMessage}</p>
-          </div>
-          <div className="inline-flex flex-wrap items-center gap-2 text-xs text-white/85 sm:text-sm">
-            <Shield className="h-4 w-4" />
-            <span className="font-medium">Ваша роль — {roleLabel}</span>
-          </div>
-          <p className="max-w-xl text-xs text-white/75 sm:text-sm">{insight}</p>
-        </div>
-
-        <button
-          onClick={onRefresh}
-          className="group relative inline-flex items-center gap-2 overflow-hidden rounded-2xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/20"
-        >
-          {isRefreshing ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <RefreshCw className="h-4 w-4 transition-transform group-hover:rotate-12" />
-          )}
-          <span>Обновить данные</span>
-        </button>
-      </div>
-    </section>
-  );
-}
 
 function StatsCard({
   title,
@@ -760,7 +658,15 @@ function EmptyEventsState({
 function EventsSkeleton() {
   return (
     <div className="space-y-8 animate-pulse">
-      <div className="h-48 rounded-[32px] bg-gradient-to-r from-emerald-200/60 via-emerald-100/40 to-emerald-200/60" />
+      {/* Header skeleton */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div>
+          <div className="h-8 w-48 bg-slate-200 rounded mb-2"></div>
+          <div className="h-5 w-64 bg-slate-100 rounded"></div>
+        </div>
+        <div className="h-10 w-40 bg-slate-200 rounded-2xl"></div>
+      </div>
+      
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, index) => (
           <div key={index} className="h-24 rounded-[22px] bg-slate-100" />
