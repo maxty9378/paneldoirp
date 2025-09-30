@@ -73,7 +73,7 @@ function EventCard({ event }: { event: EventWithDetails }) {
   const isExpertAssigned = isExpert && expertEmails.includes(userProfile?.email || '');
   const shouldOpenExam = isExamTalentReserve && (isAdmin || isExpertAssigned);
 
-  if (isExpert && !shouldOpenExam) {
+  if (isExpert && isExamTalentReserve && !shouldOpenExam) {
     return null;
   }
 
