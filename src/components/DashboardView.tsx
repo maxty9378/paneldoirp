@@ -682,7 +682,7 @@ export function DashboardView() {
               </button>
             </div>
           ) : (
-            <div className="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 scrollbar-hide sm:-mx-6 sm:px-6 md:grid md:grid-cols-2 md:gap-6 md:overflow-visible md:px-0 xl:grid-cols-3">
+            <div className="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 scrollbar-hide sm:-mx-6 sm:px-6 md:grid md:grid-cols-2 md:gap-6 md:overflow-visible md:mx-0 md:px-0 xl:grid-cols-3">
               {upcomingEvents.map(event => (
                 <EventCard key={event.id} event={event} />
               ))}
