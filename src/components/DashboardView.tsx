@@ -329,60 +329,81 @@ function HeroPanel({
           </div>
         </div>
 
-        {/* Панель достижений */}
+        {/* Панель достижений 2025 */}
         <div className="flex flex-col items-start gap-4 sm:items-end">
-          <div className="rounded-2xl border border-white/20 bg-white/10 px-5 py-4 backdrop-blur-md">
-            <div className="flex items-center gap-3 mb-4">
-              <h3 className="text-lg font-bold text-white">Достижения</h3>
-              <div className="flex-1 h-px bg-white/20"></div>
+          <div className="relative w-full max-w-sm rounded-3xl border border-white/15 bg-gradient-to-br from-white/10 to-white/5 p-6 backdrop-blur-xl shadow-2xl">
+            {/* Декоративные элементы */}
+            <div className="absolute -top-2 -right-2 h-16 w-16 rounded-full bg-gradient-to-br from-yellow-400/20 to-orange-400/20 blur-xl"></div>
+            <div className="absolute -bottom-2 -left-2 h-12 w-12 rounded-full bg-gradient-to-br from-purple-400/20 to-pink-400/20 blur-lg"></div>
+            
+            {/* Заголовок с линией */}
+            <div className="relative flex items-center gap-4 mb-6">
+              <h3 className="text-xl font-bold text-white tracking-tight">Достижения</h3>
+              <div className="flex-1 h-px bg-gradient-to-r from-white/30 via-white/10 to-transparent"></div>
             </div>
             
-            <div className="flex justify-around text-center mb-4">
+            {/* Ачивки в адаптивной сетке */}
+            <div className="grid grid-cols-3 gap-4 mb-6">
               {/* Первый шаг - активный */}
-              <div className="flex flex-col items-center gap-2">
-                <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-purple-200 shadow-inner">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-yellow-500 shadow-lg">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/80 backdrop-blur-sm">
-                      <span className="text-2xl text-yellow-500">⭐</span>
+              <div className="group flex flex-col items-center gap-3 cursor-pointer">
+                <div className="relative">
+                  {/* Внешнее свечение */}
+                  <div className="absolute -inset-2 rounded-full bg-gradient-to-r from-yellow-400/40 to-orange-400/40 blur-lg opacity-75 group-hover:opacity-100 transition-opacity"></div>
+                  {/* Основной значок */}
+                  <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-200 via-purple-100 to-purple-200 shadow-inner">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-400 via-yellow-500 to-orange-500 shadow-lg">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/90 backdrop-blur-sm">
+                        <span className="text-2xl">⭐</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-                <p className="text-sm font-medium text-white">Первый шаг</p>
+                <p className="text-sm font-semibold text-white text-center">Первый шаг</p>
               </div>
 
               {/* Второй шаг - неактивный */}
-              <div className="flex flex-col items-center gap-2">
-                <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-gray-300/80 shadow-inner">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-gray-400 to-gray-500 shadow-md">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/50 backdrop-blur-sm">
-                      <span className="text-2xl text-gray-500 opacity-70">⭐</span>
+              <div className="group flex flex-col items-center gap-3 cursor-pointer">
+                <div className="relative">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-gray-300/60 via-gray-200/40 to-gray-300/60 shadow-inner">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-gray-400 to-gray-500 shadow-md">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/60 backdrop-blur-sm">
+                        <span className="text-2xl text-gray-600 opacity-70">⭐</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-                <p className="text-sm font-medium text-white/60">Второй шаг</p>
+                <p className="text-sm font-medium text-white/60 text-center">Второй шаг</p>
               </div>
 
               {/* Третий шаг - неактивный */}
-              <div className="flex flex-col items-center gap-2">
-                <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-gray-300/80 shadow-inner">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-gray-400 to-gray-500 shadow-md">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/50 backdrop-blur-sm">
-                      <span className="text-2xl text-gray-500 opacity-70">⭐</span>
+              <div className="group flex flex-col items-center gap-3 cursor-pointer">
+                <div className="relative">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-gray-300/60 via-gray-200/40 to-gray-300/60 shadow-inner">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-gray-400 to-gray-500 shadow-md">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/60 backdrop-blur-sm">
+                        <span className="text-2xl text-gray-600 opacity-70">⭐</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-                <p className="text-sm font-medium text-white/60">Третий шаг</p>
+                <p className="text-sm font-medium text-white/60 text-center">Третий шаг</p>
               </div>
             </div>
 
-            <button className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#3E8074]/80 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#4a8f81]">
-              Смотреть историю достижений
-              <div className="h-4 w-4 bg-white/80 rounded-sm flex items-center justify-center">
-                <div className="grid grid-cols-2 gap-0.5">
-                  <div className="w-1 h-1 bg-white rounded-sm"></div>
-                  <div className="w-1 h-1 bg-white rounded-sm"></div>
-                  <div className="w-1 h-1 bg-white rounded-sm"></div>
-                  <div className="w-1 h-1 bg-white rounded-sm"></div>
+            {/* Кнопка в стиле 2025 */}
+            <button className="group relative w-full overflow-hidden rounded-2xl bg-gradient-to-r from-[#3E8074] via-[#4a8f81] to-[#3E8074] py-4 px-6 text-sm font-semibold text-white transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-[#3E8074]/25">
+              {/* Анимированный фон */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+              
+              <div className="relative flex items-center justify-center gap-3">
+                <span>Смотреть историю достижений</span>
+                <div className="h-5 w-5 rounded-lg bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                  <div className="grid grid-cols-2 gap-0.5">
+                    <div className="w-1 h-1 bg-white rounded-sm"></div>
+                    <div className="w-1 h-1 bg-white rounded-sm"></div>
+                    <div className="w-1 h-1 bg-white rounded-sm"></div>
+                    <div className="w-1 h-1 bg-white rounded-sm"></div>
+                  </div>
                 </div>
               </div>
             </button>
