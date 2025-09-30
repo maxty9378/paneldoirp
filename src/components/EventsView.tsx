@@ -1,25 +1,24 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  AlertCircle,
+  ArrowRight,
+  CalendarDays,
+  CheckCircle2,
+  Filter,
+  ListFilter,
+  Play,
+  RefreshCw,
+  Search,
+  X
+} from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
-import {
-  Filter,
-  Search,
-  Plus,
-  Download,
-  Upload,
-  RefreshCw,
-  CalendarDays,
-  Calendar as CalendarIcon,
-  Zap,
-  AlertCircle,
-  Play,
-  CheckCircle,
-  Pause,
-  X,
-  ChevronRight,
-} from 'lucide-react';
 import { Event, EVENT_TYPE_LABELS } from '../types';
 import { EventCard } from './events/EventCard';
+
+type SortBy = 'start_date' | 'title' | 'participants' | 'status' | 'created_at';
+
+type EventsFetchMode = 'admin' | 'expert' | 'participant';
 
 interface EventsViewProps {
   onCreateEvent?: () => void;
@@ -29,686 +28,661 @@ interface EventsViewProps {
 
 interface EventWithStats extends Event {
   participants_count?: number;
-  attendance_rate?: number;
-  pending_tests?: number;
-  pending_feedback?: number;
-  has_report?: boolean;
   test_completed_count?: number;
   test_not_passed_count?: number;
   test_pending_review_count?: number;
   test_pass_percent?: number;
-  event_types?: { id: string; name: string; name_ru: string };
+  event_types?: { id: string; name: string; name_ru: string } | null;
 }
 
-type SortBy = 'start_date' | 'title' | 'participants' | 'status' | 'created_at';
+interface FetchOptions {
+  silent?: boolean;
+}
 
 export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: EventsViewProps) {
+  const { user, userProfile } = useAuth();
   const [events, setEvents] = useState<EventWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // UI state
   const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [showSearchFilters, setShowSearchFilters] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<SortBy>('start_date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
+  const [showFilters, setShowFilters] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const { user, userProfile } = useAuth();
+  const role = userProfile?.role ?? user?.role ?? 'employee';
 
-  // Debounce поиска — приятнее UX и меньше ререндеров
-  useEffect(() => {
-    const id = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 300);
-    return () => clearTimeout(id);
-  }, [searchTerm]);
+  const fetchEvents = useCallback(
+    async ({ silent = false }: FetchOptions = {}) => {
+      if (!user?.id) {
+        return;
+      }
 
-  useEffect(() => {
-    if (user) fetchEvents();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
-
-  const fetchEvents = async () => {
-    try {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
       setError(null);
 
-      const isAdmin =
-        !!userProfile?.role &&
-        ['administrator', 'moderator', 'trainer'].includes(userProfile.role);
-      const isExpert = userProfile?.role === 'expert';
+      try {
+        const mode: EventsFetchMode = role === 'expert'
+          ? 'expert'
+          : ['administrator', 'moderator', 'trainer'].includes(role)
+            ? 'admin'
+            : 'participant';
 
-      let data: any[] | null = null;
-      let err: any = null;
-
-      if (isAdmin) {
-        const { data: d, error: e } = await supabase
+        let eventsQuery = supabase
           .from('events')
           .select('*, event_types(id, name, name_ru)')
           .order('start_date', { ascending: false });
-        data = d;
-        err = e;
-      } else if (isExpert) {
-        // Эксперты видят мероприятия, где они указаны в expert_emails
-        const { data: d, error: e } = await supabase
-          .from('events')
-          .select('*, event_types(id, name, name_ru)')
-          .contains('expert_emails', [userProfile?.email])
-          .order('start_date', { ascending: false });
-        data = d;
-        err = e;
-      } else {
-        const { data: d, error: e } = await supabase
-          .from('events')
-          .select('*, event_types(id, name, name_ru), event_participants!inner(user_id)')
-          .eq('event_participants.user_id', user?.id)
-          .order('start_date', { ascending: false });
-        data = d;
-        err = e;
-      }
 
-      if (err) {
-        setError(`Ошибка загрузки: ${err.message}`);
-        setLoading(false);
-        return;
-      }
+        if (mode === 'expert') {
+          eventsQuery = eventsQuery.contains('expert_emails', [userProfile?.email]);
+        }
 
-      if (!data || data.length === 0) {
-        setEvents([]);
-        setLoading(false);
-        return;
-      }
+        if (mode === 'participant') {
+          eventsQuery = eventsQuery
+            .select('*, event_types(id, name, name_ru), event_participants!inner(user_id)')
+            .eq('event_participants.user_id', user.id)
+            .order('start_date', { ascending: false });
+        }
 
-      // Подтягиваем быстрые метрики по каждому событию
-      const eventsWithStats: EventWithStats[] = await Promise.all(
-        data.map(async (event: Event) => {
-          const { data: participantsData } = await supabase
-            .from('event_participants')
-            .select('id, user_id')
-            .eq('event_id', event.id);
+        const { data, error: eventsError } = await eventsQuery;
 
-          const participantsCount = participantsData?.length || 0;
+        if (eventsError) {
+          throw eventsError;
+        }
 
-          const { data: completedAttempts } = await supabase
-            .from('user_test_attempts')
-            .select('id, user_id')
-            .eq('event_id', event.id)
-            .eq('status', 'completed');
+        const normalizedEvents = (data ?? []).map((event: any) => ({
+          ...event,
+          event_types: event.event_types ?? null
+        })) as EventWithStats[];
 
-          const completedCount = completedAttempts?.length || 0;
+        if (normalizedEvents.length === 0) {
+          setEvents([]);
+          return;
+        }
 
-          // Получаем проходной балл из тестов мероприятия
-          const { data: eventTests } = await supabase
-            .from('tests')
-            .select('passing_score')
-            .eq('event_type_id', event.event_type_id)
-            .limit(1);
+        const eventIds = normalizedEvents.map((event) => event.id).filter(Boolean);
+        const eventTypeIds = normalizedEvents
+          .map((event) => event.event_type_id)
+          .filter((id): id is string => Boolean(id));
 
-          const testPassPercent = eventTests?.[0]?.passing_score || 70;
+        const [participantsResponse, attemptsResponse, testsResponse] = await Promise.all([
+          eventIds.length
+            ? supabase
+                .from('event_participants')
+                .select('event_id')
+                .in('event_id', eventIds)
+            : Promise.resolve({ data: [] as { event_id: string }[], error: null }),
+          eventIds.length
+            ? supabase
+                .from('user_test_attempts')
+                .select('event_id, status')
+                .in('event_id', eventIds)
+            : Promise.resolve({ data: [] as { event_id: string; status: string }[], error: null }),
+          eventTypeIds.length
+            ? supabase
+                .from('tests')
+                .select('event_type_id, passing_score')
+                .in('event_type_id', eventTypeIds)
+            : Promise.resolve({ data: [] as { event_type_id: string; passing_score: number }[], error: null })
+        ]);
 
-          const notPassedCount = Math.max(participantsCount - completedCount, 0);
+        if (participantsResponse.error) throw participantsResponse.error;
+        if (attemptsResponse.error) throw attemptsResponse.error;
+        if (testsResponse.error) throw testsResponse.error;
 
-          // Подсчитываем тесты на проверке (только для существующих событий)
-          let pendingReviewCount = 0;
-          if (event.id) {
-            const { count } = await supabase
-              .from('user_test_attempts')
-              .select('id', { count: 'exact', head: false })
-              .eq('event_id', event.id)
-              .eq('status', 'pending_review');
-            pendingReviewCount = count || 0;
+        const participantsMap = participantsResponse.data?.reduce<Record<string, number>>((acc, row: any) => {
+          if (!row?.event_id) return acc;
+          acc[row.event_id] = (acc[row.event_id] ?? 0) + 1;
+          return acc;
+        }, {}) ?? {};
+
+        const completedAttemptsMap: Record<string, number> = {};
+        const pendingReviewMap: Record<string, number> = {};
+
+        attemptsResponse.data?.forEach((row: any) => {
+          if (!row?.event_id) return;
+          if (row.status === 'completed') {
+            completedAttemptsMap[row.event_id] = (completedAttemptsMap[row.event_id] ?? 0) + 1;
           }
+          if (row.status === 'pending_review') {
+            pendingReviewMap[row.event_id] = (pendingReviewMap[row.event_id] ?? 0) + 1;
+          }
+        });
+
+        const passingScoreMap = testsResponse.data?.reduce<Record<string, number>>((acc, row: any) => {
+          if (!row?.event_type_id) return acc;
+          if (!(row.event_type_id in acc)) {
+            acc[row.event_type_id] = row.passing_score ?? 70;
+          }
+          return acc;
+        }, {}) ?? {};
+
+        const eventsWithStats = normalizedEvents.map((event) => {
+          const participantsCount = participantsMap[event.id] ?? 0;
+          const completedCount = completedAttemptsMap[event.id] ?? 0;
+          const pendingReviewCount = pendingReviewMap[event.id] ?? 0;
+          const passingScore = passingScoreMap[event.event_type_id] ?? 70;
+          const notPassedCount = Math.max(participantsCount - completedCount, 0);
 
           return {
             ...event,
             participants_count: participantsCount,
             test_completed_count: completedCount,
-            test_pass_percent: testPassPercent,
-            test_not_passed_count: notPassedCount,
             test_pending_review_count: pendingReviewCount,
+            test_not_passed_count: notPassedCount,
+            test_pass_percent: passingScore
           };
-        })
-      );
+        });
 
-      setEvents(eventsWithStats);
-    } catch (e: any) {
-      setError(`Произошла ошибка: ${e?.message || 'Неизвестная ошибка'}`);
-    } finally {
-      setLoading(false);
+        setEvents(eventsWithStats);
+      } catch (fetchError: any) {
+        console.error('Ошибка загрузки мероприятий:', fetchError);
+        setError(fetchError?.message ?? 'Не удалось загрузить мероприятия');
+      } finally {
+        if (!silent) {
+          setLoading(false);
+        }
+      }
+    },
+    [role, user?.id, userProfile?.email]
+  );
+
+  useEffect(() => {
+    if (user) {
+      fetchEvents();
     }
-  };
+  }, [user, fetchEvents]);
 
-  // Фильтрация + сортировка — на мемо, чтобы не трясти DOM
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchEvents({ silent: true });
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [fetchEvents]);
+
   const filteredEvents = useMemo(() => {
     let list = [...events];
+    const normalizedSearch = searchTerm.trim().toLowerCase();
 
-    // Фильтрация по активной вкладке
     if (activeTab === 'active') {
-      list = list.filter((ev) => ['active', 'published', 'ongoing', 'draft'].includes(ev.status));
-    } else if (activeTab === 'completed') {
-      list = list.filter((ev) => ev.status === 'completed');
+      list = list.filter((event) => ['active', 'published', 'ongoing', 'draft'].includes(event.status));
+    } else {
+      list = list.filter((event) => event.status === 'completed');
     }
 
-    if (debouncedSearch) {
-      const s = debouncedSearch.toLowerCase();
-      list = list.filter(
-        (ev) =>
-          ev.title?.toLowerCase().includes(s) ||
-          ev.description?.toLowerCase().includes(s) ||
-          ev.location?.toLowerCase().includes(s)
+    if (normalizedSearch) {
+      list = list.filter((event) =>
+        event.title?.toLowerCase().includes(normalizedSearch) ||
+        event.description?.toLowerCase().includes(normalizedSearch) ||
+        event.location?.toLowerCase().includes(normalizedSearch)
       );
     }
 
-    if (statusFilter !== 'all') list = list.filter((ev) => ev.status === statusFilter);
-    if (typeFilter !== 'all') list = list.filter((ev) => ev.type === typeFilter);
+    if (statusFilter !== 'all') {
+      list = list.filter((event) => event.status === statusFilter);
+    }
+
+    if (typeFilter !== 'all') {
+      list = list.filter((event) => event.type === typeFilter);
+    }
 
     list.sort((a, b) => {
-      let av: any;
-      let bv: any;
+      let aValue: any;
+      let bValue: any;
+
       switch (sortBy) {
         case 'title':
-          av = (a.title || '').toLowerCase();
-          bv = (b.title || '').toLowerCase();
+          aValue = (a.title || '').toLowerCase();
+          bValue = (b.title || '').toLowerCase();
           break;
         case 'participants':
-          av = a.participants_count || 0;
-          bv = b.participants_count || 0;
+          aValue = a.participants_count ?? 0;
+          bValue = b.participants_count ?? 0;
           break;
         case 'status':
-          av = a.status || '';
-          bv = b.status || '';
+          aValue = a.status || '';
+          bValue = b.status || '';
           break;
         case 'created_at':
-          av = new Date(a.created_at || 0).getTime();
-          bv = new Date(b.created_at || 0).getTime();
+          aValue = new Date(a.created_at || '').getTime();
+          bValue = new Date(b.created_at || '').getTime();
           break;
         case 'start_date':
         default:
-          av = new Date((a as any).start_date || (a as any).date_time || 0).getTime();
-          bv = new Date((b as any).start_date || (b as any).date_time || 0).getTime();
+          aValue = new Date(a.start_date || a.date_time || '').getTime();
+          bValue = new Date(b.start_date || b.date_time || '').getTime();
+          break;
       }
-      const res = av < bv ? -1 : av > bv ? 1 : 0;
-      return sortOrder === 'asc' ? res : -res;
+
+      const result = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      return sortOrder === 'asc' ? result : -result;
     });
 
     return list;
-  }, [events, debouncedSearch, statusFilter, typeFilter, sortBy, sortOrder, activeTab]);
+  }, [events, activeTab, searchTerm, statusFilter, typeFilter, sortBy, sortOrder]);
 
-  const canCreateEvents =
-    !!userProfile?.role && ['trainer', 'moderator', 'administrator'].includes(userProfile.role);
+  const aggregatedStats = useMemo(() => {
+    const total = events.length;
+    const active = events.filter((event) => ['active', 'published', 'ongoing', 'draft'].includes(event.status)).length;
+    const completed = events.filter((event) => event.status === 'completed').length;
+    const upcoming = events.filter((event) => {
+      const date = new Date(event.start_date || event.date_time || '');
+      if (Number.isNaN(date.getTime())) return false;
+      return date >= new Date();
+    }).length;
+    const participants = events.reduce((acc, event) => acc + (event.participants_count ?? 0), 0);
+    const pendingReviews = events.reduce((acc, event) => acc + (event.test_pending_review_count ?? 0), 0);
 
-  const handleDeleteEvent = async (eventId: string) => {
-    if (!confirm('Удалить мероприятие?')) return;
-    try {
-      const { error: delErr } = await supabase.from('events').delete().eq('id', eventId);
-      if (delErr) throw delErr;
-      await fetchEvents();
-    } catch (e) {
-      console.error('Error deleting event:', e);
-    }
-  };
+    return { total, active, completed, upcoming, participants, pendingReviews };
+  }, [events]);
 
-
-  // ---------------- UI helpers ----------------
-  const resetFilters = () => {
+  const handleResetFilters = () => {
     setSearchTerm('');
     setStatusFilter('all');
     setTypeFilter('all');
     setSortBy('start_date');
     setSortOrder('desc');
+    setShowFilters(false);
   };
 
-  // ---------------- Render ----------------
-
   if (loading) {
-    return (
-      <div className="min-h-[420px]">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sns-500 to-sns-600 animate-pulse" />
-            <div className="h-6 w-48 bg-slate-200 rounded-md animate-pulse" />
-          </div>
-          <div className="hidden md:flex gap-2">
-            <div className="h-9 w-32 bg-slate-200 rounded-lg animate-pulse" />
-            <div className="h-9 w-40 bg-slate-200 rounded-lg animate-pulse" />
-            <div className="h-9 w-44 bg-slate-200 rounded-lg animate-pulse" />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-xl border border-slate-200 p-4">
-              <div className="h-4 w-16 bg-slate-200 rounded mb-2 animate-pulse" />
-              <div className="h-6 w-10 bg-slate-200 rounded animate-pulse" />
-            </div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-40 bg-white rounded-2xl border border-slate-200 animate-pulse" />
-          ))}
-        </div>
-      </div>
-    );
+    return <EventsSkeleton />;
   }
 
   if (error) {
-    return (
-      <div className="min-h-[420px] flex items-center justify-center">
-        <div className="text-center space-y-4 max-w-md">
-          <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto">
-            <AlertCircle className="w-10 h-10 text-red-500" />
-          </div>
-          <div className="space-y-2">
-            <h3 className="text-xl font-semibold text-slate-800">Ошибка загрузки</h3>
-            <p className="text-slate-600">{error}</p>
-          </div>
-          <button
-            onClick={() => fetchEvents()}
-            className="inline-flex items-center px-6 py-3 bg-sns-500 text-white font-medium rounded-xl hover:bg-sns-600 transition-all duration-200 shadow-lg hover:shadow-xl"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Попробовать снова
-          </button>
-        </div>
-      </div>
-    );
+    return <EventsError message={error} onRetry={() => fetchEvents()} />;
   }
-
 
   return (
     <div className="space-y-8 pb-safe-bottom">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-sns-500 to-sns-600 rounded-xl flex items-center justify-center shadow-sm">
-            <CalendarDays className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800">Мероприятия по обучению</h1>
-            <p className="text-slate-600 text-sm">
-              {canCreateEvents ? 'Создавайте и управляйте программами' : 'Участвуйте и проходите обучение'}
+      <header className="rounded-[28px] border border-white/40 bg-white/80 px-6 py-6 shadow-[0_28px_60px_-36px_rgba(15,23,42,0.45)] backdrop-blur-xl sm:px-10">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-semibold text-slate-900">Мои мероприятия</h1>
+            <p className="text-sm text-slate-600">
+              Всего: {aggregatedStats.total} · Активных: {aggregatedStats.active} · Тестов на проверке: {aggregatedStats.pendingReviews}
             </p>
           </div>
+          <button
+            onClick={handleRefresh}
+            className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-emerald-300 hover:text-emerald-700"
+          >
+            {isRefreshing ? (
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            <span>Обновить данные</span>
+          </button>
+        </div>
+      </header>
+
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <StatsCard
+          title="Всего мероприятий"
+          value={aggregatedStats.total}
+          icon={<CalendarDays className="h-4 w-4" />}
+          tone="emerald"
+        />
+        <StatsCard
+          title="Активные сейчас"
+          value={aggregatedStats.active}
+          icon={<Play className="h-4 w-4" />}
+          tone="blue"
+        />
+        <StatsCard
+          title="Ближайшие"
+          value={aggregatedStats.upcoming}
+          icon={<ArrowRight className="h-4 w-4" />}
+          tone="slate"
+        />
+        <StatsCard
+          title="Тестов на проверке"
+          value={aggregatedStats.pendingReviews}
+          icon={<AlertCircle className="h-4 w-4" />}
+          tone="amber"
+        />
+      </section>
+
+      <section className="rounded-[28px] border border-white/40 bg-white/80 p-6 shadow-[0_28px_60px_-36px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="search"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Поиск по названию, описанию или месту..."
+              className="w-full rounded-2xl border border-slate-200 bg-white/70 py-3 pl-11 pr-12 text-sm font-medium text-slate-700 transition focus:border-emerald-400 focus:outline-none focus:ring-4 focus:ring-emerald-100"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200"
+                aria-label="Очистить поиск"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => setShowFilters((prev) => !prev)}
+              className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/70 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-emerald-300 hover:text-emerald-700"
+            >
+              <ListFilter className="h-4 w-4" />
+              {showFilters ? 'Скрыть фильтры' : 'Фильтры'}
+            </button>
+            <button
+              onClick={handleResetFilters}
+              className="inline-flex items-center gap-2 rounded-2xl border border-transparent bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Сбросить
+            </button>
+            <button
+              onClick={onCreateEvent}
+              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-emerald-600 hover:to-emerald-700"
+              disabled={!['trainer', 'moderator', 'administrator'].includes(role)}
+            >
+              <CalendarDays className="h-4 w-4" />
+              Создать мероприятие
+            </button>
+          </div>
         </div>
 
-        {/* Скрываем кнопки управления для экспертов */}
-        {userProfile?.role !== 'expert' && (
-          <div className="flex items-center gap-2">
-            {canCreateEvents && (
-              <button
-                onClick={() => setShowSearchFilters((v) => !v)}
-                className="px-3.5 py-2 h-9 text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all text-sm inline-flex items-center gap-2"
-                title="Поиск и фильтры"
-              >
-                <Search className="w-4 h-4" />
-                <span className="hidden sm:inline">Поиск</span>
-                <Filter className="w-4 h-4" />
-              </button>
-            )}
-
-            {canCreateEvents && (
-              <>
-                <button className="px-3.5 py-2 h-9 text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all text-sm inline-flex items-center gap-2">
-                  <Download className="w-4 h-4" />
-                  <span className="hidden sm:inline">Экспорт</span>
-                </button>
-                <button className="px-3.5 py-2 h-9 text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-all text-sm inline-flex items-center gap-2">
-                  <Upload className="w-4 h-4" />
-                  <span className="hidden sm:inline">Импорт</span>
-                </button>
-              </>
-            )}
-
-            {canCreateEvents && (
-              <button
-                onClick={() => onCreateEvent?.()}
-                className="px-3.5 py-2 h-9 bg-sns-500 text-white font-medium rounded-lg hover:bg-sns-600 transition-all text-sm inline-flex items-center gap-2 shadow-sm"
-              >
-                <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Создать</span>
-              </button>
-            )}
+        {showFilters && (
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <FilterSelect
+              label="Статус"
+              value={statusFilter}
+              onChange={setStatusFilter}
+              options={[
+                { value: 'all', label: 'Все статусы' },
+                { value: 'draft', label: 'Черновик' },
+                { value: 'published', label: 'Опубликовано' },
+                { value: 'active', label: 'Активно' },
+                { value: 'ongoing', label: 'Проходит' },
+                { value: 'completed', label: 'Завершено' },
+                { value: 'cancelled', label: 'Отменено' }
+              ]}
+            />
+            <FilterSelect
+              label="Тип"
+              value={typeFilter}
+              onChange={setTypeFilter}
+              options={[
+                { value: 'all', label: 'Все типы' },
+                ...Object.entries(EVENT_TYPE_LABELS).map(([value, label]) => ({ value, label }))
+              ]}
+            />
+            <FilterSelect
+              label="Сортировка"
+              value={sortBy}
+              onChange={(value) => setSortBy(value as SortBy)}
+              options={[
+                { value: 'start_date', label: 'По дате проведения' },
+                { value: 'title', label: 'По названию' },
+                { value: 'participants', label: 'По участникам' },
+                { value: 'status', label: 'По статусу' },
+                { value: 'created_at', label: 'По дате создания' }
+              ]}
+            />
+            <FilterSelect
+              label="Порядок"
+              value={sortOrder}
+              onChange={(value) => setSortOrder(value as 'asc' | 'desc')}
+              options={[
+                { value: 'desc', label: 'Сначала новые' },
+                { value: 'asc', label: 'Сначала старые' }
+              ]}
+            />
           </div>
         )}
-      </div>
 
-      {/* Search & Filters */}
-      {showSearchFilters && canCreateEvents && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm mt-2">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center">
-            <div className="flex-1">
-              <div className="relative group">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-sns-500 transition-colors" />
-                <input
-                  type="text"
-                  placeholder="Поиск по названию, описанию или месту…"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sns-500 focus:border-sns-500 focus:bg-white transition-all text-sm"
-                />
-                {searchTerm && (
-                  <button
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-slate-100"
-                    onClick={() => setSearchTerm('')}
-                    aria-label="Очистить"
-                  >
-                    <X className="w-4 h-4 text-slate-400" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sns-500 text-sm"
-                title="Статус"
-              >
-                <option value="all">Все статусы</option>
-                <option value="draft">Черновик</option>
-                <option value="published">Опубликовано</option>
-                <option value="active">Активно</option>
-                <option value="ongoing">Проходит</option>
-                <option value="completed">Завершено</option>
-                <option value="cancelled">Отменено</option>
-              </select>
-
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sns-500 text-sm"
-                title="Тип"
-              >
-                <option value="all">Все типы</option>
-                {Object.entries(EVENT_TYPE_LABELS).map(([key, label]) => (
-                  <option key={key} value={key}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as SortBy)}
-                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sns-500 text-sm"
-                title="Сортировка"
-              >
-                <option value="start_date">По дате проведения</option>
-                <option value="title">По названию</option>
-                <option value="participants">По участникам</option>
-                <option value="status">По статусу</option>
-                <option value="created_at">По дате создания</option>
-              </select>
-
-              <select
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
-                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sns-500 text-sm"
-                title="Порядок"
-              >
-                <option value="desc">По убыванию</option>
-                <option value="asc">По возрастанию</option>
-              </select>
-
-              <button
-                onClick={resetFilters}
-                className="px-3 py-2 text-slate-700 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-all font-medium text-sm"
-                title="Сбросить фильтры"
-              >
-                Сбросить
-              </button>
-            </div>
-          </div>
-
-          {/* Чипы-состояния под фильтрами */}
-          <div className="flex flex-wrap gap-2 mt-3">
-            {statusFilter !== 'all' && (
-              <Chip onClear={() => setStatusFilter('all')}>Статус: {statusFilter}</Chip>
-            )}
-            {typeFilter !== 'all' && <Chip onClear={() => setTypeFilter('all')}>Тип: {typeFilter}</Chip>}
-            {debouncedSearch && <Chip onClear={() => setSearchTerm('')}>Поиск: {debouncedSearch}</Chip>}
-          </div>
-        </div>
-      )}
-
-      {/* Скрываем статистику для экспертов */}
-      {userProfile?.role !== 'expert' && (
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-          <StatCard
-            label="Всего"
-            value={filteredEvents.length}
-            icon={<CalendarIcon className="w-4 h-4 text-slate-600" />}
-            iconWrapClass="from-slate-100 to-slate-200"
-          />
-          <StatCard
-            label="Активные"
-            value={activeTab === 'active' ? filteredEvents.filter((e) => ['active', 'published', 'ongoing'].includes(e.status)).length : 0}
-            valueClass="text-emerald-600"
-            icon={<Play className="w-4 h-4 text-emerald-600" />}
-            iconWrapClass="from-emerald-100 to-emerald-200"
-          />
-          <StatCard
-            label="Завершено"
-            value={activeTab === 'completed' ? filteredEvents.length : 0}
-            valueClass="text-indigo-600"
-            icon={<CheckCircle className="w-4 h-4 text-indigo-600" />}
-            iconWrapClass="from-indigo-100 to-indigo-200"
-          />
-          <StatCard
-            label="Черновики"
-            value={activeTab === 'active' ? filteredEvents.filter((e) => e.status === 'draft').length : 0}
-            valueClass="text-slate-700"
-            icon={<Pause className="w-4 h-4 text-slate-600" />}
-            iconWrapClass="from-slate-100 to-slate-200"
-          />
-          <StatCard
-            label="Этот месяц"
-            value={filteredEvents.filter((e) => {
-              const d = new Date((e as any).start_date || (e as any).date_time || '');
-              const now = new Date();
-              return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-            }).length}
-            valueClass="text-purple-600"
-            icon={<CalendarDays className="w-4 h-4 text-purple-600" />}
-            iconWrapClass="from-purple-100 to-purple-200"
-          />
-          <StatCard
-            label="Задачи"
-            value={filteredEvents.reduce((acc, ev) => {
-              let t = 0;
-              if (ev.pending_tests && ev.pending_tests > 0) t++;
-              if (ev.pending_feedback && ev.pending_feedback > 0) t++;
-              if (ev.status === 'completed' && !ev.has_report) t++;
-              return acc + t;
-            }, 0)}
-            valueClass="text-red-600"
-            icon={<Zap className="w-4 h-4 text-red-600" />}
-            iconWrapClass="from-red-100 to-red-200"
-          />
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div className="flex space-x-1 bg-slate-100 p-1 rounded-xl">
-        <button
-          onClick={() => setActiveTab('active')}
-          className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-            activeTab === 'active'
-              ? 'bg-white text-slate-900 shadow-sm'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-          }`}
-        >
-          <div className="flex items-center justify-center gap-2">
-            <Play className="w-4 h-4" />
-            <span>Активные</span>
-            <span className="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-xs font-medium">
-              {events.filter((e) => ['active', 'published', 'ongoing', 'draft'].includes(e.status)).length}
-            </span>
-          </div>
-        </button>
-        <button
-          onClick={() => setActiveTab('completed')}
-          className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-            activeTab === 'completed'
-              ? 'bg-white text-slate-900 shadow-sm'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-          }`}
-        >
-          <div className="flex items-center justify-center gap-2">
-            <CheckCircle className="w-4 h-4" />
-            <span>Завершённые</span>
-            <span className="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-xs font-medium">
-              {events.filter((e) => e.status === 'completed').length}
-            </span>
-          </div>
-        </button>
-      </div>
-
-      {/* Bulk actions */}
-      {selectedEvents.length > 0 && canCreateEvents && (
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                <ChevronRight className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <span className="text-sm font-semibold text-blue-900">
-                  Выбрано мероприятий: {selectedEvents.length}
-                </span>
-                <button
-                  onClick={() => setSelectedEvents([])}
-                  className="block text-blue-600 hover:text-blue-800 text-sm font-medium"
-                >
-                  Отменить выбор
-                </button>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <ActionBtn>Активировать</ActionBtn>
-              <ActionBtn className="bg-slate-500 hover:bg-slate-600">Деактивировать</ActionBtn>
-              <ActionBtn className="bg-red-500 hover:bg-red-600">Удалить</ActionBtn>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Grid */}
-      {filteredEvents.length === 0 ? (
-        <div className="text-center py-16">
-          <div className="w-24 h-24 bg-gradient-to-br from-slate-100 to-slate-200 rounded-3xl flex items-center justify-center mx-auto mb-6">
-            <CalendarIcon className="w-12 h-12 text-slate-400" />
-          </div>
-          <h3 className="text-xl font-semibold text-slate-800 mb-2">
-            {events.length === 0 ? 'Нет мероприятий' : 'Ничего не найдено'}
-          </h3>
-          <p className="text-slate-600 mb-6 max-w-md mx-auto">
-            {events.length === 0
-              ? canCreateEvents
-                ? 'Создайте первое мероприятие для команды'
-                : 'Здесь появятся ваши мероприятия, когда вас добавят участником'
-              : 'Попробуйте скорректировать поиск или фильтры'}
-          </p>
-          {canCreateEvents && events.length === 0 && (
-            <button
-              onClick={() => onCreateEvent?.()}
-              className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-sns-500 to-sns-600 text-white font-semibold rounded-xl transition-all shadow-sm hover:shadow-md"
-            >
-              <Plus className="w-5 h-5 mr-2" />
-              Создать первое мероприятие
-            </button>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {statusFilter !== 'all' && (
+            <FilterChip onClear={() => setStatusFilter('all')}>Статус: {statusFilter}</FilterChip>
+          )}
+          {typeFilter !== 'all' && (
+            <FilterChip onClear={() => setTypeFilter('all')}>Тип: {EVENT_TYPE_LABELS[typeFilter] ?? typeFilter}</FilterChip>
+          )}
+          {searchTerm && (
+            <FilterChip onClear={() => setSearchTerm('')}>Поиск: {searchTerm}</FilterChip>
           )}
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredEvents.map((event, idx) => (
-            <EventCard
-              key={event.id}
-              event={event}
-              index={idx}
-              canCreateEvents={canCreateEvents || false}
-              onNavigateToEvent={onNavigateToEvent}
-              onEditEvent={onEditEvent}
-              onDeleteEvent={handleDeleteEvent}
-            />
-          ))}
+      </section>
+
+      <section className="space-y-5">
+          <div className="inline-flex rounded-full bg-slate-100 p-1 text-sm font-medium text-slate-600">
+            <button
+              onClick={() => setActiveTab('active')}
+              className={`flex items-center gap-2 rounded-full px-4 py-2 transition ${
+              activeTab === 'active' ? 'bg-white text-slate-900 shadow-sm' : 'hover:text-slate-900'
+            }`}
+          >
+            <Play className="h-4 w-4" />
+            Активные
+          </button>
+          <button
+            onClick={() => setActiveTab('completed')}
+            className={`flex items-center gap-2 rounded-full px-4 py-2 transition ${
+              activeTab === 'completed' ? 'bg-white text-slate-900 shadow-sm' : 'hover:text-slate-900'
+            }`}
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            Завершённые
+          </button>
         </div>
-      )}
+
+        {filteredEvents.length === 0 ? (
+          <EmptyEventsState
+            hasEvents={events.length > 0}
+            canCreate={['trainer', 'moderator', 'administrator'].includes(role)}
+            onCreateEvent={onCreateEvent}
+          />
+        ) : (
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {filteredEvents.map((event, index) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                index={index}
+                canCreateEvents={['trainer', 'moderator', 'administrator'].includes(role)}
+                onNavigateToEvent={onNavigateToEvent}
+                onEditEvent={onEditEvent}
+                onDeleteEvent={handleDeleteEvent}
+              />
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
+
+  async function handleDeleteEvent(eventId: string) {
+    if (!window.confirm('Удалить мероприятие?')) return;
+
+    try {
+      const { error: deleteError } = await supabase.from('events').delete().eq('id', eventId);
+      if (deleteError) throw deleteError;
+      await fetchEvents({ silent: true });
+    } catch (deleteErr) {
+      console.error('Ошибка удаления мероприятия:', deleteErr);
+      alert('Не удалось удалить мероприятие. Попробуйте позже.');
+    }
+  }
 }
 
-/* ---------- Маленькие UI-компоненты ---------- */
-
-function StatCard({
-  label,
+function StatsCard({
+  title,
   value,
-  valueClass,
   icon,
-  iconWrapClass,
+  tone
 }: {
-  label: string;
-  value: number | string;
-  valueClass?: string;
+  title: string;
+  value: string | number;
   icon: React.ReactNode;
-  iconWrapClass?: string;
+  tone: 'emerald' | 'slate' | 'blue' | 'amber';
 }) {
+  const palette = {
+    emerald: {
+      badge: 'bg-emerald-500/10 text-emerald-600',
+      border: 'border-emerald-500/15'
+    },
+    slate: {
+      badge: 'bg-slate-500/10 text-slate-600',
+      border: 'border-slate-500/15'
+    },
+    blue: {
+      badge: 'bg-sky-500/10 text-sky-600',
+      border: 'border-sky-500/15'
+    },
+    amber: {
+      badge: 'bg-amber-500/10 text-amber-600',
+      border: 'border-amber-500/15'
+    }
+  } as const;
+
+  const colors = palette[tone];
+
   return (
-    <div className="group bg-white rounded-xl p-4 border border-slate-200 hover:shadow-md hover:border-slate-300 transition-all">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs font-medium text-slate-600">{label}</p>
-          <p className={`text-xl font-bold ${valueClass || 'text-slate-800'}`}>{value}</p>
-        </div>
-        <div
-          className={`w-8 h-8 bg-gradient-to-br ${iconWrapClass || 'from-slate-100 to-slate-200'} rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform`}
-        >
-          {icon}
-        </div>
+    <div className={`relative flex min-w-[150px] flex-1 items-center gap-3 overflow-hidden rounded-[22px] border ${colors.border} bg-white/80 px-4 py-3 shadow-[0_24px_44px_-32px_rgba(15,23,42,0.5)] backdrop-blur-xl transition-transform duration-300 hover:-translate-y-0.5`}>
+      <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${colors.badge}`}>{icon}</div>
+      <div className="space-y-1">
+        <div className="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">{title}</div>
+        <div className="text-lg font-semibold text-slate-900">{value}</div>
       </div>
     </div>
   );
 }
 
-function Chip({
-  children,
-  onClear,
+function FilterSelect<T extends string>({
+  label,
+  value,
+  onChange,
+  options
 }: {
-  children: React.ReactNode;
-  onClear: () => void;
+  label: string;
+  value: T;
+  onChange: (value: T) => void;
+  options: { value: T; label: string }[];
 }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-sm bg-slate-100 text-slate-700 border border-slate-200 rounded-full px-3 py-1">
+    <label className="flex flex-col gap-1 text-sm font-medium text-slate-600">
+      <span>{label}</span>
+      <div className="relative">
+        <select
+          value={value}
+          onChange={(event) => onChange(event.target.value as T)}
+          className="w-full rounded-2xl border border-slate-200 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 transition focus:border-emerald-400 focus:outline-none focus:ring-4 focus:ring-emerald-100"
+        >
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <Filter className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+      </div>
+    </label>
+  );
+}
+
+function FilterChip({ children, onClear }: { children: React.ReactNode; onClear: () => void }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
       {children}
       <button
         onClick={onClear}
-        className="p-0.5 rounded-full hover:bg-slate-200"
-        aria-label="Очистить"
+        className="rounded-full p-1 transition hover:bg-slate-200"
+        aria-label="Очистить фильтр"
       >
-        <X className="w-3.5 h-3.5" />
+        <X className="h-3 w-3" />
       </button>
     </span>
   );
 }
 
-function ActionBtn({
-  children,
-  className = 'bg-emerald-500 hover:bg-emerald-600',
+function EmptyEventsState({
+  hasEvents,
+  canCreate,
+  onCreateEvent
 }: {
-  children: React.ReactNode;
-  className?: string;
+  hasEvents: boolean;
+  canCreate: boolean;
+  onCreateEvent?: () => void;
 }) {
   return (
-    <button
-      className={`px-4 py-2 text-white rounded-xl transition-all font-medium shadow-sm ${className}`}
-    >
-      {children}
-    </button>
+    <div className="flex flex-col items-center justify-center rounded-[32px] border border-dashed border-slate-300 bg-white/70 py-16 text-center shadow-inner">
+      <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-3xl bg-slate-100">
+        <CalendarDays className="h-12 w-12 text-slate-400" />
+      </div>
+      <h3 className="text-xl font-semibold text-slate-800 mb-2">
+        {hasEvents ? 'По фильтрам ничего не найдено' : 'Пока нет мероприятий'}
+      </h3>
+      <p className="mb-6 max-w-md text-sm text-slate-600">
+        {hasEvents
+          ? 'Попробуйте изменить параметры фильтра или поиск.'
+          : canCreate
+            ? 'Создайте первое мероприятие и приглашайте коллег прямо из панели.'
+            : 'Как только вас добавят участником, мероприятия появятся здесь.'}
+      </p>
+      {canCreate && !hasEvents && (
+        <button
+          onClick={onCreateEvent}
+          className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:from-emerald-600 hover:to-emerald-700"
+        >
+          <CalendarDays className="h-4 w-4" />
+          Создать первое мероприятие
+        </button>
+      )}
+    </div>
+  );
+}
+
+function EventsSkeleton() {
+  return (
+    <div className="space-y-8 animate-pulse">
+      <div className="h-48 rounded-[32px] bg-gradient-to-r from-emerald-200/60 via-emerald-100/40 to-emerald-200/60" />
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="h-24 rounded-[22px] bg-slate-100" />
+        ))}
+      </div>
+      <div className="h-40 rounded-[28px] bg-white/70" />
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div key={index} className="h-64 rounded-[26px] bg-white/60" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EventsError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-[32px] border border-rose-200 bg-rose-50/80 px-8 py-16 text-center">
+      <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-rose-100">
+        <AlertCircle className="h-12 w-12 text-rose-500" />
+      </div>
+      <h3 className="text-xl font-semibold text-rose-700 mb-2">Ошибка загрузки</h3>
+      <p className="mb-6 max-w-md text-sm text-rose-600">{message}</p>
+      <button
+        onClick={onRetry}
+        className="inline-flex items-center gap-2 rounded-2xl bg-rose-500 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-600"
+      >
+        <RefreshCw className="h-4 w-4" />
+        Попробовать снова
+      </button>
+    </div>
   );
 }
