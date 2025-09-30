@@ -616,133 +616,185 @@ export function DashboardView() {
           gradientAngle={heroGradientAngle}
         />
 
-        {/* Achievements Section - Like in Image */}
-        <section className="space-y-4">
-          <h2 className="text-lg font-semibold text-slate-900">Достижения</h2>
-          <div className="flex items-center gap-4">
-            {/* 8 Achievement Badges */}
-            <div className="flex gap-3 flex-1">
-              {/* First Badge - Active */}
-              <div className="group flex flex-col items-center gap-2 cursor-pointer">
-                <div className="relative">
-                  {/* 3D Square Badge */}
-                  <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-purple-200 via-purple-100 to-purple-200 shadow-inner">
-                    <div className="h-full w-full rounded-2xl bg-gradient-to-br from-yellow-400 via-yellow-500 to-orange-500 shadow-lg flex items-center justify-center">
-                      <div className="h-10 w-10 rounded-xl bg-white/90 backdrop-blur-sm flex items-center justify-center">
-                        <span className="text-2xl">⭐</span>
+        {/* Apple 2025 Style Achievements */}
+        <section className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Достижения</h2>
+            <div className="flex items-center gap-2 text-sm text-slate-500">
+              <div className="h-1.5 w-1.5 rounded-full bg-emerald-500"></div>
+              <span>1 из 8 завершено</span>
+            </div>
+          </div>
+          
+          <div className="relative">
+            {/* Apple-style glassmorphism container */}
+            <div className="relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-white/80 via-white/60 to-white/40 backdrop-blur-2xl shadow-2xl shadow-slate-900/10">
+              {/* Subtle gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 via-transparent to-purple-50/20"></div>
+              
+              <div className="relative p-8">
+                {/* Achievement Grid */}
+                <div className="grid grid-cols-4 gap-6 mb-8">
+                  {/* First Badge - Active (Apple Style) */}
+                  <div className="group flex flex-col items-center gap-3 cursor-pointer">
+                    <div className="relative">
+                      {/* Outer glow */}
+                      <div className="absolute -inset-1 rounded-3xl bg-gradient-to-br from-amber-400/40 via-yellow-400/30 to-orange-400/40 blur-sm opacity-75 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      {/* Main badge */}
+                      <div className="relative h-20 w-20 rounded-3xl bg-gradient-to-br from-amber-100 via-yellow-50 to-orange-100 shadow-lg shadow-amber-200/50 border border-amber-200/50">
+                        <div className="absolute inset-1 rounded-2xl bg-gradient-to-br from-amber-400 via-yellow-400 to-orange-400 shadow-inner">
+                          <div className="absolute inset-1 rounded-xl bg-gradient-to-br from-yellow-300 via-yellow-200 to-amber-300 flex items-center justify-center">
+                            <span className="text-3xl drop-shadow-sm">⭐</span>
+                          </div>
+                        </div>
+                      </div>
+                      {/* Completion indicator */}
+                      <div className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-emerald-500 border-2 border-white shadow-lg flex items-center justify-center">
+                        <span className="text-xs text-white font-bold">✓</span>
                       </div>
                     </div>
+                    <div className="text-center">
+                      <p className="text-sm font-semibold text-slate-900">Первый шаг</p>
+                      <p className="text-xs text-emerald-600 font-medium">Завершено</p>
+                    </div>
                   </div>
-                </div>
-                <p className="text-sm font-semibold text-slate-900 text-center">Первый шаг</p>
-              </div>
 
-              {/* Second Badge - Inactive */}
-              <div className="group flex flex-col items-center gap-2 cursor-pointer">
-                <div className="relative">
-                  <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-gray-300/60 via-gray-200/40 to-gray-300/60 shadow-inner">
-                    <div className="h-full w-full rounded-2xl bg-gradient-to-br from-gray-400 to-gray-500 shadow-md flex items-center justify-center">
-                      <div className="h-10 w-10 rounded-xl bg-white/60 backdrop-blur-sm flex items-center justify-center">
-                        <span className="text-2xl text-gray-600 opacity-70">⭐</span>
+                  {/* Second Badge - Inactive */}
+                  <div className="group flex flex-col items-center gap-3 cursor-pointer">
+                    <div className="relative">
+                      <div className="h-20 w-20 rounded-3xl bg-gradient-to-br from-slate-100 via-slate-50 to-slate-100 shadow-md border border-slate-200/50">
+                        <div className="absolute inset-1 rounded-2xl bg-gradient-to-br from-slate-200 via-slate-100 to-slate-200 shadow-inner">
+                          <div className="absolute inset-1 rounded-xl bg-gradient-to-br from-slate-300 via-slate-200 to-slate-300 flex items-center justify-center">
+                            <span className="text-3xl text-slate-500 opacity-60">⭐</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-slate-600">Второй шаг</p>
+                      <p className="text-xs text-slate-400">В ожидании</p>
+                    </div>
                   </div>
-                </div>
-                <p className="text-sm font-medium text-slate-600 text-center">Второй шаг</p>
-              </div>
 
-              {/* Third Badge - Inactive */}
-              <div className="group flex flex-col items-center gap-2 cursor-pointer">
-                <div className="relative">
-                  <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-gray-300/60 via-gray-200/40 to-gray-300/60 shadow-inner">
-                    <div className="h-full w-full rounded-2xl bg-gradient-to-br from-gray-400 to-gray-500 shadow-md flex items-center justify-center">
-                      <div className="h-10 w-10 rounded-xl bg-white/60 backdrop-blur-sm flex items-center justify-center">
-                        <span className="text-2xl text-gray-600 opacity-70">⭐</span>
+                  {/* Third Badge - Inactive */}
+                  <div className="group flex flex-col items-center gap-3 cursor-pointer">
+                    <div className="relative">
+                      <div className="h-20 w-20 rounded-3xl bg-gradient-to-br from-slate-100 via-slate-50 to-slate-100 shadow-md border border-slate-200/50">
+                        <div className="absolute inset-1 rounded-2xl bg-gradient-to-br from-slate-200 via-slate-100 to-slate-200 shadow-inner">
+                          <div className="absolute inset-1 rounded-xl bg-gradient-to-br from-slate-300 via-slate-200 to-slate-300 flex items-center justify-center">
+                            <span className="text-3xl text-slate-500 opacity-60">⭐</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-slate-600">Третий шаг</p>
+                      <p className="text-xs text-slate-400">В ожидании</p>
+                    </div>
                   </div>
-                </div>
-                <p className="text-sm font-medium text-slate-600 text-center">Третий шаг</p>
-              </div>
 
-              {/* Fourth Badge - Inactive */}
-              <div className="group flex flex-col items-center gap-2 cursor-pointer">
-                <div className="relative">
-                  <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-gray-300/60 via-gray-200/40 to-gray-300/60 shadow-inner">
-                    <div className="h-full w-full rounded-2xl bg-gradient-to-br from-gray-400 to-gray-500 shadow-md flex items-center justify-center">
-                      <div className="h-10 w-10 rounded-xl bg-white/60 backdrop-blur-sm flex items-center justify-center">
-                        <span className="text-2xl text-gray-600 opacity-70">⭐</span>
+                  {/* Fourth Badge - Inactive */}
+                  <div className="group flex flex-col items-center gap-3 cursor-pointer">
+                    <div className="relative">
+                      <div className="h-20 w-20 rounded-3xl bg-gradient-to-br from-slate-100 via-slate-50 to-slate-100 shadow-md border border-slate-200/50">
+                        <div className="absolute inset-1 rounded-2xl bg-gradient-to-br from-slate-200 via-slate-100 to-slate-200 shadow-inner">
+                          <div className="absolute inset-1 rounded-xl bg-gradient-to-br from-slate-300 via-slate-200 to-slate-300 flex items-center justify-center">
+                            <span className="text-3xl text-slate-500 opacity-60">⭐</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-slate-600">Четвертый шаг</p>
+                      <p className="text-xs text-slate-400">В ожидании</p>
+                    </div>
                   </div>
-                </div>
-                <p className="text-sm font-medium text-slate-600 text-center">Четвертый шаг</p>
-              </div>
 
-              {/* Fifth Badge - Inactive */}
-              <div className="group flex flex-col items-center gap-2 cursor-pointer">
-                <div className="relative">
-                  <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-gray-300/60 via-gray-200/40 to-gray-300/60 shadow-inner">
-                    <div className="h-full w-full rounded-2xl bg-gradient-to-br from-gray-400 to-gray-500 shadow-md flex items-center justify-center">
-                      <div className="h-10 w-10 rounded-xl bg-white/60 backdrop-blur-sm flex items-center justify-center">
-                        <span className="text-2xl text-gray-600 opacity-70">⭐</span>
+                  {/* Fifth Badge - Inactive */}
+                  <div className="group flex flex-col items-center gap-3 cursor-pointer">
+                    <div className="relative">
+                      <div className="h-20 w-20 rounded-3xl bg-gradient-to-br from-slate-100 via-slate-50 to-slate-100 shadow-md border border-slate-200/50">
+                        <div className="absolute inset-1 rounded-2xl bg-gradient-to-br from-slate-200 via-slate-100 to-slate-200 shadow-inner">
+                          <div className="absolute inset-1 rounded-xl bg-gradient-to-br from-slate-300 via-slate-200 to-slate-300 flex items-center justify-center">
+                            <span className="text-3xl text-slate-500 opacity-60">⭐</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-slate-600">Пятый шаг</p>
+                      <p className="text-xs text-slate-400">В ожидании</p>
+                    </div>
                   </div>
-                </div>
-                <p className="text-sm font-medium text-slate-600 text-center">Пятый шаг</p>
-              </div>
 
-              {/* Sixth Badge - Inactive */}
-              <div className="group flex flex-col items-center gap-2 cursor-pointer">
-                <div className="relative">
-                  <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-gray-300/60 via-gray-200/40 to-gray-300/60 shadow-inner">
-                    <div className="h-full w-full rounded-2xl bg-gradient-to-br from-gray-400 to-gray-500 shadow-md flex items-center justify-center">
-                      <div className="h-10 w-10 rounded-xl bg-white/60 backdrop-blur-sm flex items-center justify-center">
-                        <span className="text-2xl text-gray-600 opacity-70">⭐</span>
+                  {/* Sixth Badge - Inactive */}
+                  <div className="group flex flex-col items-center gap-3 cursor-pointer">
+                    <div className="relative">
+                      <div className="h-20 w-20 rounded-3xl bg-gradient-to-br from-slate-100 via-slate-50 to-slate-100 shadow-md border border-slate-200/50">
+                        <div className="absolute inset-1 rounded-2xl bg-gradient-to-br from-slate-200 via-slate-100 to-slate-200 shadow-inner">
+                          <div className="absolute inset-1 rounded-xl bg-gradient-to-br from-slate-300 via-slate-200 to-slate-300 flex items-center justify-center">
+                            <span className="text-3xl text-slate-500 opacity-60">⭐</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-slate-600">Шестой шаг</p>
+                      <p className="text-xs text-slate-400">В ожидании</p>
+                    </div>
                   </div>
-                </div>
-                <p className="text-sm font-medium text-slate-600 text-center">Шестой шаг</p>
-              </div>
 
-              {/* Seventh Badge - Inactive */}
-              <div className="group flex flex-col items-center gap-2 cursor-pointer">
-                <div className="relative">
-                  <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-gray-300/60 via-gray-200/40 to-gray-300/60 shadow-inner">
-                    <div className="h-full w-full rounded-2xl bg-gradient-to-br from-gray-400 to-gray-500 shadow-md flex items-center justify-center">
-                      <div className="h-10 w-10 rounded-xl bg-white/60 backdrop-blur-sm flex items-center justify-center">
-                        <span className="text-2xl text-gray-600 opacity-70">⭐</span>
+                  {/* Seventh Badge - Inactive */}
+                  <div className="group flex flex-col items-center gap-3 cursor-pointer">
+                    <div className="relative">
+                      <div className="h-20 w-20 rounded-3xl bg-gradient-to-br from-slate-100 via-slate-50 to-slate-100 shadow-md border border-slate-200/50">
+                        <div className="absolute inset-1 rounded-2xl bg-gradient-to-br from-slate-200 via-slate-100 to-slate-200 shadow-inner">
+                          <div className="absolute inset-1 rounded-xl bg-gradient-to-br from-slate-300 via-slate-200 to-slate-300 flex items-center justify-center">
+                            <span className="text-3xl text-slate-500 opacity-60">⭐</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-slate-600">Седьмой шаг</p>
+                      <p className="text-xs text-slate-400">В ожидании</p>
+                    </div>
                   </div>
-                </div>
-                <p className="text-sm font-medium text-slate-600 text-center">Седьмой шаг</p>
-              </div>
 
-              {/* Eighth Badge - Inactive */}
-              <div className="group flex flex-col items-center gap-2 cursor-pointer">
-                <div className="relative">
-                  <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-gray-300/60 via-gray-200/40 to-gray-300/60 shadow-inner">
-                    <div className="h-full w-full rounded-2xl bg-gradient-to-br from-gray-400 to-gray-500 shadow-md flex items-center justify-center">
-                      <div className="h-10 w-10 rounded-xl bg-white/60 backdrop-blur-sm flex items-center justify-center">
-                        <span className="text-2xl text-gray-600 opacity-70">⭐</span>
+                  {/* Eighth Badge - Inactive */}
+                  <div className="group flex flex-col items-center gap-3 cursor-pointer">
+                    <div className="relative">
+                      <div className="h-20 w-20 rounded-3xl bg-gradient-to-br from-slate-100 via-slate-50 to-slate-100 shadow-md border border-slate-200/50">
+                        <div className="absolute inset-1 rounded-2xl bg-gradient-to-br from-slate-200 via-slate-100 to-slate-200 shadow-inner">
+                          <div className="absolute inset-1 rounded-xl bg-gradient-to-br from-slate-300 via-slate-200 to-slate-300 flex items-center justify-center">
+                            <span className="text-3xl text-slate-500 opacity-60">⭐</span>
+                          </div>
+                        </div>
                       </div>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-slate-600">Восьмой шаг</p>
+                      <p className="text-xs text-slate-400">В ожидании</p>
                     </div>
                   </div>
                 </div>
-                <p className="text-sm font-medium text-slate-600 text-center">Восьмой шаг</p>
+
+                {/* Apple-style Action Button */}
+                <div className="flex justify-center">
+                  <button className="group relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-8 py-4 text-white font-semibold shadow-xl shadow-slate-900/25 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-slate-900/30">
+                    {/* Shimmer effect */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                    
+                    <div className="relative flex items-center gap-3">
+                      <span className="text-base">Просмотреть все достижения</span>
+                      <div className="h-5 w-5 rounded-lg bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                        <ArrowRight className="h-3 w-3" />
+                      </div>
+                    </div>
+                  </button>
+                </div>
               </div>
             </div>
-
-            {/* Simple Button */}
-            <button className="flex-shrink-0 px-4 py-3 border border-slate-300 rounded-xl bg-white text-slate-900 text-sm font-medium hover:bg-slate-50 transition-colors">
-              <div className="text-center">
-                <div className="font-semibold">Смотреть историю</div>
-                <div className="font-semibold">достижений</div>
-              </div>
-            </button>
           </div>
         </section>
 
