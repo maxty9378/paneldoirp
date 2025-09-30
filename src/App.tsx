@@ -6,6 +6,7 @@ import { Layout } from './components/Layout';
 import { LoginForm } from './components/LoginForm';
 import { hasCachedUsers } from './lib/userCache';
 import { CreateEventModal } from './components/events/CreateEventModal';
+import CreateEventPage from './pages/CreateEventPage';
 import { DashboardView } from './components/DashboardView';
 import { AdminView } from './components/AdminView';
 import { EventsView } from './components/EventsView';
@@ -57,7 +58,7 @@ function AppContent() {
     loadingPhase,
     retryFetchProfile
   } = useAuth();
-  const [showCreateEventModal, setShowCreateEventModal] = useState(false);
+  const [showEventModal, setShowEventModal] = useState(false);
   const [showQuickLoginOnLogout, setShowQuickLoginOnLogout] = useState(false);
   const navigate = useNavigate();
 
@@ -167,6 +168,7 @@ function AppContent() {
   const getCurrentView = () => {
     if (location.pathname.startsWith('/take-test')) return 'take-test';
     if (location.pathname.startsWith('/test-results/')) return 'take-test';
+    if (location.pathname.startsWith('/create-event')) return 'create-event';
     if (location.pathname.startsWith('/events')) return 'events';
     if (location.pathname.startsWith('/event/')) return 'event-detail';
     if (location.pathname.startsWith('/calendar')) return 'calendar';
@@ -236,7 +238,7 @@ function AppContent() {
 
       console.log('Загруженные данные мероприятия:', event);
       setEditingEvent(event);
-      setShowCreateEventModal(true);
+      setShowEventModal(true);
     } catch (error) {
       console.error('Ошибка при редактировании мероприятия:', error);
     }
@@ -365,7 +367,19 @@ function AppContent() {
             // Логика для экзаменов резерва талантов будет обработана в EventCard
             navigate(`/event/${id}`);
           }
-        }} onEditEvent={id => handleEditEvent(id)} onCreateEvent={() => setShowCreateEventModal(true)} />} />
+        }} onEditEvent={id => handleEditEvent(id)} onCreateEvent={() => navigate('/create-event')} />} />
+        <Route
+          path="/create-event"
+          element={(
+            <CreateEventPage
+              onCancel={() => navigate(-1)}
+              onSuccess={eventId => {
+                setShowEventModal(false);
+                navigate(eventId ? `/event/${eventId}` : '/events');
+              }}
+            />
+          )}
+        />
         <Route path="/event/:eventId" element={<EventDetailPage onStartTest={handleStartTest} />} />
         <Route path="/calendar" element={<CalendarView />} />
         <Route path="/representatives" element={<RepresentativesView />} />
@@ -410,14 +424,14 @@ function AppContent() {
         <Route path="/event-tp-evaluation/:eventId" element={<EventTPEvaluation />} />
         <Route path="/auth/qr/:token" element={<QRAuthPage />} />
       </Routes>
-      <CreateEventModal 
-        isOpen={showCreateEventModal}
+      <CreateEventModal
+        isOpen={showEventModal}
         onClose={() => {
-          setShowCreateEventModal(false);
+          setShowEventModal(false);
           setEditingEvent(null);
         }}
         onSuccess={() => {
-          setShowCreateEventModal(false);
+          setShowEventModal(false);
           setEditingEvent(null);
           navigate('/events');
         }}
