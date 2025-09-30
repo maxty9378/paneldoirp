@@ -60,7 +60,7 @@ const TYPE_LABELS = {
 } as const;
 
 // Карточка мероприятия с визуальной идентикой
-function EventCard({ event }: { event: EventWithDetails }) {
+function EventCard({ event, animationDelay = 0 }: { event: EventWithDetails; animationDelay?: number }) {
   const { userProfile } = useAuth();
 
   // Развёрнутые комментарии на русском по требованию пользователя
@@ -144,8 +144,11 @@ function EventCard({ event }: { event: EventWithDetails }) {
     return typeColors[event.type || 'other'] || 'bg-slate-50 text-slate-700 ring-slate-200';
   }, [event.event_type?.name, event.type]);
 
-  return (
-    <article className="group relative flex h-full min-w-[260px] flex-col overflow-hidden rounded-[26px] border border-white/40 bg-white/70 p-5 shadow-[0_28px_60px_-36px_rgba(15,23,42,0.55)] backdrop-blur-2xl transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_48px_80px_-42px_rgba(15,23,42,0.45)] sm:min-w-0">
+    return (
+      <article
+        className="dashboard-card-enter group relative flex h-full min-w-[260px] flex-col overflow-hidden rounded-[26px] border border-white/40 bg-white/70 p-5 shadow-[0_28px_60px_-36px_rgba(15,23,42,0.55)] backdrop-blur-2xl transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_48px_80px_-42px_rgba(15,23,42,0.45)] sm:min-w-0"
+        style={{ animationDelay: `${animationDelay}ms` }}
+      >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(14,159,110,0.08),transparent_65%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
       <div className="relative flex h-full flex-col">
         <header className="mb-4 flex flex-shrink-0 items-start justify-between gap-3">
@@ -683,8 +686,8 @@ export function DashboardView() {
             </div>
           ) : (
             <div className="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 scrollbar-hide sm:-mx-6 sm:px-6 md:grid md:grid-cols-2 md:gap-6 md:overflow-visible md:mx-0 md:px-0 xl:grid-cols-3">
-              {upcomingEvents.map(event => (
-                <EventCard key={event.id} event={event} />
+              {upcomingEvents.map((event, index) => (
+                <EventCard key={event.id} event={event} animationDelay={index * 70} />
               ))}
             </div>
           )}
