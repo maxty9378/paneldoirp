@@ -329,102 +329,6 @@ function HeroPanel({
           </div>
         </div>
 
-        {/* Instagram Stories Style Achievements */}
-        <div className="flex flex-col items-start gap-4 sm:items-end">
-          <div className="relative w-full max-w-sm rounded-3xl border border-white/15 bg-gradient-to-br from-white/10 to-white/5 p-6 backdrop-blur-xl shadow-2xl">
-            {/* Instagram Stories Progress Bars */}
-            <div className="flex gap-2 mb-6">
-              <div className="flex-1 h-1 bg-white/20 rounded-full overflow-hidden">
-                <div className="h-full w-full bg-white rounded-full"></div>
-              </div>
-              <div className="flex-1 h-1 bg-white/20 rounded-full overflow-hidden">
-                <div className="h-full w-0 bg-white rounded-full"></div>
-              </div>
-              <div className="flex-1 h-1 bg-white/20 rounded-full overflow-hidden">
-                <div className="h-full w-0 bg-white rounded-full"></div>
-              </div>
-            </div>
-            
-            {/* Stories Header */}
-            <div className="flex items-center gap-3 mb-6">
-              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 p-0.5">
-                <div className="h-full w-full rounded-full bg-gradient-to-br from-purple-200 to-purple-100 flex items-center justify-center">
-                  <span className="text-sm">⭐</span>
-                </div>
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-white">Достижения</h3>
-                <p className="text-xs text-white/70">3 истории</p>
-              </div>
-            </div>
-            
-            {/* Stories Content - Instagram Style */}
-            <div className="space-y-4 mb-6">
-              {/* Story 1 - Active */}
-              <div className="group flex items-center gap-4 p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">
-                <div className="relative">
-                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-orange-500 p-0.5">
-                    <div className="h-full w-full rounded-full bg-white flex items-center justify-center">
-                      <span className="text-lg">⭐</span>
-                    </div>
-                  </div>
-                  <div className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-green-500 border-2 border-white"></div>
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-sm font-semibold text-white">Первый шаг</h4>
-                  <p className="text-xs text-white/70">Завершено • 2 мин назад</p>
-                </div>
-                <div className="text-white/50">
-                  <ArrowRight className="h-4 w-4" />
-                </div>
-              </div>
-
-              {/* Story 2 - Pending */}
-              <div className="group flex items-center gap-4 p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">
-                <div className="relative">
-                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-gray-400 to-gray-500 p-0.5">
-                    <div className="h-full w-full rounded-full bg-white/60 flex items-center justify-center">
-                      <span className="text-lg text-gray-600">⭐</span>
-                    </div>
-                  </div>
-                  <div className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-gray-400 border-2 border-white"></div>
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-sm font-semibold text-white/80">Второй шаг</h4>
-                  <p className="text-xs text-white/50">В ожидании</p>
-                </div>
-                <div className="text-white/30">
-                  <ArrowRight className="h-4 w-4" />
-                </div>
-              </div>
-
-              {/* Story 3 - Pending */}
-              <div className="group flex items-center gap-4 p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">
-                <div className="relative">
-                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-gray-400 to-gray-500 p-0.5">
-                    <div className="h-full w-full rounded-full bg-white/60 flex items-center justify-center">
-                      <span className="text-lg text-gray-600">⭐</span>
-                    </div>
-                  </div>
-                  <div className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-gray-400 border-2 border-white"></div>
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-sm font-semibold text-white/80">Третий шаг</h4>
-                  <p className="text-xs text-white/50">В ожидании</p>
-                </div>
-                <div className="text-white/30">
-                  <ArrowRight className="h-4 w-4" />
-                </div>
-              </div>
-            </div>
-
-            {/* Instagram Style Button */}
-            <button className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#3E8074] to-[#4a8f81] py-3 text-sm font-semibold text-white transition-all duration-300 hover:scale-[1.02] hover:shadow-lg">
-              <span>Смотреть все истории</span>
-              <ArrowRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
 
       </div>
     </section>
@@ -711,6 +615,103 @@ export function DashboardView() {
           roleLabel={userProfile?.role ? USER_ROLE_LABELS[userProfile.role] : 'Не определена'}
           gradientAngle={heroGradientAngle}
         />
+
+        {/* Instagram Stories Style Achievements - Full Width */}
+        <section className="space-y-4">
+          <div className="relative w-full rounded-3xl border border-white/15 bg-gradient-to-br from-white/10 to-white/5 p-6 backdrop-blur-xl shadow-2xl">
+            {/* Instagram Stories Progress Bars */}
+            <div className="flex gap-2 mb-6">
+              <div className="flex-1 h-1 bg-white/20 rounded-full overflow-hidden">
+                <div className="h-full w-full bg-white rounded-full"></div>
+              </div>
+              <div className="flex-1 h-1 bg-white/20 rounded-full overflow-hidden">
+                <div className="h-full w-0 bg-white rounded-full"></div>
+              </div>
+              <div className="flex-1 h-1 bg-white/20 rounded-full overflow-hidden">
+                <div className="h-full w-0 bg-white rounded-full"></div>
+              </div>
+            </div>
+            
+            {/* Stories Header */}
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 p-0.5">
+                <div className="h-full w-full rounded-full bg-gradient-to-br from-purple-200 to-purple-100 flex items-center justify-center">
+                  <span className="text-sm">⭐</span>
+                </div>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Достижения</h3>
+                <p className="text-xs text-white/70">3 истории</p>
+              </div>
+            </div>
+            
+            {/* Stories Content - Instagram Style */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              {/* Story 1 - Active */}
+              <div className="group flex items-center gap-4 p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">
+                <div className="relative">
+                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-orange-500 p-0.5">
+                    <div className="h-full w-full rounded-full bg-white flex items-center justify-center">
+                      <span className="text-lg">⭐</span>
+                    </div>
+                  </div>
+                  <div className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-green-500 border-2 border-white"></div>
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-semibold text-white">Первый шаг</h4>
+                  <p className="text-xs text-white/70">Завершено • 2 мин назад</p>
+                </div>
+                <div className="text-white/50">
+                  <ArrowRight className="h-4 w-4" />
+                </div>
+              </div>
+
+              {/* Story 2 - Pending */}
+              <div className="group flex items-center gap-4 p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">
+                <div className="relative">
+                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-gray-400 to-gray-500 p-0.5">
+                    <div className="h-full w-full rounded-full bg-white/60 flex items-center justify-center">
+                      <span className="text-lg text-gray-600">⭐</span>
+                    </div>
+                  </div>
+                  <div className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-gray-400 border-2 border-white"></div>
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-semibold text-white/80">Второй шаг</h4>
+                  <p className="text-xs text-white/50">В ожидании</p>
+                </div>
+                <div className="text-white/30">
+                  <ArrowRight className="h-4 w-4" />
+                </div>
+              </div>
+
+              {/* Story 3 - Pending */}
+              <div className="group flex items-center gap-4 p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">
+                <div className="relative">
+                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-gray-400 to-gray-500 p-0.5">
+                    <div className="h-full w-full rounded-full bg-white/60 flex items-center justify-center">
+                      <span className="text-lg text-gray-600">⭐</span>
+                    </div>
+                  </div>
+                  <div className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-gray-400 border-2 border-white"></div>
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-semibold text-white/80">Третий шаг</h4>
+                  <p className="text-xs text-white/50">В ожидании</p>
+                </div>
+                <div className="text-white/30">
+                  <ArrowRight className="h-4 w-4" />
+                </div>
+              </div>
+            </div>
+
+            {/* Instagram Style Button */}
+            <button className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#3E8074] to-[#4a8f81] py-3 text-sm font-semibold text-white transition-all duration-300 hover:scale-[1.02] hover:shadow-lg">
+              <span>Смотреть все истории</span>
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+        </section>
 
         <section className="space-y-3">
           <h2 className="text-base font-semibold text-slate-900 sm:text-lg">Ваш прогресс</h2>
