@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, CheckCircle, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, CircleCheck as CheckCircle, CircleAlert as AlertCircle } from 'lucide-react';
 import { Spinner } from '../ui/Spinner';
 import { useAuth } from '../../hooks/useAuth';
 
