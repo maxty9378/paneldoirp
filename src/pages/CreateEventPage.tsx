@@ -1,19 +1,19 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  AlertCircle,
   ArrowLeft,
   Calendar,
   CheckCircle2,
+  ChevronRight,
   Clock,
   Link as LinkIcon,
   Loader2,
   MapPin,
   Search,
   Sparkles,
-  Users,
-  AlertCircle,
   Star,
-  ChevronRight
+  Users
 } from 'lucide-react';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
@@ -59,9 +59,7 @@ interface CreateEventPageProps {
   onSuccess?: (eventId?: string) => void;
 }
 
-interface FormErrorState {
-  [key: string]: string;
-}
+type FormErrorState = Record<string, string>;
 
 const initialFormState: CreateEventFormState = {
   title: '',
@@ -76,33 +74,40 @@ const initialFormState: CreateEventFormState = {
   status: 'published'
 };
 
-function buildEventPreview(form: CreateEventFormState, type?: EventTypeOption | null, participants: ParticipantOption[]): string[] {
+const chipsPalette = [
+  'bg-emerald-100 text-emerald-700',
+  'bg-sky-100 text-sky-700',
+  'bg-purple-100 text-purple-700',
+  'bg-amber-100 text-amber-700'
+];
+
+const MIN_TITLE_LENGTH = 5;
+
+function buildEventPreview(
+  form: CreateEventFormState,
+  type: EventTypeOption | undefined,
+  participants: ParticipantOption[]
+): string[] {
   const rows: string[] = [];
 
   if (type) {
     rows.push(`Тип: ${type.name_ru}`);
   }
-
   if (form.start_date) {
     rows.push(`Начало: ${dayjs(form.start_date).format('D MMMM YYYY, HH:mm')}`);
   }
-
   if (form.end_date) {
     rows.push(`Окончание: ${dayjs(form.end_date).format('D MMMM YYYY, HH:mm')}`);
   }
-
   if (form.location) {
     rows.push(`Локация: ${form.location}`);
   }
-
   if (form.meeting_link) {
     rows.push(`Ссылка: ${form.meeting_link}`);
   }
-
   if (participants.length > 0) {
     rows.push(`Участники: ${participants.length}`);
   }
-
   if (form.points) {
     rows.push(`Баллы: ${form.points}`);
   }
@@ -112,22 +117,13 @@ function buildEventPreview(form: CreateEventFormState, type?: EventTypeOption | 
   return rows;
 }
 
-const chipsPalette = [
-  'bg-emerald-100 text-emerald-700',
-  'bg-sky-100 text-sky-700',
-  'bg-purple-100 text-purple-700',
-  'bg-amber-100 text-amber-700'
-];
-
 function getChipColor(index: number) {
   return chipsPalette[index % chipsPalette.length];
 }
 
-const MIN_TITLE_LENGTH = 5;
-
 export default function CreateEventPage({ onCancel, onSuccess }: CreateEventPageProps) {
   const navigate = useNavigate();
-  const { user, userProfile } = useAuth();
+  const { user } = useAuth();
   const [form, setForm] = useState<CreateEventFormState>(initialFormState);
   const [eventTypes, setEventTypes] = useState<EventTypeOption[]>([]);
   const [participants, setParticipants] = useState<ParticipantOption[]>([]);
@@ -138,8 +134,6 @@ export default function CreateEventPage({ onCancel, onSuccess }: CreateEventPage
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<FormErrorState>({});
   const [globalError, setGlobalError] = useState<string | null>(null);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [createdEventId, setCreatedEventId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     const loadEventTypes = async () => {
@@ -173,14 +167,16 @@ export default function CreateEventPage({ onCancel, onSuccess }: CreateEventPage
         console.error('Не удалось загрузить пользователей', error);
       }
 
-      setParticipants((data ?? []).map(user => ({
-        id: user.id,
-        full_name: user.full_name,
-        email: user.email ?? undefined,
-        sap_number: user.sap_number ?? undefined,
-        position: user.position ?? undefined,
-        branch_id: user.branch_id ?? undefined
-      })));
+      setParticipants(
+        (data ?? []).map(user => ({
+          id: user.id,
+          full_name: user.full_name,
+          email: user.email ?? undefined,
+          sap_number: user.sap_number ?? undefined,
+          position: user.position ?? undefined,
+          branch_id: user.branch_id ?? undefined
+        }))
+      );
       setIsLoadingParticipants(false);
     };
 
@@ -193,7 +189,6 @@ export default function CreateEventPage({ onCancel, onSuccess }: CreateEventPage
     }
 
     const selectedType = eventTypes.find(type => type.id === form.event_type_id);
-
     if (!selectedType) {
       return;
     }
@@ -212,7 +207,6 @@ export default function CreateEventPage({ onCancel, onSuccess }: CreateEventPage
     }
 
     const normalized = searchTerm.trim().toLowerCase();
-
     return participants.filter(participant => {
       return (
         participant.full_name.toLowerCase().includes(normalized) ||
@@ -222,35 +216,49 @@ export default function CreateEventPage({ onCancel, onSuccess }: CreateEventPage
     });
   }, [participants, searchTerm]);
 
-  const selectedParticipants = useMemo(
-    () => participants.filter(participant => selectedParticipantIds.includes(participant.id)),
-    [participants, selectedParticipantIds]
+  const selectedParticipants = useMemo(() => {
+    if (!selectedParticipantIds.length) {
+      return [];
+    }
+
+    const ids = new Set(selectedParticipantIds);
+    return participants.filter(participant => ids.has(participant.id));
+  }, [participants, selectedParticipantIds]);
+
+  const selectedType = useMemo(
+    () => eventTypes.find(type => type.id === form.event_type_id),
+    [eventTypes, form.event_type_id]
   );
 
-  const currentEventType = eventTypes.find(type => type.id === form.event_type_id);
-  const previewRows = buildEventPreview(form, currentEventType, selectedParticipants);
+  const previewRows = useMemo(
+    () => buildEventPreview(form, selectedType, selectedParticipants),
+    [form, selectedType, selectedParticipants]
+  );
 
-  const handleFieldChange = (field: keyof CreateEventFormState, value: string) => {
-    setForm(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    setErrors(prev => {
-      if (!prev[field]) {
-        return prev;
-      }
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-  };
+  const participantStats = useMemo(() => {
+    if (!participants.length) {
+      return { selected: 0, total: 0 };
+    }
 
-  const handleToggleParticipant = (participantId: string) => {
+    return {
+      selected: selectedParticipantIds.length,
+      total: participants.length
+    };
+  }, [participants.length, selectedParticipantIds.length]);
+
+  const toggleParticipant = (participantId: string) => {
     setSelectedParticipantIds(prev =>
       prev.includes(participantId)
         ? prev.filter(id => id !== participantId)
         : [...prev, participantId]
     );
+  };
+
+  const handleInputChange = <K extends keyof CreateEventFormState>(field: K, value: CreateEventFormState[K]) => {
+    setForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   const validateForm = () => {
@@ -271,537 +279,551 @@ export default function CreateEventPage({ onCancel, onSuccess }: CreateEventPage
     }
 
     if (form.end_date && form.start_date && dayjs(form.end_date).isBefore(dayjs(form.start_date))) {
-      nextErrors.end_date = 'Дата окончания не может быть раньше начала';
+      nextErrors.end_date = 'Окончание не может быть раньше старта';
     }
 
-    if (currentEventType?.is_online && !form.meeting_link.trim()) {
-      nextErrors.meeting_link = 'Для онлайн формата нужна ссылка';
-    }
-
-    if (!currentEventType?.is_online && !currentEventType?.is_exam && !form.location.trim()) {
+    if (!selectedType?.is_online && !form.location.trim()) {
       nextErrors.location = 'Укажите место проведения';
+    }
+
+    if (selectedType?.is_online && !form.meeting_link.trim()) {
+      nextErrors.meeting_link = 'Добавьте ссылку для онлайн мероприятия';
+    }
+
+    if (form.points) {
+      const parsedPoints = Number(form.points);
+      if (Number.isNaN(parsedPoints) || parsedPoints < 0) {
+        nextErrors.points = 'Введите неотрицательное число';
+      }
+    }
+
+    if (form.max_participants) {
+      const parsedMax = Number(form.max_participants);
+      if (!Number.isInteger(parsedMax) || parsedMax <= 0) {
+        nextErrors.max_participants = 'Введите положительное целое число';
+      }
     }
 
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   };
 
-  const resetForm = () => {
+  const resetPageState = () => {
     setForm(initialFormState);
     setSelectedParticipantIds([]);
     setSearchTerm('');
-    setErrors({});
   };
 
-  const handleSubmit = async (event: FormEvent) => {
+  const handleSuccess = (eventId?: string) => {
+    if (onSuccess) {
+      onSuccess(eventId);
+      return;
+    }
+
+    resetPageState();
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setGlobalError(null);
 
     if (!validateForm()) {
       return;
     }
 
-    try {
-      setIsSaving(true);
-      const payload = {
-        title: form.title.trim(),
-        description: form.description.trim() || null,
-        event_type_id: form.event_type_id,
-        start_date: form.start_date ? new Date(form.start_date).toISOString() : null,
-        end_date: form.end_date ? new Date(form.end_date).toISOString() : null,
-        location: form.location.trim() || null,
-        meeting_link: form.meeting_link.trim() || null,
-        points: form.points ? Number(form.points) : 0,
-        max_participants: form.max_participants ? Number(form.max_participants) : null,
-        status: form.status,
-        creator_id: userProfile?.id ?? user?.id ?? undefined
-      };
+    if (!user) {
+      setGlobalError('Не удалось определить пользователя. Перезайдите в систему.');
+      return;
+    }
 
-      const { data: createdEvent, error: createError } = await supabase
+    setIsSaving(true);
+    setGlobalError(null);
+
+    try {
+      const { data, error } = await supabase
         .from('events')
-        .insert(payload)
-        .select()
+        .insert({
+          title: form.title.trim(),
+          description: form.description.trim() || null,
+          event_type_id: form.event_type_id,
+          start_date: form.start_date,
+          end_date: form.end_date || null,
+          location: form.location.trim() || null,
+          meeting_link: form.meeting_link.trim() || null,
+          points: form.points ? Number(form.points) : null,
+          max_participants: form.max_participants ? Number(form.max_participants) : null,
+          status: form.status,
+          creator_id: user.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select('id')
         .single();
 
-      if (createError) {
-        throw createError;
+      if (error) {
+        throw error;
       }
 
-      if (createdEvent?.id && selectedParticipantIds.length > 0) {
-        const participantsPayload = selectedParticipantIds.map(userId => ({
-          event_id: createdEvent.id,
-          user_id: userId
+      const eventId = data?.id;
+
+      if (eventId && selectedParticipantIds.length) {
+        const participantRows = selectedParticipantIds.map(participantId => ({
+          event_id: eventId,
+          user_id: participantId,
+          attended: false
         }));
 
         const { error: participantsError } = await supabase
           .from('event_participants')
-          .insert(participantsPayload);
+          .insert(participantRows);
 
         if (participantsError) {
-          console.error('Не удалось назначить участников', participantsError);
+          throw participantsError;
         }
       }
 
-      setCreatedEventId(createdEvent?.id);
-      setIsSuccess(true);
-      resetForm();
-      onSuccess?.(createdEvent?.id);
-    } catch (error: any) {
-      console.error('Ошибка создания мероприятия', error);
-      setGlobalError(error?.message ?? 'Не удалось создать мероприятие');
+      handleSuccess(eventId);
+    } catch (error) {
+      console.error('Не удалось создать мероприятие', error);
+      setGlobalError('Не удалось сохранить мероприятие. Попробуйте ещё раз.');
     } finally {
       setIsSaving(false);
     }
   };
 
+  const isLoading = isLoadingTypes || isLoadingParticipants;
+
   const handleCancel = () => {
     if (onCancel) {
       onCancel();
-    } else {
-      navigate('/events');
+      return;
     }
+
+    navigate(-1);
   };
 
   return (
-    <div className="min-h-[calc(100vh-8rem)] bg-gradient-to-br from-slate-50 via-white to-slate-100 py-10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#06A478] via-[#0bb07b] to-[#0d9488] text-white shadow-2xl">
-          <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.4),_rgba(6,164,120,0))]" />
-          <div className="relative z-10 px-6 py-8 sm:px-10">
+    <div className="relative min-h-screen bg-slate-50 pb-20">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-32 -right-24 h-96 w-96 rounded-full bg-[#0E9F6E]/5 blur-3xl" />
+        <div className="absolute -bottom-40 -left-32 h-[420px] w-[420px] rounded-full bg-sky-200/40 blur-3xl" />
+        <div className="absolute left-1/2 top-1/3 h-72 w-72 -translate-x-1/2 rounded-full bg-white/40 blur-3xl" />
+      </div>
+
+      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pt-8 sm:px-6 lg:px-10">
+        <header className="flex flex-col gap-6 rounded-3xl border border-white/60 bg-white/80 p-6 shadow-xl shadow-emerald-100/50 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-2">
             <button
               type="button"
               onClick={handleCancel}
-              className="inline-flex items-center gap-2 text-white/80 hover:text-white transition-colors"
+              className="inline-flex w-max items-center gap-2 text-sm font-medium text-slate-500 transition-colors hover:text-slate-700"
             >
-              <ArrowLeft className="h-5 w-5" />
-              Вернуться назад
+              <ArrowLeft className="h-4 w-4" />
+              Назад
             </button>
-            <div className="mt-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-              <div className="space-y-3">
-                <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur px-3 py-1 rounded-full text-sm">
-                  <Sparkles className="h-4 w-4" />
-                  Новый формат мероприятия
-                </div>
-                <h1 className="text-3xl sm:text-4xl font-semibold leading-tight">
-                  Создание мероприятия
-                </h1>
-                <p className="text-white/80 max-w-2xl">
-                  Заполните информацию о событии, выберите формат и участников. Мы сохраним структуру в стиле дашборта,
-                  чтобы вам было привычно и удобно работать.
-                </p>
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
+                <Sparkles className="h-6 w-6" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                {['Участники', 'Материалы', 'Задачи', 'Рассылки'].map((item, index) => (
-                  <div
-                    key={item}
-                    className={clsx(
-                      'rounded-2xl px-4 py-3 text-sm font-medium bg-white/10 backdrop-blur border border-white/20 shadow-sm flex flex-col gap-1',
-                      index % 2 === 0 ? 'translate-y-0' : 'translate-y-3'
-                    )}
-                  >
-                    <span className="text-white/70">{item}</span>
-                    <span className="text-lg text-white">{index === 0 ? selectedParticipantIds.length : '—'}</span>
-                  </div>
-                ))}
+              <div>
+                <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">Новое мероприятие</h1>
+                <p className="text-sm text-slate-500 sm:text-base">
+                  Заполните основные параметры, выберите участников и опубликуйте событие в пару кликов.
+                </p>
               </div>
             </div>
           </div>
-        </div>
+          <div className="flex flex-col items-start gap-3 text-sm text-slate-500 sm:items-end">
+            <div className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white/70 px-4 py-3 shadow-sm">
+              <Users className="h-4 w-4 text-emerald-500" />
+              <div className="flex items-baseline gap-1 text-slate-700">
+                <span className="text-xl font-semibold text-slate-900">{participantStats.selected}</span>
+                <span>/</span>
+                <span>{participantStats.total}</span>
+              </div>
+              <span>участников</span>
+            </div>
+            {selectedType && (
+              <div className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white/70 px-4 py-3 shadow-sm">
+                <Calendar className="h-4 w-4 text-sky-500" />
+                <span className="text-slate-600">{selectedType.name_ru}</span>
+              </div>
+            )}
+          </div>
+        </header>
 
-        <div className="grid gap-6 lg:grid-cols-[2fr,1fr] items-start">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <section className="bg-white rounded-3xl shadow-xl border border-gray-100 p-6 space-y-6">
-              <header className="space-y-1">
-                <h2 className="text-xl font-semibold text-gray-900">Основная информация</h2>
-                <p className="text-sm text-gray-500">Опишите цель и формат мероприятия</p>
-              </header>
-
-              <div className="space-y-4">
+        <form onSubmit={handleSubmit} className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,_2fr)_minmax(0,_1fr)]">
+          <div className="space-y-6">
+            <section className="rounded-3xl border border-white/70 bg-white/90 p-6 shadow-[0_28px_60px_-40px_rgba(15,23,42,0.35)] backdrop-blur-xl">
+              <div className="mb-6 flex items-center justify-between">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Название мероприятия
+                  <h2 className="text-lg font-semibold text-slate-900">Основные данные</h2>
+                  <p className="text-sm text-slate-500">Название, формат и описание помогут коллегам быстро понять содержание.</p>
+                </div>
+                <Star className="h-6 w-6 text-amber-400" />
+              </div>
+
+              <div className="space-y-5">
+                <div>
+                  <label className="flex items-center justify-between text-sm font-medium text-slate-700">
+                    <span>Название</span>
+                    {errors.title && <span className="text-xs font-normal text-rose-500">{errors.title}</span>}
                   </label>
                   <input
                     type="text"
                     value={form.title}
-                    onChange={event => handleFieldChange('title', event.target.value)}
+                    onChange={event => handleInputChange('title', event.target.value)}
+                    placeholder="Например, Онлайн-сессия для менеджеров"
                     className={clsx(
-                      'w-full px-4 py-3 rounded-2xl border shadow-sm transition focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500',
-                      errors.title ? 'border-red-400' : 'border-gray-200'
+                      'mt-1 w-full rounded-2xl border bg-white/80 px-4 py-3 text-sm shadow-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100',
+                      errors.title ? 'border-rose-300' : 'border-slate-200'
                     )}
-                    placeholder="Например, «Тренинг по продукту»"
                   />
-                  {errors.title && <p className="mt-2 text-sm text-red-500">{errors.title}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Описание
-                  </label>
+                  <label className="text-sm font-medium text-slate-700">Описание</label>
                   <textarea
                     value={form.description}
-                    onChange={event => handleFieldChange('description', event.target.value)}
+                    onChange={event => handleInputChange('description', event.target.value)}
+                    placeholder="Кратко расскажите, о чем мероприятие, и какие ожидания у участников"
                     rows={4}
-                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 shadow-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition resize-none"
-                    placeholder="Расскажите, чему посвящено мероприятие и чего ожидаете от участников"
+                    className="mt-1 w-full resize-none rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm shadow-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
                   />
+                </div>
+
+                <div>
+                  <label className="flex items-center justify-between text-sm font-medium text-slate-700">
+                    <span>Тип мероприятия</span>
+                    {errors.event_type_id && <span className="text-xs font-normal text-rose-500">{errors.event_type_id}</span>}
+                  </label>
+                  <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                    {isLoadingTypes ? (
+                      <div className="flex h-32 items-center justify-center rounded-2xl border border-slate-200 bg-white/70">
+                        <Loader2 className="h-5 w-5 animate-spin text-emerald-500" />
+                      </div>
+                    ) : (
+                      eventTypes.map(type => {
+                        const isActive = form.event_type_id === type.id;
+                        return (
+                          <button
+                            key={type.id}
+                            type="button"
+                            onClick={() => handleInputChange('event_type_id', type.id)}
+                            className={clsx(
+                              'flex items-start gap-3 rounded-2xl border px-4 py-4 text-left shadow-sm transition',
+                              isActive
+                                ? 'border-emerald-200 bg-emerald-50/80 text-emerald-700 shadow-emerald-100'
+                                : 'border-slate-200 bg-white/70 text-slate-600 hover:border-emerald-200/80 hover:bg-emerald-50/40'
+                            )}
+                          >
+                            <div className={clsx('mt-1 h-2.5 w-2.5 rounded-full', isActive ? 'bg-emerald-500' : 'bg-slate-200')} />
+                            <div>
+                              <p className="text-sm font-semibold text-slate-900">{type.name_ru}</p>
+                              <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                                {type.is_online ? 'Онлайн формат' : 'Очное участие'}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
               </div>
             </section>
 
-            <section className="bg-white rounded-3xl shadow-xl border border-gray-100 p-6 space-y-6">
-              <header className="space-y-1">
-                <h2 className="text-xl font-semibold text-gray-900">Формат и расписание</h2>
-                <p className="text-sm text-gray-500">Выберите тип, даты и параметры</p>
-              </header>
+            <section className="rounded-3xl border border-white/70 bg-white/90 p-6 shadow-[0_28px_60px_-40px_rgba(15,23,42,0.35)] backdrop-blur-xl">
+              <div className="mb-6 flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">Расписание и логистика</h2>
+                  <p className="text-sm text-slate-500">Укажите даты и дополнительные параметры события.</p>
+                </div>
+                <Clock className="h-6 w-6 text-slate-400" />
+              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <span className="block text-sm font-medium text-gray-700 mb-2">Тип мероприятия</span>
-                  <div className="flex flex-wrap gap-3">
-                    {isLoadingTypes && (
-                      <div className="text-sm text-gray-500">Загружаем типы...</div>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <label className="flex items-center justify-between text-sm font-medium text-slate-700">
+                    <span>Дата и время начала</span>
+                    {errors.start_date && <span className="text-xs font-normal text-rose-500">{errors.start_date}</span>}
+                  </label>
+                  <div className="mt-1 flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 shadow-sm">
+                    <Calendar className="h-4 w-4 text-emerald-500" />
+                    <input
+                      type="datetime-local"
+                      value={form.start_date}
+                      onChange={event => handleInputChange('start_date', event.target.value)}
+                      className="w-full border-0 bg-transparent text-sm outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="flex items-center justify-between text-sm font-medium text-slate-700">
+                    <span>Окончание</span>
+                    {errors.end_date && <span className="text-xs font-normal text-rose-500">{errors.end_date}</span>}
+                  </label>
+                  <div className="mt-1 flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 shadow-sm">
+                    <Clock className="h-4 w-4 text-slate-400" />
+                    <input
+                      type="datetime-local"
+                      value={form.end_date}
+                      onChange={event => handleInputChange('end_date', event.target.value)}
+                      className="w-full border-0 bg-transparent text-sm outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="flex items-center justify-between text-sm font-medium text-slate-700">
+                    <span>{selectedType?.is_online ? 'Ссылка на встречу' : 'Локация'}</span>
+                    {selectedType?.is_online && errors.meeting_link && (
+                      <span className="text-xs font-normal text-rose-500">{errors.meeting_link}</span>
                     )}
-                    {!isLoadingTypes && eventTypes.length === 0 && (
-                      <div className="text-sm text-gray-500">Типы мероприятий недоступны</div>
+                    {!selectedType?.is_online && errors.location && (
+                      <span className="text-xs font-normal text-rose-500">{errors.location}</span>
                     )}
-                    {eventTypes.map(type => {
-                      const isActive = form.event_type_id === type.id;
+                  </label>
+                  <div className="mt-1 flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 shadow-sm">
+                    {selectedType?.is_online ? (
+                      <LinkIcon className="h-4 w-4 text-sky-500" />
+                    ) : (
+                      <MapPin className="h-4 w-4 text-rose-400" />
+                    )}
+                    <input
+                      type="text"
+                      value={selectedType?.is_online ? form.meeting_link : form.location}
+                      onChange={event =>
+                        selectedType?.is_online
+                          ? handleInputChange('meeting_link', event.target.value)
+                          : handleInputChange('location', event.target.value)
+                      }
+                      placeholder={selectedType?.is_online ? 'https://meet...' : 'Москва, офис на Тверской, зал №2'}
+                      className="w-full border-0 bg-transparent text-sm outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="flex items-center justify-between text-sm font-medium text-slate-700">
+                    <span>Баллы за участие</span>
+                    {errors.points && <span className="text-xs font-normal text-rose-500">{errors.points}</span>}
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={form.points}
+                    onChange={event => handleInputChange('points', event.target.value)}
+                    className={clsx(
+                      'mt-1 w-full rounded-2xl border bg-white/80 px-4 py-3 text-sm shadow-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100',
+                      errors.points ? 'border-rose-300' : 'border-slate-200'
+                    )}
+                  />
+                </div>
+
+                <div>
+                  <label className="flex items-center justify-between text-sm font-medium text-slate-700">
+                    <span>Максимум участников</span>
+                    {errors.max_participants && <span className="text-xs font-normal text-rose-500">{errors.max_participants}</span>}
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={form.max_participants}
+                    onChange={event => handleInputChange('max_participants', event.target.value)}
+                    className={clsx(
+                      'mt-1 w-full rounded-2xl border bg-white/80 px-4 py-3 text-sm shadow-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100',
+                      errors.max_participants ? 'border-rose-300' : 'border-slate-200'
+                    )}
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <span className="text-sm font-medium text-slate-700">Статус</span>
+                  <div className="mt-3 flex gap-3">
+                    {(['published', 'draft'] as const).map(status => {
+                      const isActive = form.status === status;
                       return (
                         <button
-                          key={type.id}
+                          key={status}
                           type="button"
-                          onClick={() => handleFieldChange('event_type_id', type.id)}
+                          onClick={() => handleInputChange('status', status)}
                           className={clsx(
-                            'px-4 py-2 rounded-2xl border text-sm transition-all flex items-center gap-2',
+                            'flex flex-1 items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left text-sm shadow-sm transition',
                             isActive
-                              ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm'
-                              : 'border-gray-200 hover:border-emerald-400 hover:text-emerald-600'
+                              ? 'border-emerald-300 bg-emerald-50/80 text-emerald-700 shadow-emerald-100'
+                              : 'border-slate-200 bg-white/70 text-slate-600 hover:border-emerald-200/80 hover:bg-emerald-50/40'
                           )}
                         >
-                          <span>{type.name_ru}</span>
-                          {isActive && <ChevronRight className="h-4 w-4" />}
+                          <div>
+                            <p className="font-semibold capitalize">
+                              {status === 'published' ? 'Опубликовано' : 'Черновик'}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {status === 'published'
+                                ? 'Участники увидят мероприятие сразу после сохранения'
+                                : 'Можете вернуться и завершить заполнение позже'}
+                            </p>
+                          </div>
+                          <CheckCircle2 className={clsx('h-5 w-5', isActive ? 'text-emerald-500' : 'text-slate-300')} />
                         </button>
                       );
                     })}
                   </div>
-                  {errors.event_type_id && <p className="mt-2 text-sm text-red-500">{errors.event_type_id}</p>}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Дата и время начала</label>
-                  <div className="relative">
-                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input
-                      type="datetime-local"
-                      value={form.start_date}
-                      onChange={event => handleFieldChange('start_date', event.target.value)}
-                      className={clsx(
-                        'w-full pl-12 pr-4 py-3 rounded-2xl border shadow-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500',
-                        errors.start_date ? 'border-red-400' : 'border-gray-200'
-                      )}
-                    />
-                  </div>
-                  {errors.start_date && <p className="mt-2 text-sm text-red-500">{errors.start_date}</p>}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Дата и время окончания</label>
-                  <div className="relative">
-                    <Clock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input
-                      type="datetime-local"
-                      value={form.end_date}
-                      onChange={event => handleFieldChange('end_date', event.target.value)}
-                      className={clsx(
-                        'w-full pl-12 pr-4 py-3 rounded-2xl border shadow-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500',
-                        errors.end_date ? 'border-red-400' : 'border-gray-200'
-                      )}
-                    />
-                  </div>
-                  {errors.end_date && <p className="mt-2 text-sm text-red-500">{errors.end_date}</p>}
-                </div>
-
-                {!currentEventType?.is_online && !currentEventType?.is_exam && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Место проведения</label>
-                    <div className="relative">
-                      <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                      <input
-                        type="text"
-                        value={form.location}
-                        onChange={event => handleFieldChange('location', event.target.value)}
-                        className={clsx(
-                          'w-full pl-12 pr-4 py-3 rounded-2xl border shadow-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500',
-                          errors.location ? 'border-red-400' : 'border-gray-200'
-                        )}
-                        placeholder="Город, адрес, аудитория"
-                      />
-                    </div>
-                    {errors.location && <p className="mt-2 text-sm text-red-500">{errors.location}</p>}
-                  </div>
-                )}
-
-                {currentEventType?.is_online && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Ссылка на встречу</label>
-                    <div className="relative">
-                      <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                      <input
-                        type="url"
-                        value={form.meeting_link}
-                        onChange={event => handleFieldChange('meeting_link', event.target.value)}
-                        className={clsx(
-                          'w-full pl-12 pr-4 py-3 rounded-2xl border shadow-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500',
-                          errors.meeting_link ? 'border-red-400' : 'border-gray-200'
-                        )}
-                        placeholder="https://zoom.us/..."
-                      />
-                    </div>
-                    {errors.meeting_link && <p className="mt-2 text-sm text-red-500">{errors.meeting_link}</p>}
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Баллы за участие</label>
-                  <div className="relative">
-                    <Star className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input
-                      type="number"
-                      min={0}
-                      value={form.points}
-                      onChange={event => handleFieldChange('points', event.target.value)}
-                      className="w-full pl-12 pr-4 py-3 rounded-2xl border border-gray-200 shadow-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Максимум участников</label>
-                  <div className="relative">
-                    <Users className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input
-                      type="number"
-                      min={1}
-                      value={form.max_participants}
-                      onChange={event => handleFieldChange('max_participants', event.target.value)}
-                      className="w-full pl-12 pr-4 py-3 rounded-2xl border border-gray-200 shadow-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="Не ограничено"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Статус</label>
-                  <div className="flex gap-3">
-                    {(['published', 'draft'] as const).map((status, index) => (
-                      <button
-                        key={status}
-                        type="button"
-                        onClick={() => handleFieldChange('status', status)}
-                        className={clsx(
-                          'px-4 py-2 rounded-2xl border text-sm transition-all',
-                          form.status === status
-                            ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm'
-                            : 'border-gray-200 hover:border-emerald-400 hover:text-emerald-600'
-                        )}
-                      >
-                        <span className="font-medium">{status === 'published' ? 'Опубликовано' : 'Черновик'}</span>
-                      </button>
-                    ))}
-                  </div>
                 </div>
               </div>
             </section>
 
-            <section className="bg-white rounded-3xl shadow-xl border border-gray-100 p-6 space-y-6">
-              <header className="flex items-center justify-between gap-4">
+            <section className="rounded-3xl border border-white/70 bg-white/90 p-6 shadow-[0_28px_60px_-40px_rgba(15,23,42,0.35)] backdrop-blur-xl">
+              <div className="mb-6 flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900">Участники</h2>
-                  <p className="text-sm text-gray-500">Выберите коллег, которых нужно пригласить</p>
+                  <h2 className="text-lg font-semibold text-slate-900">Участники</h2>
+                  <p className="text-sm text-slate-500">Используйте поиск, чтобы быстро подобрать коллег и команды.</p>
                 </div>
-                <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 text-emerald-700 px-4 py-2 text-sm font-medium">
-                  <Users className="h-4 w-4" />
-                  {selectedParticipantIds.length} выбрано
-                </span>
-              </header>
-
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <input
-                  type="search"
-                  value={searchTerm}
-                  onChange={event => setSearchTerm(event.target.value)}
-                  placeholder="Поиск по имени или e-mail"
-                  className="w-full pl-12 pr-4 py-3 rounded-2xl border border-gray-200 shadow-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                />
+                <Users className="h-6 w-6 text-emerald-500" />
               </div>
 
-              <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
-                {isLoadingParticipants && (
-                  <div className="flex items-center justify-center py-12 text-sm text-gray-500">
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" /> Загрузка пользователей...
+              <div className="flex flex-col gap-5">
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 shadow-sm">
+                    <Search className="h-4 w-4 text-slate-400" />
+                    <input
+                      type="search"
+                      value={searchTerm}
+                      onChange={event => setSearchTerm(event.target.value)}
+                      placeholder="Поиск по имени, email или SAP"
+                      className="w-full border-0 bg-transparent text-sm outline-none"
+                    />
                   </div>
-                )}
-                {!isLoadingParticipants && filteredParticipants.length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-12 text-center text-sm text-gray-500 border border-dashed border-gray-200 rounded-2xl">
-                    <Users className="h-6 w-6 text-gray-400 mb-2" />
-                    Не найдено пользователей по запросу
+                  <div className="text-xs text-slate-500">
+                    Выбрано участников: <span className="font-medium text-slate-700">{selectedParticipantIds.length}</span>
                   </div>
-                )}
-                {!isLoadingParticipants && filteredParticipants.map((participant, index) => {
-                  const isSelected = selectedParticipantIds.includes(participant.id);
-                  return (
-                    <label
-                      key={participant.id}
-                      className={clsx(
-                        'flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all cursor-pointer',
-                        isSelected
-                          ? 'border-emerald-500 bg-emerald-50/60'
-                          : 'border-gray-200 hover:border-emerald-400 hover:bg-emerald-50/40'
-                      )}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => handleToggleParticipant(participant.id)}
-                        className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 rounded"
-                      />
-                      <div className="flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-medium text-gray-900">{participant.full_name}</span>
-                          {participant.position && (
-                            <span className={clsx('px-2 py-1 rounded-full text-xs font-medium', getChipColor(index))}>
-                              {participant.position}
-                            </span>
+                </div>
+
+                <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
+                  {isLoadingParticipants ? (
+                    <div className="flex h-48 items-center justify-center rounded-2xl border border-slate-200 bg-white/70">
+                      <Loader2 className="h-5 w-5 animate-spin text-emerald-500" />
+                    </div>
+                  ) : filteredParticipants.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-white/70 py-12 text-center text-sm text-slate-500">
+                      <AlertCircle className="h-5 w-5 text-slate-400" />
+                      По вашему запросу ничего не найдено
+                    </div>
+                  ) : (
+                    filteredParticipants.map((participant, index) => {
+                      const isSelected = selectedParticipantIds.includes(participant.id);
+                      return (
+                        <button
+                          key={participant.id}
+                          type="button"
+                          onClick={() => toggleParticipant(participant.id)}
+                          className={clsx(
+                            'flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left text-sm shadow-sm transition',
+                            isSelected
+                              ? 'border-emerald-200 bg-emerald-50/90 text-emerald-700 shadow-emerald-100'
+                              : 'border-slate-200 bg-white/80 text-slate-600 hover:border-emerald-200/80 hover:bg-emerald-50/40'
                           )}
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {participant.email || participant.sap_number || 'Без контактов'}
-                        </div>
-                      </div>
-                    </label>
-                  );
-                })}
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-slate-900">{participant.full_name}</p>
+                            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                              {participant.email && <span>{participant.email}</span>}
+                              {participant.sap_number && <span>SAP: {participant.sap_number}</span>}
+                              {participant.position && <span>{participant.position}</span>}
+                            </div>
+                          </div>
+                          <div className={clsx('text-xs font-medium', getChipColor(index))}>
+                            {isSelected ? 'В списке' : 'Добавить'}
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+
+                {selectedParticipants.length > 0 && (
+                  <div className="rounded-2xl border border-emerald-200/70 bg-emerald-50/70 p-4 text-xs text-emerald-700">
+                    <p className="font-semibold">Уже выбрали:</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {selectedParticipants.slice(0, 8).map((participant, index) => (
+                        <span
+                          key={participant.id}
+                          className={clsx(
+                            'inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-medium shadow-sm',
+                            getChipColor(index)
+                          )}
+                        >
+                          <Users className="h-3 w-3" />
+                          {participant.full_name}
+                        </span>
+                      ))}
+                      {selectedParticipants.length > 8 && (
+                        <span className="rounded-full bg-white/70 px-3 py-1 text-[11px] font-semibold text-emerald-700 shadow-sm">
+                          +{selectedParticipants.length - 8}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </section>
+          </div>
 
-            {globalError && (
-              <div className="bg-red-50 border border-red-200 text-red-700 rounded-2xl px-4 py-3 flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 mt-0.5" />
-                <div>
-                  <p className="font-medium">Ошибка</p>
-                  <p className="text-sm">{globalError}</p>
-                </div>
-              </div>
-            )}
+          <aside className="flex flex-col gap-6">
+            <section className="rounded-3xl border border-white/70 bg-white/90 p-6 shadow-[0_28px_60px_-40px_rgba(15,23,42,0.35)] backdrop-blur-xl">
+              <h2 className="text-lg font-semibold text-slate-900">Предпросмотр</h2>
+              <p className="mt-1 text-sm text-slate-500">Проверьте ключевые детали, прежде чем сохранить мероприятие.</p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="px-5 py-3 rounded-2xl border border-gray-200 text-gray-700 hover:text-gray-900 hover:border-gray-300 transition"
-              >
-                Отмена
-              </button>
-              <button
-                type="submit"
-                disabled={isSaving}
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-medium shadow-lg shadow-emerald-200/60 hover:from-emerald-600 hover:to-emerald-700 transition disabled:opacity-70 disabled:cursor-not-allowed"
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    Сохраняем...
-                  </>
-                ) : (
-                  'Создать мероприятие'
-                )}
-              </button>
-            </div>
-          </form>
-
-          <aside className="space-y-6">
-            <section className="bg-white rounded-3xl shadow-xl border border-gray-100 p-6 space-y-6 sticky top-24">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">Предпросмотр</h3>
-                <span className="inline-flex items-center gap-2 text-sm text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
-                  <Sparkles className="h-4 w-4" />
-                  Автообновление
-                </span>
-              </div>
-              <div className="space-y-3">
-                {previewRows.length === 0 && (
-                  <p className="text-sm text-gray-500">
-                    Заполните форму, чтобы увидеть сводку будущего мероприятия.
-                  </p>
-                )}
-                {previewRows.map(row => (
-                  <div
-                    key={row}
-                    className="flex items-start gap-3 p-3 rounded-2xl border border-gray-200 hover:border-emerald-300 transition"
-                  >
-                    <div className="mt-1 h-2 w-2 rounded-full bg-emerald-500" />
-                    <div className="text-sm text-gray-700">{row}</div>
+              <div className="mt-6 space-y-4">
+                {previewRows.map((row, index) => (
+                  <div key={index} className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-white/60 px-4 py-3 text-sm text-slate-600">
+                    <ChevronRight className="mt-1 h-4 w-4 text-emerald-500" />
+                    <span>{row}</span>
                   </div>
                 ))}
               </div>
-              {selectedParticipants.length > 0 && (
-                <div className="space-y-3">
-                  <h4 className="text-sm font-semibold text-gray-700">Выбранные участники</h4>
-                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                    {selectedParticipants.slice(0, 6).map(participant => (
-                      <div key={participant.id} className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-emerald-50/60">
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{participant.full_name}</p>
-                          <p className="text-xs text-gray-500">{participant.email || participant.sap_number || 'Без контактов'}</p>
-                        </div>
-                      </div>
-                    ))}
-                    {selectedParticipants.length > 6 && (
-                      <p className="text-xs text-gray-500">
-                        и ещё {selectedParticipants.length - 6}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
             </section>
 
-            {isSuccess && (
-              <section className="bg-emerald-500 text-white rounded-3xl shadow-xl p-6 space-y-4 animate-in fade-in slide-in-from-bottom">
-                <div className="flex items-center gap-3">
-                  <div className="bg-white/20 rounded-full p-2">
-                    <CheckCircle2 className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold">Мероприятие создано</h3>
-                    <p className="text-sm text-white/80">Мы сохранили его в списке событий</p>
-                  </div>
+            <section className="rounded-3xl border border-emerald-200 bg-emerald-50/70 p-6 text-emerald-800 shadow-[0_28px_60px_-40px_rgba(16,185,129,0.45)] backdrop-blur-xl">
+              <h2 className="text-lg font-semibold">Готовы опубликовать?</h2>
+              <p className="mt-1 text-sm text-emerald-700">
+                Проверяем, что все данные заполнены. Вы всегда сможете вернуться и отредактировать событие.
+              </p>
+
+              {globalError && (
+                <div className="mt-4 rounded-2xl border border-rose-200 bg-white/70 px-4 py-3 text-sm text-rose-600">
+                  {globalError}
                 </div>
-                <div className="flex flex-col gap-3">
-                  <button
-                    type="button"
-                    onClick={() => navigate('/events')}
-                    className="px-4 py-3 rounded-2xl bg-white text-emerald-600 font-medium hover:bg-emerald-50 transition"
-                  >
-                    Перейти к мероприятиям
-                  </button>
-                  {createdEventId && (
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/event/${createdEventId}`)}
-                      className="px-4 py-3 rounded-2xl border border-white/60 text-white hover:bg-white/10 transition"
-                    >
-                      Открыть карточку события
-                    </button>
+              )}
+
+              <div className="mt-6 flex flex-col gap-3">
+                <button
+                  type="submit"
+                  disabled={isLoading || isSaving}
+                  className={clsx(
+                    'inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-emerald-600',
+                    (isLoading || isSaving) && 'cursor-not-allowed opacity-60'
                   )}
-                </div>
-              </section>
-            )}
+                >
+                  {(isLoading || isSaving) && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {isSaving ? 'Сохраняем…' : 'Сохранить мероприятие'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-white/80 px-4 py-3 text-sm font-semibold text-emerald-700 transition hover:border-emerald-300 hover:bg-white"
+                >
+                  Отменить
+                </button>
+              </div>
+
+              <p className="mt-4 text-xs text-emerald-700/80">
+                После сохранения участники получат приглашение в зависимости от настроек уведомлений.
+              </p>
+            </section>
           </aside>
-        </div>
+        </form>
       </div>
     </div>
   );
