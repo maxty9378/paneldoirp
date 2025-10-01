@@ -3,9 +3,10 @@ import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation, usePa
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { supabase } from './lib/supabase';
 import { Layout } from './components/Layout';
-import { LoginForm } from './components/LoginForm';
+import { LoginPage } from './components/LoginPage/LoginPage';
 import { hasCachedUsers } from './lib/userCache';
 import { CreateEventModal } from './components/events/CreateEventModal';
+// Импорт CreateEventPage только один раз — для других роутов, если нужно (но для модалки он не юзается)
 import CreateEventPage from './pages/CreateEventPage';
 import { DashboardView } from './components/DashboardView';
 import { AdminView } from './components/AdminView';
@@ -24,7 +25,7 @@ import CaseEvaluationPage from './components/exam/CaseEvaluationPage';
 import ExpertSchedulePage from './components/exam/ExpertSchedulePage';
 import ExpertRouteGuard from './components/ExpertRouteGuard';
 import MobileLayout from './components/layout/MobileLayout';
-import { RefreshCw, AlertOctagon } from 'lucide-react';
+import { RefreshCw, OctagonAlert as AlertOctagon } from 'lucide-react';
 import TakeTestPage from './pages/TakeTestPage';
 import TestResultsPage from './pages/TestResultsPage';
 import EventTestResultsPage from './pages/EventTestResultsPage';
@@ -58,7 +59,7 @@ function AppContent() {
     loadingPhase,
     retryFetchProfile
   } = useAuth();
-  const [showEventModal, setShowEventModal] = useState(false);
+  const [showEventModal, setShowEventModal] = useState(false); // Состояние для модалки создания/редактирования события
   const [showQuickLoginOnLogout, setShowQuickLoginOnLogout] = useState(false);
   const navigate = useNavigate();
 
@@ -143,8 +144,7 @@ function AppContent() {
     checkStoredSession();
   }, [user]); // Добавляем user в зависимости
   
-  const [editingEvent, setEditingEvent] = useState<any>(null);
-  // Удаляем testAttemptDetails и связанные функции
+  const [editingEvent, setEditingEvent] = useState<any>(null); // Состояние для редактируемого события (null для создания)
   const [loadingSeconds, setLoadingSeconds] = useState(0);
   const location = useLocation();
   const isAuthCallback = location.pathname === '/auth/callback';
@@ -168,7 +168,6 @@ function AppContent() {
   const getCurrentView = () => {
     if (location.pathname.startsWith('/take-test')) return 'take-test';
     if (location.pathname.startsWith('/test-results/')) return 'take-test';
-    if (location.pathname.startsWith('/create-event')) return 'create-event';
     if (location.pathname.startsWith('/events')) return 'events';
     if (location.pathname.startsWith('/event/')) return 'event-detail';
     if (location.pathname.startsWith('/calendar')) return 'calendar';
@@ -203,6 +202,7 @@ function AppContent() {
     navigate(url);
   };
 
+  // Обработчик для редактирования события — загружает данные и открывает модалку
   const handleEditEvent = async (eventId: string) => {
     console.log('handleEditEvent вызвана с eventId:', eventId);
     try {
@@ -237,11 +237,17 @@ function AppContent() {
       }
 
       console.log('Загруженные данные мероприятия:', event);
-      setEditingEvent(event);
-      setShowEventModal(true);
+      setEditingEvent(event); // Устанавливаем событие для редактирования
+      setShowEventModal(true); // Открываем модалку
     } catch (error) {
       console.error('Ошибка при редактировании мероприятия:', error);
     }
+  };
+
+  // Функция для открытия модалки создания (null для editingEvent значит — новое событие)
+  const handleCreateEvent = () => {
+    setEditingEvent(null); // Сброс для чистого создания
+    setShowEventModal(true); // Открываем модалку
   };
 
   // Track loading time
@@ -259,23 +265,24 @@ function AppContent() {
     };
   }, [loading]);
 
-  // Навигация для запуска теста
-  // Удаляем handleStartTest, handleTestComplete, handleCancelTest
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex items-center justify-center p-4">
-        {/* Простые фоновые элементы */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -right-32 h-96 w-96 rounded-full bg-gradient-to-br from-[#06A478]/10 to-[#4ade80]/10" />
-          <div className="absolute -bottom-40 -left-32 h-96 w-96 rounded-full bg-gradient-to-br from-[#4ade80]/10 to-[#86efac]/10" />
+      <div className="min-h-screen relative overflow-hidden flex items-center justify-center p-4">
+        {/* Фон в стиле Apple 2025 */}
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-blue-50" />
+          <div className="absolute top-0 left-0 w-full h-full">
+            <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full bg-gradient-to-br from-blue-400/20 via-cyan-300/20 to-teal-400/20 blur-3xl animate-pulse" style={{ animationDuration: '8s' }} />
+            <div className="absolute bottom-[-20%] left-[-10%] w-[700px] h-[700px] rounded-full bg-gradient-to-tr from-emerald-300/20 via-green-400/20 to-lime-300/20 blur-3xl animate-pulse" style={{ animationDuration: '10s', animationDelay: '2s' }} />
+          </div>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.8),transparent_50%)]" />
         </div>
-        
-        <div className="relative z-10 bg-white/95 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/60 max-w-md mx-auto">
+
+        <div className="relative z-10 bg-white/80 backdrop-blur-2xl rounded-3xl p-8 shadow-2xl border border-white/50 max-w-md mx-auto">
           <div className="text-center">
             <Spinner size={48} className="mx-auto mb-6" label="Загружаем" />
 
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">Загрузка приложения</h2>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-2">Загрузка приложения</h2>
             <p className="text-gray-600 mb-4">
               {loadingPhase === 'initializing' && 'Инициализация...'}
               {loadingPhase === 'session-fetch' && 'Проверка сессии...'}
@@ -283,15 +290,15 @@ function AppContent() {
               {loadingPhase === 'auth-change' && 'Обработка авторизации...'}
               {!['initializing', 'session-fetch', 'profile-fetch', 'auth-change'].includes(loadingPhase) && 'Подготовка интерфейса...'}
             </p>
-            
+
             {loadingSeconds > 3 && (
               <p className="text-sm text-gray-500 mb-4">
                 Время загрузки: {loadingSeconds} сек.
               </p>
             )}
-            
+
             {authError && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 text-left">
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4 text-left">
                 <div className="flex items-start">
                   <AlertOctagon className="h-5 w-5 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
                   <div>
@@ -301,13 +308,13 @@ function AppContent() {
                 </div>
               </div>
             )}
-            
+
             {loadingSeconds > 5 && (
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 {authError && retryFetchProfile && (
                   <button
                     onClick={retryFetchProfile}
-                    className="inline-flex items-center justify-center px-4 py-2 bg-[#06A478] hover:bg-[#05976b] text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+                    className="inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
                   >
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Повторить попытку
@@ -315,7 +322,7 @@ function AppContent() {
                 )}
                 <button
                   onClick={resetAuth}
-                  className="inline-flex items-center justify-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+                  className="inline-flex items-center justify-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
                 >
                   🧹 Очистить кэш и сбросить
                 </button>
@@ -332,22 +339,11 @@ function AppContent() {
     if (isAuthFlow || loadingPhase === 'initializing' || loadingPhase === 'session-fetch' || loadingPhase === 'auth-change') {
       return null; // оверлей уже показан глобально
     }
-    return (
-      <div className="login-container min-h-screen bg-gradient-to-br from-gray-50 to-white flex items-center justify-center p-4">
-        {/* Простые декоративные элементы без анимации */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -right-32 h-96 w-96 rounded-full bg-gradient-to-br from-[#06A478]/10 to-[#4ade80]/10" />
-          <div className="absolute -bottom-40 -left-32 h-96 w-96 rounded-full bg-gradient-to-br from-[#4ade80]/10 to-[#86efac]/10" />
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-72 w-72 rounded-full bg-gradient-to-br from-[#06A478]/5 to-[#22c55e]/5" />
-        </div>
-        
-        {/* Основной контент */}
-        <div className="relative z-10 w-full max-w-md">
-          <LoginForm />
-        </div>
-      </div>
-    );
+    return <LoginPage />;
   }
+
+  // Фикс роута /events: передаем onCreateEvent как handleCreateEvent (открывает модалку вместо navigate)
+  // onEditEvent остается handleEditEvent, onNavigateToEvent — как было
   return (
     <>
       <LoadingOverlay
@@ -357,144 +353,144 @@ function AppContent() {
       />
       <Layout currentView={currentView}>
         <Routes>
-        <Route path="/" element={<DashboardView />} />
-        <Route path="/events" element={<EventsView onNavigateToEvent={id => {
-          // Для экспертов все мероприятия ведут на страницу эксперта
-          if (userProfile?.role === 'expert') {
-            navigate('/expert-exam/36520f72-c191-4e32-ba02-aa17c482c50b');
-          } else {
-            // Для администраторов и других ролей ведем на обычную страницу мероприятия
-            // Логика для экзаменов резерва талантов будет обработана в EventCard
-            navigate(`/event/${id}`);
-          }
-        }} onEditEvent={id => handleEditEvent(id)} onCreateEvent={() => navigate('/create-event')} />} />
-        <Route
-          path="/create-event"
-          element={(
-            <CreateEventPage
-              onCancel={() => navigate(-1)}
-              onSuccess={eventId => {
-                setShowEventModal(false);
-                navigate(eventId ? `/event/${eventId}` : '/events');
-              }}
-            />
-          )}
-        />
-        <Route path="/event/:eventId" element={<EventDetailPage onStartTest={handleStartTest} />} />
-        <Route path="/calendar" element={<CalendarView />} />
-        <Route path="/representatives" element={<RepresentativesView />} />
-        <Route path="/supervisors" element={<SupervisorsView />} />
-        <Route path="/expert-events" element={<ExpertEventsView />} />
-        <Route path="/tasks" element={<TasksView />} />
-        <Route path="/testing" element={<TestingView />} />
-        <Route path="/trainer-territories" element={<TrainerTerritoriesView />} />
-        <Route path="/admin" element={<AdminView />} />
-        <Route path="/employees" element={<EmployeesView />} />
-        <Route path="/exam-reserve" element={<ExamReservePage />} />
-        <Route path="/exam-details/:id" element={<ExamDetailsPage />} />
-        <Route path="/expert-schedule" element={<ExpertSchedulePage />} />
+          <Route path="/" element={<DashboardView />} />
+          {/* Роут /events: теперь onCreateEvent открывает модалку, а не пейдж */}
+          <Route 
+            path="/events" 
+            element={
+              <EventsView 
+                onNavigateToEvent={id => {
+                  // Для экспертов все мероприятия ведут на страницу эксперта
+                  if (userProfile?.role === 'expert') {
+                    navigate('/expert-exam/36520f72-c191-4e32-ba02-aa17c482c50b');
+                  } else {
+                    // Для администраторов и других ролей ведем на обычную страницу мероприятия
+                    // Логика для экзаменов резерва талантов будет обработана в EventCard
+                    navigate(`/event/${id}`);
+                  }
+                }} 
+                onEditEvent={id => handleEditEvent(id)} 
+                onCreateEvent={handleCreateEvent} // <- Фикс: теперь открывает модалку для создания
+              />} 
+          />
+          {/* Убрали роут /create-event полностью — создание только через модалку (фикс #15) */}
+          <Route path="/event/:eventId" element={<EventDetailPage onStartTest={handleStartTest} />} />
+          <Route path="/calendar" element={<CalendarView />} />
+          <Route path="/representatives" element={<RepresentativesView />} />
+          <Route path="/supervisors" element={<SupervisorsView />} />
+          <Route path="/expert-events" element={<ExpertEventsView />} />
+          <Route path="/tasks" element={<TasksView />} />
+          <Route path="/testing" element={<TestingView />} />
+          <Route path="/trainer-territories" element={<TrainerTerritoriesView />} />
+          <Route path="/admin" element={<AdminView />} />
+          <Route path="/employees" element={<EmployeesView />} />
+          <Route path="/exam-reserve" element={<ExamReservePage />} />
+          <Route path="/exam-details/:id" element={<ExamDetailsPage />} />
+          <Route path="/expert-schedule" element={<ExpertSchedulePage />} />
+          
+          {/* Роуты с мобильным меню */}
+          <Route element={<MobileLayout />}>
+            <Route path="/expert-exam/:id" element={
+              <ExpertRouteGuard>
+                <ExpertExamPage />
+              </ExpertRouteGuard>
+            } />
+            <Route path="/expert-exam/:id/schedule" element={
+              <ExpertRouteGuard>
+                <ExpertExamPage />
+              </ExpertRouteGuard>
+            } />
+            <Route path="/expert-exam/:id/evaluations" element={
+              <ExpertRouteGuard>
+                <ExpertExamPage />
+              </ExpertRouteGuard>
+            } />
+            <Route path="/case-evaluation/:examId" element={
+              <ExpertRouteGuard>
+                <CaseEvaluationPage />
+              </ExpertRouteGuard>
+            } />
+          </Route>
+          <Route path="/take-test" element={<TakeTestPage />} />
+          <Route path="/test-results/:attemptId" element={<TestResultsPage />} />
+          <Route path="/event-test-results/:eventId" element={<EventTestResultsPage />} />
+          <Route path="/event-test-review/:eventId" element={<EventTestReviewPage />} />
+          <Route path="/event-tp-evaluation/:eventId" element={<EventTPEvaluation />} />
+          <Route path="/auth/qr/:token" element={<QRAuthPage />} />
+        </Routes>
         
-        {/* Роуты с мобильным меню */}
-        <Route element={<MobileLayout />}>
-          <Route path="/expert-exam/:id" element={
-            <ExpertRouteGuard>
-              <ExpertExamPage />
-            </ExpertRouteGuard>
-          } />
-          <Route path="/expert-exam/:id/schedule" element={
-            <ExpertRouteGuard>
-              <ExpertExamPage />
-            </ExpertRouteGuard>
-          } />
-          <Route path="/expert-exam/:id/evaluations" element={
-            <ExpertRouteGuard>
-              <ExpertExamPage />
-            </ExpertRouteGuard>
-          } />
-          <Route path="/case-evaluation/:examId" element={
-            <ExpertRouteGuard>
-              <CaseEvaluationPage />
-            </ExpertRouteGuard>
-          } />
-        </Route>
-        <Route path="/take-test" element={<TakeTestPage />} />
-        <Route path="/test-results/:attemptId" element={<TestResultsPage />} />
-        <Route path="/event-test-results/:eventId" element={<EventTestResultsPage />} />
-        <Route path="/event-test-review/:eventId" element={<EventTestReviewPage />} />
-        <Route path="/event-tp-evaluation/:eventId" element={<EventTPEvaluation />} />
-        <Route path="/auth/qr/:token" element={<QRAuthPage />} />
-      </Routes>
-      <CreateEventModal
-        isOpen={showEventModal}
-        onClose={() => {
-          setShowEventModal(false);
-          setEditingEvent(null);
-        }}
-        onSuccess={() => {
-          setShowEventModal(false);
-          setEditingEvent(null);
-          navigate('/events');
-        }}
-        editingEvent={editingEvent}
-      />
-      
-      {/* Модальное окно быстрого входа при разлогинивании */}
-      {showQuickLoginOnLogout && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                    <span className="text-blue-600 text-sm font-bold">👋</span>
+        {/* Модалка для создания/редактирования события — теперь основной способ (фикс #15) */}
+        <CreateEventModal
+          isOpen={showEventModal}
+          onClose={() => {
+            setShowEventModal(false);
+            setEditingEvent(null); // Сброс editingEvent при закрытии
+          }}
+          onSuccess={() => {
+            setShowEventModal(false);
+            setEditingEvent(null); // Сброс после успеха
+            navigate('/events'); // Редирект на список событий
+          }}
+          editingEvent={editingEvent} // null для создания, объект для редактирования
+        />
+        
+        {/* Модальное окно быстрого входа при разлогинивании */}
+        {showQuickLoginOnLogout && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <span className="text-blue-600 text-sm font-bold">👋</span>
+                    </div>
+                    <h3 className="text-lg font-semibold">Быстрый вход</h3>
                   </div>
-                  <h3 className="text-lg font-semibold">Быстрый вход</h3>
+                  <button
+                    onClick={() => setShowQuickLoginOnLogout(false)}
+                    className="text-gray-400 hover:text-gray-600 text-xl font-bold"
+                  >
+                    ×
+                  </button>
                 </div>
-                <button
-                  onClick={() => setShowQuickLoginOnLogout(false)}
-                  className="text-gray-400 hover:text-gray-600 text-xl font-bold"
-                >
-                  ×
-                </button>
-              </div>
-              
-              <div className="text-center mb-6">
-                <p className="text-gray-600 mb-4">
-                  Вы вышли из системы. Хотите войти снова?
-                </p>
-                <p className="text-sm text-gray-500">
-                  Выберите аккаунт для быстрого входа или войдите заново
-                </p>
-              </div>
-              
-              <div className="space-y-3">
-                <button
-                  onClick={() => {
-                    setShowQuickLoginOnLogout(false);
-                    // Показываем модальное окно быстрого входа из LoginForm
-                    const quickLoginBtn = document.querySelector('[data-quick-login]') as HTMLButtonElement;
-                    if (quickLoginBtn) {
-                      quickLoginBtn.click();
-                    }
-                  }}
-                  className="w-full flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  <span className="mr-2">⚡</span>
-                  Выбрать из сохраненных
-                </button>
                 
-                <button
-                  onClick={() => setShowQuickLoginOnLogout(false)}
-                  className="w-full px-4 py-3 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  Войти заново
-                </button>
+                <div className="text-center mb-6">
+                  <p className="text-gray-600 mb-4">
+                    Вы вышли из системы. Хотите войти снова?
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Выберите аккаунт для быстрого входа или войдите заново
+                  </p>
+                </div>
+                
+                <div className="space-y-3">
+                  <button
+                    onClick={() => {
+                      setShowQuickLoginOnLogout(false);
+                      // Показываем модальное окно быстрого входа из LoginForm
+                      const quickLoginBtn = document.querySelector('[data-quick-login]') as HTMLButtonElement;
+                      if (quickLoginBtn) {
+                        quickLoginBtn.click();
+                      }
+                    }}
+                    className="w-full flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <span className="mr-2">⚡</span>
+                    Выбрать из сохраненных
+                  </button>
+                  
+                  <button
+                    onClick={() => setShowQuickLoginOnLogout(false)}
+                    className="w-full px-4 py-3 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    Войти заново
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </Layout>
+        )}
+      </Layout>
     </>
   );
 }
