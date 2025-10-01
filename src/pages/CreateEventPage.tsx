@@ -36,6 +36,7 @@ interface EventTypeRecord {
   has_final_test?: boolean | null;
   has_feedback_form?: boolean | null;
   description?: string | null;
+  default_points?: number | null; // <- Фикс: добавили для префилла баллов
 }
 
 interface UserRecord {
@@ -43,6 +44,7 @@ interface UserRecord {
   full_name: string;
   email: string;
   position?: string | null;
+  sap_number?: string | null; // <- Фикс: добавили для поиска
 }
 
 interface FormValues {
@@ -81,6 +83,12 @@ interface EventInsertPayload {
   status: EventStatus;
   creator_id: string | null;
   updated_at: string;
+}
+
+interface CreateEventPageProps {
+  onCancel?: () => void; // <- Фикс: для закрытия модалки
+  onSuccess?: (eventId?: string) => void; // <- Фикс: для успеха в модалке (редирект)
+  editingEvent?: any; // <- Фикс: для режима редактирования (данные события)
 }
 
 const defaultValues: FormValues = {
@@ -142,7 +150,7 @@ function formatStatus(status: EventStatus) {
   }
 }
 
-export default function CreateEventPage() {
+export default function CreateEventPage({ onCancel, onSuccess, editingEvent }: CreateEventPageProps) {
   const navigate = useNavigate();
   const { user, userProfile } = useAuth();
   const [eventTypes, setEventTypes] = useState<EventTypeRecord[]>([]);
@@ -151,9 +159,11 @@ export default function CreateEventPage() {
   const [initialError, setInitialError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [successState, setSuccessState] = useState<SuccessState | null>(null);
+  const [successState, setSuccessState] = useState<SuccessState | null>(null); // <- Фикс: используем только если не в модалке
   const [participantQuery, setParticipantQuery] = useState('');
   const [selectedParticipants, setSelectedParticipants] = useState<UserRecord[]>([]);
+
+  const isEditing = !!editingEvent; // <- Фикс: определяем режим редактирования
 
   const {
     register,
@@ -197,10 +207,52 @@ export default function CreateEventPage() {
         const fullName = userRecord.full_name?.toLowerCase() || '';
         const email = userRecord.email?.toLowerCase() || '';
         const position = userRecord.position?.toLowerCase() || '';
-        return fullName.includes(query) || email.includes(query) || position.includes(query);
+        const sap = userRecord.sap_number?.toLowerCase() || ''; // <- Фикс: добавили поиск по SAP
+        return fullName.includes(query) || email.includes(query) || position.includes(query) || sap.includes(query);
       })
       .slice(0, 15);
   }, [participantQuery, users]);
+
+  // <- Фикс: префилл формы для редактирования
+  useEffect(() => {
+    if (isEditing && editingEvent) {
+      // Заполняем форму данными события
+      setValue('title', editingEvent.title || '');
+      setValue('description', editingEvent.description || '');
+      setValue('eventTypeId', editingEvent.event_type_id || '');
+      setValue('startDateTime', editingEvent.start_date ? editingEvent.start_date.slice(0, 16) : ''); // ISO to local
+      setValue('endDateTime', editingEvent.end_date ? editingEvent.end_date.slice(0, 16) : '');
+      setValue('status', editingEvent.status || 'published');
+      setValue('points', editingEvent.points?.toString() || '');
+      setValue('maxParticipants', editingEvent.max_participants?.toString() || '');
+
+      // Устанавливаем формат по типу события
+      const eventType = eventTypes.find(t => t.id === editingEvent.event_type_id);
+      if (eventType) {
+        setValue('format', eventType.is_online ? 'online' : 'offline');
+        if (eventType.is_online) {
+          setValue('meetingLink', editingEvent.meeting_link || '');
+          setValue('location', ''); // Очищаем локацию для онлайн
+        } else {
+          setValue('location', editingEvent.location || '');
+          setValue('meetingLink', ''); // Очищаем ссылку для оффлайн
+        }
+      } else if (editingEvent.meeting_link) {
+        setValue('format', 'online');
+        setValue('meetingLink', editingEvent.meeting_link);
+      } else if (editingEvent.location) {
+        setValue('format', 'offline');
+        setValue('location', editingEvent.location);
+      }
+
+      // Префилл участников
+      if (editingEvent.event_participants) {
+        const participantIds = editingEvent.event_participants.map((p: any) => p.user_id);
+        const selectedUsers = users.filter(u => participantIds.includes(u.id));
+        setSelectedParticipants(selectedUsers);
+      }
+    }
+  }, [editingEvent, eventTypes, users, setValue, isEditing]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -213,11 +265,11 @@ export default function CreateEventPage() {
         const [eventTypesResponse, usersResponse] = await Promise.all([
           supabase
             .from('event_types')
-            .select('id, name, name_ru, is_online, requires_location, has_entry_test, has_final_test, has_feedback_form, description')
+            .select('id, name, name_ru, is_online, requires_location, has_entry_test, has_final_test, has_feedback_form, description, default_points') // <- Фикс: добавили default_points
             .order('name_ru', { ascending: true }),
           supabase
             .from('users')
-            .select('id, full_name, email, position, status')
+            .select('id, full_name, email, position, status, sap_number') // <- Фикс: добавили sap_number
             .eq('status', 'active')
             .order('full_name', { ascending: true })
         ]);
@@ -236,7 +288,8 @@ export default function CreateEventPage() {
             id: userRecord.id,
             full_name: userRecord.full_name,
             email: userRecord.email,
-            position: userRecord.position
+            position: userRecord.position,
+            sap_number: userRecord.sap_number
           })));
         }
       } catch (error) {
@@ -258,11 +311,16 @@ export default function CreateEventPage() {
     };
   }, []);
 
+  // <- Фикс: автоустановка формата и default_points по типу события
   useEffect(() => {
     if (selectedEventType) {
       setValue('format', selectedEventType.is_online ? 'online' : 'offline');
+      // Автозаполнение баллов, если не заполнено
+      if (!watchPoints && selectedEventType.default_points) {
+        setValue('points', selectedEventType.default_points.toString());
+      }
     }
-  }, [selectedEventType, setValue]);
+  }, [selectedEventType, setValue, watchPoints]);
 
   const toggleParticipant = (participant: UserRecord) => {
     setSelectedParticipants(current => {
@@ -278,6 +336,7 @@ export default function CreateEventPage() {
     setSelectedParticipants(current => current.filter(item => item.id !== participantId));
   };
 
+  // <- Фикс: обработка submit с поддержкой edit (update вместо insert)
   const onSubmit = async (values: FormValues) => {
     if (!canCreateEvents) {
       setSubmitError('У вас нет прав на создание мероприятий.');
@@ -316,52 +375,107 @@ export default function CreateEventPage() {
         updated_at: new Date().toISOString()
       };
 
-      const { data: event, error: eventError } = await supabase
-        .from('events')
-        .insert(payload)
-        .select('id')
-        .single();
+      let eventId: string;
 
-      if (eventError) {
-        throw eventError;
-      }
+      if (isEditing && editingEvent?.id) {
+        // Режим редактирования: update
+        const { data: updatedEvent, error: updateError } = await supabase
+          .from('events')
+          .update(payload)
+          .eq('id', editingEvent.id)
+          .select('id')
+          .single();
 
-      if (selectedParticipants.length > 0) {
-        const participantsPayload = selectedParticipants.map(participant => ({
-          event_id: event.id,
-          user_id: participant.id
-        }));
+        if (updateError) {
+          throw updateError;
+        }
+        eventId = updatedEvent.id;
 
-        const { error: participantsError } = await supabase
+        // Обновляем участников: удаляем старых, добавляем новых
+        await supabase
           .from('event_participants')
-          .insert(participantsPayload);
+          .delete()
+          .eq('event_id', eventId);
 
-        if (participantsError) {
-          throw participantsError;
+        if (selectedParticipants.length > 0) {
+          const participantsPayload = selectedParticipants.map(participant => ({
+            event_id: eventId,
+            user_id: participant.id,
+            attended: false // <- Фикс: по умолчанию false
+          }));
+
+          const { error: participantsError } = await supabase
+            .from('event_participants')
+            .insert(participantsPayload);
+
+          if (participantsError) {
+            throw participantsError;
+          }
+        }
+      } else {
+        // Режим создания: insert
+        const { data: event, error: eventError } = await supabase
+          .from('events')
+          .insert(payload)
+          .select('id')
+          .single();
+
+        if (eventError) {
+          throw eventError;
+        }
+        eventId = event.id;
+
+        if (selectedParticipants.length > 0) {
+          const participantsPayload = selectedParticipants.map(participant => ({
+            event_id: eventId,
+            user_id: participant.id,
+            attended: false // <- Фикс: по умолчанию false
+          }));
+
+          const { error: participantsError } = await supabase
+            .from('event_participants')
+            .insert(participantsPayload);
+
+          if (participantsError) {
+            throw participantsError;
+          }
         }
       }
 
-      setSuccessState({
-        eventId: event.id,
-        title: values.title.trim(),
-        startDateTime: values.startDateTime,
-        eventType: selectedEventType?.name_ru,
-        format: formatType,
-        participantsCount: selectedParticipants.length
-      });
-
-      reset(defaultValues);
-      setSelectedParticipants([]);
-      setParticipantQuery('');
+      // Успех: если в модалке — вызываем onSuccess, иначе показываем successState
+      if (onSuccess) {
+        onSuccess(eventId); // <- Фикс: для модалки — закрытие + редирект в родителе
+      } else {
+        setSuccessState({
+          eventId,
+          title: values.title.trim(),
+          startDateTime: values.startDateTime,
+          eventType: selectedEventType?.name_ru,
+          format: formatType,
+          participantsCount: selectedParticipants.length
+        });
+        reset(defaultValues);
+        setSelectedParticipants([]);
+        setParticipantQuery('');
+      }
     } catch (error) {
-      console.error('Ошибка при создании мероприятия:', error);
-      setSubmitError(error instanceof Error ? error.message : 'Не удалось создать мероприятие. Попробуйте ещё раз.');
+      console.error('Ошибка при создании/редактировании мероприятия:', error);
+      setSubmitError(error instanceof Error ? error.message : 'Не удалось сохранить мероприятие. Попробуйте ещё раз.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const duration = useMemo(() => formatDuration(watchStart, watchEnd), [watchStart, watchEnd]);
+
+  // <- Фикс: обработчик отмены с пропсом
+  const handleCancelClick = () => {
+    if (onCancel) {
+      onCancel(); // Для модалки
+    } else {
+      navigate(-1); // Standalone
+    }
+  };
 
   if (!canCreateEvents) {
     return (
@@ -400,7 +514,7 @@ export default function CreateEventPage() {
           <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-5">
               <button
-                onClick={() => navigate('/events')}
+                onClick={handleCancelClick} // <- Фикс: используем пропс-обработчик
                 className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs font-medium text-white/80 transition hover:bg-white/20"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
@@ -413,10 +527,13 @@ export default function CreateEventPage() {
                   Мастер создания мероприятий
                 </div>
                 <h1 className="text-[30px] font-semibold leading-tight sm:text-[36px]">
-                  Создаём новое мероприятие
+                  {isEditing ? 'Редактируем мероприятие' : 'Создаём новое мероприятие'} {/* <- Фикс: заголовок для edit */}
                 </h1>
                 <p className="max-w-2xl text-sm leading-relaxed text-white/85 sm:text-base">
-                  Сконцентрируйтесь на содержании — мы подсветим важные шаги, предложим тип мероприятия и подскажем, где ещё нужны детали.
+                  {isEditing 
+                    ? 'Обновите параметры и сохраните изменения.' 
+                    : 'Сконцентрируйтесь на содержании — мы подсветим важные шаги, предложим тип мероприятия и подскажем, где ещё нужны детали.'
+                  }
                 </p>
               </div>
             </div>
@@ -471,7 +588,8 @@ export default function CreateEventPage() {
         </div>
       </section>
 
-      {successState && (
+      {/* <- Фикс: success-state только если не в модалке (onSuccess обрабатывается в родителе) */}
+      {!onSuccess && successState && (
         <section className="relative overflow-hidden rounded-[28px] border border-emerald-200/60 bg-emerald-50 px-6 py-8 shadow-[0_30px_80px_-60px_rgba(4,120,87,0.55)] sm:px-10">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.1),transparent_65%)]" />
           <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
@@ -876,7 +994,7 @@ export default function CreateEventPage() {
                   />
                 </div>
 
-                <div className="grid gap-2">
+                <div className="grid gap-2 max-h-60 overflow-y-auto"> {/* <- Фикс: скролл для модалки */}
                   {filteredUsers.length === 0 && (
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
                       Не нашли никого по запросу «{participantQuery}». Попробуйте изменить поисковую фразу.
@@ -901,6 +1019,7 @@ export default function CreateEventPage() {
                           <p className="text-sm font-semibold text-slate-900">{userRecord.full_name}</p>
                           <p className="text-xs text-slate-500">{userRecord.email}</p>
                           {userRecord.position && <p className="text-xs text-slate-400">{userRecord.position}</p>}
+                          {userRecord.sap_number && <p className="text-xs text-slate-400">SAP: {userRecord.sap_number}</p>}
                         </div>
                         <div className={clsx(
                           'flex h-9 w-9 items-center justify-center rounded-xl border text-sm font-semibold transition',
@@ -924,125 +1043,131 @@ export default function CreateEventPage() {
               </div>
             )}
 
-            <div className="sticky bottom-6 z-10 flex flex-wrap items-center justify-between gap-4 rounded-[24px] border border-slate-200/70 bg-white/95 px-5 py-4 shadow-[0_28px_48px_-36px_rgba(15,23,42,0.4)] backdrop-blur">
-              <div className="text-xs text-slate-500">
-                {watchTitle ? 'Не забудьте проверить дату и список участников перед публикацией.' : 'Сначала заполните ключевые поля, чтобы активировать сохранение.'}
+            {/* <- Фикс: кнопки в sticky bottom только если не в модалке; в модалке — родитель управляет */}
+            {!onCancel && (
+              <div className="sticky bottom-6 z-10 flex flex-wrap items-center justify-between gap-4 rounded-[24px] border border-slate-200/70 bg-white/95 px-5 py-4 shadow-[0_28px_48px_-36px_rgba(15,23,42,0.4)] backdrop-blur">
+                <div className="text-xs text-slate-500">
+                  {watchTitle ? 'Не забудьте проверить дату и список участников перед публикацией.' : 'Сначала заполните ключевые поля, чтобы активировать сохранение.'}
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={handleCancelClick}
+                    className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-800"
+                  >
+                    Отмена
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#0EA47A] via-[#0E9F6E] to-[#0C8C5D] px-6 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Сохраняем…
+                      </>
+                    ) : (
+                      isEditing ? 'Обновить мероприятие' : 'Сохранить мероприятие'
+                    )}
+                  </button>
+                </div>
               </div>
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={() => navigate('/events')}
-                  className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-800"
-                >
-                  Отмена
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#0EA47A] via-[#0E9F6E] to-[#0C8C5D] px-6 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Сохраняем…
-                    </>
-                  ) : (
-                    'Сохранить мероприятие'
-                  )}
-                </button>
-              </div>
-            </div>
+            )}
           </form>
 
-          <aside className="space-y-4 xl:sticky xl:top-6">
-            <div className="rounded-[28px] border border-white/60 bg-white/90 p-6 shadow-[0_32px_70px_-40px_rgba(15,23,42,0.4)] backdrop-blur-xl">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-semibold text-slate-900">Предпросмотр</h3>
-                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-600">
-                  {formatStatus(watchStatus)}
-                </span>
-              </div>
-              <div className="mt-4 space-y-4 text-sm text-slate-600">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Название</p>
-                  <p className="mt-1 text-sm font-medium text-slate-900">{watchTitle || 'Добавьте название'}</p>
-                  {watchDescription && <p className="mt-1 text-xs text-slate-500">{watchDescription}</p>}
+          {/* <- Фикс: aside с предпросмотром только если не в модалке (в модалке — компактнее) */}
+          {!onCancel && (
+            <aside className="space-y-4 xl:sticky xl:top-6">
+              <div className="rounded-[28px] border border-white/60 bg-white/90 p-6 shadow-[0_32px_70px_-40px_rgba(15,23,42,0.4)] backdrop-blur-xl">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-semibold text-slate-900">Предпросмотр</h3>
+                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-600">
+                    {formatStatus(watchStatus)}
+                  </span>
                 </div>
-                <div className="grid gap-3">
-                  <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2">
-                    <Calendar className="h-4 w-4 text-emerald-500" />
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Начало</p>
-                      <p className="text-sm font-medium text-slate-800">{formatDateTime(watchStart)}</p>
-                    </div>
+                <div className="mt-4 space-y-4 text-sm text-slate-600">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Название</p>
+                    <p className="mt-1 text-sm font-medium text-slate-900">{watchTitle || 'Добавьте название'}</p>
+                    {watchDescription && <p className="mt-1 text-xs text-slate-500">{watchDescription}</p>}
                   </div>
-                  {watchEnd && (
+                  <div className="grid gap-3">
                     <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2">
-                      <Clock className="h-4 w-4 text-emerald-500" />
+                      <Calendar className="h-4 w-4 text-emerald-500" />
                       <div>
-                        <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Окончание</p>
-                        <p className="text-sm font-medium text-slate-800">{formatDateTime(watchEnd)}</p>
-                        {duration && <p className="text-xs text-emerald-600">Длительность: {duration}</p>}
+                        <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Начало</p>
+                        <p className="text-sm font-medium text-slate-800">{formatDateTime(watchStart)}</p>
                       </div>
                     </div>
-                  )}
-                  <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2">
-                    {watchFormat === 'online' ? <Video className="h-4 w-4 text-emerald-500" /> : <MapPin className="h-4 w-4 text-emerald-500" />}
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Формат</p>
-                      <p className="text-sm font-medium text-slate-800">
-                        {watchFormat === 'online' ? 'Онлайн' : 'Офлайн'}
-                      </p>
-                      {watchFormat === 'online' && watchMeetingLink && (
-                        <p className="text-xs text-slate-500 break-words">{watchMeetingLink}</p>
-                      )}
-                      {watchFormat === 'offline' && watchLocation && (
-                        <p className="text-xs text-slate-500">{watchLocation}</p>
-                      )}
+                    {watchEnd && (
+                      <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2">
+                        <Clock className="h-4 w-4 text-emerald-500" />
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Окончание</p>
+                          <p className="text-sm font-medium text-slate-800">{formatDateTime(watchEnd)}</p>
+                          {duration && <p className="text-xs text-emerald-600">Длительность: {duration}</p>}
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2">
+                      {watchFormat === 'online' ? <Video className="h-4 w-4 text-emerald-500" /> : <MapPin className="h-4 w-4 text-emerald-500" />}
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Формат</p>
+                        <p className="text-sm font-medium text-slate-800">
+                          {watchFormat === 'online' ? 'Онлайн' : 'Офлайн'}
+                        </p>
+                        {watchFormat === 'online' && watchMeetingLink && (
+                          <p className="text-xs text-slate-500 break-words">{watchMeetingLink}</p>
+                        )}
+                        {watchFormat === 'offline' && watchLocation && (
+                          <p className="text-xs text-slate-500">{watchLocation}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
-                    <p className="uppercase tracking-[0.12em] text-slate-400">Баллы</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-800">{watchPoints || '0'}</p>
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+                      <p className="uppercase tracking-[0.12em] text-slate-400">Баллы</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-800">{watchPoints || '0'}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+                      <p className="uppercase tracking-[0.12em] text-slate-400">Лимит</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-800">{watchMaxParticipants || 'Не ограничено'}</p>
+                    </div>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
-                    <p className="uppercase tracking-[0.12em] text-slate-400">Лимит</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-800">{watchMaxParticipants || 'Не ограничено'}</p>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Участники</p>
+                    {selectedParticipants.length > 0 ? (
+                      <ul className="mt-2 space-y-1">
+                        {selectedParticipants.slice(0, 4).map(participant => (
+                          <li key={participant.id} className="text-xs text-slate-600">
+                            {participant.full_name}
+                          </li>
+                        ))}
+                        {selectedParticipants.length > 4 && (
+                          <li className="text-xs text-slate-400">
+                            + ещё {selectedParticipants.length - 4}
+                          </li>
+                        )}
+                      </ul>
+                    ) : (
+                      <p className="mt-1 text-xs text-slate-500">Вы ещё не добавили участников.</p>
+                    )}
                   </div>
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Участники</p>
-                  {selectedParticipants.length > 0 ? (
-                    <ul className="mt-2 space-y-1">
-                      {selectedParticipants.slice(0, 4).map(participant => (
-                        <li key={participant.id} className="text-xs text-slate-600">
-                          {participant.full_name}
-                        </li>
-                      ))}
-                      {selectedParticipants.length > 4 && (
-                        <li className="text-xs text-slate-400">
-                          + ещё {selectedParticipants.length - 4}
-                        </li>
-                      )}
-                    </ul>
-                  ) : (
-                    <p className="mt-1 text-xs text-slate-500">Вы ещё не добавили участников.</p>
-                  )}
                 </div>
               </div>
-            </div>
 
-            <div className="rounded-[28px] border border-slate-200 bg-white/90 p-5 text-xs text-slate-500 shadow-[0_24px_50px_-32px_rgba(15,23,42,0.35)] backdrop-blur">
-              <p className="font-semibold text-slate-700">Подсказки</p>
-              <ul className="mt-3 space-y-2">
-                <li>• После сохранения вы сможете добавить материалы и опубликовать анонс.</li>
-                <li>• Проверяйте, совпадает ли формат с выбранным типом мероприятия.</li>
-                <li>• Если не уверены в списке участников, сохраните черновик — никто не получит уведомления.</li>
-              </ul>
-            </div>
-          </aside>
+              <div className="rounded-[28px] border border-slate-200 bg-white/90 p-5 text-xs text-slate-500 shadow-[0_24px_50px_-32px_rgba(15,23,42,0.35)] backdrop-blur">
+                <p className="font-semibold text-slate-700">Подсказки</p>
+                <ul className="mt-3 space-y-2">
+                  <li>• После сохранения вы сможете добавить материалы и опубликовать анонс.</li>
+                  <li>• Проверяйте, совпадает ли формат с выбранным типом мероприятия.</li>
+                  <li>• Если не уверены в списке участников, сохраните черновик — никто не получит уведомления.</li>
+                </ul>
+              </div>
+            </aside>
+          )}
         </div>
       )}
     </div>

@@ -6,6 +6,8 @@ import { Layout } from './components/Layout';
 import { LoginPage } from './components/LoginPage/LoginPage';
 import { hasCachedUsers } from './lib/userCache';
 import { CreateEventModal } from './components/events/CreateEventModal';
+// Импорт CreateEventPage только один раз — для других роутов, если нужно (но для модалки он не юзается)
+import CreateEventPage from './pages/CreateEventPage';
 import { DashboardView } from './components/DashboardView';
 import { AdminView } from './components/AdminView';
 import { EventsView } from './components/EventsView';
@@ -33,7 +35,6 @@ import AuthCallback from './pages/AuthCallback';
 import QRAuthPage from './pages/QRAuthPage';
 import { LoadingOverlay } from './components/LoadingOverlay';
 import { Spinner } from './components/ui/Spinner';
-import CreateEventPage from './pages/CreateEventPage';
 
 function EventDetailPage({ onStartTest }: { onStartTest: (testId: string, eventId: string, attemptId: string) => void }) {
   const { eventId } = useParams();
@@ -58,7 +59,7 @@ function AppContent() {
     loadingPhase,
     retryFetchProfile
   } = useAuth();
-  const [showCreateEventModal, setShowCreateEventModal] = useState(false);
+  const [showEventModal, setShowEventModal] = useState(false); // Состояние для модалки создания/редактирования события
   const [showQuickLoginOnLogout, setShowQuickLoginOnLogout] = useState(false);
   const navigate = useNavigate();
 
@@ -143,8 +144,7 @@ function AppContent() {
     checkStoredSession();
   }, [user]); // Добавляем user в зависимости
   
-  const [editingEvent, setEditingEvent] = useState<any>(null);
-  // Удаляем testAttemptDetails и связанные функции
+  const [editingEvent, setEditingEvent] = useState<any>(null); // Состояние для редактируемого события (null для создания)
   const [loadingSeconds, setLoadingSeconds] = useState(0);
   const location = useLocation();
   const isAuthCallback = location.pathname === '/auth/callback';
@@ -178,7 +178,6 @@ function AppContent() {
     if (location.pathname.startsWith('/testing')) return 'tests';
     if (location.pathname.startsWith('/admin')) return 'admin';
     if (location.pathname.startsWith('/employees')) return 'employees';
-    if (location.pathname.startsWith('/create-event')) return 'create-event';
     if (location.pathname.startsWith('/exam-management')) return 'exam-reserve';
     if (location.pathname.startsWith('/exam-reserve')) return 'exam-reserve';
     if (location.pathname.startsWith('/expert-schedule')) return 'schedule';
@@ -203,6 +202,7 @@ function AppContent() {
     navigate(url);
   };
 
+  // Обработчик для редактирования события — загружает данные и открывает модалку
   const handleEditEvent = async (eventId: string) => {
     console.log('handleEditEvent вызвана с eventId:', eventId);
     try {
@@ -237,11 +237,17 @@ function AppContent() {
       }
 
       console.log('Загруженные данные мероприятия:', event);
-      setEditingEvent(event);
-      setShowCreateEventModal(true);
+      setEditingEvent(event); // Устанавливаем событие для редактирования
+      setShowEventModal(true); // Открываем модалку
     } catch (error) {
       console.error('Ошибка при редактировании мероприятия:', error);
     }
+  };
+
+  // Функция для открытия модалки создания (null для editingEvent значит — новое событие)
+  const handleCreateEvent = () => {
+    setEditingEvent(null); // Сброс для чистого создания
+    setShowEventModal(true); // Открываем модалку
   };
 
   // Track loading time
@@ -258,9 +264,6 @@ function AppContent() {
       if (timer) clearInterval(timer);
     };
   }, [loading]);
-
-  // Навигация для запуска теста
-  // Удаляем handleStartTest, handleTestComplete, handleCancelTest
 
   if (loading) {
     return (
@@ -338,6 +341,9 @@ function AppContent() {
     }
     return <LoginPage />;
   }
+
+  // Фикс роута /events: передаем onCreateEvent как handleCreateEvent (открывает модалку вместо navigate)
+  // onEditEvent остается handleEditEvent, onNavigateToEvent — как было
   return (
     <>
       <LoadingOverlay
@@ -347,133 +353,144 @@ function AppContent() {
       />
       <Layout currentView={currentView}>
         <Routes>
-        <Route path="/" element={<DashboardView />} />
-        <Route path="/events" element={<EventsView onNavigateToEvent={id => {
-          // Для экспертов все мероприятия ведут на страницу эксперта
-          if (userProfile?.role === 'expert') {
-            navigate('/expert-exam/36520f72-c191-4e32-ba02-aa17c482c50b');
-          } else {
-            // Для администраторов и других ролей ведем на обычную страницу мероприятия
-            // Логика для экзаменов резерва талантов будет обработана в EventCard
-            navigate(`/event/${id}`);
-          }
-        }} onEditEvent={id => handleEditEvent(id)} onCreateEvent={() => navigate('/create-event')} />} />
-        <Route path="/event/:eventId" element={<EventDetailPage onStartTest={handleStartTest} />} />
-        <Route path="/calendar" element={<CalendarView />} />
-        <Route path="/representatives" element={<RepresentativesView />} />
-        <Route path="/supervisors" element={<SupervisorsView />} />
-        <Route path="/expert-events" element={<ExpertEventsView />} />
-        <Route path="/tasks" element={<TasksView />} />
-        <Route path="/testing" element={<TestingView />} />
-        <Route path="/trainer-territories" element={<TrainerTerritoriesView />} />
-        <Route path="/admin" element={<AdminView />} />
-        <Route path="/employees" element={<EmployeesView />} />
-        <Route path="/exam-reserve" element={<ExamReservePage />} />
-        <Route path="/exam-details/:id" element={<ExamDetailsPage />} />
-        <Route path="/expert-schedule" element={<ExpertSchedulePage />} />
+          <Route path="/" element={<DashboardView />} />
+          {/* Роут /events: теперь onCreateEvent открывает модалку, а не пейдж */}
+          <Route 
+            path="/events" 
+            element={
+              <EventsView 
+                onNavigateToEvent={id => {
+                  // Для экспертов все мероприятия ведут на страницу эксперта
+                  if (userProfile?.role === 'expert') {
+                    navigate('/expert-exam/36520f72-c191-4e32-ba02-aa17c482c50b');
+                  } else {
+                    // Для администраторов и других ролей ведем на обычную страницу мероприятия
+                    // Логика для экзаменов резерва талантов будет обработана в EventCard
+                    navigate(`/event/${id}`);
+                  }
+                }} 
+                onEditEvent={id => handleEditEvent(id)} 
+                onCreateEvent={handleCreateEvent} // <- Фикс: теперь открывает модалку для создания
+              />} 
+          />
+          {/* Убрали роут /create-event полностью — создание только через модалку (фикс #15) */}
+          <Route path="/event/:eventId" element={<EventDetailPage onStartTest={handleStartTest} />} />
+          <Route path="/calendar" element={<CalendarView />} />
+          <Route path="/representatives" element={<RepresentativesView />} />
+          <Route path="/supervisors" element={<SupervisorsView />} />
+          <Route path="/expert-events" element={<ExpertEventsView />} />
+          <Route path="/tasks" element={<TasksView />} />
+          <Route path="/testing" element={<TestingView />} />
+          <Route path="/trainer-territories" element={<TrainerTerritoriesView />} />
+          <Route path="/admin" element={<AdminView />} />
+          <Route path="/employees" element={<EmployeesView />} />
+          <Route path="/exam-reserve" element={<ExamReservePage />} />
+          <Route path="/exam-details/:id" element={<ExamDetailsPage />} />
+          <Route path="/expert-schedule" element={<ExpertSchedulePage />} />
+          
+          {/* Роуты с мобильным меню */}
+          <Route element={<MobileLayout />}>
+            <Route path="/expert-exam/:id" element={
+              <ExpertRouteGuard>
+                <ExpertExamPage />
+              </ExpertRouteGuard>
+            } />
+            <Route path="/expert-exam/:id/schedule" element={
+              <ExpertRouteGuard>
+                <ExpertExamPage />
+              </ExpertRouteGuard>
+            } />
+            <Route path="/expert-exam/:id/evaluations" element={
+              <ExpertRouteGuard>
+                <ExpertExamPage />
+              </ExpertRouteGuard>
+            } />
+            <Route path="/case-evaluation/:examId" element={
+              <ExpertRouteGuard>
+                <CaseEvaluationPage />
+              </ExpertRouteGuard>
+            } />
+          </Route>
+          <Route path="/take-test" element={<TakeTestPage />} />
+          <Route path="/test-results/:attemptId" element={<TestResultsPage />} />
+          <Route path="/event-test-results/:eventId" element={<EventTestResultsPage />} />
+          <Route path="/event-test-review/:eventId" element={<EventTestReviewPage />} />
+          <Route path="/event-tp-evaluation/:eventId" element={<EventTPEvaluation />} />
+          <Route path="/auth/qr/:token" element={<QRAuthPage />} />
+        </Routes>
         
-        {/* Роуты с мобильным меню */}
-        <Route element={<MobileLayout />}>
-          <Route path="/expert-exam/:id" element={
-            <ExpertRouteGuard>
-              <ExpertExamPage />
-            </ExpertRouteGuard>
-          } />
-          <Route path="/expert-exam/:id/schedule" element={
-            <ExpertRouteGuard>
-              <ExpertExamPage />
-            </ExpertRouteGuard>
-          } />
-          <Route path="/expert-exam/:id/evaluations" element={
-            <ExpertRouteGuard>
-              <ExpertExamPage />
-            </ExpertRouteGuard>
-          } />
-          <Route path="/case-evaluation/:examId" element={
-            <ExpertRouteGuard>
-              <CaseEvaluationPage />
-            </ExpertRouteGuard>
-          } />
-        </Route>
-        <Route path="/create-event" element={<CreateEventPage />} />
-        <Route path="/take-test" element={<TakeTestPage />} />
-        <Route path="/test-results/:attemptId" element={<TestResultsPage />} />
-        <Route path="/event-test-results/:eventId" element={<EventTestResultsPage />} />
-        <Route path="/event-test-review/:eventId" element={<EventTestReviewPage />} />
-        <Route path="/event-tp-evaluation/:eventId" element={<EventTPEvaluation />} />
-        <Route path="/auth/qr/:token" element={<QRAuthPage />} />
-      </Routes>
-      <CreateEventModal 
-        isOpen={showCreateEventModal}
-        onClose={() => {
-          setShowCreateEventModal(false);
-          setEditingEvent(null);
-        }}
-        onSuccess={() => {
-          setShowCreateEventModal(false);
-          setEditingEvent(null);
-          navigate('/events');
-        }}
-        editingEvent={editingEvent}
-      />
-      
-      {/* Модальное окно быстрого входа при разлогинивании */}
-      {showQuickLoginOnLogout && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                    <span className="text-blue-600 text-sm font-bold">👋</span>
+        {/* Модалка для создания/редактирования события — теперь основной способ (фикс #15) */}
+        <CreateEventModal
+          isOpen={showEventModal}
+          onClose={() => {
+            setShowEventModal(false);
+            setEditingEvent(null); // Сброс editingEvent при закрытии
+          }}
+          onSuccess={() => {
+            setShowEventModal(false);
+            setEditingEvent(null); // Сброс после успеха
+            navigate('/events'); // Редирект на список событий
+          }}
+          editingEvent={editingEvent} // null для создания, объект для редактирования
+        />
+        
+        {/* Модальное окно быстрого входа при разлогинивании */}
+        {showQuickLoginOnLogout && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <span className="text-blue-600 text-sm font-bold">👋</span>
+                    </div>
+                    <h3 className="text-lg font-semibold">Быстрый вход</h3>
                   </div>
-                  <h3 className="text-lg font-semibold">Быстрый вход</h3>
+                  <button
+                    onClick={() => setShowQuickLoginOnLogout(false)}
+                    className="text-gray-400 hover:text-gray-600 text-xl font-bold"
+                  >
+                    ×
+                  </button>
                 </div>
-                <button
-                  onClick={() => setShowQuickLoginOnLogout(false)}
-                  className="text-gray-400 hover:text-gray-600 text-xl font-bold"
-                >
-                  ×
-                </button>
-              </div>
-              
-              <div className="text-center mb-6">
-                <p className="text-gray-600 mb-4">
-                  Вы вышли из системы. Хотите войти снова?
-                </p>
-                <p className="text-sm text-gray-500">
-                  Выберите аккаунт для быстрого входа или войдите заново
-                </p>
-              </div>
-              
-              <div className="space-y-3">
-                <button
-                  onClick={() => {
-                    setShowQuickLoginOnLogout(false);
-                    // Показываем модальное окно быстрого входа из LoginForm
-                    const quickLoginBtn = document.querySelector('[data-quick-login]') as HTMLButtonElement;
-                    if (quickLoginBtn) {
-                      quickLoginBtn.click();
-                    }
-                  }}
-                  className="w-full flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  <span className="mr-2">⚡</span>
-                  Выбрать из сохраненных
-                </button>
                 
-                <button
-                  onClick={() => setShowQuickLoginOnLogout(false)}
-                  className="w-full px-4 py-3 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  Войти заново
-                </button>
+                <div className="text-center mb-6">
+                  <p className="text-gray-600 mb-4">
+                    Вы вышли из системы. Хотите войти снова?
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Выберите аккаунт для быстрого входа или войдите заново
+                  </p>
+                </div>
+                
+                <div className="space-y-3">
+                  <button
+                    onClick={() => {
+                      setShowQuickLoginOnLogout(false);
+                      // Показываем модальное окно быстрого входа из LoginForm
+                      const quickLoginBtn = document.querySelector('[data-quick-login]') as HTMLButtonElement;
+                      if (quickLoginBtn) {
+                        quickLoginBtn.click();
+                      }
+                    }}
+                    className="w-full flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <span className="mr-2">⚡</span>
+                    Выбрать из сохраненных
+                  </button>
+                  
+                  <button
+                    onClick={() => setShowQuickLoginOnLogout(false)}
+                    className="w-full px-4 py-3 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    Войти заново
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </Layout>
+        )}
+      </Layout>
     </>
   );
 }
