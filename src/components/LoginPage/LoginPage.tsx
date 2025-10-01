@@ -8,20 +8,29 @@ interface LoginPageProps {
 export function LoginPage({ onSuccess }: LoginPageProps) {
   return (
     <div className="min-h-screen relative overflow-hidden flex items-center justify-center p-4">
-      {/* Фон в стиле Apple 2025 */}
+      {/* Фон в корпоративных тонах SNS */}
       <div className="absolute inset-0">
-        {/* Градиентный базовый слой */}
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-blue-50" />
+        {/* Базовый градиент */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#f4fff9] via-white to-[#e6f7f1]" />
 
-        {/* Размытые цветные пятна */}
+        {/* Размытые пятна с фирменным зеленым */}
         <div className="absolute top-0 left-0 w-full h-full">
-          <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full bg-gradient-to-br from-blue-400/20 via-cyan-300/20 to-teal-400/20 blur-3xl animate-pulse" style={{ animationDuration: '8s' }} />
-          <div className="absolute bottom-[-20%] left-[-10%] w-[700px] h-[700px] rounded-full bg-gradient-to-tr from-emerald-300/20 via-green-400/20 to-lime-300/20 blur-3xl animate-pulse" style={{ animationDuration: '10s', animationDelay: '2s' }} />
-          <div className="absolute top-[20%] left-[10%] w-[400px] h-[400px] rounded-full bg-gradient-to-bl from-sky-300/15 to-indigo-200/15 blur-3xl animate-pulse" style={{ animationDuration: '12s', animationDelay: '4s' }} />
+          <div
+            className="absolute top-[-20%] right-[-15%] w-[620px] h-[620px] rounded-full bg-gradient-to-br from-[#06A478]/25 via-[#0fbf89]/20 to-[#22d3a0]/20 blur-3xl animate-pulse"
+            style={{ animationDuration: '8s' }}
+          />
+          <div
+            className="absolute bottom-[-22%] left-[-15%] w-[760px] h-[760px] rounded-full bg-gradient-to-tr from-[#0fbf89]/20 via-[#06A478]/25 to-[#c8f5e2]/30 blur-3xl animate-pulse"
+            style={{ animationDuration: '11s', animationDelay: '2s' }}
+          />
+          <div
+            className="absolute top-[18%] left-[12%] w-[420px] h-[420px] rounded-full bg-gradient-to-bl from-[#bbf7d0]/25 via-[#86efac]/20 to-transparent blur-3xl animate-pulse"
+            style={{ animationDuration: '13s', animationDelay: '4s' }}
+          />
         </div>
 
-        {/* Тонкая текстура */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.8),transparent_50%)]" />
+        {/* Легкая текстура */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_60%_40%,rgba(6,164,120,0.12),transparent_55%)]" />
       </div>
 
       {/* Основной контент */}
