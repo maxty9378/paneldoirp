@@ -23,7 +23,7 @@ import CaseEvaluationPage from './components/exam/CaseEvaluationPage';
 import ExpertSchedulePage from './components/exam/ExpertSchedulePage';
 import ExpertRouteGuard from './components/ExpertRouteGuard';
 import MobileLayout from './components/layout/MobileLayout';
-import { RefreshCw, AlertOctagon } from 'lucide-react';
+import { RefreshCw, OctagonAlert as AlertOctagon } from 'lucide-react';
 import TakeTestPage from './pages/TakeTestPage';
 import TestResultsPage from './pages/TestResultsPage';
 import EventTestResultsPage from './pages/EventTestResultsPage';
