@@ -45,13 +45,13 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   if (showSuccessScreen) {
     return (
       <div className="w-full max-w-md mx-auto">
-        <div className="bg-white rounded-2xl p-8 shadow-lg border">
+        <div className="bg-white/80 backdrop-blur-2xl rounded-3xl p-8 shadow-2xl border border-white/50">
           <div className="text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full mx-auto flex items-center justify-center mb-6">
-              <CheckCircle className="h-8 w-8 text-green-600" />
+            <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-green-600 rounded-full mx-auto flex items-center justify-center mb-6 shadow-xl shadow-green-500/30 animate-pulse">
+              <CheckCircle className="h-10 w-10 text-white" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">Добро пожаловать!</h2>
-            <p className="text-gray-600 mb-6">{user.full_name || user.email}</p>
+            <h2 className="text-3xl font-semibold text-gray-900 mb-2">Добро пожаловать!</h2>
+            <p className="text-gray-700 font-medium mb-6">{user.full_name || user.email}</p>
             <div className="flex items-center justify-center text-green-600">
               <Spinner
                 size={20}
@@ -71,10 +71,10 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   if (loading) {
     return (
       <div className="w-full max-w-md mx-auto">
-        <div className="bg-white rounded-2xl p-8 shadow-lg border">
+        <div className="bg-white/80 backdrop-blur-2xl rounded-3xl p-8 shadow-2xl border border-white/50">
           <div className="text-center">
             <Spinner size={48} className="mx-auto mb-6" label="Подождите" />
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">Обработка авторизации...</h2>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-2">Обработка авторизации...</h2>
             <p className="text-gray-600">Пожалуйста, подождите</p>
           </div>
         </div>
@@ -84,23 +84,23 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
 
   return (
     <div className="w-full max-w-md mx-auto">
-      <div className="bg-white rounded-2xl p-8 shadow-lg border">
+      <div className="bg-white/80 backdrop-blur-2xl rounded-3xl p-8 shadow-2xl border border-white/50">
         {/* Заголовок */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-[#06A478] to-[#4ade80] rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg">
-            <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
+          <div className="w-20 h-20 bg-gradient-to-br from-blue-500 via-cyan-500 to-teal-500 rounded-[22px] mx-auto flex items-center justify-center mb-6 shadow-2xl shadow-blue-500/30 transform hover:scale-105 transition-transform duration-300">
+            <svg className="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">Добро пожаловать</h1>
-          <p className="text-gray-600 text-sm">Система управления обучением SNS</p>
+          <h1 className="text-3xl font-semibold text-gray-900 mb-2 tracking-tight">Добро пожаловать</h1>
+          <p className="text-gray-600 text-base">Система управления обучением SNS</p>
         </div>
 
         {/* Форма */}
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Поле логина */}
           <div className="space-y-2">
-            <label htmlFor="identifier" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="identifier" className="block text-sm font-medium text-gray-800">
               Имя пользователя или SAP номер
             </label>
             <div className="relative">
@@ -112,7 +112,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
                 required
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#06A478] focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500"
+                className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 bg-white/70 text-gray-900 placeholder-gray-500 font-medium"
                 placeholder="Введите логин или SAP номер"
                 disabled={isSubmitting}
               />
@@ -121,7 +121,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
 
           {/* Поле пароля */}
           <div className="space-y-2">
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-800">
               Пароль
             </label>
             <div className="relative">
@@ -132,14 +132,14 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#06A478] focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500"
+                className="w-full px-4 py-3.5 pr-12 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 bg-white/70 text-gray-900 placeholder-gray-500 font-medium"
                 placeholder="Введите пароль"
                 disabled={isSubmitting}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-700 transition-colors p-1 rounded-lg hover:bg-gray-100"
                 disabled={isSubmitting}
               >
                 {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -160,7 +160,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
             <button
               type="submit"
               disabled={isSubmitting || loading}
-              className="w-full bg-gradient-to-r from-[#06A478] to-[#4ade80] text-white py-3 px-4 rounded-lg font-medium hover:from-[#05976b] hover:to-[#22c55e] focus:outline-none focus:ring-2 focus:ring-[#06A478] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              className="w-full bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 text-white py-3.5 px-4 rounded-xl font-semibold hover:shadow-xl hover:shadow-blue-500/30 focus:outline-none focus:ring-4 focus:ring-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
             >
               {isSubmitting || loading ? (
                 <div className="flex items-center justify-center text-white">
@@ -175,7 +175,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
               ) : (
                 <span className="flex items-center justify-center">
                   <span>Войти в систему</span>
-                  <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                   </svg>
                 </span>
@@ -186,15 +186,15 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
 
         {/* Футер */}
         <div className="mt-8 text-center">
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-500 font-medium">
             Система управления обучением и развитием сотрудников SNS • 2025
           </p>
           <div className="mt-2">
-            <a 
-              href="https://sns.ru" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="text-xs text-[#06A478] hover:text-[#05976b] transition-colors"
+            <a
+              href="https://sns.ru"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-blue-600 hover:text-blue-700 transition-colors font-medium"
             >
               sns.ru
             </a>
