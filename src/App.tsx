@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation, usePa
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { supabase } from './lib/supabase';
 import { Layout } from './components/Layout';
-import { LoginForm } from './components/LoginForm';
+import { LoginPage } from './components/LoginPage/LoginPage';
 import { hasCachedUsers } from './lib/userCache';
 import { CreateEventModal } from './components/events/CreateEventModal';
 import { DashboardView } from './components/DashboardView';
@@ -264,18 +264,22 @@ function AppContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex items-center justify-center p-4">
-        {/* Простые фоновые элементы */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -right-32 h-96 w-96 rounded-full bg-gradient-to-br from-[#06A478]/10 to-[#4ade80]/10" />
-          <div className="absolute -bottom-40 -left-32 h-96 w-96 rounded-full bg-gradient-to-br from-[#4ade80]/10 to-[#86efac]/10" />
+      <div className="min-h-screen relative overflow-hidden flex items-center justify-center p-4">
+        {/* Фон в стиле Apple 2025 */}
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-blue-50" />
+          <div className="absolute top-0 left-0 w-full h-full">
+            <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full bg-gradient-to-br from-blue-400/20 via-cyan-300/20 to-teal-400/20 blur-3xl animate-pulse" style={{ animationDuration: '8s' }} />
+            <div className="absolute bottom-[-20%] left-[-10%] w-[700px] h-[700px] rounded-full bg-gradient-to-tr from-emerald-300/20 via-green-400/20 to-lime-300/20 blur-3xl animate-pulse" style={{ animationDuration: '10s', animationDelay: '2s' }} />
+          </div>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.8),transparent_50%)]" />
         </div>
-        
-        <div className="relative z-10 bg-white/95 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/60 max-w-md mx-auto">
+
+        <div className="relative z-10 bg-white/80 backdrop-blur-2xl rounded-3xl p-8 shadow-2xl border border-white/50 max-w-md mx-auto">
           <div className="text-center">
             <Spinner size={48} className="mx-auto mb-6" label="Загружаем" />
 
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">Загрузка приложения</h2>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-2">Загрузка приложения</h2>
             <p className="text-gray-600 mb-4">
               {loadingPhase === 'initializing' && 'Инициализация...'}
               {loadingPhase === 'session-fetch' && 'Проверка сессии...'}
@@ -283,15 +287,15 @@ function AppContent() {
               {loadingPhase === 'auth-change' && 'Обработка авторизации...'}
               {!['initializing', 'session-fetch', 'profile-fetch', 'auth-change'].includes(loadingPhase) && 'Подготовка интерфейса...'}
             </p>
-            
+
             {loadingSeconds > 3 && (
               <p className="text-sm text-gray-500 mb-4">
                 Время загрузки: {loadingSeconds} сек.
               </p>
             )}
-            
+
             {authError && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 text-left">
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4 text-left">
                 <div className="flex items-start">
                   <AlertOctagon className="h-5 w-5 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
                   <div>
@@ -301,13 +305,13 @@ function AppContent() {
                 </div>
               </div>
             )}
-            
+
             {loadingSeconds > 5 && (
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 {authError && retryFetchProfile && (
                   <button
                     onClick={retryFetchProfile}
-                    className="inline-flex items-center justify-center px-4 py-2 bg-[#06A478] hover:bg-[#05976b] text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+                    className="inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
                   >
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Повторить попытку
@@ -315,7 +319,7 @@ function AppContent() {
                 )}
                 <button
                   onClick={resetAuth}
-                  className="inline-flex items-center justify-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+                  className="inline-flex items-center justify-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
                 >
                   🧹 Очистить кэш и сбросить
                 </button>
@@ -332,21 +336,7 @@ function AppContent() {
     if (isAuthFlow || loadingPhase === 'initializing' || loadingPhase === 'session-fetch' || loadingPhase === 'auth-change') {
       return null; // оверлей уже показан глобально
     }
-    return (
-      <div className="login-container min-h-screen bg-gradient-to-br from-gray-50 to-white flex items-center justify-center p-4">
-        {/* Простые декоративные элементы без анимации */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -right-32 h-96 w-96 rounded-full bg-gradient-to-br from-[#06A478]/10 to-[#4ade80]/10" />
-          <div className="absolute -bottom-40 -left-32 h-96 w-96 rounded-full bg-gradient-to-br from-[#4ade80]/10 to-[#86efac]/10" />
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-72 w-72 rounded-full bg-gradient-to-br from-[#06A478]/5 to-[#22c55e]/5" />
-        </div>
-        
-        {/* Основной контент */}
-        <div className="relative z-10 w-full max-w-md">
-          <LoginForm />
-        </div>
-      </div>
-    );
+    return <LoginPage />;
   }
   return (
     <>
