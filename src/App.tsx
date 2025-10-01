@@ -473,12 +473,12 @@ function AppContent() {
                         quickLoginBtn.click();
                       }
                     }}
-                    className="w-full flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="w-full flex items-center justify-center px-4 py-3 bg-[#06A478] text-white rounded-lg hover:bg-[#059669] transition-colors shadow-sm hover:shadow-md"
                   >
                     <span className="mr-2">⚡</span>
                     Выбрать из сохраненных
                   </button>
-                  
+
                   <button
                     onClick={() => setShowQuickLoginOnLogout(false)}
                     className="w-full px-4 py-3 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
