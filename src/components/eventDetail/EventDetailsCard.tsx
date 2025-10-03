@@ -309,7 +309,7 @@ export function EventDetailsCard({ event, isCreator = false, participants = [], 
   const shareEventInfo = useCallback(async (platform: 'whatsapp' | 'telegram') => {
     if (!event) return;
 
-    const appBaseUrl = location.hostname === 'localhost' ? 'https://sns-panel.vercel.app' : location.origin;
+    const appBaseUrl = location.hostname === 'localhost' ? 'http://158.160.200.214' : location.origin;
     const url = `${appBaseUrl}/event/${event.id}`;
 
     const start = new Date(event.start_date);

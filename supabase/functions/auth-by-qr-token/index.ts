@@ -113,7 +113,7 @@ serve(async (req) => {
     console.log('✅ User found:', user.email)
 
     // Генерируем magic link - перенаправляем напрямую на /auth/callback
-    const finalRedirectUrl = Deno.env.get('PUBLIC_APP_URL') || 'https://paneldoirp.vercel.app'
+    const finalRedirectUrl = Deno.env.get('PUBLIC_APP_URL') || 'http://158.160.200.214'
     const callbackUrl = `${finalRedirectUrl}/auth/callback`
     
     const { data, error } = await supabaseAdmin.auth.admin.generateLink({
