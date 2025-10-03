@@ -61,7 +61,7 @@ serve(async (req) => {
     if (existingTokens && existingTokens.length > 0) {
       console.log('🔄 Returning existing token')
       const existingToken = existingTokens[0]
-      const baseUrl = Deno.env.get('PUBLIC_APP_URL') || 'http://158.160.200.214'
+      const baseUrl = Deno.env.get('PUBLIC_APP_URL') || 'http://51.250.94.103'
       const persistentUrl = `${baseUrl}/auth/qr/${existingToken.token}`
       
       return new Response(
@@ -105,7 +105,7 @@ serve(async (req) => {
       throw new Error('Failed to save QR token')
     }
 
-    const baseUrl = Deno.env.get('PUBLIC_APP_URL') || 'http://158.160.200.214'
+    const baseUrl = Deno.env.get('PUBLIC_APP_URL') || 'http://51.250.94.103'
     const persistentUrl = `${baseUrl}/auth/qr/${token}`
     
     console.log('✅ Persistent QR URL generated:', persistentUrl)

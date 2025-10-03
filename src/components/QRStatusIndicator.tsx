@@ -1,87 +1,121 @@
 import React from 'react';
-import { Loader2, CheckCircle, AlertCircle, Wifi, WifiOff } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
 import { getConnectionQuality } from '../utils/mobileOptimization';
 
+type Status = 'loading' | 'success' | 'error';
+type Step = 'qr' | 'auth' | 'profile';
+
 interface QRStatusIndicatorProps {
-  status: 'loading' | 'success' | 'error';
-  step: 'qr' | 'auth' | 'profile';
+  status: Status;
+  step: Step;
   message: string;
   isIOS?: boolean;
 }
 
+const statusPalette: Record<Status, { ring: string; badge: string; accent: string; text: string }> = {
+  loading: {
+    ring: 'ring-emerald-400/15',
+    badge: 'bg-emerald-500/10 text-emerald-600',
+    accent: 'from-emerald-400/15 via-emerald-300/5 to-transparent',
+    text: 'text-slate-800'
+  },
+  success: {
+    ring: 'ring-emerald-500/25',
+    badge: 'bg-emerald-500/15 text-emerald-700',
+    accent: 'from-emerald-400/25 via-emerald-300/10 to-transparent',
+    text: 'text-emerald-700'
+  },
+  error: {
+    ring: 'ring-rose-400/20',
+    badge: 'bg-rose-500/10 text-rose-600',
+    accent: 'from-rose-300/20 via-rose-200/10 to-transparent',
+    text: 'text-rose-600'
+  }
+};
+
+const stepTitle: Record<Step, string> = {
+  qr: 'Проверяем QR-токен',
+  auth: 'Подтверждаем вход',
+  profile: 'Загружаем профиль'
+};
+
 export function QRStatusIndicator({ status, step, message, isIOS = false }: QRStatusIndicatorProps) {
   const connectionQuality = getConnectionQuality();
   const isSlowConnection = connectionQuality === 'slow';
+  const palette = statusPalette[status];
 
-  const getStatusIcon = () => {
-    if (status === 'error') return <AlertCircle className="mx-auto text-red-500" size={48} />;
-    if (status === 'success') return <CheckCircle className="mx-auto text-emerald-400" size={48} />;
-    return <Loader2 className="mx-auto animate-spin text-emerald-400" size={40} />;
+  const renderIcon = () => {
+    if (status === 'error') {
+      return <AlertTriangle className="h-7 w-7" aria-hidden />;
+    }
+    if (status === 'success') {
+      return <CheckCircle2 className="h-7 w-7" aria-hidden />;
+    }
+    return <Loader2 className="h-7 w-7 animate-spin" aria-hidden />;
   };
 
-  const getStatusTitle = () => {
-    if (status === 'error') return 'РќРµ СѓРґР°Р»РѕСЃСЊ РІРѕР№С‚Рё';
-    if (status === 'success') return 'РђРІС‚РѕСЂРёР·Р°С†РёСЏ СѓСЃРїРµС€РЅР°';
-    if (step === 'qr') return isIOS ? 'РџСЂРѕРІРµСЂСЏРµРј QR-РєРѕРґ' : 'РџСЂРѕРІРµСЂСЏРµРј QR-С‚РѕРєРµРЅ';
-    if (step === 'auth') return isIOS ? 'Р’С…РѕРґРёРј РІ СЃРёСЃС‚РµРјСѓ' : 'РџРѕРґС‚РІРµСЂР¶РґР°РµРј РІС…РѕРґ';
-    return 'Р—Р°РіСЂСѓР¶Р°РµРј РїСЂРѕС„РёР»СЊ';
-  };
+  const iconTone = status === 'error' ? 'text-rose-500' : status === 'success' ? 'text-emerald-500' : 'text-emerald-500';
 
-  const getStatusSubtitle = () => {
-    if (status === 'success') return 'РџРѕС‡С‚Рё РіРѕС‚РѕРІРѕвЂ¦';
-    if (status === 'error') return 'Р’РѕР·РІСЂР°С‚ РЅР° РіР»Р°РІРЅСѓСЋ';
-    
+  const getSubtitle = () => {
+    if (status === 'error') return 'Возвращаемся на главную, попробуйте снова.';
+    if (status === 'success') return 'Сессия установлена, перенаправляем…';
+
     if (isSlowConnection) {
-      return 'РњРµРґР»РµРЅРЅРѕРµ СЃРѕРµРґРёРЅРµРЅРёРµ, РїРѕРґРѕР¶РґРёС‚РµвЂ¦';
+      return 'Соединение нестабильное, процесс может занять чуть больше времени.';
     }
-    
+
     if (isIOS) {
-      return 'Р­С‚Рѕ РјРѕР¶РµС‚ Р·Р°РЅСЏС‚СЊ РЅРµРјРЅРѕРіРѕ Р±РѕР»СЊС€Рµ РІСЂРµРјРµРЅРё РЅР° iPhone';
+      return 'На iPhone проверка и подтверждение могут занять до 30 секунд.';
     }
-    
-    return message;
+
+    return message || 'Подготавливаем ссылку для входа…';
   };
 
   return (
-    <div className="flex flex-col items-center gap-5 py-4">
-      <div className="h-14 w-14 rounded-2xl bg-white/5 flex items-center justify-center">
-        {getStatusIcon()}
-      </div>
+    <div
+      className={`relative w-full overflow-hidden rounded-3xl border border-white/60 bg-white/70 px-6 py-6 sm:py-7 ring-1 ${palette.ring} shadow-[0_20px_60px_-35px_rgba(15,23,42,0.35)]`}
+    >
+      <div className={`absolute inset-0 bg-gradient-to-br ${palette.accent}`} aria-hidden />
+      <div className="relative flex flex-col items-center gap-4 text-center">
+        <span className={`inline-flex h-14 w-14 items-center justify-center rounded-2xl ${palette.badge} ${iconTone}`}>
+          {renderIcon()}
+        </span>
+        <div className="space-y-1">
+          <h2 className={`text-lg font-semibold tracking-tight sm:text-xl ${palette.text}`}>
+            {status === 'loading' ? stepTitle[step] : getSubtitle()}
+          </h2>
+          {status === 'loading' && (
+            <p className="text-sm text-slate-500">{getSubtitle()}</p>
+          )}
+          {status !== 'loading' && (
+            <p className="text-sm text-slate-500">
+              {status === 'success' ? 'Почти готово…' : 'Перепроверяем и возвращаемся назад.'}
+            </p>
+          )}
+        </div>
 
-      <div className="text-center">
-        <h2 className="text-xl font-medium">{getStatusTitle()}</h2>
-        <p className="mt-1 text-white/70 text-sm">{getStatusSubtitle()}</p>
-        
-        {/* РРЅРґРёРєР°С‚РѕСЂ РєР°С‡РµСЃС‚РІР° СЃРѕРµРґРёРЅРµРЅРёСЏ */}
         {status === 'loading' && (
-          <div className="mt-2 flex items-center justify-center gap-2 text-xs text-white/50">
+          <div className="mt-1 flex items-center justify-center gap-2 rounded-full border border-slate-200/80 bg-white/80 px-3 py-1 text-xs text-slate-500">
             {isSlowConnection ? (
               <>
-                <WifiOff size={14} />
-                <span>РњРµРґР»РµРЅРЅРѕРµ СЃРѕРµРґРёРЅРµРЅРёРµ</span>
+                <WifiOff className="h-3.5 w-3.5 text-rose-500" aria-hidden />
+                <span>Соединение нестабильное</span>
               </>
             ) : (
               <>
-                <Wifi size={14} />
-                <span>РҐРѕСЂРѕС€РµРµ СЃРѕРµРґРёРЅРµРЅРёРµ</span>
+                <Wifi className="h-3.5 w-3.5 text-emerald-500" aria-hidden />
+                <span>Соединение стабильное</span>
               </>
             )}
           </div>
         )}
+
+        {isIOS && status === 'loading' && (
+          <p className="mt-1 max-w-xs text-xs text-slate-500">
+            ?? Совет: удобнее добавить страницу на экран «Домой» или открыть ссылку в Safari, чтобы ускорить переход.
+          </p>
+        )}
       </div>
-
-      {/* Р”РѕРїРѕР»РЅРёС‚РµР»СЊРЅС‹Рµ РїРѕРґСЃРєР°Р·РєРё РґР»СЏ iOS */}
-      {isIOS && status === 'loading' && step === 'qr' && (
-        <div className="mt-2 text-center text-xs text-white/50 max-w-sm">
-          <p>рџ’Ў РЎРѕРІРµС‚: РЈР±РµРґРёС‚РµСЃСЊ, С‡С‚Рѕ QR-РєРѕРґ С‡РµС‚РєРёР№ Рё С…РѕСЂРѕС€Рѕ РѕСЃРІРµС‰РµРЅ</p>
-        </div>
-      )}
-
-      {isIOS && status === 'loading' && step === 'auth' && (
-        <div className="mt-2 text-center text-xs text-white/50 max-w-sm">
-          <p>вЏ±пёЏ РќР° iPhone СЌС‚Рѕ РјРѕР¶РµС‚ Р·Р°РЅСЏС‚СЊ РґРѕ 30 СЃРµРєСѓРЅРґ</p>
-        </div>
-      )}
     </div>
   );
 }
