@@ -19,4 +19,4 @@ Write-Host "Подключаемся к виртуальной машине..." 
 ssh -i $sshKey ${vmUser}@${vmHost} "chmod +x deploy-to-vm.sh && ./deploy-to-vm.sh"
 
 Write-Host "Деплой завершен!" -ForegroundColor Green
-Write-Host "Приложение доступно по адресу: http://${vmHost}" -ForegroundColor Cyan
+Write-Host "Приложение доступно по адресу: http://$vmHost" -ForegroundColor Cyan
