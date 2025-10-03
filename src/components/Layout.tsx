@@ -90,10 +90,12 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
 
   // Проверяем, находимся ли мы на странице теста
   const isTestPage = currentView === 'take-test';
-  
+
   // Проверяем, находимся ли мы на странице экзамена
   const isExamPage = location.pathname.includes('/expert-exam/') || location.pathname.includes('/case-evaluation/');
-  
+
+  const sidebarActiveItem = currentView === 'create-event' ? 'events' : currentView;
+
   // Проверяем, находимся ли мы на страницах оценки или досье (где нужно скрыть меню)
   const isEvaluationOrDossierPage = location.pathname.includes('/case-evaluation/') ||
                                    location.pathname.includes('/evaluations') ||
@@ -151,9 +153,9 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
       case 'events': return 'Мои мероприятия';
       case 'tests': return 'Тесты';
       case 'testing': return 'Тестирование';
-      case 'create-event': return 'Создание мероприятия';
       case 'calendar': return 'Календарь';
       case 'employees': return 'Мои сотрудники';
+      case 'create-event': return 'Создать мероприятие';
       case 'representatives': return 'Торговые представители';
       case 'supervisors': return 'Супервайзеры';
       case 'expert-events': return 'Экспертные мероприятия';
@@ -180,8 +182,8 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
         <div className="hidden lg:flex min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
           {/* Desktop sidebar */}
           <div className="relative flex-shrink-0">
-            <Sidebar 
-              activeItem={currentView} 
+            <Sidebar
+              activeItem={sidebarActiveItem}
               onItemClick={handleMenuItemClick}
               isCollapsed={isSidebarCollapsed}
               onToggle={toggleSidebar}
@@ -220,8 +222,8 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
         <div className="hidden lg:flex min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
           {/* Desktop sidebar */}
           <div className="relative flex-shrink-0">
-            <Sidebar 
-              activeItem={currentView} 
+            <Sidebar
+              activeItem={sidebarActiveItem}
               onItemClick={handleMenuItemClick}
               isCollapsed={isSidebarCollapsed}
               onToggle={toggleSidebar}
@@ -284,8 +286,8 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
               className="absolute inset-0 bg-black/50"
               onClick={() => setIsMobileMenuOpen(false)}
             />
-            <Sidebar 
-              activeItem={currentView} 
+            <Sidebar
+              activeItem={sidebarActiveItem}
               onItemClick={handleMenuItemClick}
               isMobile={true}
               onMobileClose={() => setIsMobileMenuOpen(false)}
@@ -317,8 +319,8 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
           'relative flex-1 flex flex-col max-w-xs w-full transform transition-transform duration-300 ease-out h-full',
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         )}>
-          <Sidebar 
-            activeItem={currentView} 
+          <Sidebar
+            activeItem={sidebarActiveItem}
             onItemClick={handleMenuItemClick}
             isMobile={true}
             onMobileClose={() => setIsMobileMenuOpen(false)}
@@ -328,8 +330,8 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
 
       {/* Desktop sidebar */}
       <div className="relative hidden lg:flex lg:flex-shrink-0">
-        <Sidebar 
-          activeItem={currentView} 
+        <Sidebar
+          activeItem={sidebarActiveItem}
           onItemClick={handleMenuItemClick}
           isCollapsed={isSidebarCollapsed}
           onToggle={toggleSidebar}
@@ -361,7 +363,7 @@ export function Layout({ children, currentView, testTitle }: LayoutProps & { tes
       </div>
 
       <MobileNavBar
-        activeItem={currentView}
+        activeItem={sidebarActiveItem}
         items={mobileNavItems}
         onSelect={handleMenuItemClick}
         isVisible={showMobileNav}

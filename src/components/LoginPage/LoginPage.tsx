@@ -7,12 +7,30 @@ interface LoginPageProps {
 
 export function LoginPage({ onSuccess }: LoginPageProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex items-center justify-center p-4">
-      {/* Простые декоративные элементы без анимации */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-32 h-96 w-96 rounded-full bg-gradient-to-br from-[#06A478]/10 to-[#4ade80]/10" />
-        <div className="absolute -bottom-40 -left-32 h-96 w-96 rounded-full bg-gradient-to-br from-[#4ade80]/10 to-[#86efac]/10" />
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-72 w-72 rounded-full bg-gradient-to-br from-[#06A478]/5 to-[#22c55e]/5" />
+    <div className="min-h-screen relative overflow-hidden flex items-center justify-center p-4">
+      {/* Фон в корпоративных тонах SNS */}
+      <div className="absolute inset-0">
+        {/* Базовый градиент */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#f4fff9] via-white to-[#e6f7f1]" />
+
+        {/* Размытые пятна с фирменным зеленым */}
+        <div className="absolute top-0 left-0 w-full h-full">
+          <div
+            className="absolute top-[-20%] right-[-15%] w-[620px] h-[620px] rounded-full bg-gradient-to-br from-[#06A478]/25 via-[#0fbf89]/20 to-[#22d3a0]/20 blur-3xl animate-pulse"
+            style={{ animationDuration: '8s' }}
+          />
+          <div
+            className="absolute bottom-[-22%] left-[-15%] w-[760px] h-[760px] rounded-full bg-gradient-to-tr from-[#0fbf89]/20 via-[#06A478]/25 to-[#c8f5e2]/30 blur-3xl animate-pulse"
+            style={{ animationDuration: '11s', animationDelay: '2s' }}
+          />
+          <div
+            className="absolute top-[18%] left-[12%] w-[420px] h-[420px] rounded-full bg-gradient-to-bl from-[#bbf7d0]/25 via-[#86efac]/20 to-transparent blur-3xl animate-pulse"
+            style={{ animationDuration: '13s', animationDelay: '4s' }}
+          />
+        </div>
+
+        {/* Легкая текстура */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_60%_40%,rgba(6,164,120,0.12),transparent_55%)]" />
       </div>
 
       {/* Основной контент */}
