@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+п»їimport React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ShieldCheck, QrCode, Smartphone, RefreshCw, ExternalLink } from 'lucide-react';
 import {
@@ -22,25 +22,25 @@ type TimelineItem = {
 const timeline: TimelineItem[] = [
   {
     key: 'qr',
-    title: 'Сканирование QR',
-    description: 'Проверяем токен и подтверждаем, что QR принадлежит экспертному аккаунту.'
+    title: 'РЎРєР°РЅРёСЂРѕРІР°РЅРёРµ QR',
+    description: 'РџСЂРѕРІРµСЂСЏРµРј С‚РѕРєРµРЅ Рё РїРѕРґС‚РІРµСЂР¶РґР°РµРј, С‡С‚Рѕ QR РїСЂРёРЅР°РґР»РµР¶РёС‚ СЌРєСЃРїРµСЂС‚РЅРѕРјСѓ Р°РєРєР°СѓРЅС‚Сѓ.'
   },
   {
     key: 'auth',
-    title: 'Создание сессии',
-    description: 'Генерируем безопасную magic-link ссылку и привязываем её к вашему устройству.'
+    title: 'РЎРѕР·РґР°РЅРёРµ СЃРµСЃСЃРёРё',
+    description: 'Р“РµРЅРµСЂРёСЂСѓРµРј Р±РµР·РѕРїР°СЃРЅСѓСЋ magic-link СЃСЃС‹Р»РєСѓ Рё РїСЂРёРІСЏР·С‹РІР°РµРј РµС‘ Рє РІР°С€РµРјСѓ СѓСЃС‚СЂРѕР№СЃС‚РІСѓ.'
   },
   {
     key: 'profile',
-    title: 'Загрузка профиля',
-    description: 'Открываем панель эксперта с учётом ваших прав доступа.'
+    title: 'Р—Р°РіСЂСѓР·РєР° РїСЂРѕС„РёР»СЏ',
+    description: 'РћС‚РєСЂС‹РІР°РµРј РїР°РЅРµР»СЊ СЌРєСЃРїРµСЂС‚Р° СЃ СѓС‡С‘С‚РѕРј РІР°С€РёС… РїСЂР°РІ РґРѕСЃС‚СѓРїР°.'
   }
 ];
 
 const getDeviceLabel = () => {
-  if (isIOS) return 'Оптимизировано для iPhone и iPad';
-  if (isAndroid) return 'Оптимизировано для Android';
-  return 'Поддерживается на смартфонах и планшетах';
+  if (isIOS) return 'РћРїС‚РёРјРёР·РёСЂРѕРІР°РЅРѕ РґР»СЏ iPhone Рё iPad';
+  if (isAndroid) return 'РћРїС‚РёРјРёР·РёСЂРѕРІР°РЅРѕ РґР»СЏ Android';
+  return 'РџРѕРґРґРµСЂР¶РёРІР°РµС‚СЃСЏ РЅР° СЃРјР°СЂС‚С„РѕРЅР°С… Рё РїР»Р°РЅС€РµС‚Р°С…';
 };
 
 export default function QRAuthPage() {
@@ -49,10 +49,34 @@ export default function QRAuthPage() {
 
   const [status, setStatus] = useState<Status>('loading');
   const [step, setStep] = useState<Step>('qr');
-  const [message, setMessage] = useState('Проверяем QR-токен…');
+  const [message, setMessage] = useState('РџСЂРѕРІРµСЂСЏРµРј QR-С‚РѕРєРµРЅвЂ¦');
   const [fallbackUrl, setFallbackUrl] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [manualPrompt, setManualPrompt] = useState(false);
+
+  const buildVersion = import.meta.env.VITE_BUILD_VERSION || import.meta.env.VITE_APP_VERSION || 'local-dev';
+  const buildTimestampRaw = import.meta.env.VITE_BUILD_TIMESTAMP || '';
+  const buildTimestampDisplay = useMemo(() => {
+    if (buildTimestampRaw) {
+      const parsed = new Date(buildTimestampRaw);
+      if (!Number.isNaN(parsed.getTime())) {
+        return new Intl.DateTimeFormat('ru-RU', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }).format(parsed);
+      }
+    }
+    return new Intl.DateTimeFormat('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(new Date());
+  }, [buildTimestampRaw]);
 
   const alive = useRef(true);
   useEffect(() => () => {
@@ -71,14 +95,14 @@ export default function QRAuthPage() {
     const execute = async () => {
       if (!token) {
         safeSet(setStatus, 'error');
-        safeSet(setMessage, 'QR-токен не найден. Обновите QR и попробуйте снова.');
+        safeSet(setMessage, 'QR-С‚РѕРєРµРЅ РЅРµ РЅР°Р№РґРµРЅ. РћР±РЅРѕРІРёС‚Рµ QR Рё РїРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°.');
         return;
       }
 
       try {
         safeSet(setStatus, 'loading');
         safeSet(setStep, 'qr');
-        safeSet(setMessage, 'Проверяем QR-токен…');
+        safeSet(setMessage, 'РџСЂРѕРІРµСЂСЏРµРј QR-С‚РѕРєРµРЅвЂ¦');
         safeSet(setFallbackUrl, null);
         safeSet(setManualPrompt, false);
 
@@ -86,7 +110,7 @@ export default function QRAuthPage() {
         const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
         if (!supabaseUrl || !anonKey) {
-          throw new Error('Переменные окружения VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY не заданы.');
+          throw new Error('РџРµСЂРµРјРµРЅРЅС‹Рµ РѕРєСЂСѓР¶РµРЅРёСЏ VITE_SUPABASE_URL Рё VITE_SUPABASE_ANON_KEY РЅРµ Р·Р°РґР°РЅС‹.');
         }
 
         const { fetchTimeout, redirectDelay } = getAdaptiveSettings();
@@ -110,21 +134,21 @@ export default function QRAuthPage() {
 
         if (!response.ok) {
           const errorText = await response.text();
-          throw new Error(`Ошибка авторизации: ${response.status} — ${errorText}`);
+          throw new Error(`РћС€РёР±РєР° Р°РІС‚РѕСЂРёР·Р°С†РёРё: ${response.status} вЂ” ${errorText}`);
         }
 
         const data = await response.json();
 
         if (!data?.success) {
-          throw new Error(data?.error || 'Не удалось подтвердить QR-токен.');
+          throw new Error(data?.error || 'РќРµ СѓРґР°Р»РѕСЃСЊ РїРѕРґС‚РІРµСЂРґРёС‚СЊ QR-С‚РѕРєРµРЅ.');
         }
 
         if (!data.redirectUrl) {
-          throw new Error('Сервер не вернул ссылку для входа.');
+          throw new Error('РЎРµСЂРІРµСЂ РЅРµ РІРµСЂРЅСѓР» СЃСЃС‹Р»РєСѓ РґР»СЏ РІС…РѕРґР°.');
         }
 
         safeSet(setStep, 'auth');
-        safeSet(setMessage, 'Подтверждаем magic-link…');
+        safeSet(setMessage, 'РџРѕРґС‚РІРµСЂР¶РґР°РµРј magic-linkвЂ¦');
         safeSet(setFallbackUrl, data.redirectUrl);
 
         (window as any).authCallbackProcessing = true;
@@ -147,7 +171,7 @@ export default function QRAuthPage() {
         window.setTimeout(() => {
           if (document.visibilityState === 'visible' && alive.current) {
             safeSet(setManualPrompt, true);
-            safeSet(setMessage, 'Если переход не произошёл, нажмите кнопку ниже.');
+            safeSet(setMessage, 'Р•СЃР»Рё РїРµСЂРµС…РѕРґ РЅРµ РїСЂРѕРёР·РѕС€С‘Р», РЅР°Р¶РјРёС‚Рµ РєРЅРѕРїРєСѓ РЅРёР¶Рµ.');
           }
         }, redirectDelay + 1800);
       } catch (error: any) {
@@ -155,9 +179,9 @@ export default function QRAuthPage() {
         if (!alive.current) return;
 
         if (error?.name === 'AbortError') {
-          safeSet(setMessage, 'Время ожидания истекло. Проверьте сеть и повторите попытку.');
+          safeSet(setMessage, 'Р’СЂРµРјСЏ РѕР¶РёРґР°РЅРёСЏ РёСЃС‚РµРєР»Рѕ. РџСЂРѕРІРµСЂСЊС‚Рµ СЃРµС‚СЊ Рё РїРѕРІС‚РѕСЂРёС‚Рµ РїРѕРїС‹С‚РєСѓ.');
         } else {
-          safeSet(setMessage, error?.message || 'Не удалось выполнить авторизацию.');
+          safeSet(setMessage, error?.message || 'РќРµ СѓРґР°Р»РѕСЃСЊ РІС‹РїРѕР»РЅРёС‚СЊ Р°РІС‚РѕСЂРёР·Р°С†РёСЋ.');
         }
 
         safeSet(setStatus, 'error');
@@ -217,13 +241,13 @@ export default function QRAuthPage() {
                 <ShieldCheck className="h-5 w-5 text-emerald-500" aria-hidden />
               </div>
               <div>
-                <h1 className="text-xl font-semibold sm:text-2xl text-slate-900">Вход эксперта</h1>
+                <h1 className="text-xl font-semibold sm:text-2xl text-slate-900">Р’С…РѕРґ СЌРєСЃРїРµСЂС‚Р°</h1>
                 <p className="text-sm text-slate-500">{getDeviceLabel()}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 self-start rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-700">
               <Smartphone className="h-3.5 w-3.5" aria-hidden />
-              <span>QR-авторизация</span>
+              <span>QR-Р°РІС‚РѕСЂРёР·Р°С†РёСЏ</span>
             </div>
           </header>
 
@@ -232,7 +256,7 @@ export default function QRAuthPage() {
           <div className="rounded-3xl border border-white/60 bg-white/70 p-4 sm:p-5 shadow-[0_16px_40px_-32px_rgba(15,23,42,0.25)]">
             <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-700">
               <QrCode className="h-4 w-4 text-emerald-500" aria-hidden />
-              <span>Этапы авторизации</span>
+              <span>Р­С‚Р°РїС‹ Р°РІС‚РѕСЂРёР·Р°С†РёРё</span>
             </div>
             <ol className="space-y-3 text-sm text-slate-600">
               {timeline.map((item, index) => {
@@ -259,7 +283,7 @@ export default function QRAuthPage() {
 
           <div className="rounded-3xl border border-white/60 bg-white/70 px-4 py-4 shadow-[0_16px_40px_-30px_rgba(15,23,42,0.3)]">
             <div className="flex items-center justify-between text-xs text-slate-500">
-              <span>Прогресс</span>
+              <span>РџСЂРѕРіСЂРµСЃСЃ</span>
               <span>{progress}%</span>
             </div>
             <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-200/60">
@@ -278,7 +302,7 @@ export default function QRAuthPage() {
                 className="inline-flex items-center justify-center gap-2 rounded-2xl bg-rose-500 px-4 py-2 font-medium text-white shadow-lg shadow-rose-500/30 transition hover:bg-rose-600"
               >
                 <RefreshCw className="h-4 w-4" aria-hidden />
-                Повторить попытку
+                РџРѕРІС‚РѕСЂРёС‚СЊ РїРѕРїС‹С‚РєСѓ
               </button>
             )}
 
@@ -289,16 +313,19 @@ export default function QRAuthPage() {
                 className="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-white px-4 py-2 font-medium text-emerald-700 shadow-sm transition hover:bg-emerald-50"
               >
                 <ExternalLink className="h-4 w-4" aria-hidden />
-                Открыть ссылку вручную
+                РћС‚РєСЂС‹С‚СЊ СЃСЃС‹Р»РєСѓ РІСЂСѓС‡РЅСѓСЋ
               </button>
             )}
 
             <p className="text-xs leading-relaxed text-slate-500">
-              Если процесс завис, обновите QR-код в приложении оценки и сканируйте снова. Чтобы переход прошёл автоматически, держите браузер открытым и разрешите всплывающие окна для этого сайта.
-            </p>
+              Р•СЃР»Рё РїСЂРѕС†РµСЃСЃ Р·Р°РІРёСЃ, РѕР±РЅРѕРІРёС‚Рµ QR-РєРѕРґ РІ РїСЂРёР»РѕР¶РµРЅРёРё РѕС†РµРЅРєРё Рё СЃРєР°РЅРёСЂСѓР№С‚Рµ СЃРЅРѕРІР°. Р§С‚РѕР±С‹ РїРµСЂРµС…РѕРґ РїСЂРѕС€С‘Р» Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё, РґРµСЂР¶РёС‚Рµ Р±СЂР°СѓР·РµСЂ РѕС‚РєСЂС‹С‚С‹Рј Рё СЂР°Р·СЂРµС€РёС‚Рµ РІСЃРїР»С‹РІР°СЋС‰РёРµ РѕРєРЅР° РґР»СЏ СЌС‚РѕРіРѕ СЃР°Р№С‚Р°.
+            </p>`r`n          <p className="text-[11px] text-slate-400 text-center">РџРѕСЃР»РµРґРЅРµРµ РѕР±РЅРѕРІР»РµРЅРёРµ: {buildTimestampDisplay} В· {buildVersion}</p>`r`n
           </div>
         </section>
       </main>
     </div>
   );
 }
+
+
+

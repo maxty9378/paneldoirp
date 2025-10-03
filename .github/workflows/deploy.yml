@@ -1,0 +1,54 @@
+﻿name: Deploy to Yandex VM
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+
+      - name: Create artifact archive
+        run: tar -czf dist.tar.gz dist
+
+      - name: Upload bundle to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.YC_SSH_HOST }}
+          username: ${{ secrets.YC_SSH_USER }}
+          key: ${{ secrets.YC_SSH_KEY }}
+          source: dist.tar.gz
+          target: ~/
+
+      - name: Deploy on server
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.YC_SSH_HOST }}
+          username: ${{ secrets.YC_SSH_USER }}
+          key: ${{ secrets.YC_SSH_KEY }}
+          script: |
+            set -e
+            cd ~
+            tar -xzf dist.tar.gz
+            sudo rm -rf /var/www/doirp/*
+            sudo cp -r dist/* /var/www/doirp/
+            sudo chown -R www-data:www-data /var/www/doirp
+            sudo systemctl reload nginx
+            rm -rf dist dist.tar.gz
