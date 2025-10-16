@@ -357,13 +357,14 @@ export default function QRAuthPage() {
     window.location.href = fallbackUrl;
   };
 
-  useEffect(() => {
-    if (status === 'error') {
-      const timer = window.setTimeout(() => navigate('/'), 3500);
-      return () => window.clearTimeout(timer);
-    }
-    return undefined;
-  }, [status, navigate]);
+  // Отключаем автоматический редирект при ошибке, чтобы можно было увидеть debug информацию
+  // useEffect(() => {
+  //   if (status === 'error') {
+  //     const timer = window.setTimeout(() => navigate('/'), 3500);
+  //     return () => window.clearTimeout(timer);
+  //   }
+  //   return undefined;
+  // }, [status, navigate]);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#F5F7F9] pb-safe-bottom">
@@ -447,14 +448,24 @@ export default function QRAuthPage() {
 
           <div className="flex flex-col gap-3 text-sm text-slate-600">
             {status === 'error' && (
-              <button
-                type="button"
-                onClick={handleRetry}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-rose-500 px-4 py-2 font-medium text-white shadow-lg shadow-rose-500/30 transition hover:bg-rose-600"
-              >
-                <RefreshCw className="h-4 w-4" aria-hidden />
-                Повторить попытку
-              </button>
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={handleRetry}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-rose-500 px-4 py-2 font-medium text-white shadow-lg shadow-rose-500/30 transition hover:bg-rose-600 w-full"
+                >
+                  <RefreshCw className="h-4 w-4" aria-hidden />
+                  Повторить попытку
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={() => navigate('/')}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-2 font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 w-full"
+                >
+                  <span>Перейти на главную</span>
+                </button>
+              </div>
             )}
 
             {manualPrompt && fallbackUrl && (
@@ -477,6 +488,18 @@ export default function QRAuthPage() {
               <div className="mt-4 p-3 bg-slate-100 rounded-lg border border-slate-200">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-xs font-medium text-slate-600">🔍 Диагностика (для iPhone):</span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(debugInfo).then(() => {
+                        addDebugInfo('📋 Логи скопированы в буфер обмена');
+                      }).catch(() => {
+                        addDebugInfo('❌ Не удалось скопировать логи');
+                      });
+                    }}
+                    className="text-xs text-blue-500 hover:text-blue-600"
+                  >
+                    Копировать
+                  </button>
                   <button
                     onClick={() => setDebugInfo('')}
                     className="text-xs text-slate-400 hover:text-slate-600"
