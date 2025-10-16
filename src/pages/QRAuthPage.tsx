@@ -55,6 +55,7 @@ export default function QRAuthPage() {
   const [fallbackUrl, setFallbackUrl] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [manualPrompt, setManualPrompt] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string>('');
 
   const buildVersion = import.meta.env.VITE_BUILD_VERSION || import.meta.env.VITE_APP_VERSION || 'local-dev';
   const buildTimestampRaw = import.meta.env.VITE_BUILD_TIMESTAMP || '';
@@ -89,6 +90,12 @@ export default function QRAuthPage() {
     if (alive.current) setter(value);
   };
 
+  const addDebugInfo = (info: string) => {
+    const timestamp = new Date().toLocaleTimeString('ru-RU');
+    setDebugInfo(prev => `${prev}[${timestamp}] ${info}\n`);
+    console.log(`[DEBUG] ${info}`);
+  };
+
   const activeStepIndex = useMemo(() => timeline.findIndex(item => item.key === step), [step]);
 
   useEffect(() => {
@@ -102,13 +109,9 @@ export default function QRAuthPage() {
       }
 
       // Диагностика мобильного устройства
-      console.log('📱 Mobile device info:', {
-        isMobile,
-        isIOS,
-        isAndroid,
-        userAgent: navigator.userAgent,
-        connection: getConnectionQuality()
-      });
+      addDebugInfo(`📱 Устройство: ${isMobile ? 'Мобильное' : 'Десктоп'} (${isIOS ? 'iOS' : isAndroid ? 'Android' : 'Другое'})`);
+      addDebugInfo(`🌐 Соединение: ${getConnectionQuality()}`);
+      addDebugInfo(`🔗 Токен: ${token.substring(0, 8)}...`);
 
       try {
         safeSet(setStatus, 'loading');
@@ -131,23 +134,30 @@ export default function QRAuthPage() {
           Authorization: `Bearer ${anonKey}`
         } as Record<string, string>;
 
+        addDebugInfo(`📤 Отправка запроса к Edge Function...`);
+        
         const response = await fetch(`${supabaseUrl}/functions/v1/auth-by-qr-token`, {
           method: 'POST',
           headers,
           body: JSON.stringify({ token }),
           signal: controller.signal
         });
+        
+        addDebugInfo(`📥 Получен ответ: HTTP ${response.status}`);
 
         window.clearTimeout(timeoutId);
 
         if (!response.ok) {
           const errorText = await response.text();
+          addDebugInfo(`❌ Ошибка HTTP ${response.status}: ${errorText}`);
           throw new Error(`Ошибка авторизации: ${response.status} — ${errorText}`);
         }
 
         const data = await response.json();
+        addDebugInfo(`✅ Успешный ответ от сервера`);
 
         if (!data?.success) {
+          addDebugInfo(`❌ Сервер вернул ошибку: ${data?.error || 'Неизвестная ошибка'}`);
           throw new Error(data?.error || 'Не удалось подтвердить QR-токен.');
         }
 
@@ -156,7 +166,7 @@ export default function QRAuthPage() {
 
         // Magic link подход: переходим по ссылке авторизации
         if (data.redirectUrl) {
-          console.log('🔗 Using legacy magic link redirect...');
+          addDebugInfo(`🔗 Получен magic link: ${data.redirectUrl.substring(0, 50)}...`);
           
           safeSet(setMessage, 'Подтверждаем magic-link…');
           safeSet(setFallbackUrl, data.redirectUrl);
@@ -169,10 +179,11 @@ export default function QRAuthPage() {
           safeSet(setStatus, 'success');
 
           const performRedirect = () => {
-            console.log('🔄 Performing redirect for:', isIOS ? 'iOS' : isAndroid ? 'Android' : 'Desktop');
+            addDebugInfo(`🔄 Выполнение редиректа для: ${isIOS ? 'iOS' : isAndroid ? 'Android' : 'Desktop'}`);
             
             // Для мобильных устройств используем более надежный способ
             if (isMobile) {
+              addDebugInfo(`📱 Используем мобильный метод редиректа`);
               // Создаем временную ссылку и кликаем по ней
               const link = document.createElement('a');
               link.href = data.redirectUrl;
@@ -183,8 +194,9 @@ export default function QRAuthPage() {
               // Пытаемся кликнуть
               try {
                 link.click();
+                addDebugInfo(`✅ Клик по ссылке выполнен`);
               } catch (e) {
-                console.log('⚠️ Click failed, trying window.location:', e);
+                addDebugInfo(`⚠️ Клик не удался, пробуем window.location: ${e}`);
                 window.location.href = data.redirectUrl;
               }
               
@@ -193,6 +205,7 @@ export default function QRAuthPage() {
                 document.body.removeChild(link);
               }, 1000);
             } else {
+              addDebugInfo(`🖥️ Используем десктопный метод редиректа`);
               // Для десктопа используем обычный редирект
               if (isIOS) {
                 window.location.href = data.redirectUrl;
@@ -214,10 +227,12 @@ export default function QRAuthPage() {
           throw new Error('Сервер не вернул данные для авторизации.');
         }
       } catch (error: any) {
+        addDebugInfo(`❌ Ошибка авторизации: ${error?.message || 'Неизвестная ошибка'}`);
         console.error('QR auth error:', error);
         if (!alive.current) return;
 
         if (error?.name === 'AbortError') {
+          addDebugInfo(`⏰ Таймаут запроса`);
           safeSet(setMessage, 'Время ожидания истекло. Проверьте сеть и повторите попытку.');
         } else {
           safeSet(setMessage, error?.message || 'Не удалось выполнить авторизацию.');
@@ -358,7 +373,27 @@ export default function QRAuthPage() {
 
             <p className="text-xs leading-relaxed text-slate-500">
               Если процесс завис, обновите QR-код в приложении оценки и сканируйте снова. Чтобы переход прошёл автоматически, держите браузер открытым и разрешите всплывающие окна для этого сайта.
-            </p>`r`n          <p className="text-[11px] text-slate-400 text-center">Последнее обновление: {buildTimestampDisplay} · {buildVersion}</p>`r`n
+            </p>
+            
+            {/* Debug панель для мобильных устройств */}
+            {debugInfo && (
+              <div className="mt-4 p-3 bg-slate-100 rounded-lg border border-slate-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-medium text-slate-600">🔍 Диагностика (для iPhone):</span>
+                  <button
+                    onClick={() => setDebugInfo('')}
+                    className="text-xs text-slate-400 hover:text-slate-600"
+                  >
+                    Очистить
+                  </button>
+                </div>
+                <pre className="text-[10px] text-slate-600 whitespace-pre-wrap font-mono leading-tight max-h-32 overflow-y-auto">
+                  {debugInfo}
+                </pre>
+              </div>
+            )}
+            
+          <p className="text-[11px] text-slate-400 text-center">Последнее обновление: {buildTimestampDisplay} · {buildVersion}</p>
           </div>
         </section>
       </main>
