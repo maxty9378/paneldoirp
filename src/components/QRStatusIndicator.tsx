@@ -34,9 +34,9 @@ const statusPalette: Record<Status, { ring: string; badge: string; accent: strin
 };
 
 const stepTitle: Record<Step, string> = {
-  qr: 'Проверяем QR-токен',
-  auth: 'Подтверждаем вход',
-  profile: 'Загружаем профиль'
+  qr: 'РџСЂРѕРІРµСЂРєР° QR-С‚РѕРєРµРЅР°',
+  auth: 'РђРІС‚РѕСЂРёР·Р°С†РёСЏ',
+  profile: 'Р—Р°РіСЂСѓР·РєР° РїСЂРѕС„РёР»СЏ'
 };
 
 export function QRStatusIndicator({ status, step, message, isIOS = false }: QRStatusIndicatorProps) {
@@ -57,18 +57,18 @@ export function QRStatusIndicator({ status, step, message, isIOS = false }: QRSt
   const iconTone = status === 'error' ? 'text-rose-500' : status === 'success' ? 'text-emerald-500' : 'text-emerald-500';
 
   const getSubtitle = () => {
-    if (status === 'error') return 'Возвращаемся на главную, попробуйте снова.';
-    if (status === 'success') return 'Сессия установлена, перенаправляем…';
+    if (status === 'error') return 'РћС€РёР±РєР° Р°РІС‚РѕСЂРёР·Р°С†РёРё, РїРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°.';
+    if (status === 'success') return 'РЈСЃРїРµС€РЅР°СЏ Р°РІС‚РѕСЂРёР·Р°С†РёСЏ, РїРµСЂРµРЅР°РїСЂР°РІР»РµРЅРёРµ';
 
     if (isSlowConnection) {
-      return 'Соединение нестабильное, процесс может занять чуть больше времени.';
+      return 'РњРµРґР»РµРЅРЅРѕРµ СЃРѕРµРґРёРЅРµРЅРёРµ, РїРѕР¶Р°Р»СѓР№СЃС‚Р° РїРѕРґРѕР¶РґРёС‚Рµ РЅРµРјРЅРѕРіРѕ РґРѕР»СЊС€Рµ РѕР±С‹С‡РЅРѕРіРѕ.';
     }
 
     if (isIOS) {
-      return 'На iPhone проверка и подтверждение могут занять до 30 секунд.';
+      return 'РќР° iPhone Р°РІС‚РѕСЂРёР·Р°С†РёСЏ РІ СЃСЂРµРґРЅРµРј Р·Р°РЅРёРјР°РµС‚ РґРѕ 30 СЃРµРєСѓРЅРґ.';
     }
 
-    return message || 'Подготавливаем ссылку для входа…';
+    return message || 'Р’С‹РїРѕР»РЅСЏРµС‚СЃСЏ РїСЂРѕРІРµСЂРєР° С‚РѕРєРµРЅР°';
   };
 
   return (
@@ -89,7 +89,7 @@ export function QRStatusIndicator({ status, step, message, isIOS = false }: QRSt
           )}
           {status !== 'loading' && (
             <p className="text-sm text-slate-500">
-              {status === 'success' ? 'Почти готово…' : 'Перепроверяем и возвращаемся назад.'}
+              {status === 'success' ? 'Р’СЃРµ РіРѕС‚РѕРІРѕ' : 'РџРµСЂРµС…РѕРґРёРј Рє СЃР»РµРґСѓСЋС‰РµРјСѓ С€Р°РіСѓ.'}
             </p>
           )}
         </div>
@@ -99,12 +99,12 @@ export function QRStatusIndicator({ status, step, message, isIOS = false }: QRSt
             {isSlowConnection ? (
               <>
                 <WifiOff className="h-3.5 w-3.5 text-rose-500" aria-hidden />
-                <span>Соединение нестабильное</span>
+                <span>РњРµРґР»РµРЅРЅРѕРµ СЃРѕРµРґРёРЅРµРЅРёРµ</span>
               </>
             ) : (
               <>
                 <Wifi className="h-3.5 w-3.5 text-emerald-500" aria-hidden />
-                <span>Соединение стабильное</span>
+                <span>РЎС‚Р°Р±РёР»СЊРЅРѕРµ СЃРѕРµРґРёРЅРµРЅРёРµ</span>
               </>
             )}
           </div>
@@ -112,7 +112,7 @@ export function QRStatusIndicator({ status, step, message, isIOS = false }: QRSt
 
         {isIOS && status === 'loading' && (
           <p className="mt-1 max-w-xs text-xs text-slate-500">
-            ?? Совет: удобнее добавить страницу на экран «Домой» или открыть ссылку в Safari, чтобы ускорить переход.
+            рџ’Ў РЎРѕРІРµС‚: РѕС‚РєР»СЋС‡РёС‚Рµ Р±Р»РѕРєРёСЂРѕРІС‰РёРє СЂРµРєР»Р°РјС‹ РЅР° СЌС‚РѕРј СЃР°Р№С‚Рµ РёР»Рё РґРѕР±Р°РІСЊС‚Рµ СЃР°Р№С‚ РІ РёСЃРєР»СЋС‡РµРЅРёСЏ Safari, С‡С‚РѕР±С‹ СѓСЃРєРѕСЂРёС‚СЊ Р°РІС‚РѕСЂРёР·Р°С†РёСЋ.
           </p>
         )}
       </div>

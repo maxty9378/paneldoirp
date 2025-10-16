@@ -143,42 +143,8 @@ export default function QRAuthPage() {
         safeSet(setStep, 'auth');
         safeSet(setMessage, 'Создаём сессию…');
 
-        // НОВЫЙ ПОДХОД: Получаем токены напрямую и устанавливаем сессию
-        if (data.access_token && data.refresh_token) {
-          console.log('🔑 Received auth tokens, setting session...');
-          
-          const { supabase } = await import('../lib/supabase');
-          
-          // Устанавливаем сессию с полученными токенами
-          const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-            access_token: data.access_token,
-            refresh_token: data.refresh_token
-          });
-
-          if (sessionError) {
-            console.error('❌ Error setting session:', sessionError);
-            throw new Error('Не удалось установить сессию: ' + sessionError.message);
-          }
-
-          console.log('✅ Session set successfully:', sessionData?.user?.email);
-          
-          await optimizedDelay(redirectDelay);
-
-          safeSet(setStep, 'profile');
-          safeSet(setStatus, 'success');
-          safeSet(setMessage, 'Авторизация успешна! Переход в приложение…');
-
-          // Переход на главную страницу
-          await optimizedDelay(500);
-          
-          if (isIOS) {
-            window.location.href = '/';
-          } else {
-            window.location.replace('/');
-          }
-        } 
-        // СТАРЫЙ ПОДХОД: Fallback на magic link redirect (для обратной совместимости)
-        else if (data.redirectUrl) {
+        // Magic link подход: переходим по ссылке авторизации
+        if (data.redirectUrl) {
           console.log('🔗 Using legacy magic link redirect...');
           
           safeSet(setMessage, 'Подтверждаем magic-link…');
