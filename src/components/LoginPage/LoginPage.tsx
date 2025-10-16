@@ -37,6 +37,13 @@ export function LoginPage({ onSuccess }: LoginPageProps) {
       <div className="relative z-10 w-full max-w-md">
         <LoginForm onSuccess={onSuccess} />
       </div>
+
+      {/* Версия приложения - в углу экрана */}
+      <div className="absolute bottom-4 right-4 z-20">
+        <p className="text-[10px] text-gray-500/60 font-mono">
+          {import.meta.env.VITE_FULL_VERSION || `v${import.meta.env.VITE_APP_VERSION || 'dev'} · ${new Date(import.meta.env.VITE_BUILD_TIMESTAMP || Date.now()).toLocaleDateString('ru-RU')}`}
+        </p>
+      </div>
     </div>
   );
 }
