@@ -119,6 +119,8 @@ export default function QRAuthPage() {
       addDebugInfo(`📱 Устройство: ${isMobile ? 'Мобильное' : 'Десктоп'} (${isIOS ? 'iOS' : isAndroid ? 'Android' : 'Другое'})`);
       addDebugInfo(`🌐 Соединение: ${getConnectionQuality()}`);
       addDebugInfo(`🔗 Токен: ${token.substring(0, 8)}...`);
+      addDebugInfo(`📋 User Agent: ${navigator.userAgent.substring(0, 50)}...`);
+      addDebugInfo(`🌍 Online: ${navigator.onLine ? 'Да' : 'Нет'}`);
       
       if (isDirectLink) {
         addDebugInfo(`⚡ Режим прямой ссылки - ускоренная авторизация`);
@@ -151,15 +153,77 @@ export default function QRAuthPage() {
         } as Record<string, string>;
 
         addDebugInfo(`📤 Отправка запроса к Edge Function...`);
+        addDebugInfo(`🌐 URL: ${supabaseUrl}/functions/v1/auth-by-qr-token`);
+        addDebugInfo(`🔑 API Key: ${anonKey.substring(0, 10)}...`);
         
-        const response = await fetch(`${supabaseUrl}/functions/v1/auth-by-qr-token`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ token }),
-          signal: controller.signal
-        });
+        // Проверяем доступность Supabase URL
+        try {
+          const testResponse = await fetch(`${supabaseUrl}/rest/v1/`, {
+            method: 'HEAD',
+            headers: { 'apikey': anonKey },
+            signal: AbortSignal.timeout(5000)
+          });
+          addDebugInfo(`✅ Supabase доступен: ${testResponse.status}`);
+        } catch (testError: any) {
+          addDebugInfo(`⚠️ Проблема с Supabase: ${testError.message}`);
+        }
         
-        addDebugInfo(`📥 Получен ответ: HTTP ${response.status}`);
+        let response: Response;
+        try {
+          response = await fetch(`${supabaseUrl}/functions/v1/auth-by-qr-token`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ token }),
+            signal: controller.signal,
+            // Добавляем дополнительные опции для мобильных устройств
+            cache: 'no-cache',
+            mode: 'cors',
+            credentials: 'omit'
+          });
+          addDebugInfo(`📥 Получен ответ: HTTP ${response.status}`);
+        } catch (fetchError: any) {
+          addDebugInfo(`❌ Ошибка fetch: ${fetchError.message}`);
+          addDebugInfo(`🔍 Тип ошибки: ${fetchError.name}`);
+          
+          // Для мобильных устройств пробуем альтернативный подход
+          if (isMobile) {
+            addDebugInfo(`📱 Пробуем альтернативный запрос для мобильного устройства...`);
+            
+            // Упрощаем заголовки для мобильных устройств
+            const simpleHeaders = {
+              'Content-Type': 'application/json',
+              'apikey': anonKey
+            };
+            
+            try {
+              response = await fetch(`${supabaseUrl}/functions/v1/auth-by-qr-token`, {
+                method: 'POST',
+                headers: simpleHeaders,
+                body: JSON.stringify({ token }),
+                signal: controller.signal
+              });
+              addDebugInfo(`✅ Альтернативный запрос успешен: HTTP ${response.status}`);
+            } catch (retryError: any) {
+              addDebugInfo(`❌ Альтернативный запрос тоже не удался: ${retryError.message}`);
+              
+              // Последняя попытка - пробуем через GET запрос
+              addDebugInfo(`🔄 Последняя попытка через GET запрос...`);
+              try {
+                response = await fetch(`${supabaseUrl}/functions/v1/auth-by-qr-token/${token}`, {
+                  method: 'GET',
+                  headers: { 'apikey': anonKey },
+                  signal: controller.signal
+                });
+                addDebugInfo(`✅ GET запрос успешен: HTTP ${response.status}`);
+              } catch (getError: any) {
+                addDebugInfo(`💥 Все попытки исчерпаны: ${getError.message}`);
+                throw getError;
+              }
+            }
+          } else {
+            throw fetchError;
+          }
+        }
 
         window.clearTimeout(timeoutId);
 
