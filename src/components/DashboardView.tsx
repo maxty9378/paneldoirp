@@ -683,6 +683,13 @@ export function DashboardView() {
             </div>
           )}
         </section>
+
+        {/* Версия приложения - футер */}
+        <div className="mt-8 pb-4 text-center">
+          <p className="text-[10px] text-gray-400 font-mono">
+            {import.meta.env.VITE_FULL_VERSION || `v${import.meta.env.VITE_APP_VERSION || 'dev'} · ${new Date(import.meta.env.VITE_BUILD_TIMESTAMP || Date.now()).toLocaleDateString('ru-RU')}`}
+          </p>
+        </div>
       </div>
     </div>
   );
