@@ -51,7 +51,7 @@ serve(async (req) => {
 
     console.log('🔍 Looking up QR token:', token.substring(0, 8) + '...')
 
-    // Находим активный токен - используем прямой SQL запрос для обхода RLS
+    // Находим активный токен
     let qrToken: any = null;
     let tokenError: any = null;
 
@@ -112,34 +112,48 @@ serve(async (req) => {
 
     console.log('✅ User found:', user.email)
 
-    // Генерируем magic link - перенаправляем напрямую на /auth/callback
-    const finalRedirectUrl = Deno.env.get('PUBLIC_APP_URL') || 'http://51.250.94.103'
-    const callbackUrl = `${finalRedirectUrl}/auth/callback`
+    // НОВЫЙ ПОДХОД: Создаём сессию напрямую вместо magic link
+    // Это позволит нам вернуть токены в JSON ответе, а не через redirect
+    console.log('🔑 Creating session for user...')
     
-    const { data, error } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'magiclink',
-      email: user.email!,
-      options: {
-        redirectTo: callbackUrl
-      }
+    const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.createSession({
+      user_id: user.id,
+      // Можно указать срок действия сессии (по умолчанию используется из настроек Supabase)
+      // session_not_after: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 дней
     })
 
-    if (error) {
-      console.error('❌ Error generating magic link:', error)
-      throw new Error(`Failed to generate magic link: ${error.message}`)
+    if (sessionError) {
+      console.error('❌ Error creating session:', sessionError)
+      throw new Error(`Failed to create session: ${sessionError.message}`)
     }
 
-    console.log('✅ Magic link generated for:', user.email)
-    console.log('🔗 Action link:', data.properties?.action_link?.substring(0, 50) + '...')
+    if (!sessionData?.access_token || !sessionData?.refresh_token) {
+      console.error('❌ No tokens in session data:', sessionData)
+      throw new Error('Failed to generate session tokens')
+    }
 
-    // Возвращаем magic link в JSON
+    console.log('✅ Session created successfully')
+    console.log('🔑 Access token length:', sessionData.access_token.length)
+    console.log('🔑 Refresh token length:', sessionData.refresh_token.length)
+
+    const baseAppUrl = Deno.env.get('PUBLIC_APP_URL') || 'http://51.250.94.103'
+
+    // Возвращаем токены напрямую в JSON
+    // Frontend установит их в localStorage/sessionStorage
     const response = {
       success: true,
-      redirectUrl: data.properties?.action_link || callbackUrl,
-      needsActivation: true
+      access_token: sessionData.access_token,
+      refresh_token: sessionData.refresh_token,
+      expires_in: sessionData.expires_in,
+      expires_at: sessionData.expires_at,
+      token_type: 'bearer',
+      user: sessionData.user,
+      // Также отправляем redirectUrl для обратной совместимости
+      redirectUrl: `${baseAppUrl}/`,
+      needsActivation: false // Токены уже готовы, активация не нужна
     };
     
-    console.log('📤 Returning response:', JSON.stringify(response, null, 2));
+    console.log('📤 Returning response with tokens');
     
     return new Response(JSON.stringify(response), {
       status: 200,

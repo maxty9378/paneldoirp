@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест QR - Проверка Redirect URL</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; }
+        button {
+            background: #0e9f6e;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover { background: #0c8558; }
+        .url-box {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            word-wrap: break-word;
+            margin: 15px 0;
+        }
+        .param {
+            margin: 10px 0;
+            padding: 10px;
+            background: #2d2d2d;
+            border-radius: 4px;
+        }
+        .param-key {
+            color: #569cd6;
+            font-weight: bold;
+        }
+        .param-value {
+            color: #ce9178;
+        }
+        .warning {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d1fae5;
+            border-left: 4px solid #10b981;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Проверка Redirect URL от QR авторизации</h1>
+        
+        <h2>Шаг 1: Получить существующий токен</h2>
+        <button onclick="getExistingToken()">Получить токен из БД</button>
+        <div id="tokenResult"></div>
+
+        <h2>Шаг 2: Вызвать auth-by-qr-token</h2>
+        <input type="text" id="tokenInput" placeholder="Токен" style="width: 100%; padding: 10px; margin: 10px 0;">
+        <button onclick="testAuth()">Получить Redirect URL</button>
+        <div id="authResult"></div>
+
+        <h2>Шаг 3: Анализ Redirect URL</h2>
+        <div id="urlAnalysis"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://oaockmesooydvausfoca.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hb2NrbWVzb295ZHZhdXNmb2NhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEzNzI4NDEsImV4cCI6MjA2Njk0ODg0MX0.gwWS35APlyST7_IUvQvJtGO4QmGsvbE95lnQf0H1PUE';
+
+        async function getExistingToken() {
+            const resultDiv = document.getElementById('tokenResult');
+            
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/user_qr_tokens?select=token&is_active=eq.true&limit=1`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+
+                const tokens = await response.json();
+                
+                if (tokens && tokens.length > 0) {
+                    const token = tokens[0].token;
+                    document.getElementById('tokenInput').value = token;
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            ✅ Токен загружен: <code>${token.substring(0, 20)}...</code>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = '<div class="warning">⚠️ Нет активных токенов в БД</div>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="warning">❌ Ошибка: ${error.message}</div>`;
+            }
+        }
+
+        async function testAuth() {
+            const token = document.getElementById('tokenInput').value;
+            if (!token) {
+                alert('Введите токен');
+                return;
+            }
+
+            const resultDiv = document.getElementById('authResult');
+            const analysisDiv = document.getElementById('urlAnalysis');
+
+            try {
+                console.log('🔐 Testing auth with token:', token.substring(0, 16) + '...');
+
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/auth-by-qr-token`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    },
+                    body: JSON.stringify({ token })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || 'Auth failed');
+                }
+
+                console.log('✅ Auth response:', data);
+
+                const redirectUrl = data.redirectUrl;
+
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <strong>✅ Авторизация успешна!</strong><br>
+                        <code>needsActivation: ${data.needsActivation}</code>
+                    </div>
+                `;
+
+                // Анализируем URL
+                analyzeUrl(redirectUrl);
+
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="warning">❌ ${error.message}</div>`;
+            }
+        }
+
+        function analyzeUrl(urlString) {
+            const analysisDiv = document.getElementById('urlAnalysis');
+
+            try {
+                // Полный URL
+                let html = `<div class="url-box"><strong>Полный Redirect URL:</strong><br><br>${urlString}</div>`;
+
+                // Парсим URL
+                const url = new URL(urlString);
+                
+                html += `<h3>🔍 Анализ URL:</h3>`;
+                
+                // Base URL
+                html += `<div class="param">
+                    <span class="param-key">Base URL:</span> 
+                    <span class="param-value">${url.origin}${url.pathname}</span>
+                </div>`;
+
+                // Search параметры
+                const searchParams = new URLSearchParams(url.search);
+                if (searchParams.toString()) {
+                    html += `<h4>Query Parameters (?):</h4>`;
+                    for (const [key, value] of searchParams.entries()) {
+                        html += `<div class="param">
+                            <span class="param-key">${key}:</span> 
+                            <span class="param-value">${value.substring(0, 50)}${value.length > 50 ? '...' : ''}</span>
+                        </div>`;
+                    }
+                } else {
+                    html += `<div class="warning">⚠️ НЕТ query параметров (?)</div>`;
+                }
+
+                // Hash параметры
+                if (url.hash) {
+                    html += `<h4>Hash Parameters (#):</h4>`;
+                    const hashParams = new URLSearchParams(url.hash.substring(1));
+                    for (const [key, value] of hashParams.entries()) {
+                        html += `<div class="param">
+                            <span class="param-key">${key}:</span> 
+                            <span class="param-value">${value.substring(0, 50)}${value.length > 50 ? '...' : ''}</span>
+                        </div>`;
+                    }
+                } else {
+                    html += `<div class="warning">⚠️ НЕТ hash параметров (#)</div>`;
+                }
+
+                // Проверка необходимых параметров
+                html += `<h3>✔️ Проверка необходимых параметров:</h3>`;
+                
+                const hasAccessToken = searchParams.has('access_token') || url.hash.includes('access_token');
+                const hasRefreshToken = searchParams.has('refresh_token') || url.hash.includes('refresh_token');
+                const hasTokenHash = searchParams.has('token_hash') || searchParams.has('token');
+                const hasType = searchParams.has('type');
+
+                html += `<div class="${hasAccessToken || hasTokenHash ? 'success' : 'warning'}">
+                    ${hasAccessToken || hasTokenHash ? '✅' : '❌'} 
+                    Есть access_token или token/token_hash: ${hasAccessToken || hasTokenHash}
+                </div>`;
+
+                html += `<div class="${hasRefreshToken ? 'success' : 'warning'}">
+                    ${hasRefreshToken ? '✅' : '⚠️'} 
+                    Есть refresh_token: ${hasRefreshToken}
+                </div>`;
+
+                html += `<div class="${hasType ? 'success' : 'warning'}">
+                    ${hasType ? '✅' : '⚠️'} 
+                    Есть type: ${hasType} ${hasType ? '(' + searchParams.get('type') + ')' : ''}
+                </div>`;
+
+                // Рекомендации
+                if (!hasAccessToken && !hasTokenHash) {
+                    html += `<div class="warning">
+                        <strong>⚠️ ПРОБЛЕМА:</strong> URL не содержит ни access_token, ни token_hash!
+                        <br>Это означает, что magic link не содержит токенов авторизации.
+                        <br><br>
+                        <strong>Возможная причина:</strong> Supabase generateLink возвращает "action_link" вместо готового URL с токенами.
+                        <br><br>
+                        <strong>Решение:</strong> Нужно использовать <code>data.properties.action_link</code> из ответа generateLink.
+                    </div>`;
+                }
+
+                // Кнопка для теста
+                html += `<h3>🧪 Тестирование:</h3>`;
+                html += `<button onclick="window.open('${urlString}', '_blank')" style="background: #3b82f6; padding: 10px 20px;">
+                    🔗 Открыть Redirect URL в новой вкладке
+                </button>`;
+                html += `<p style="color: #6b7280; font-size: 14px;">
+                    Откроется новая вкладка. Проверьте консоль браузера для логов авторизации.
+                </p>`;
+
+                analysisDiv.innerHTML = html;
+
+            } catch (error) {
+                analysisDiv.innerHTML = `<div class="warning">❌ Ошибка парсинга URL: ${error.message}</div>`;
+            }
+        }
+
+        // Автозагрузка токена
+        window.onload = () => {
+            getExistingToken();
+        };
+    </script>
+</body>
+</html>
+

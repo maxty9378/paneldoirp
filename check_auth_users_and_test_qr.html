@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Проверка пользователей и тест QR</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; margin-top: 0; }
+        h2 { color: #0e9f6e; margin-top: 30px; border-bottom: 2px solid #0e9f6e; padding-bottom: 10px; }
+        button {
+            background: #0e9f6e;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover { background: #0c8558; }
+        .result-box {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        th {
+            background: #f3f4f6;
+            font-weight: 600;
+        }
+        tr:hover {
+            background: #f9fafb;
+        }
+        .token {
+            font-family: monospace;
+            font-size: 12px;
+            word-break: break-all;
+        }
+        .log {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin: 15px 0;
+        }
+        .success { color: #4ade80; }
+        .error { color: #f87171; }
+        .warning { color: #fbbf24; }
+        .info { color: #60a5fa; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Проверка пользователей и QR токенов</h1>
+
+        <h2>Шаг 1: Пользователи с QR токенами</h2>
+        <button onclick="checkUsersWithTokens()">Проверить пользователей</button>
+        <div id="usersResult"></div>
+
+        <h2>Шаг 2: Тест авторизации с существующим токеном</h2>
+        <p>Выберите токен из таблицы выше и нажмите "Тестировать"</p>
+        <input type="text" id="testToken" placeholder="Вставьте токен сюда" style="width: 100%; padding: 10px; margin: 10px 0;">
+        <button onclick="testAuthWithToken()">Тестировать авторизацию</button>
+        <div id="authTestResult"></div>
+
+        <h2>📋 Лог</h2>
+        <button onclick="clearLog()">Очистить</button>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://oaockmesooydvausfoca.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hb2NrbWVzb295ZHZhdXNmb2NhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEzNzI4NDEsImV4cCI6MjA2Njk0ODg0MX0.gwWS35APlyST7_IUvQvJtGO4QmGsvbE95lnQf0H1PUE';
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = type;
+            const timestamp = new Date().toLocaleTimeString('ru-RU');
+            entry.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        async function checkUsersWithTokens() {
+            log('🔍 Получаем список токенов и соответствующих пользователей...', 'info');
+            const resultDiv = document.getElementById('usersResult');
+
+            try {
+                // Получаем все активные токены
+                const tokensResponse = await fetch(`${SUPABASE_URL}/rest/v1/user_qr_tokens?select=id,user_id,token,is_active,created_at&is_active=eq.true&order=created_at.desc`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+
+                if (!tokensResponse.ok) {
+                    throw new Error(`Ошибка получения токенов: ${tokensResponse.status}`);
+                }
+
+                const tokens = await tokensResponse.json();
+                log(`✅ Найдено активных токенов: ${tokens.length}`, 'success');
+
+                // Получаем информацию о пользователях из public.users
+                const userIds = tokens.map(t => t.user_id).join(',');
+                const usersResponse = await fetch(`${SUPABASE_URL}/rest/v1/users?select=id,email,full_name,role&id=in.(${userIds})`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+
+                let users = [];
+                if (usersResponse.ok) {
+                    users = await usersResponse.json();
+                    log(`✅ Найдено пользователей в public.users: ${users.length}`, 'success');
+                } else {
+                    log(`⚠️ Не удалось получить данные из public.users`, 'warning');
+                }
+
+                // Создаем таблицу
+                let tableHTML = `
+                    <div class="result-box">
+                        <strong>Активные QR токены (${tokens.length}):</strong>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>User ID</th>
+                                    <th>Email</th>
+                                    <th>Роль</th>
+                                    <th>Токен</th>
+                                    <th>Создан</th>
+                                    <th>Действие</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+
+                tokens.forEach(token => {
+                    const user = users.find(u => u.id === token.user_id);
+                    const shortToken = token.token.substring(0, 16) + '...';
+                    const createdDate = new Date(token.created_at).toLocaleString('ru-RU');
+                    
+                    tableHTML += `
+                        <tr>
+                            <td class="token">${token.user_id.substring(0, 8)}...</td>
+                            <td>${user ? user.email : '<em>не найден</em>'}</td>
+                            <td>${user ? user.role : '-'}</td>
+                            <td class="token" title="${token.token}">${shortToken}</td>
+                            <td>${createdDate}</td>
+                            <td>
+                                <button onclick="testWithToken('${token.token}')" style="padding: 5px 10px; font-size: 12px;">
+                                    Тестировать
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                tableHTML += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+
+                resultDiv.innerHTML = tableHTML;
+
+            } catch (error) {
+                log(`❌ Ошибка: ${error.message}`, 'error');
+                resultDiv.innerHTML = `<div class="result-box"><strong>❌ Ошибка:</strong> ${error.message}</div>`;
+            }
+        }
+
+        function testWithToken(token) {
+            document.getElementById('testToken').value = token;
+            testAuthWithToken();
+        }
+
+        async function testAuthWithToken() {
+            const token = document.getElementById('testToken').value;
+            if (!token) {
+                log('❌ Введите токен', 'error');
+                alert('Введите токен для тестирования');
+                return;
+            }
+
+            log(`🔐 Тестирование авторизации с токеном: ${token.substring(0, 16)}...`, 'info');
+            const resultDiv = document.getElementById('authTestResult');
+
+            try {
+                log('📤 Отправка запроса к edge function auth-by-qr-token...', 'info');
+                
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/auth-by-qr-token`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    },
+                    body: JSON.stringify({ token })
+                });
+
+                log(`📥 Получен ответ: HTTP ${response.status}`, response.ok ? 'success' : 'error');
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || `HTTP ${response.status}: ${JSON.stringify(data)}`);
+                }
+
+                if (data.success) {
+                    log('✅ АВТОРИЗАЦИЯ УСПЕШНА!', 'success');
+                    log(`🔗 Получен redirectUrl: ${data.redirectUrl ? 'Да (' + data.redirectUrl.length + ' символов)' : 'Нет'}`, 'info');
+                    log(`📌 needsActivation: ${data.needsActivation}`, 'info');
+
+                    resultDiv.innerHTML = `
+                        <div class="result-box" style="border: 2px solid #4ade80;">
+                            <h3 style="color: #4ade80; margin-top: 0;">✅ Авторизация работает!</h3>
+                            <p><strong>Success:</strong> ${data.success}</p>
+                            <p><strong>Needs Activation:</strong> ${data.needsActivation}</p>
+                            ${data.redirectUrl ? `
+                                <p><strong>Redirect URL:</strong></p>
+                                <div class="token" style="background: #eff6ff; padding: 10px; border-radius: 4px; margin: 10px 0;">
+                                    ${data.redirectUrl.substring(0, 150)}...
+                                </div>
+                                <button onclick="window.open('${data.redirectUrl}', '_blank')" style="background: #3b82f6;">
+                                    🔗 Открыть redirect URL в новой вкладке
+                                </button>
+                            ` : ''}
+                            <details style="margin-top: 15px;">
+                                <summary>Полный ответ (JSON)</summary>
+                                <pre style="background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 4px; overflow-x: auto;">${JSON.stringify(data, null, 2)}</pre>
+                            </details>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(data.error || 'Unknown error');
+                }
+
+            } catch (error) {
+                log(`❌ Ошибка авторизации: ${error.message}`, 'error');
+                resultDiv.innerHTML = `
+                    <div class="result-box" style="border: 2px solid #f87171;">
+                        <h3 style="color: #f87171; margin-top: 0;">❌ Ошибка авторизации</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Автозапуск при загрузке
+        window.onload = () => {
+            log('🚀 Проверка пользователей и токенов...', 'info');
+            checkUsersWithTokens();
+        };
+    </script>
+</body>
+</html>
+

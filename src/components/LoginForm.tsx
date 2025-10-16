@@ -217,11 +217,11 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
         )}
 
         {/* Футер */}
-        <div className="mt-8 text-center">
+        <div className="mt-8 text-center space-y-2">
           <p className="text-xs text-gray-500">
             Система управления обучением и развитием сотрудников SNS • 2025
           </p>
-          <div className="mt-2">
+          <div>
             <a 
               href="https://sns.ru" 
               target="_blank" 
@@ -231,6 +231,10 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
               sns.ru
             </a>
           </div>
+          {/* Версия приложения */}
+          <p className="text-[10px] text-gray-400 font-mono">
+            {import.meta.env.VITE_FULL_VERSION || `v${import.meta.env.VITE_APP_VERSION || 'dev'} · ${new Date(import.meta.env.VITE_BUILD_TIMESTAMP || Date.now()).toLocaleDateString('ru-RU')}`}
+          </p>
         </div>
       </div>
 

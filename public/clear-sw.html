@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Очистка Service Worker</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        h1 { margin-top: 0; }
+        #status {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-weight: 500;
+        }
+        button {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: scale(1.05);
+        }
+        .success { color: #4ade80; }
+        .error { color: #f87171; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 Очистка Service Worker</h1>
+        <p id="status">Проверка...</p>
+        <button onclick="clearEverything()">Очистить все данные</button>
+    </div>
+
+    <script>
+        async function unregisterServiceWorkers() {
+            const statusEl = document.getElementById('status');
+            
+            try {
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    
+                    if (registrations.length === 0) {
+                        statusEl.innerHTML = '<span class="success">✓ Service Worker не найдены</span>';
+                        return;
+                    }
+                    
+                    for (let registration of registrations) {
+                        await registration.unregister();
+                        console.log('Service Worker отключен:', registration.scope);
+                    }
+                    
+                    statusEl.innerHTML = `<span class="success">✓ Отключено ${registrations.length} Service Worker(s)</span>`;
+                } else {
+                    statusEl.innerHTML = '<span class="error">⚠ Service Worker не поддерживается</span>';
+                }
+            } catch (error) {
+                statusEl.innerHTML = `<span class="error">❌ Ошибка: ${error.message}</span>`;
+            }
+        }
+
+        async function clearEverything() {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = 'Очистка данных...';
+            
+            try {
+                // Удаляем Service Workers
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    for (let registration of registrations) {
+                        await registration.unregister();
+                    }
+                }
+                
+                // Очищаем все кэши
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    await Promise.all(cacheNames.map(name => caches.delete(name)));
+                }
+                
+                // Очищаем localStorage
+                localStorage.clear();
+                
+                // Очищаем sessionStorage
+                sessionStorage.clear();
+                
+                statusEl.innerHTML = '<span class="success">✓ Все данные очищены! Перезагрузите страницу.</span>';
+                
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } catch (error) {
+                statusEl.innerHTML = `<span class="error">❌ Ошибка: ${error.message}</span>`;
+            }
+        }
+
+        // Автоматически запускаем при загрузке
+        unregisterServiceWorkers();
+    </script>
+</body>
+</html>
+

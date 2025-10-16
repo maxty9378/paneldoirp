@@ -5,9 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "start": "vite",
+    "build": "node scripts/generate-version.cjs && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dev:host": "vite --host",
+    "dev:memory": "node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

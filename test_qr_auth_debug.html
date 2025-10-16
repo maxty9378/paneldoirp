@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест QR авторизации - Полная диагностика</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; margin-top: 0; }
+        h2 { color: #0e9f6e; margin-top: 30px; border-bottom: 2px solid #0e9f6e; padding-bottom: 10px; }
+        button {
+            background: #0e9f6e;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover { background: #0c8558; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .log {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 500px;
+            overflow-y: auto;
+            margin: 15px 0;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 3px 0;
+        }
+        .success { color: #4ade80; }
+        .error { color: #f87171; }
+        .warning { color: #fbbf24; }
+        .info { color: #60a5fa; }
+        .step { color: #a78bfa; font-weight: bold; }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        .result-box {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+        .token-display {
+            background: #eff6ff;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Диагностика QR Авторизации</h1>
+        <p>Полная проверка всей цепочки QR авторизации</p>
+
+        <h2>Шаг 1: Проверка таблицы user_qr_tokens</h2>
+        <button onclick="checkQRTokensTable()">Проверить таблицу</button>
+        <div id="tableResult"></div>
+
+        <h2>Шаг 2: Генерация QR токена</h2>
+        <input type="email" id="emailInput" placeholder="Email пользователя (например: doirp@sns.ru)" value="doirp@sns.ru">
+        <button onclick="generateQRToken()">Сгенерировать QR токен</button>
+        <div id="generateResult"></div>
+
+        <h2>Шаг 3: Тестирование авторизации по QR</h2>
+        <input type="text" id="tokenInput" placeholder="QR токен (будет заполнен автоматически после генерации)">
+        <button onclick="testQRAuth()">Тестировать авторизацию</button>
+        <div id="authResult"></div>
+
+        <h2>Шаг 4: Проверка RPC функции get_qr_token_user</h2>
+        <button onclick="checkRPCFunction()">Проверить RPC функцию</button>
+        <div id="rpcResult"></div>
+
+        <h2>📋 Лог выполнения</h2>
+        <button onclick="clearLog()">Очистить лог</button>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://oaockmesooydvausfoca.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hb2NrbWVzb295ZHZhdXNmb2NhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEzNzI4NDEsImV4cCI6MjA2Njk0ODg0MX0.gwWS35APlyST7_IUvQvJtGO4QmGsvbE95lnQf0H1PUE';
+
+        let generatedToken = null;
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const timestamp = new Date().toLocaleTimeString('ru-RU');
+            entry.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        async function checkQRTokensTable() {
+            log('Проверка таблицы user_qr_tokens...', 'step');
+            const resultDiv = document.getElementById('tableResult');
+            
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/user_qr_tokens?select=id,user_id,token,is_active,created_at&limit=5`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+                }
+
+                const tokens = await response.json();
+                log(`✅ Таблица существует. Найдено токенов: ${tokens.length}`, 'success');
+                
+                resultDiv.innerHTML = `
+                    <div class="result-box">
+                        <strong>✅ Таблица user_qr_tokens работает</strong>
+                        <p>Найдено токенов: ${tokens.length}</p>
+                        <p>Активных: ${tokens.filter(t => t.is_active).length}</p>
+                        ${tokens.length > 0 ? `
+                            <details>
+                                <summary>Показать токены</summary>
+                                <pre>${JSON.stringify(tokens, null, 2)}</pre>
+                            </details>
+                        ` : ''}
+                    </div>
+                `;
+            } catch (error) {
+                log(`❌ Ошибка проверки таблицы: ${error.message}`, 'error');
+                resultDiv.innerHTML = `<div class="result-box"><strong>❌ Ошибка:</strong> ${error.message}</div>`;
+            }
+        }
+
+        async function generateQRToken() {
+            const email = document.getElementById('emailInput').value;
+            if (!email) {
+                log('❌ Введите email', 'error');
+                return;
+            }
+
+            log(`Генерация QR токена для ${email}...`, 'step');
+            const resultDiv = document.getElementById('generateResult');
+
+            try {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-persistent-qr`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    },
+                    body: JSON.stringify({ email })
+                });
+
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || `HTTP ${response.status}`);
+                }
+
+                generatedToken = data.token;
+                document.getElementById('tokenInput').value = generatedToken;
+                
+                log(`✅ QR токен сгенерирован: ${generatedToken.substring(0, 16)}...`, 'success');
+                log(`📱 URL: ${data.persistentUrl}`, 'info');
+                
+                resultDiv.innerHTML = `
+                    <div class="result-box">
+                        <strong>✅ Токен успешно создан</strong>
+                        <div class="token-display">
+                            <strong>Токен:</strong> ${generatedToken}
+                        </div>
+                        <div class="token-display">
+                            <strong>URL:</strong> ${data.persistentUrl}
+                        </div>
+                        <p><em>${data.message}</em></p>
+                    </div>
+                `;
+            } catch (error) {
+                log(`❌ Ошибка генерации: ${error.message}`, 'error');
+                resultDiv.innerHTML = `<div class="result-box"><strong>❌ Ошибка:</strong> ${error.message}</div>`;
+            }
+        }
+
+        async function testQRAuth() {
+            const token = document.getElementById('tokenInput').value;
+            if (!token) {
+                log('❌ Введите токен или сгенерируйте новый', 'error');
+                return;
+            }
+
+            log(`Тестирование авторизации с токеном: ${token.substring(0, 16)}...`, 'step');
+            const resultDiv = document.getElementById('authResult');
+
+            try {
+                log('📤 Отправка запроса к auth-by-qr-token...', 'info');
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/auth-by-qr-token`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    },
+                    body: JSON.stringify({ token })
+                });
+
+                const data = await response.json();
+                log(`📥 Получен ответ: ${response.status}`, response.ok ? 'success' : 'error');
+                
+                if (!response.ok) {
+                    throw new Error(data.error || `HTTP ${response.status}`);
+                }
+
+                if (data.success) {
+                    log(`✅ Авторизация успешна!`, 'success');
+                    log(`🔗 Redirect URL получен: ${data.redirectUrl ? 'Да' : 'Нет'}`, 'info');
+                    
+                    resultDiv.innerHTML = `
+                        <div class="result-box">
+                            <strong>✅ Авторизация успешна!</strong>
+                            ${data.redirectUrl ? `
+                                <div class="token-display">
+                                    <strong>Redirect URL:</strong><br>
+                                    ${data.redirectUrl.substring(0, 100)}...
+                                </div>
+                                <p><a href="${data.redirectUrl}" target="_blank">🔗 Открыть redirect URL</a></p>
+                            ` : ''}
+                            <details>
+                                <summary>Полный ответ</summary>
+                                <pre>${JSON.stringify(data, null, 2)}</pre>
+                            </details>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(data.error || 'Unknown error');
+                }
+            } catch (error) {
+                log(`❌ Ошибка авторизации: ${error.message}`, 'error');
+                resultDiv.innerHTML = `<div class="result-box"><strong>❌ Ошибка:</strong> ${error.message}</div>`;
+            }
+        }
+
+        async function checkRPCFunction() {
+            log('Проверка RPC функции get_qr_token_user...', 'step');
+            const resultDiv = document.getElementById('rpcResult');
+            const token = document.getElementById('tokenInput').value || generatedToken;
+
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_qr_token_user`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    },
+                    body: JSON.stringify({ token_param: token || 'test_token' })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    if (response.status === 404 || data.code === 'PGRST202') {
+                        log('⚠️ Функция get_qr_token_user не найдена в БД', 'warning');
+                        log('ℹ️ Edge function будет использовать fallback (прямой запрос)', 'info');
+                        
+                        resultDiv.innerHTML = `
+                            <div class="result-box">
+                                <strong>⚠️ RPC функция отсутствует</strong>
+                                <p>Функция <code>get_qr_token_user</code> не найдена в базе данных.</p>
+                                <p><em>Edge function auth-by-qr-token будет использовать fallback метод (прямой запрос к таблице).</em></p>
+                                <p>Это нормально, если прямой запрос работает корректно.</p>
+                            </div>
+                        `;
+                    } else {
+                        throw new Error(data.message || `HTTP ${response.status}`);
+                    }
+                } else {
+                    log(`✅ RPC функция работает, результат: ${JSON.stringify(data)}`, 'success');
+                    resultDiv.innerHTML = `
+                        <div class="result-box">
+                            <strong>✅ RPC функция работает</strong>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                log(`❌ Ошибка проверки RPC: ${error.message}`, 'error');
+                resultDiv.innerHTML = `<div class="result-box"><strong>❌ Ошибка:</strong> ${error.message}</div>`;
+            }
+        }
+
+        // Автоматическая проверка при загрузке
+        window.onload = () => {
+            log('🚀 Диагностика QR авторизации запущена', 'step');
+            log(`📍 Supabase URL: ${SUPABASE_URL}`, 'info');
+            checkQRTokensTable();
+            checkRPCFunction();
+        };
+    </script>
+</body>
+</html>
+

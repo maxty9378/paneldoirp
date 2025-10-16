@@ -143,37 +143,76 @@ export default function QRAuthPage() {
           throw new Error(data?.error || 'Не удалось подтвердить QR-токен.');
         }
 
-        if (!data.redirectUrl) {
-          throw new Error('Сервер не вернул ссылку для входа.');
-        }
-
         safeSet(setStep, 'auth');
-        safeSet(setMessage, 'Подтверждаем magic-link…');
-        safeSet(setFallbackUrl, data.redirectUrl);
+        safeSet(setMessage, 'Создаём сессию…');
 
-        (window as any).authCallbackProcessing = true;
+        // НОВЫЙ ПОДХОД: Получаем токены напрямую и устанавливаем сессию
+        if (data.access_token && data.refresh_token) {
+          console.log('🔑 Received auth tokens, setting session...');
+          
+          const { supabase } = await import('../lib/supabase');
+          
+          // Устанавливаем сессию с полученными токенами
+          const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+            access_token: data.access_token,
+            refresh_token: data.refresh_token
+          });
 
-        await optimizedDelay(redirectDelay);
+          if (sessionError) {
+            console.error('❌ Error setting session:', sessionError);
+            throw new Error('Не удалось установить сессию: ' + sessionError.message);
+          }
 
-        safeSet(setStep, 'profile');
-        safeSet(setStatus, 'success');
+          console.log('✅ Session set successfully:', sessionData?.user?.email);
+          
+          await optimizedDelay(redirectDelay);
 
-        const performRedirect = () => {
+          safeSet(setStep, 'profile');
+          safeSet(setStatus, 'success');
+          safeSet(setMessage, 'Авторизация успешна! Переход в приложение…');
+
+          // Переход на главную страницу
+          await optimizedDelay(500);
+          
           if (isIOS) {
-            window.location.href = data.redirectUrl;
+            window.location.href = '/';
           } else {
-            window.location.replace(data.redirectUrl);
+            window.location.replace('/');
           }
-        };
+        } 
+        // СТАРЫЙ ПОДХОД: Fallback на magic link redirect (для обратной совместимости)
+        else if (data.redirectUrl) {
+          console.log('🔗 Using legacy magic link redirect...');
+          
+          safeSet(setMessage, 'Подтверждаем magic-link…');
+          safeSet(setFallbackUrl, data.redirectUrl);
 
-        performRedirect();
+          (window as any).authCallbackProcessing = true;
 
-        window.setTimeout(() => {
-          if (document.visibilityState === 'visible' && alive.current) {
-            safeSet(setManualPrompt, true);
-            safeSet(setMessage, 'Если переход не произошёл, нажмите кнопку ниже.');
-          }
-        }, redirectDelay + 1800);
+          await optimizedDelay(redirectDelay);
+
+          safeSet(setStep, 'profile');
+          safeSet(setStatus, 'success');
+
+          const performRedirect = () => {
+            if (isIOS) {
+              window.location.href = data.redirectUrl;
+            } else {
+              window.location.replace(data.redirectUrl);
+            }
+          };
+
+          performRedirect();
+
+          window.setTimeout(() => {
+            if (document.visibilityState === 'visible' && alive.current) {
+              safeSet(setManualPrompt, true);
+              safeSet(setMessage, 'Если переход не произошёл, нажмите кнопку ниже.');
+            }
+          }, redirectDelay + 1800);
+        } else {
+          throw new Error('Сервер не вернул данные для авторизации.');
+        }
       } catch (error: any) {
         console.error('QR auth error:', error);
         if (!alive.current) return;
