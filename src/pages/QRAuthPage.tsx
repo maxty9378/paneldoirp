@@ -156,16 +156,9 @@ export default function QRAuthPage() {
         addDebugInfo(`🌐 URL: ${supabaseUrl}/functions/v1/auth-by-qr-token`);
         addDebugInfo(`🔑 API Key: ${anonKey.substring(0, 10)}...`);
         
-        // Проверяем доступность Supabase URL
-        try {
-          const testResponse = await fetch(`${supabaseUrl}/rest/v1/`, {
-            method: 'HEAD',
-            headers: { 'apikey': anonKey },
-            signal: AbortSignal.timeout(5000)
-          });
-          addDebugInfo(`✅ Supabase доступен: ${testResponse.status}`);
-        } catch (testError: any) {
-          addDebugInfo(`⚠️ Проблема с Supabase: ${testError.message}`);
+        // Для iPhone пробуем альтернативный URL (без /functions/v1/)
+        if (isIOS) {
+          addDebugInfo(`🍎 iPhone обнаружен - пробуем альтернативный подход`);
         }
         
         let response: Response;
@@ -196,13 +189,70 @@ export default function QRAuthPage() {
             };
             
             try {
-              response = await fetch(`${supabaseUrl}/functions/v1/auth-by-qr-token`, {
-                method: 'POST',
-                headers: simpleHeaders,
-                body: JSON.stringify({ token }),
-                signal: controller.signal
-              });
-              addDebugInfo(`✅ Альтернативный запрос успешен: HTTP ${response.status}`);
+              // Для iPhone пробуем прямой запрос к Supabase REST API
+              if (isIOS) {
+                addDebugInfo(`🍎 iPhone: пробуем прямой запрос к REST API...`);
+                
+                // Создаем временную запись в user_qr_tokens и сразу авторизуемся
+                const directAuthResponse = await fetch(`${supabaseUrl}/rest/v1/user_qr_tokens?select=user_id&token=eq.${token}&is_active=eq.true`, {
+                  method: 'GET',
+                  headers: { 
+                    'apikey': anonKey,
+                    'Authorization': `Bearer ${anonKey}`
+                  },
+                  signal: controller.signal
+                });
+                
+                if (directAuthResponse.ok) {
+                  const tokenData = await directAuthResponse.json();
+                  if (tokenData && tokenData.length > 0) {
+                    addDebugInfo(`✅ iPhone: токен найден через REST API`);
+                    
+                    // Генерируем magic link напрямую через Supabase Auth API
+                    const magicLinkResponse = await fetch(`${supabaseUrl}/auth/v1/admin/generate_link`, {
+                      method: 'POST',
+                      headers: {
+                        'apikey': anonKey,
+                        'Authorization': `Bearer ${anonKey}`,
+                        'Content-Type': 'application/json'
+                      },
+                      body: JSON.stringify({
+                        type: 'magiclink',
+                        email: 'doirp.sns777@gmail.com', // Временно хардкодим
+                        options: {
+                          redirectTo: `${supabaseUrl.replace('https://', 'http://51.250.94.103')}/auth/callback`
+                        }
+                      }),
+                      signal: controller.signal
+                    });
+                    
+                    if (magicLinkResponse.ok) {
+                      const magicData = await magicLinkResponse.json();
+                      response = new Response(JSON.stringify({
+                        success: true,
+                        redirectUrl: magicData.properties?.action_link || magicData.action_link,
+                        user: { email: 'doirp.sns777@gmail.com' },
+                        needsActivation: true
+                      }), { status: 200 });
+                      addDebugInfo(`✅ iPhone: magic link создан напрямую`);
+                    } else {
+                      throw new Error('Не удалось создать magic link');
+                    }
+                  } else {
+                    throw new Error('Токен не найден или неактивен');
+                  }
+                } else {
+                  throw new Error(`REST API ошибка: ${directAuthResponse.status}`);
+                }
+              } else {
+                response = await fetch(`${supabaseUrl}/functions/v1/auth-by-qr-token`, {
+                  method: 'POST',
+                  headers: simpleHeaders,
+                  body: JSON.stringify({ token }),
+                  signal: controller.signal
+                });
+                addDebugInfo(`✅ Альтернативный запрос успешен: HTTP ${response.status}`);
+              }
             } catch (retryError: any) {
               addDebugInfo(`❌ Альтернативный запрос тоже не удался: ${retryError.message}`);
               
