@@ -4,8 +4,10 @@ import { ShieldCheck, QrCode, Smartphone, RefreshCw, ExternalLink } from 'lucide
 import {
   isIOS,
   isAndroid,
+  isMobile,
   getAdaptiveSettings,
   getMobileHeaders,
+  getConnectionQuality,
   optimizedDelay
 } from '../utils/mobileOptimization';
 import { QRStatusIndicator } from '../components/QRStatusIndicator';
@@ -99,6 +101,15 @@ export default function QRAuthPage() {
         return;
       }
 
+      // Диагностика мобильного устройства
+      console.log('📱 Mobile device info:', {
+        isMobile,
+        isIOS,
+        isAndroid,
+        userAgent: navigator.userAgent,
+        connection: getConnectionQuality()
+      });
+
       try {
         safeSet(setStatus, 'loading');
         safeSet(setStep, 'qr');
@@ -158,10 +169,36 @@ export default function QRAuthPage() {
           safeSet(setStatus, 'success');
 
           const performRedirect = () => {
-            if (isIOS) {
-              window.location.href = data.redirectUrl;
+            console.log('🔄 Performing redirect for:', isIOS ? 'iOS' : isAndroid ? 'Android' : 'Desktop');
+            
+            // Для мобильных устройств используем более надежный способ
+            if (isMobile) {
+              // Создаем временную ссылку и кликаем по ней
+              const link = document.createElement('a');
+              link.href = data.redirectUrl;
+              link.target = '_self';
+              link.style.display = 'none';
+              document.body.appendChild(link);
+              
+              // Пытаемся кликнуть
+              try {
+                link.click();
+              } catch (e) {
+                console.log('⚠️ Click failed, trying window.location:', e);
+                window.location.href = data.redirectUrl;
+              }
+              
+              // Удаляем ссылку через секунду
+              setTimeout(() => {
+                document.body.removeChild(link);
+              }, 1000);
             } else {
-              window.location.replace(data.redirectUrl);
+              // Для десктопа используем обычный редирект
+              if (isIOS) {
+                window.location.href = data.redirectUrl;
+              } else {
+                window.location.replace(data.redirectUrl);
+              }
             }
           };
 
