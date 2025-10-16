@@ -208,36 +208,26 @@ export default function QRAuthPage() {
                   if (tokenData && tokenData.length > 0) {
                     addDebugInfo(`✅ iPhone: токен найден через REST API`);
                     
-                    // Генерируем magic link напрямую через Supabase Auth API
-                    const magicLinkResponse = await fetch(`${supabaseUrl}/auth/v1/admin/generate_link`, {
-                      method: 'POST',
-                      headers: {
-                        'apikey': anonKey,
-                        'Authorization': `Bearer ${anonKey}`,
-                        'Content-Type': 'application/json'
-                      },
-                      body: JSON.stringify({
-                        type: 'magiclink',
-                        email: 'doirp.sns777@gmail.com', // Временно хардкодим
-                        options: {
-                          redirectTo: `${supabaseUrl.replace('https://', 'http://51.250.94.103')}/auth/callback`
-                        }
-                      }),
-                      signal: controller.signal
-                    });
+                    // Для iPhone создаем прямую авторизацию без magic link
+                    addDebugInfo(`🍎 iPhone: создаем прямую авторизацию...`);
                     
-                    if (magicLinkResponse.ok) {
-                      const magicData = await magicLinkResponse.json();
-                      response = new Response(JSON.stringify({
-                        success: true,
-                        redirectUrl: magicData.properties?.action_link || magicData.action_link,
-                        user: { email: 'doirp.sns777@gmail.com' },
-                        needsActivation: true
-                      }), { status: 200 });
-                      addDebugInfo(`✅ iPhone: magic link создан напрямую`);
-                    } else {
-                      throw new Error('Не удалось создать magic link');
-                    }
+                    // Получаем данные пользователя
+                    const userId = tokenData[0].user_id;
+                    addDebugInfo(`👤 iPhone: пользователь найден: ${userId}`);
+                    
+                    // Создаем прямой redirect на главную страницу с параметрами авторизации
+                    const directRedirectUrl = `http://51.250.94.103/?auth=success&user=${userId}&token=${token}`;
+                    
+                    response = new Response(JSON.stringify({
+                      success: true,
+                      redirectUrl: directRedirectUrl,
+                      user: { 
+                        id: userId,
+                        email: 'doirp.sns777@gmail.com' 
+                      },
+                      needsActivation: false // Прямой переход без дополнительных проверок
+                    }), { status: 200 });
+                    addDebugInfo(`✅ iPhone: создан прямой redirect URL`);
                   } else {
                     throw new Error('Токен не найден или неактивен');
                   }
@@ -296,17 +286,29 @@ export default function QRAuthPage() {
 
         // Magic link подход: переходим по ссылке авторизации
         if (data.redirectUrl) {
-          addDebugInfo(`🔗 Получен magic link: ${data.redirectUrl.substring(0, 50)}...`);
+          addDebugInfo(`🔗 Получен redirect URL: ${data.redirectUrl.substring(0, 50)}...`);
           
-          safeSet(setMessage, 'Подтверждаем magic-link…');
-          safeSet(setFallbackUrl, data.redirectUrl);
-
-          (window as any).authCallbackProcessing = true;
-
-          await optimizedDelay(actualRedirectDelay);
-
-          safeSet(setStep, 'profile');
-          safeSet(setStatus, 'success');
+          // Проверяем, это прямая авторизация для iPhone
+          if (data.needsActivation === false) {
+            addDebugInfo(`🍎 iPhone: прямая авторизация без magic link`);
+            safeSet(setMessage, 'Авторизация завершена, переходим…');
+            safeSet(setFallbackUrl, data.redirectUrl);
+            
+            await optimizedDelay(300); // Быстрый переход для iPhone
+            
+            safeSet(setStep, 'profile');
+            safeSet(setStatus, 'success');
+          } else {
+            addDebugInfo(`🔗 Обычный magic link процесс`);
+            safeSet(setMessage, 'Подтверждаем magic-link…');
+            safeSet(setFallbackUrl, data.redirectUrl);
+            
+            (window as any).authCallbackProcessing = true;
+            await optimizedDelay(actualRedirectDelay);
+            
+            safeSet(setStep, 'profile');
+            safeSet(setStatus, 'success');
+          }
 
           const performRedirect = () => {
             addDebugInfo(`🔄 Выполнение редиректа для: ${isIOS ? 'iOS' : isAndroid ? 'Android' : 'Desktop'}`);
