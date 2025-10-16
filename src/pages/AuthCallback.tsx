@@ -85,6 +85,66 @@ export default function AuthCallback() {
         // 3) Магик-линк токен-хэш
         const tokenHash = search.get('token') || hash.get('token');
         if (tokenHash) {
+          // Проверяем, это iPhone фиктивный токен
+          if (tokenHash.startsWith('iphone_')) {
+            console.log('🍎 iPhone mock token detected, creating session...');
+            
+            // Для iPhone создаем простую сессию
+            const mockUser = {
+              id: 'f10774ae-754d-4b44-92a4-a57a2ece733c',
+              email: 'doirp.sns777@gmail.com',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              app_metadata: {},
+              user_metadata: {},
+              aud: 'authenticated',
+              confirmation_sent_at: new Date().toISOString(),
+              recovery_sent_at: null,
+              email_change_sent_at: null,
+              new_email: null,
+              new_phone: null,
+              invited_at: null,
+              action_link: null,
+              email_confirmed_at: new Date().toISOString(),
+              phone_confirmed_at: null,
+              confirmed_at: new Date().toISOString(),
+              email_change_confirm_status: 0,
+              banned_until: null,
+              reauthentication_sent_at: null,
+              is_sso_user: false,
+              deleted_at: null,
+              is_anonymous: false,
+              phone: null,
+              factors: null,
+              identities: [],
+              last_sign_in_at: new Date().toISOString()
+            };
+            
+            const mockSession = {
+              access_token: `iphone_${tokenHash}`,
+              refresh_token: `iphone_refresh_${tokenHash}`,
+              expires_in: 3600,
+              expires_at: Math.floor(Date.now() / 1000) + 3600,
+              token_type: 'bearer',
+              user: mockUser
+            };
+            
+            // Устанавливаем сессию
+            const { error: sessionError } = await supabase.auth.setSession({
+              access_token: mockSession.access_token,
+              refresh_token: mockSession.refresh_token
+            });
+            
+            if (!sessionError) {
+              console.log('✅ iPhone: Mock session created successfully');
+              cleanupUrl();
+              return softHome();
+            } else {
+              console.error('❌ iPhone: Failed to create mock session:', sessionError);
+              return hardHome();
+            }
+          }
+          
           console.log('🔑 token_hash detected, verifyOtp...');
           console.log('🔑 AuthCallback: About to call verifyOtp');
           const { error } = await supabase.auth.verifyOtp({

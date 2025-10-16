@@ -98,10 +98,12 @@ function AppContent() {
     const hasPKCE = search.includes('code=');
     const hasHashTokens = hash.includes('access_token') || hash.includes('refresh_token') || hash.includes('token=');
     const hasSearchMagic = search.includes('token=') && search.includes('type=magiclink');
+    const hasIPhoneAuth = search.includes('auth=success') && search.includes('user=') && search.includes('token=');
 
     console.log('🔄 App: hasPKCE:', hasPKCE);
     console.log('🔄 App: hasHashTokens:', hasHashTokens);
     console.log('🔄 App: hasSearchMagic:', hasSearchMagic);
+    console.log('🔄 App: hasIPhoneAuth:', hasIPhoneAuth);
 
     // Если мы уже на /auth/callback, не делаем редирект
     if (pathname === '/auth/callback') {
@@ -110,10 +112,31 @@ function AppContent() {
     }
 
     // Если есть auth параметры, но пользователь уже авторизован, просто очищаем URL
-    if (user && (hasPKCE || hasHashTokens || hasSearchMagic)) {
+    if (user && (hasPKCE || hasHashTokens || hasSearchMagic || hasIPhoneAuth)) {
       console.log('✅ App: User already authenticated, cleaning URL without redirect');
       const cleanUrl = window.location.origin + window.location.pathname;
       window.history.replaceState({}, '', cleanUrl);
+      return;
+    }
+
+    // Специальная обработка iPhone авторизации
+    if (hasIPhoneAuth) {
+      console.log('🍎 iPhone auth detected, redirecting to callback...');
+      const urlParams = new URLSearchParams(search);
+      const userId = urlParams.get('user');
+      const qrToken = urlParams.get('token');
+      
+      if (userId && qrToken) {
+        // Перенаправляем на callback с фиктивными токенами для iPhone
+        console.log('🍎 iPhone: Redirecting to callback with mock tokens');
+        const mockCallbackUrl = `/auth/callback?token=iphone_${qrToken}&type=magiclink&redirect_to=http://51.250.94.103/`;
+        window.location.replace(mockCallbackUrl);
+        return;
+      }
+      
+      // Если что-то пошло не так, очищаем URL и показываем форму входа
+      console.log('🍎 iPhone: Clearing URL and showing login form');
+      window.history.replaceState({}, '', '/');
       return;
     }
 
