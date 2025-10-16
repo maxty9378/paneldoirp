@@ -56,6 +56,7 @@ export default function QRAuthPage() {
   const [attempt, setAttempt] = useState(0);
   const [manualPrompt, setManualPrompt] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string>('');
+  const [isDirectLink, setIsDirectLink] = useState<boolean>(false);
 
   const buildVersion = import.meta.env.VITE_BUILD_VERSION || import.meta.env.VITE_APP_VERSION || 'local-dev';
   const buildTimestampRaw = import.meta.env.VITE_BUILD_TIMESTAMP || '';
@@ -99,6 +100,12 @@ export default function QRAuthPage() {
   const activeStepIndex = useMemo(() => timeline.findIndex(item => item.key === step), [step]);
 
   useEffect(() => {
+    // Проверяем, является ли это прямой ссылкой (переход по URL, а не сканирование QR)
+    const isDirectAccess = !document.referrer || 
+      document.referrer.includes('51.250.94.103') || 
+      document.referrer.includes('localhost') ||
+      window.location.search.includes('direct=true');
+    
     let controller: AbortController | null = null;
 
     const execute = async () => {
@@ -112,11 +119,15 @@ export default function QRAuthPage() {
       addDebugInfo(`📱 Устройство: ${isMobile ? 'Мобильное' : 'Десктоп'} (${isIOS ? 'iOS' : isAndroid ? 'Android' : 'Другое'})`);
       addDebugInfo(`🌐 Соединение: ${getConnectionQuality()}`);
       addDebugInfo(`🔗 Токен: ${token.substring(0, 8)}...`);
+      
+      if (isDirectLink) {
+        addDebugInfo(`⚡ Режим прямой ссылки - ускоренная авторизация`);
+      }
 
       try {
         safeSet(setStatus, 'loading');
         safeSet(setStep, 'qr');
-        safeSet(setMessage, 'Проверяем QR-токен…');
+        safeSet(setMessage, isDirectLink ? 'Авторизация по прямой ссылке…' : 'Проверяем QR-токен…');
         safeSet(setFallbackUrl, null);
         safeSet(setManualPrompt, false);
 
@@ -125,8 +136,13 @@ export default function QRAuthPage() {
         const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hb2NrbWVzb295ZHZhdXNmb2NhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEzNzI4NDEsImV4cCI6MjA2Njk0ODg0MX0.gwWS35APlyST7_IUvQvJtGO4QmGsvbE95lnQf0H1PUE';
 
         const { fetchTimeout, redirectDelay } = getAdaptiveSettings();
+        
+        // Для прямой ссылки используем более короткие таймауты
+        const actualFetchTimeout = isDirectLink ? Math.min(fetchTimeout, 10000) : fetchTimeout;
+        const actualRedirectDelay = isDirectLink ? Math.min(redirectDelay, 300) : redirectDelay;
+        
         controller = new AbortController();
-        const timeoutId = window.setTimeout(() => controller?.abort(), fetchTimeout);
+        const timeoutId = window.setTimeout(() => controller?.abort(), actualFetchTimeout);
 
         const headers = {
           ...getMobileHeaders(),
@@ -173,7 +189,7 @@ export default function QRAuthPage() {
 
           (window as any).authCallbackProcessing = true;
 
-          await optimizedDelay(redirectDelay);
+          await optimizedDelay(actualRedirectDelay);
 
           safeSet(setStep, 'profile');
           safeSet(setStatus, 'success');
@@ -242,7 +258,20 @@ export default function QRAuthPage() {
       }
     };
 
-    execute();
+    // Если это прямая ссылка, автоматически запускаем авторизацию
+    if (isDirectAccess && token) {
+      setIsDirectLink(true);
+      addDebugInfo(`🔗 Прямая ссылка обнаружена, запускаем авторизацию автоматически`);
+      // Автоматически запускаем авторизацию через небольшую задержку
+      setTimeout(() => {
+        if (alive.current) {
+          execute();
+        }
+      }, 500);
+    } else {
+      // Обычный режим - запускаем сразу
+      execute();
+    }
 
     return () => {
       controller?.abort();
@@ -299,9 +328,13 @@ export default function QRAuthPage() {
                 <p className="text-sm text-slate-500">{getDeviceLabel()}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 self-start rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-700">
+            <div className={`flex items-center gap-2 self-start rounded-xl border px-3 py-1 text-xs ${
+              isDirectLink 
+                ? 'border-blue-500/20 bg-blue-500/10 text-blue-700' 
+                : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700'
+            }`}>
               <Smartphone className="h-3.5 w-3.5" aria-hidden />
-              <span>QR-авторизация</span>
+              <span>{isDirectLink ? 'Прямая авторизация' : 'QR-авторизация'}</span>
             </div>
           </header>
 
