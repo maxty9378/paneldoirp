@@ -46,8 +46,13 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   };
 
   const handleQRScan = (token: string) => {
-    // Перенаправляем на страницу QR авторизации
-    navigate(`/auth/qr/${token}`);
+    // Закрываем модальное окно
+    setShowQRScanner(false);
+    
+    // Перенаправляем на страницу QR авторизации с небольшой задержкой
+    setTimeout(() => {
+      window.location.href = `/auth/qr/${token}`;
+    }, 100);
   };
 
 

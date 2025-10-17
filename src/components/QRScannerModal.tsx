@@ -34,7 +34,7 @@ export function QRScannerModal({ isOpen, onClose, onScan }: QRScannerModalProps)
         setError('');
         setScanning(true);
 
-        // Запрашиваем доступ к камере с разными настройками
+        // Запрашиваем доступ к камере с постоянным разрешением
         const constraints = {
           video: {
             facingMode: { ideal: 'environment' }, // Задняя камера
@@ -45,6 +45,19 @@ export function QRScannerModal({ isOpen, onClose, onScan }: QRScannerModalProps)
         };
 
         console.log('📷 Запрашиваем доступ к камере...');
+        
+        // Запрашиваем постоянное разрешение (если поддерживается)
+        try {
+          const permissionResult = await navigator.permissions.query({ name: 'camera' as PermissionName });
+          console.log('📷 Статус разрешения камеры:', permissionResult.state);
+          
+          if (permissionResult.state === 'granted') {
+            console.log('✅ Разрешение уже предоставлено');
+          }
+        } catch (err) {
+          console.log('⚠️ Permissions API не поддерживается');
+        }
+        
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
         console.log('✅ Доступ к камере получен');
 
