@@ -1,6 +1,7 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ShieldCheck, QrCode, RefreshCw } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 type Status = 'loading' | 'success' | 'error';
 
@@ -32,7 +33,8 @@ export default function QRAuthPage() {
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://oaockmesooydvausfoca.supabase.co';
         const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hb2NrbWVzb295ZHZhdXNmb2NhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEzNzI4NDEsImV4cCI6MjA2Njk0ODg0MX0.gwWS35APlyST7_IUvQvJtGO4QmGsvbE95lnQf0H1PUE';
 
-        const response = await fetch(`${supabaseUrl}/functions/v1/auth-by-qr-token`, {
+        // Получаем email и пароль от Edge Function
+        const response = await fetch(`${supabaseUrl}/functions/v1/qr-auth-simple`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -52,15 +54,29 @@ export default function QRAuthPage() {
           throw new Error(data?.error || 'Ошибка авторизации');
         }
 
-        if (data.redirectUrl) {
-          setStatus('success');
-          setMessage('Успешно! Переходим…');
-          
-          // Редирект
-          window.location.href = data.redirectUrl;
-        } else {
-          throw new Error('Нет ссылки для редиректа');
+        // Входим через встроенный метод Supabase
+        setMessage('Вход в систему…');
+        
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: data.email,
+          password: data.password
+        });
+
+        if (signInError) {
+          throw new Error(signInError.message);
         }
+
+        // Успешная авторизация
+        setStatus('success');
+        setMessage('Успешно! Переходим…');
+        
+        // Редирект на главную
+        setTimeout(() => {
+          if (alive.current) {
+            window.location.href = '/';
+          }
+        }, 500);
+
       } catch (error: any) {
         console.error('QR auth error:', error);
         if (!alive.current) return;
