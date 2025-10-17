@@ -611,7 +611,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Сохраняем кэш пользователей и сессию перед очисткой
     try {
       const cachedUsers = localStorage.getItem('cached_users');
-      const sessionData = localStorage.getItem('sb-oaockmesooydvausfoca-auth-token');
+      
+      // Получаем все ключи localStorage, связанные с Supabase
+      const supabaseKeys: { [key: string]: string } = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('sb-') || key.startsWith('supabase.'))) {
+          supabaseKeys[key] = localStorage.getItem(key) || '';
+        }
+      }
+      
+      console.log('💾 Сохраняем ключи Supabase:', Object.keys(supabaseKeys));
       
       // Очищаем sessionStorage полностью
       sessionStorage.clear();
@@ -624,10 +634,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('💾 Сохранили кэш пользователей для быстрого входа');
       }
       
-      // Восстанавливаем сессию для быстрого возврата
-      if (sessionData) {
-        localStorage.setItem('sb-oaockmesooydvausfoca-auth-token', sessionData);
-        console.log('💾 Сохранили сессию для быстрого возврата');
+      // Восстанавливаем все ключи Supabase для быстрого возврата
+      for (const [key, value] of Object.entries(supabaseKeys)) {
+        localStorage.setItem(key, value);
+      }
+      
+      if (Object.keys(supabaseKeys).length > 0) {
+        console.log('💾 Сохранили сессию Supabase для быстрого возврата');
       }
       
       // Сохраняем информацию о выходе
