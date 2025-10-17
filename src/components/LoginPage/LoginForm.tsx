@@ -97,8 +97,8 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   }
 
   return (
-    <div className="w-full max-w-md mx-auto py-4">
-      <div className="bg-white/80 backdrop-blur-2xl rounded-2xl p-6 shadow-2xl border border-white/50">
+    <div className="w-full">
+      <div className="bg-white/90 backdrop-blur-2xl rounded-2xl p-6 shadow-2xl border border-white/50">
         {/* Заголовок */}
         <div className="text-center mb-6">
           <div className="w-16 h-16 bg-gradient-to-br from-blue-500 via-cyan-500 to-teal-500 rounded-xl mx-auto flex items-center justify-center mb-4 shadow-xl shadow-blue-500/30">
