@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, CircleCheck as CheckCircle, CircleAlert as AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, CircleCheck as CheckCircle, CircleAlert as AlertCircle, QrCode as QrCodeIcon } from 'lucide-react';
 import { Spinner } from '../ui/Spinner';
 import { useAuth } from '../../hooks/useAuth';
+import { QRScannerModal } from '../QRScannerModal';
+import { useNavigate } from 'react-router-dom';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -12,8 +14,10 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
 
   const { signIn, user, loading, authError } = useAuth();
+  const navigate = useNavigate();
   
   // Показываем экран успеха только если пользователь загружен и не идет процесс авторизации
   const showSuccessScreen = user && !loading;
@@ -39,6 +43,11 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
     }
     
     setIsSubmitting(false);
+  };
+
+  const handleQRScan = (token: string) => {
+    // Перенаправляем на страницу QR авторизации
+    navigate(`/auth/qr/${token}`);
   };
 
 
@@ -184,6 +193,30 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           </div>
         </form>
 
+        {/* Разделитель */}
+        <div className="mt-6">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-3 bg-white/80 text-gray-500 font-medium">или</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Кнопка сканирования QR */}
+        <div className="mt-6">
+          <button
+            type="button"
+            onClick={() => setShowQRScanner(true)}
+            className="w-full flex items-center justify-center px-4 py-3.5 border-2 border-emerald-500 rounded-xl text-emerald-600 bg-white hover:bg-emerald-500 hover:text-white focus:outline-none focus:ring-4 focus:ring-emerald-500/50 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] font-semibold"
+          >
+            <QrCodeIcon className="h-5 w-5 mr-2" />
+            <span>Сканировать QR</span>
+          </button>
+        </div>
+
         {/* Футер */}
         <div className="mt-8 text-center">
           <p className="text-xs text-gray-500 font-medium">
@@ -201,6 +234,13 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           </div>
         </div>
       </div>
+
+      {/* Модальное окно сканирования QR */}
+      <QRScannerModal
+        isOpen={showQRScanner}
+        onClose={() => setShowQRScanner(false)}
+        onScan={handleQRScan}
+      />
     </div>
   );
 }
