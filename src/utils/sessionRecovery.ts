@@ -154,11 +154,11 @@ export function shouldShowLastLoginInfo(): boolean {
   const logoutInfo = getLastLogoutInfo();
   if (!logoutInfo) return false;
   
-  // Показываем только если выход был недавно (в течение 5 минут)
+  // Показываем только если выход был недавно (в течение 10 минут)
   const now = Date.now();
   const diffMs = now - logoutInfo.timestamp;
   const diffMins = Math.floor(diffMs / 60000);
   
-  return diffMins < 5;
+  return diffMins < 10;
 }
 

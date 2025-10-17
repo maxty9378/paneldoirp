@@ -591,13 +591,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     console.log('🚪 Signing out user');
 
-    // Сохраняем email перед выходом для отображения информации
+    // Сохраняем email и сессию перед выходом для быстрого возврата
     const userEmail = user?.email || userProfile?.email || 'unknown';
+    
+    // Сохраняем текущую сессию для быстрого восстановления
+    const { data: { session: currentSession } } = await supabase.auth.getSession();
     
     // 1) Сначала разлогиниваем на сервере
     const result = await supabase.auth.signOut();
 
-    // 2) После успешного ответа — чистим состояние, но сохраняем кэш пользователей
+    // 2) После успешного ответа — чистим состояние, но НЕ очищаем сессию
     setUser(null);
     setUserProfile(null);
     setSession(null);
@@ -605,14 +608,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setRetryCount(0);
     setLoadingPhase('logged-out');
     
-    // Сохраняем кэш пользователей перед очисткой
+    // Сохраняем кэш пользователей и сессию перед очисткой
     try {
       const cachedUsers = localStorage.getItem('cached_users');
+      const sessionData = localStorage.getItem('sb-oaockmesooydvausfoca-auth-token');
       
       // Очищаем sessionStorage полностью
       sessionStorage.clear();
       
-      // Очищаем localStorage, но восстанавливаем кэш пользователей
+      // Очищаем localStorage, но восстанавливаем кэш и сессию
       localStorage.clear();
       
       if (cachedUsers) {
@@ -620,11 +624,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('💾 Сохранили кэш пользователей для быстрого входа');
       }
       
+      // Восстанавливаем сессию для быстрого возврата
+      if (sessionData) {
+        localStorage.setItem('sb-oaockmesooydvausfoca-auth-token', sessionData);
+        console.log('💾 Сохранили сессию для быстрого возврата');
+      }
+      
       // Сохраняем информацию о выходе
       const { saveLogoutInfo } = await import('../utils/sessionRecovery');
       saveLogoutInfo(userEmail);
       
-      console.log('🧹 Cleared sessionStorage, preserved user cache');
+      console.log('🧹 Cleared sessionStorage, preserved user cache and session');
     } catch (e) {
       console.warn('⚠️ Could not clear storage:', e);
     }
