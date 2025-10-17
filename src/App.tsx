@@ -35,6 +35,7 @@ import AuthCallback from './pages/AuthCallback';
 import QRAuthPage from './pages/QRAuthPage';
 import { LoadingOverlay } from './components/LoadingOverlay';
 import { Spinner } from './components/ui/Spinner';
+import { initNetworkDiagnostics } from './utils/networkDiagnostics';
 
 function EventDetailPage({ onStartTest }: { onStartTest: (testId: string, eventId: string, attemptId: string) => void }) {
   const { eventId } = useParams();
