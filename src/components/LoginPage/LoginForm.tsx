@@ -198,26 +198,14 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           </div>
         </form>
 
-        {/* Разделитель */}
-        <div className="mt-4">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300" />
-            </div>
-            <div className="relative flex justify-center text-xs">
-              <span className="px-2 bg-white/80 text-gray-500 font-medium">или</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Кнопка сканирования QR */}
+        {/* Кнопка сканирования QR - второстепенная */}
         <div className="mt-4">
           <button
             type="button"
             onClick={() => setShowQRScanner(true)}
-            className="w-full flex items-center justify-center px-4 py-2.5 border-2 border-emerald-500 rounded-lg text-emerald-600 bg-white hover:bg-emerald-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all duration-300 transform hover:scale-[1.01] active:scale-[0.99] font-semibold text-sm"
+            className="w-full flex items-center justify-center px-3 py-2 border border-gray-300 rounded-lg text-gray-600 bg-white/50 hover:bg-gray-50 hover:text-gray-700 focus:outline-none focus:ring-1 focus:ring-gray-300 transition-all duration-200 text-xs"
           >
-            <QrCodeIcon className="h-4 w-4 mr-2" />
+            <QrCodeIcon className="h-3.5 w-3.5 mr-1.5" />
             <span>Сканировать QR</span>
           </button>
         </div>
