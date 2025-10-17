@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Eye, EyeOff, CircleCheck as CheckCircle, CircleAlert as AlertCircle, QrCode as QrCodeIcon } from 'lucide-react';
 import { Spinner } from '../ui/Spinner';
 import { useAuth } from '../../hooks/useAuth';
-import { QRScannerModal } from '../QRScannerModal';
+import { QRTokenInputModal } from '../QRTokenInputModal';
 import { useNavigate } from 'react-router-dom';
 
 interface LoginFormProps {
@@ -14,7 +14,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showQRScanner, setShowQRScanner] = useState(false);
+  const [showQRInput, setShowQRInput] = useState(false);
 
   const { signIn, user, loading, authError } = useAuth();
   const navigate = useNavigate();
@@ -205,15 +205,15 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           </div>
         </div>
 
-        {/* Кнопка сканирования QR */}
+        {/* Кнопка ввода QR-токена */}
         <div className="mt-6">
           <button
             type="button"
-            onClick={() => setShowQRScanner(true)}
+            onClick={() => setShowQRInput(true)}
             className="w-full flex items-center justify-center px-4 py-3.5 border-2 border-emerald-500 rounded-xl text-emerald-600 bg-white hover:bg-emerald-500 hover:text-white focus:outline-none focus:ring-4 focus:ring-emerald-500/50 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] font-semibold"
           >
             <QrCodeIcon className="h-5 w-5 mr-2" />
-            <span>Сканировать QR</span>
+            <span>Ввести QR-токен</span>
           </button>
         </div>
 
@@ -235,10 +235,10 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
         </div>
       </div>
 
-      {/* Модальное окно сканирования QR */}
-      <QRScannerModal
-        isOpen={showQRScanner}
-        onClose={() => setShowQRScanner(false)}
+      {/* Модальное окно ввода QR-токена */}
+      <QRTokenInputModal
+        isOpen={showQRInput}
+        onClose={() => setShowQRInput(false)}
         onScan={handleQRScan}
       />
     </div>
