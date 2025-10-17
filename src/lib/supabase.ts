@@ -25,9 +25,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storageType: 'localStorage', // Используем localStorage для постоянного хранения
   },
   global: {
-    headers: {
-      'X-Client-Info': 'doirp-web-app',
-    },
     // Увеличиваем таймауты для медленных мобильных сетей
     fetch: (url, options = {}) => {
       return fetch(url, {
