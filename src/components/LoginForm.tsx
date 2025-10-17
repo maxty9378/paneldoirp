@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { Eye, EyeOff, CheckCircle, AlertCircle, Clock, QrCode as QrCodeIcon } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { QuickLoginModal } from './QuickLoginModal';
+import { QRScannerModal } from './QRScannerModal';
 import { hasCachedUsers } from '../lib/userCache';
 import { Spinner } from './ui/Spinner';
+import { useNavigate } from 'react-router-dom';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -15,8 +17,10 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showQuickLogin, setShowQuickLogin] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
 
   const { signIn, user, loading, authError } = useAuth();
+  const navigate = useNavigate();
   
   // Показываем экран успеха только если пользователь загружен и не идет процесс авторизации
   const showSuccessScreen = user && !loading;
@@ -49,6 +53,11 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
     if (!result.error && onSuccess) {
       onSuccess();
     }
+  };
+
+  const handleQRScan = (token: string) => {
+    // Перенаправляем на страницу QR авторизации
+    navigate(`/auth/qr/${token}`);
   };
 
   if (showSuccessScreen) {
@@ -192,23 +201,38 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           </div>
         </form>
 
+        {/* Разделитель */}
+        <div className="mt-6">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">или</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Кнопка сканирования QR */}
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => setShowQRScanner(true)}
+            className="w-full flex items-center justify-center px-4 py-3 border-2 border-[#06A478] rounded-lg text-[#06A478] bg-white hover:bg-[#06A478] hover:text-white focus:outline-none focus:ring-2 focus:ring-[#06A478] focus:ring-offset-2 transition-all duration-200"
+          >
+            <QrCodeIcon className="h-5 w-5 mr-2" />
+            <span>Сканировать QR</span>
+          </button>
+        </div>
+
         {/* Быстрый вход */}
         {hasCachedUsers() && (
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">или</span>
-              </div>
-            </div>
-            
+          <div className="mt-4">
             <button
               type="button"
               data-quick-login
               onClick={() => setShowQuickLogin(true)}
-              className="mt-4 w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#06A478] focus:ring-offset-2 transition-all duration-200"
+              className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#06A478] focus:ring-offset-2 transition-all duration-200"
             >
               <Clock className="h-5 w-5 mr-2 text-[#06A478]" />
               <span>Быстрый вход</span>
@@ -239,6 +263,13 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
         isOpen={showQuickLogin}
         onClose={() => setShowQuickLogin(false)}
         onLogin={handleQuickLogin}
+      />
+
+      {/* Модальное окно сканирования QR */}
+      <QRScannerModal
+        isOpen={showQRScanner}
+        onClose={() => setShowQRScanner(false)}
+        onScan={handleQRScan}
       />
     </div>
   );
