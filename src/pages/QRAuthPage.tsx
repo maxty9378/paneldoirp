@@ -1,15 +1,6 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ShieldCheck, QrCode, Smartphone, RefreshCw, ExternalLink } from 'lucide-react';
-import {
-  isIOS,
-  isAndroid,
-  isMobile,
-  getAdaptiveSettings,
-  getMobileHeaders,
-  getConnectionQuality,
-  optimizedDelay
-} from '../utils/mobileOptimization';
 import { QRStatusIndicator } from '../components/QRStatusIndicator';
 
 type Status = 'loading' | 'success' | 'error';
@@ -30,7 +21,7 @@ const timeline: TimelineItem[] = [
   {
     key: 'auth',
     title: 'Создание сессии',
-    description: 'Генерируем безопасную magic-link ссылку и привязываем её к вашему устройству.'
+    description: 'Генерируем безопасную ссылку авторизации.'
   },
   {
     key: 'profile',
@@ -38,12 +29,6 @@ const timeline: TimelineItem[] = [
     description: 'Открываем панель эксперта с учётом ваших прав доступа.'
   }
 ];
-
-const getDeviceLabel = () => {
-  if (isIOS) return 'Оптимизировано для iPhone и iPad';
-  if (isAndroid) return 'Оптимизировано для Android';
-  return 'Поддерживается на смартфонах и планшетах';
-};
 
 export default function QRAuthPage() {
   const { token } = useParams<{ token: string }>();
@@ -56,7 +41,6 @@ export default function QRAuthPage() {
   const [attempt, setAttempt] = useState(0);
   const [manualPrompt, setManualPrompt] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string>('');
-  const [isDirectLink, setIsDirectLink] = useState<boolean>(false);
 
   const buildVersion = import.meta.env.VITE_BUILD_VERSION || import.meta.env.VITE_APP_VERSION || 'local-dev';
   const buildTimestampRaw = import.meta.env.VITE_BUILD_TIMESTAMP || '';
@@ -100,12 +84,6 @@ export default function QRAuthPage() {
   const activeStepIndex = useMemo(() => timeline.findIndex(item => item.key === step), [step]);
 
   useEffect(() => {
-    // Проверяем, является ли это прямой ссылкой (переход по URL, а не сканирование QR)
-    const isDirectAccess = !document.referrer || 
-      document.referrer.includes('51.250.94.103') || 
-      document.referrer.includes('localhost') ||
-      window.location.search.includes('direct=true');
-    
     let controller: AbortController | null = null;
 
     const execute = async () => {
@@ -115,155 +93,44 @@ export default function QRAuthPage() {
         return;
       }
 
-      // Диагностика мобильного устройства
-      addDebugInfo(`📱 Устройство: ${isMobile ? 'Мобильное' : 'Десктоп'} (${isIOS ? 'iOS' : isAndroid ? 'Android' : 'Другое'})`);
-      addDebugInfo(`🌐 Соединение: ${getConnectionQuality()}`);
+      // Диагностика
       addDebugInfo(`🔗 Токен: ${token.substring(0, 8)}...`);
-      addDebugInfo(`📋 User Agent: ${navigator.userAgent.substring(0, 50)}...`);
+      addDebugInfo(`📱 Устройство: ${navigator.userAgent.substring(0, 50)}...`);
       addDebugInfo(`🌍 Online: ${navigator.onLine ? 'Да' : 'Нет'}`);
-      
-      if (isDirectLink) {
-        addDebugInfo(`⚡ Режим прямой ссылки - ускоренная авторизация`);
-      }
 
       try {
         safeSet(setStatus, 'loading');
         safeSet(setStep, 'qr');
-        safeSet(setMessage, isDirectLink ? 'Авторизация по прямой ссылке…' : 'Проверяем QR-токен…');
+        safeSet(setMessage, 'Проверяем QR-токен…');
         safeSet(setFallbackUrl, null);
         safeSet(setManualPrompt, false);
 
-        // Получаем переменные окружения с fallback значениями
+        // Получаем переменные окружения
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://oaockmesooydvausfoca.supabase.co';
         const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hb2NrbWVzb295ZHZhdXNmb2NhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEzNzI4NDEsImV4cCI6MjA2Njk0ODg0MX0.gwWS35APlyST7_IUvQvJtGO4QmGsvbE95lnQf0H1PUE';
 
-        const { fetchTimeout, redirectDelay } = getAdaptiveSettings();
-        
-        // Для прямой ссылки используем более короткие таймауты
-        const actualFetchTimeout = isDirectLink ? Math.min(fetchTimeout, 10000) : fetchTimeout;
-        const actualRedirectDelay = isDirectLink ? Math.min(redirectDelay, 300) : redirectDelay;
-        
         controller = new AbortController();
-        const timeoutId = window.setTimeout(() => controller?.abort(), actualFetchTimeout);
+        const timeoutId = window.setTimeout(() => controller?.abort(), 15000);
 
         const headers = {
-          ...getMobileHeaders(),
-          apikey: anonKey,
-          Authorization: `Bearer ${anonKey}`
-        } as Record<string, string>;
+          'Content-Type': 'application/json',
+          'apikey': anonKey,
+          'Authorization': `Bearer ${anonKey}`
+        };
 
         addDebugInfo(`📤 Отправка запроса к Edge Function...`);
-        addDebugInfo(`🌐 URL: ${supabaseUrl}/functions/v1/auth-by-qr-token`);
-        addDebugInfo(`🔑 API Key: ${anonKey.substring(0, 10)}...`);
+        addDebugInfo(`🌐 URL: ${supabaseUrl}/functions/v1/qr-direct-auth`);
         
-        // Для iPhone пробуем альтернативный URL (без /functions/v1/)
-        if (isIOS) {
-          addDebugInfo(`🍎 iPhone обнаружен - пробуем альтернативный подход`);
-        }
+        const response = await fetch(`${supabaseUrl}/functions/v1/qr-direct-auth`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ token }),
+          signal: controller.signal,
+          cache: 'no-cache',
+          mode: 'cors'
+        });
         
-        let response: Response;
-        try {
-          response = await fetch(`${supabaseUrl}/functions/v1/auth-by-qr-token`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ token }),
-            signal: controller.signal,
-            // Добавляем дополнительные опции для мобильных устройств
-            cache: 'no-cache',
-            mode: 'cors',
-            credentials: 'omit'
-          });
-          addDebugInfo(`📥 Получен ответ: HTTP ${response.status}`);
-        } catch (fetchError: any) {
-          addDebugInfo(`❌ Ошибка fetch: ${fetchError.message}`);
-          addDebugInfo(`🔍 Тип ошибки: ${fetchError.name}`);
-          
-          // Для мобильных устройств пробуем альтернативный подход
-          if (isMobile) {
-            addDebugInfo(`📱 Пробуем альтернативный запрос для мобильного устройства...`);
-            
-            // Упрощаем заголовки для мобильных устройств
-            const simpleHeaders = {
-              'Content-Type': 'application/json',
-              'apikey': anonKey
-            };
-            
-            try {
-              // Для iPhone пробуем прямой запрос к Supabase REST API
-              if (isIOS) {
-                addDebugInfo(`🍎 iPhone: пробуем прямой запрос к REST API...`);
-                
-                // Создаем временную запись в user_qr_tokens и сразу авторизуемся
-                const directAuthResponse = await fetch(`${supabaseUrl}/rest/v1/user_qr_tokens?select=user_id&token=eq.${token}&is_active=eq.true`, {
-                  method: 'GET',
-                  headers: { 
-                    'apikey': anonKey,
-                    'Authorization': `Bearer ${anonKey}`
-                  },
-                  signal: controller.signal
-                });
-                
-                if (directAuthResponse.ok) {
-                  const tokenData = await directAuthResponse.json();
-                  if (tokenData && tokenData.length > 0) {
-                    addDebugInfo(`✅ iPhone: токен найден через REST API`);
-                    
-                    // Для iPhone создаем прямую авторизацию без magic link
-                    addDebugInfo(`🍎 iPhone: создаем прямую авторизацию...`);
-                    
-                    // Получаем данные пользователя
-                    const userId = tokenData[0].user_id;
-                    addDebugInfo(`👤 iPhone: пользователь найден: ${userId}`);
-                    
-                    // Создаем прямой redirect на главную страницу с параметрами авторизации
-                    const directRedirectUrl = `http://51.250.94.103/?auth=success&user=${userId}&token=${token}`;
-                    
-                    response = new Response(JSON.stringify({
-                      success: true,
-                      redirectUrl: directRedirectUrl,
-                      user: { 
-                        id: userId,
-                        email: 'doirp.sns777@gmail.com' 
-                      },
-                      needsActivation: false // Прямой переход без дополнительных проверок
-                    }), { status: 200 });
-                    addDebugInfo(`✅ iPhone: создан прямой redirect URL`);
-                  } else {
-                    throw new Error('Токен не найден или неактивен');
-                  }
-                } else {
-                  throw new Error(`REST API ошибка: ${directAuthResponse.status}`);
-                }
-              } else {
-                response = await fetch(`${supabaseUrl}/functions/v1/auth-by-qr-token`, {
-                  method: 'POST',
-                  headers: simpleHeaders,
-                  body: JSON.stringify({ token }),
-                  signal: controller.signal
-                });
-                addDebugInfo(`✅ Альтернативный запрос успешен: HTTP ${response.status}`);
-              }
-            } catch (retryError: any) {
-              addDebugInfo(`❌ Альтернативный запрос тоже не удался: ${retryError.message}`);
-              
-              // Последняя попытка - пробуем через GET запрос
-              addDebugInfo(`🔄 Последняя попытка через GET запрос...`);
-              try {
-                response = await fetch(`${supabaseUrl}/functions/v1/auth-by-qr-token/${token}`, {
-                  method: 'GET',
-                  headers: { 'apikey': anonKey },
-                  signal: controller.signal
-                });
-                addDebugInfo(`✅ GET запрос успешен: HTTP ${response.status}`);
-              } catch (getError: any) {
-                addDebugInfo(`💥 Все попытки исчерпаны: ${getError.message}`);
-                throw getError;
-              }
-            }
-          } else {
-            throw fetchError;
-          }
-        }
+        addDebugInfo(`📥 Получен ответ: HTTP ${response.status}`);
 
         window.clearTimeout(timeoutId);
 
@@ -284,77 +151,54 @@ export default function QRAuthPage() {
         safeSet(setStep, 'auth');
         safeSet(setMessage, 'Создаём сессию…');
 
-        // Magic link подход: переходим по ссылке авторизации
+        // Переходим по magic link
         if (data.redirectUrl) {
           addDebugInfo(`🔗 Получен redirect URL: ${data.redirectUrl.substring(0, 50)}...`);
+          safeSet(setMessage, 'Авторизация завершена, переходим…');
+          safeSet(setFallbackUrl, data.redirectUrl);
           
-          // Проверяем, это прямая авторизация для iPhone
-          if (data.needsActivation === false) {
-            addDebugInfo(`🍎 iPhone: прямая авторизация без magic link`);
-            safeSet(setMessage, 'Авторизация завершена, переходим…');
-            safeSet(setFallbackUrl, data.redirectUrl);
-            
-            await optimizedDelay(300); // Быстрый переход для iPhone
-            
-            safeSet(setStep, 'profile');
-            safeSet(setStatus, 'success');
-          } else {
-            addDebugInfo(`🔗 Обычный magic link процесс`);
-            safeSet(setMessage, 'Подтверждаем magic-link…');
-            safeSet(setFallbackUrl, data.redirectUrl);
-            
-            (window as any).authCallbackProcessing = true;
-            await optimizedDelay(actualRedirectDelay);
-            
-            safeSet(setStep, 'profile');
-            safeSet(setStatus, 'success');
-          }
+          // Небольшая задержка для показа сообщения
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          safeSet(setStep, 'profile');
+          safeSet(setStatus, 'success');
 
+          // Выполняем редирект
           const performRedirect = () => {
-            addDebugInfo(`🔄 Выполнение редиректа для: ${isIOS ? 'iOS' : isAndroid ? 'Android' : 'Desktop'}`);
+            addDebugInfo(`🔄 Выполнение редиректа`);
             
-            // Для мобильных устройств используем более надежный способ
-            if (isMobile) {
-              addDebugInfo(`📱 Используем мобильный метод редиректа`);
-              // Создаем временную ссылку и кликаем по ней
-              const link = document.createElement('a');
-              link.href = data.redirectUrl;
-              link.target = '_self';
-              link.style.display = 'none';
-              document.body.appendChild(link);
-              
-              // Пытаемся кликнуть
-              try {
-                link.click();
-                addDebugInfo(`✅ Клик по ссылке выполнен`);
-              } catch (e) {
-                addDebugInfo(`⚠️ Клик не удался, пробуем window.location: ${e}`);
-                window.location.href = data.redirectUrl;
-              }
-              
-              // Удаляем ссылку через секунду
-              setTimeout(() => {
-                document.body.removeChild(link);
-              }, 1000);
-            } else {
-              addDebugInfo(`🖥️ Используем десктопный метод редиректа`);
-              // Для десктопа используем обычный редирект
-              if (isIOS) {
-                window.location.href = data.redirectUrl;
-              } else {
-                window.location.replace(data.redirectUrl);
-              }
+            // Используем более надежный способ для мобильных устройств
+            const link = document.createElement('a');
+            link.href = data.redirectUrl;
+            link.target = '_self';
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            
+            try {
+              link.click();
+              addDebugInfo(`✅ Клик по ссылке выполнен`);
+            } catch (e) {
+              addDebugInfo(`⚠️ Клик не удался, пробуем window.location: ${e}`);
+              window.location.href = data.redirectUrl;
             }
+            
+            // Удаляем ссылку
+            setTimeout(() => {
+              if (document.body.contains(link)) {
+                document.body.removeChild(link);
+              }
+            }, 1000);
           };
 
           performRedirect();
 
+          // Показываем кнопку ручного перехода через 3 секунды
           window.setTimeout(() => {
             if (document.visibilityState === 'visible' && alive.current) {
               safeSet(setManualPrompt, true);
               safeSet(setMessage, 'Если переход не произошёл, нажмите кнопку ниже.');
             }
-          }, redirectDelay + 1800);
+          }, 3000);
         } else {
           throw new Error('Сервер не вернул данные для авторизации.');
         }
@@ -374,20 +218,7 @@ export default function QRAuthPage() {
       }
     };
 
-    // Если это прямая ссылка, автоматически запускаем авторизацию
-    if (isDirectAccess && token) {
-      setIsDirectLink(true);
-      addDebugInfo(`🔗 Прямая ссылка обнаружена, запускаем авторизацию автоматически`);
-      // Автоматически запускаем авторизацию через небольшую задержку
-      setTimeout(() => {
-        if (alive.current) {
-          execute();
-        }
-      }, 500);
-    } else {
-      // Обычный режим - запускаем сразу
-      execute();
-    }
+    execute();
 
     return () => {
       controller?.abort();
@@ -408,15 +239,6 @@ export default function QRAuthPage() {
     if (!fallbackUrl) return;
     window.location.href = fallbackUrl;
   };
-
-  // Отключаем автоматический редирект при ошибке, чтобы можно было увидеть debug информацию
-  // useEffect(() => {
-  //   if (status === 'error') {
-  //     const timer = window.setTimeout(() => navigate('/'), 3500);
-  //     return () => window.clearTimeout(timer);
-  //   }
-  //   return undefined;
-  // }, [status, navigate]);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#F5F7F9] pb-safe-bottom">
@@ -442,20 +264,16 @@ export default function QRAuthPage() {
               </div>
               <div>
                 <h1 className="text-xl font-semibold sm:text-2xl text-slate-900">Вход эксперта</h1>
-                <p className="text-sm text-slate-500">{getDeviceLabel()}</p>
+                <p className="text-sm text-slate-500">Быстрая авторизация по QR-коду</p>
               </div>
             </div>
-            <div className={`flex items-center gap-2 self-start rounded-xl border px-3 py-1 text-xs ${
-              isDirectLink 
-                ? 'border-blue-500/20 bg-blue-500/10 text-blue-700' 
-                : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700'
-            }`}>
+            <div className="flex items-center gap-2 self-start rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-700">
               <Smartphone className="h-3.5 w-3.5" aria-hidden />
-              <span>{isDirectLink ? 'Прямая авторизация' : 'QR-авторизация'}</span>
+              <span>QR-авторизация</span>
             </div>
           </header>
 
-          <QRStatusIndicator status={status} step={step} message={message} isIOS={isIOS} />
+          <QRStatusIndicator status={status} step={step} message={message} />
 
           <div className="rounded-3xl border border-white/60 bg-white/70 p-4 sm:p-5 shadow-[0_16px_40px_-32px_rgba(15,23,42,0.25)]">
             <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-700">
@@ -532,14 +350,14 @@ export default function QRAuthPage() {
             )}
 
             <p className="text-xs leading-relaxed text-slate-500">
-              Если процесс завис, обновите QR-код в приложении оценки и сканируйте снова. Чтобы переход прошёл автоматически, держите браузер открытым и разрешите всплывающие окна для этого сайта.
+              Если процесс завис, обновите QR-код в приложении оценки и сканируйте снова. Чтобы переход прошёл автоматически, держите браузер открытым.
             </p>
             
-            {/* Debug панель для мобильных устройств */}
+            {/* Debug панель */}
             {debugInfo && (
               <div className="mt-4 p-3 bg-slate-100 rounded-lg border border-slate-200">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-medium text-slate-600">🔍 Диагностика (для iPhone):</span>
+                  <span className="text-xs font-medium text-slate-600">🔍 Диагностика:</span>
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(debugInfo).then(() => {
@@ -572,6 +390,3 @@ export default function QRAuthPage() {
     </div>
   );
 }
-
-
-
