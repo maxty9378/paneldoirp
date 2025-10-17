@@ -594,13 +594,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Сохраняем email и сессию перед выходом для быстрого возврата
     const userEmail = user?.email || userProfile?.email || 'unknown';
     
-    // Сохраняем текущую сессию для быстрого восстановления
-    const { data: { session: currentSession } } = await supabase.auth.getSession();
+    // Сохраняем информацию о выходе
+    const { saveLogoutInfo } = await import('../utils/sessionRecovery');
+    saveLogoutInfo(userEmail);
     
-    // 1) Сначала разлогиниваем на сервере
-    const result = await supabase.auth.signOut();
-
-    // 2) После успешного ответа — чистим состояние, но НЕ очищаем сессию
+    // 1) НЕ вызываем signOut() на сервере - оставляем сессию активной
+    // 2) Просто очищаем состояние локально
     setUser(null);
     setUserProfile(null);
     setSession(null);
@@ -608,50 +607,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setRetryCount(0);
     setLoadingPhase('logged-out');
     
-    // Сохраняем кэш пользователей и сессию перед очисткой
+    // Очищаем только sessionStorage, НЕ трогаем localStorage
     try {
-      const cachedUsers = localStorage.getItem('cached_users');
-      
-      // Получаем все ключи localStorage, связанные с Supabase
-      const supabaseKeys: { [key: string]: string } = {};
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && (key.startsWith('sb-') || key.startsWith('supabase.'))) {
-          supabaseKeys[key] = localStorage.getItem(key) || '';
-        }
-      }
-      
-      console.log('💾 Сохраняем ключи Supabase:', Object.keys(supabaseKeys));
-      
-      // Очищаем sessionStorage полностью
       sessionStorage.clear();
-      
-      // Очищаем localStorage, но восстанавливаем кэш и сессию
-      localStorage.clear();
-      
-      if (cachedUsers) {
-        localStorage.setItem('cached_users', cachedUsers);
-        console.log('💾 Сохранили кэш пользователей для быстрого входа');
-      }
-      
-      // Восстанавливаем все ключи Supabase для быстрого возврата
-      for (const [key, value] of Object.entries(supabaseKeys)) {
-        localStorage.setItem(key, value);
-      }
-      
-      if (Object.keys(supabaseKeys).length > 0) {
-        console.log('💾 Сохранили сессию Supabase для быстрого возврата');
-      }
-      
-      // Сохраняем информацию о выходе
-      const { saveLogoutInfo } = await import('../utils/sessionRecovery');
-      saveLogoutInfo(userEmail);
-      
-      console.log('🧹 Cleared sessionStorage, preserved user cache and session');
+      console.log('🧹 Cleared sessionStorage, preserved localStorage with session');
     } catch (e) {
-      console.warn('⚠️ Could not clear storage:', e);
+      console.warn('⚠️ Could not clear sessionStorage:', e);
     }
-    return result;
+    
+    // Возвращаем успешный результат
+    return { error: null };
   };
 
   // Main effect for authentication state management
