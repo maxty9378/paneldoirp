@@ -1,13 +1,11 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { ShieldCheck, QrCode, RefreshCw } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 
 type Status = 'loading' | 'success' | 'error';
 
 export default function QRAuthPage() {
   const { token } = useParams<{ token: string }>();
-  const navigate = useNavigate();
 
   const [status, setStatus] = useState<Status>('loading');
   const [message, setMessage] = useState('Проверяем QR-токен…');
@@ -30,11 +28,11 @@ export default function QRAuthPage() {
         setStatus('loading');
         setMessage('Авторизация…');
 
+        // Используем проверенную функцию auth-by-qr-token
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://oaockmesooydvausfoca.supabase.co';
         const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hb2NrbWVzb295ZHZhdXNmb2NhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEzNzI4NDEsImV4cCI6MjA2Njk0ODg0MX0.gwWS35APlyST7_IUvQvJtGO4QmGsvbE95lnQf0H1PUE';
 
-        // Получаем email и пароль от Edge Function
-        const response = await fetch(`${supabaseUrl}/functions/v1/qr-auth-simple`, {
+        const response = await fetch(`${supabaseUrl}/functions/v1/auth-by-qr-token`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -54,29 +52,19 @@ export default function QRAuthPage() {
           throw new Error(data?.error || 'Ошибка авторизации');
         }
 
-        // Входим через встроенный метод Supabase
-        setMessage('Вход в систему…');
-        
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: data.email,
-          password: data.password
-        });
-
-        if (signInError) {
-          throw new Error(signInError.message);
+        if (data.redirectUrl) {
+          setStatus('success');
+          setMessage('Успешно! Переходим…');
+          
+          // Редирект на magic link
+          setTimeout(() => {
+            if (alive.current) {
+              window.location.href = data.redirectUrl;
+            }
+          }, 500);
+        } else {
+          throw new Error('Нет ссылки для редиректа');
         }
-
-        // Успешная авторизация
-        setStatus('success');
-        setMessage('Успешно! Переходим…');
-        
-        // Редирект на главную
-        setTimeout(() => {
-          if (alive.current) {
-            window.location.href = '/';
-          }
-        }, 500);
-
       } catch (error: any) {
         console.error('QR auth error:', error);
         if (!alive.current) return;
