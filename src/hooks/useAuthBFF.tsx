@@ -24,7 +24,7 @@ export function AuthProviderBFF({ children }: { children: React.ReactNode }) {
   // Загрузка профиля пользователя через BFF
   const fetchUserProfile = useCallback(async () => {
     try {
-      const response = await fetch('http://51.250.94.103:3000/auth/me', {
+      const response = await fetch('https://51.250.94.103:3001/auth/me', {
         method: 'GET',
         credentials: 'include',
       });

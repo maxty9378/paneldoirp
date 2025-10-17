@@ -8,7 +8,7 @@
  * - Маскировка прямых обращений к *.supabase.co
  */
 
-const BFF_URL = 'http://51.250.94.103:3000';
+const BFF_URL = 'https://51.250.94.103:3001';
 
 export interface SignInCredentials {
   email: string;
