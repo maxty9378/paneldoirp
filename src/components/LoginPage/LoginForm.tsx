@@ -98,10 +98,10 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
 
   return (
     <div className="w-full">
-      <div className="bg-white/90 backdrop-blur-2xl rounded-2xl p-6 shadow-2xl border border-white/50">
+      <div className="bg-white/95 backdrop-blur-3xl p-6 shadow-2xl border border-white/50" style={{ borderRadius: '28px' }}>
         {/* Заголовок */}
         <div className="text-center mb-6">
-          <div className="w-16 h-16 bg-gradient-to-br from-blue-500 via-cyan-500 to-teal-500 rounded-xl mx-auto flex items-center justify-center mb-4 shadow-xl shadow-blue-500/30">
+          <div className="w-16 h-16 bg-gradient-to-br from-blue-500 via-cyan-500 to-teal-500 mx-auto flex items-center justify-center mb-4 shadow-xl shadow-blue-500/30" style={{ borderRadius: '20px' }}>
             <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
             </svg>
@@ -126,7 +126,8 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
                 required
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                className="w-full px-3.5 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all duration-200 bg-white/70 text-gray-900 placeholder-gray-500 font-medium text-sm"
+                className="w-full px-3.5 py-2.5 border-2 border-gray-200 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all duration-200 bg-white/70 text-gray-900 placeholder-gray-500 font-medium text-sm"
+                style={{ borderRadius: '14px' }}
                 placeholder="Введите логин или SAP номер"
                 disabled={isSubmitting}
               />
@@ -146,7 +147,8 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3.5 py-2.5 pr-11 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all duration-200 bg-white/70 text-gray-900 placeholder-gray-500 font-medium text-sm"
+                className="w-full px-3.5 py-2.5 pr-11 border-2 border-gray-200 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all duration-200 bg-white/70 text-gray-900 placeholder-gray-500 font-medium text-sm"
+                style={{ borderRadius: '14px' }}
                 placeholder="Введите пароль"
                 disabled={isSubmitting}
               />
@@ -163,7 +165,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
 
           {/* Ошибка */}
           {authError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start">
+            <div className="bg-red-50 border border-red-200 p-3 flex items-start" style={{ borderRadius: '14px' }}>
               <AlertCircle className="h-4 w-4 text-red-500 mr-2 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-red-600">{authError}</p>
             </div>
@@ -174,7 +176,8 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
             <button
               type="submit"
               disabled={isSubmitting || loading}
-              className="w-full bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 text-white py-3 px-4 rounded-lg font-semibold hover:shadow-lg hover:shadow-blue-500/30 focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-[1.01] active:scale-[0.99] text-sm"
+              className="w-full bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 text-white py-3 px-4 font-semibold hover:shadow-lg hover:shadow-blue-500/30 focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-[1.01] active:scale-[0.99] text-sm"
+              style={{ borderRadius: '14px' }}
             >
               {isSubmitting || loading ? (
                 <div className="flex items-center justify-center text-white">
@@ -203,7 +206,8 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           <button
             type="button"
             onClick={() => setShowQRScanner(true)}
-            className="w-full flex items-center justify-center px-3 py-2 border border-gray-300 rounded-lg text-gray-600 bg-white/50 hover:bg-gray-50 hover:text-gray-700 focus:outline-none focus:ring-1 focus:ring-gray-300 transition-all duration-200 text-xs"
+            className="w-full flex items-center justify-center px-3 py-2 border border-gray-300 text-gray-600 bg-white/50 hover:bg-gray-50 hover:text-gray-700 focus:outline-none focus:ring-1 focus:ring-gray-300 transition-all duration-200 text-xs"
+            style={{ borderRadius: '12px' }}
           >
             <QrCodeIcon className="h-3.5 w-3.5 mr-1.5" />
             <span>Сканировать QR</span>
