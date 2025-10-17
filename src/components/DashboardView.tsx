@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+﻿import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Users,
   BookOpen,
@@ -19,7 +19,7 @@ import {
   ArrowRight,
   Sparkle
 } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
+import { useAuthBFF } from '../hooks/useAuthBFF';
 import { getCachedEvents, setCachedEvents, clearEventsCache } from '../lib/eventsCache';
 import { Event, USER_ROLE_LABELS } from '../types';
 import { supabase } from '../lib/supabase';
@@ -60,7 +60,7 @@ const TYPE_LABELS = {
 
 // Карточка мероприятия с визуальной идентикой
 function EventCard({ event, animationDelay = 0 }: { event: EventWithDetails; animationDelay?: number }) {
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
 
   // Развёрнутые комментарии на русском по требованию пользователя
   // Определяем, имеет ли эксперт доступ к карточке экзамена
@@ -336,7 +336,7 @@ function HeroPanel({
 }
 
 export function DashboardView() {
-  const { user, userProfile, loading } = useAuth();
+  const { user, userProfile, loading } = useAuthBFF();
   const [upcomingEvents, setUpcomingEvents] = useState<EventWithDetails[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
   const [eventsError, setEventsError] = useState<string | null>(null);

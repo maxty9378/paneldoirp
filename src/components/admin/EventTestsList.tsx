@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { FileText, Clock, CheckCircle, XCircle, AlertTriangle, Play, User, Users, BarChart3 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { clsx } from 'clsx';
@@ -33,7 +33,7 @@ interface Test {
 }
 
 export function EventTestsList({ eventId, onSuccess }: EventTestsListProps) {
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
   const navigate = useNavigate();
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [tests, setTests] = useState<Test[]>([]);

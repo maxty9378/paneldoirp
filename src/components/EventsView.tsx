@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
   ArrowRight,
@@ -12,7 +12,7 @@ import {
   X
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../hooks/useAuth';
+import { useAuthBFF } from '../hooks/useAuthBFF';
 import { Event, EVENT_TYPE_LABELS } from '../types';
 import { EventCard } from './events/EventCard';
 
@@ -40,7 +40,7 @@ interface FetchOptions {
 }
 
 export function EventsView({ onCreateEvent, onNavigateToEvent, onEditEvent }: EventsViewProps) {
-  const { user, userProfile } = useAuth();
+  const { user, userProfile } = useAuthBFF();
   const [events, setEvents] = useState<EventWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

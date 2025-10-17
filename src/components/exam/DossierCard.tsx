@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { User, MapPin, Award, GraduationCap, Calendar, Edit, Camera, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
@@ -43,7 +43,7 @@ interface DossierCardProps {
 }
 
 const DossierCard: React.FC<DossierCardProps> = ({ participant, dossier, groupName, onEdit, onSave }) => {
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
   const [isEditing, setIsEditing] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   

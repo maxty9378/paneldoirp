@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, MapPin, Users, Star, LinkIcon, Save, Upload, Download, Search, Plus, FileSpreadsheet, User, Check, CalendarDays, Building2, UserCheck, Target, ChevronLeft, ArrowRight, Sparkles, ChevronRight, Edit } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthBFF } from '../../hooks/useAuthBFF';
 import { ExamTypeSelector } from './ExamTypeSelector';
 import { createRegularUser, findUserByEmail } from '../../lib/userManagement';
 import { clsx } from 'clsx';
@@ -23,7 +23,7 @@ interface CreateEventModalProps {
 }
 
 export function CreateEventModal({ isOpen, onClose, onSuccess, editingEvent, defaultEventType }: CreateEventModalProps) {
-  const { user, userProfile } = useAuth();
+  const { user, userProfile } = useAuthBFF();
   const [formData, setFormData] = useState({
     title: '',
     description: '',

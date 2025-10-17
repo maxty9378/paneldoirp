@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { X, CheckCircle, XCircle, Clock, User, FileText } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../../hooks/use-toast';
@@ -33,7 +33,7 @@ function StatusDot({ color }: { color: 'green' | 'red' | 'gray' }) {
 
 export function TestReviewModal({ isOpen, onClose, attemptId, eventId }: TestReviewModalProps) {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user } = useAuthBFF();
 
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);

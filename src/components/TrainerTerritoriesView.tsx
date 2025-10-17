@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useAuth } from '../hooks/useAuth';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useAuthBFF } from '../hooks/useAuthBFF';
 import { useAdmin } from '../hooks/useAdmin';
 import { supabase } from '../lib/supabase';
 import {
@@ -63,7 +63,7 @@ type Territory = { id: string; name: string; region?: string };
 /* ----------------- component ----------------- */
 
 export function TrainerTerritoriesView() {
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
   const { territories } = useAdmin();
 
   const [trainerTerritories, setTrainerTerritories] = useState<TrainerTerritory[]>([]);

@@ -1,4 +1,4 @@
-import { Users, FileText, Star, AlertCircle } from 'lucide-react';
+﻿import { Users, FileText, Star, AlertCircle } from 'lucide-react';
 import { FeedbackTab } from '../feedback/FeedbackTab';
 import { useAuth } from '../../hooks/useAuth';
 import { useEffect } from 'react';
@@ -33,7 +33,7 @@ interface EventDetailViewProps {
 const ADMIN_ROLES = ['administrator', 'moderator', 'trainer', 'expert'] as const;
 
 export default function EventDetailView({ eventId, onStartTest, onBack }: EventDetailViewProps) {
-  const { user, userProfile } = useAuth();
+  const { user, userProfile } = useAuthBFF();
   // Удалить все типы, переменные, useEffect, функции, связанные с EventStatistics, useEventStatistics, statistics, loading, error, calculateAverageScore, StatisticCard, chartData, аналитика, а также все блоки разметки, где есть аналитика или статистика. Оставить только отображение участников и остальной информации о мероприятии.
 
   // Отладочный вывод для проверки структуры данных

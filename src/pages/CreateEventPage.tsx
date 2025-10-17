@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../hooks/useAuth';
+import { useAuthBFF } from '../hooks/useAuthBFF';
 
 type EventStatus = 'draft' | 'published';
 type EventFormat = 'online' | 'offline';
@@ -152,7 +152,7 @@ function formatStatus(status: EventStatus) {
 
 export default function CreateEventPage({ onCancel, onSuccess, editingEvent }: CreateEventPageProps) {
   const navigate = useNavigate();
-  const { user, userProfile } = useAuth();
+  const { user, userProfile } = useAuthBFF();
   const [eventTypes, setEventTypes] = useState<EventTypeRecord[]>([]);
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);

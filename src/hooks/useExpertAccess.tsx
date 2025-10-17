@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
 
@@ -13,7 +13,7 @@ const CACHE_DURATION = 15 * 60 * 1000; // 15 минут для эксперто�
 const accessCache: ExpertAccessCache = {};
 
 export const useExpertAccess = (examId: string | undefined) => {
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

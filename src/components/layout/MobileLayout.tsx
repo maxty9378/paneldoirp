@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import MobileExamNavigation from '../exam/MobileExamNavigation';
 import { useAuth } from '../../hooks/useAuth';
@@ -33,7 +33,7 @@ const MobileLayout: React.FC = () => {
 
   const location = useLocation();
   const navigate = useNavigate();
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
   const activeTab = getActiveTabFromPathname(location.pathname);
 
   // Проверяем, находимся ли мы на страницах оценки или досье (где нужно скрыть меню)

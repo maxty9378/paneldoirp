@@ -1,8 +1,8 @@
-import React from 'react';
+﻿import React from 'react';
 import { useAuth } from '../../hooks/useAuth';
 
 export function EventParticipants({ participants, onAction }: { participants: any[]; onAction?: (participant: any) => void }) {
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
   
   // Определяем, является ли пользователь участником (employee)
   const isEmployee = userProfile?.role === 'employee';

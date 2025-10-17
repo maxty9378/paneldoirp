@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, FileText, Save, CheckCircle, MessageSquare, User, Star } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -35,7 +35,7 @@ const CaseEvaluationPage: React.FC = () => {
   const { examId } = useParams<{ examId: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user } = useAuthBFF();
 
   const participantId = searchParams.get('participantId');
   const caseNumber = parseInt(searchParams.get('caseNumber') || '1');

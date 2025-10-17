@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Settings, Trophy, Eye, EyeOff } from 'lucide-react';
 import { useAchievements } from '../../hooks/useAchievements';
 import { AchievementCard } from './AchievementCard';
@@ -6,7 +6,7 @@ import { AchievementStatsDisplay } from './AchievementStats';
 import { useAuth } from '../../hooks/useAuth';
 
 export function AchievementSection() {
-  const { user } = useAuth();
+  const { user } = useAuthBFF();
   const { achievements, stats, loading, error } = useAchievements(user?.id);
   const [isVisible, setIsVisible] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');

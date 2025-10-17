@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom';
-import { AuthProvider, useAuth } from './hooks/useAuth';
+import { AuthProviderBFF, useAuthBFF } from './hooks/useAuthBFF';
 import { supabase } from './lib/supabase';
 import { Layout } from './components/Layout';
 import { LoginPage } from './components/LoginPage/LoginPage';
@@ -52,13 +52,14 @@ function EventDetailPage({ onStartTest }: { onStartTest: (testId: string, eventI
 function AppContent() {
   const { 
     user, 
-    userProfile,
     loading, 
-    resetAuth, 
-    authError, 
-    loadingPhase,
-    retryFetchProfile
-  } = useAuth();
+    authError,
+    refreshUser
+  } = useAuthBFF();
+  const userProfile = user; // BFF возвращает только user
+  const resetAuth = async () => { /* TODO: implement */ };
+  const loadingPhase = loading ? 'initializing' : 'complete';
+  const retryFetchProfile = refreshUser;
   const [showEventModal, setShowEventModal] = useState(false); // Состояние для модалки создания/редактирования события
   const [showQuickLoginOnLogout, setShowQuickLoginOnLogout] = useState(false);
   const navigate = useNavigate();
@@ -520,11 +521,11 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
+    <AuthProviderBFF>
       <Router>
         <AppContent />
       </Router>
-    </AuthProvider>
+    </AuthProviderBFF>
   );
 }
 

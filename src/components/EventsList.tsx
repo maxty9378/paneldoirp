@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../hooks/useAuth';
+import { useAuthBFF } from '../hooks/useAuthBFF';
 import { 
   Calendar, 
   Clock, 
@@ -53,7 +53,7 @@ type ViewMode = 'grid' | 'list' | 'calendar';
 type SortBy = 'start_date' | 'title' | 'participants' | 'status' | 'created_at';
 
 export function EventsList({ onCreateEvent }: EventsListProps) {
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
   const [events, setEvents] = useState<EventWithStats[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<EventWithStats[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,7 +66,7 @@ export function EventsList({ onCreateEvent }: EventsListProps) {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
-  const { user, userProfile } = useAuth();
+  const { user, userProfile } = useAuthBFF();
 
   useEffect(() => {
     if (user) {

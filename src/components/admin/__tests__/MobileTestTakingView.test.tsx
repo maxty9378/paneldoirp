@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { EnhancedMobileTestTakingView } from '../EnhancedMobileTestTakingView';
 import { useMobileTest } from '../../../hooks/useMobileTest';

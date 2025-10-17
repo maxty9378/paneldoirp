@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+﻿import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, UserCheck, BarChart3, Info, XCircle, CheckCircle2, Loader2 } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
+import { useAuthBFF } from '../hooks/useAuthBFF';
 import { supabase } from '../lib/supabase';
 
 /* ========================== Типы ========================== */
@@ -324,7 +324,7 @@ function useDebouncedCallback<T extends (...args: any[]) => void>(cb: T, delay =
 export default function EventTPEvaluation() {
   const { eventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
 
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [evaluations, setEvaluations] = useState<Map<string, TPEvaluation>>(new Map());

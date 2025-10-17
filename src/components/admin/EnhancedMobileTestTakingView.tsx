@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import {
   AlertTriangle,
   X,
@@ -42,7 +42,7 @@ export const EnhancedMobileTestTakingView: React.FC<EnhancedMobileTestTakingView
   onCancel,
   onTestLoaded,
 }) => {
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
   const [submitting, setSubmitting] = useState(false);
   const [showCongrats, setShowCongrats] = useState(false);
   const [showRestoreModal, setShowRestoreModal] = useState(false);

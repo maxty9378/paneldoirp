@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
   Play, 
@@ -63,7 +63,7 @@ interface FutureTest {
 }
 
 export function ParticipantTestsView() {
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
   const navigate = useNavigate();
   const [completedTests, setCompletedTests] = useState<TestAttempt[]>([]);
   const [futureTests, setFutureTests] = useState<FutureTest[]>([]);

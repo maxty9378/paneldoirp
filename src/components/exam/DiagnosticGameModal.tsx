@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import { X, Brain, CheckCircle, Save, Info } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
@@ -41,7 +41,7 @@ export const DiagnosticGameModal: React.FC<DiagnosticGameModalProps> = ({
   existingEvaluation,
   onModalStateChange
 }) => {
-  const { user } = useAuth();
+  const { user } = useAuthBFF();
   const [evaluation, setEvaluation] = useState<DiagnosticGameEvaluation>({
     exam_event_id: examId,
     reservist_id: participantId,

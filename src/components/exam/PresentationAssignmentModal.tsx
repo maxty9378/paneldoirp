@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { X, User, Hash, Save, ArrowUpDown, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
@@ -32,7 +32,7 @@ export const PresentationAssignmentModal: React.FC<PresentationAssignmentModalPr
   participants,
   onAssignmentSaved
 }) => {
-  const { user } = useAuth();
+  const { user } = useAuthBFF();
   const [assignments, setAssignments] = useState<PresentationAssignment[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);

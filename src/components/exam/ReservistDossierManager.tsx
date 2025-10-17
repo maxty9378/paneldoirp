@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { User, Briefcase, GraduationCap, Award, Target, Edit, Trash2, Plus, Save, X, Upload } from 'lucide-react';
 import { ReservistDossier } from '../../types/exam';
 import { supabase } from '../../lib/supabase';
@@ -10,7 +10,7 @@ interface ReservistDossierManagerProps {
 }
 
 export function ReservistDossierManager({ examEventId, onDossierChange }: ReservistDossierManagerProps) {
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
   const [dossiers, setDossiers] = useState<ReservistDossier[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

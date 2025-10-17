@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+﻿import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { FileText, Download, X, FileSpreadsheet, Phone, Mail, Copy } from 'lucide-react';
 import { SiTelegram, SiWhatsapp, SiZoom } from 'react-icons/si';
 import { getEventFiles, deleteEventFile } from '../../lib/eventFileStorage';
@@ -238,7 +238,7 @@ export const Avatar = React.memo(function Avatar({
 });
 
 export function EventDetailsCard({ event, isCreator = false, participants = [], onUpdateOrganizerData, onCompleteEvent }: EventDetailsCardProps) {
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
   const { toast } = useToast();
   
   // Инициализация Houdini

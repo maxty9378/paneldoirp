@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { NotificationTask } from '../types';
-import { useAuth } from './useAuth';
+import { useAuthBFF } from './useAuthBFF';
 
 export function useNotifications() {
-  const { user } = useAuth();
+  const { user } = useAuthBFF();
   const [notifications, setNotifications] = useState<NotificationTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

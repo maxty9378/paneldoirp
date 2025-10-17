@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { 
   Users, 
   Search, 
@@ -29,7 +29,7 @@ import {
   User,
   QrCode
 } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
+import { useAuthBFF } from '../hooks/useAuthBFF';
 import { supabase } from '../lib/supabase';
 import PersistentQRCode from './admin/PersistentQRCode';
 
@@ -94,7 +94,7 @@ const formatExperienceDays = (days: number | undefined | null): string => {
 };
 
 export function EmployeesView() {
-  const { user, userProfile } = useAuth();
+  const { user, userProfile } = useAuthBFF();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [filteredEmployees, setFilteredEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);

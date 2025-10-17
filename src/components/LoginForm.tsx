@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Eye, EyeOff, CheckCircle, AlertCircle, Clock, QrCode as QrCodeIcon } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
+import { useAuthBFF } from '../hooks/useAuthBFF';
 import { QuickLoginModal } from './QuickLoginModal';
 import { QRScannerModal } from './QRScannerModal';
 import { hasCachedUsers } from '../lib/userCache';
@@ -19,7 +19,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   const [showQuickLogin, setShowQuickLogin] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
 
-  const { signIn, user, loading, authError } = useAuth();
+  const { signIn, user, loading, authError } = useAuthBFF();
   const navigate = useNavigate();
   
   // Показываем экран успеха только если пользователь загружен и не идет процесс авторизации

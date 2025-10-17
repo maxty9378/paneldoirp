@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { ArrowLeft, BarChart3 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../hooks/useAuth';
+import { useAuthBFF } from '../hooks/useAuthBFF';
 import { EventHeader } from './eventDetail/EventHeader';
 import { EventDetailsCard } from './eventDetail/EventDetailsCard';
 // @ts-ignore
@@ -22,7 +22,7 @@ interface EventDetailViewProps {
 }
 
 export default function EventDetailView({ eventId, onStartTest, onBack }: EventDetailViewProps) {
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
   const navigate = useNavigate();
   const [organizerPosition, setOrganizerPosition] = useState<string>('Организатор');
   const [event, setEvent] = useState<any>(null);

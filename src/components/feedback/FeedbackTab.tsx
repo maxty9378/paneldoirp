@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { MessageSquare, CheckCircle, PlusCircle, Star, BarChart, BarChart3, Users, TrendingUp, Award, FileText } from 'lucide-react';
@@ -18,7 +18,7 @@ interface FeedbackStatus {
 }
 
 export function FeedbackTab({ eventId, adminStatOnly = false }: FeedbackTabProps) {
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
   const [feedbackStatus, setFeedbackStatus] = useState<FeedbackStatus>({
     canSubmitFeedback: true, // По умолчанию разрешаем, пока не проверим
     hasSubmittedFeedback: false,

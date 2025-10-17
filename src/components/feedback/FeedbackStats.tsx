@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { Star, BarChart, User, Calendar, CheckCircle, XCircle, BarChart3 } from 'lucide-react';
@@ -30,7 +30,7 @@ interface EventParticipant {
 }
 
 export function FeedbackStats({ eventId }: FeedbackStatsProps) {
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
   const [feedbackStats, setFeedbackStats] = useState<FeedbackQuestion[]>([]);
   const [participants, setParticipants] = useState<EventParticipant[]>([]);
   const [loading, setLoading] = useState(true);

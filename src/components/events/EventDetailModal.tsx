@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { X, Calendar, MapPin, Users, Clock, Award, FileText, Link as LinkIcon, User, UserCheck, CheckCircle2, XCircle, BadgeCheck, AlertCircle, BarChart4, Building, Landmark, Map, Briefcase, ArrowRight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
@@ -14,7 +14,7 @@ interface EventDetailModalProps {
 }
 
 export function EventDetailModal({ isOpen, eventId, onClose }: EventDetailModalProps) {
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
   const [event, setEvent] = useState<any | null>(null);
   const [participants, setParticipants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

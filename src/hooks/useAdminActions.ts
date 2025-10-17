@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
 import { createRegularUser, deleteUser as deleteUserFunc, resetUserPassword as resetPasswordFunc } from '../lib/userManagement';
@@ -24,7 +24,7 @@ interface ImportResult {
 }
 
 export function useAdminActions() {
-  const { session } = useAuth();
+  const { session } = useAuthBFF();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

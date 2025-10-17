@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../hooks/useAuth';
+﻿import React, { useState, useEffect } from 'react';
+import { useAuthBFF } from '../hooks/useAuthBFF';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -17,7 +17,8 @@ interface LayoutProps {
 export function Layout({ children, currentView, testTitle }: LayoutProps & { testTitle?: string }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const toggleSidebar = () => setIsSidebarCollapsed((v) => !v);
-  const { user, userProfile } = useAuth();
+  const { user } = useAuthBFF();
+  const userProfile = user;
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [examTabTitle, setExamTabTitle] = useState('Экзамен');

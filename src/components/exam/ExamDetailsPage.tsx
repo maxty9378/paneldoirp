@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Calendar, Users, Target, User, Mail, Edit, Trash2, Plus, X, Save, FileText, Hash } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -69,7 +69,7 @@ const getAgeText = (age: number): string => {
 const ExamDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
   const [exam, setExam] = useState<ExamEvent | null>(null);
   const [experts, setExperts] = useState<Expert[]>([]);
   const [loading, setLoading] = useState(true);

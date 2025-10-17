@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { X, FileText, Users, Trophy, ArrowRight, Loader2, User, MousePointer } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -247,7 +247,7 @@ const EvaluationStageModalContent: React.FC<EvaluationStageModalProps> = ({
   evaluations: _evaluations = [],
   onModalStateChange
 }) => {
-  const { user } = useAuth();
+  const { user } = useAuthBFF();
   const [showTooltip, setShowTooltip] = useState(false);
   const targetRef = React.useRef<HTMLElement>(null);
   const [showCaseSelection, setShowCaseSelection] = useState(false);

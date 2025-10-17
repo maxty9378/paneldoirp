@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { X, Calendar, Clock, MapPin, Users, Star, LinkIcon, Save, Upload, Search, AlertCircle, Check, Download, FileSpreadsheet, Plus, User } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
@@ -37,7 +37,7 @@ interface CreateEventTrainerModalProps {
 }
 
 export function CreateEventTrainerModal({ isOpen, onClose, onSuccess }: CreateEventTrainerModalProps) {
-  const { user } = useAuth();
+  const { user } = useAuthBFF();
   const [eventTypes, setEventTypes] = useState<EventType[]>([]);
   const [selectedType, setSelectedType] = useState<EventType | null>(null);
   const [loadingTypes, setLoadingTypes] = useState(true);

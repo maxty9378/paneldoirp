@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import snsLogo from '../assets/sns-logo.svg';
 import { User, LogOut, Settings, Camera, Menu, Search, Bell, ChevronDown } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
+import { useAuthBFF } from '../hooks/useAuthBFF';
 import { AvatarModal } from './profile/AvatarModal';
 import { supabase } from '../lib/supabase';
 import { NotificationBell } from './notifications/NotificationBell';
@@ -13,7 +13,7 @@ interface HeaderProps {
 }
 
 export function Header({ onMobileMenuToggle }: HeaderProps) {
-  const { user, userProfile, loading, signOut, refreshProfile } = useAuth();
+  const { user, userProfile, loading, signOut, refreshProfile } = useAuthBFF();
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [avatarTimestamp, setAvatarTimestamp] = useState(Date.now());
   const [isScrolled, setIsScrolled] = useState(false);

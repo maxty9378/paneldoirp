@@ -1,4 +1,4 @@
-
+﻿
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Plus,
@@ -767,7 +767,7 @@ function TestDetailsModal({
   );
 }
 export function TestingView() {
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
   const { toast } = useToast();
 
   const [tests, setTests] = useState<Test[]>([]);

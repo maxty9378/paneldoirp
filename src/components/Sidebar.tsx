@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { SidebarToggleButton } from './SidebarToggleButton';
-import { useAuth } from '../hooks/useAuth';
+import { useAuthBFF } from '../hooks/useAuthBFF';
 import {
   AppWindow, Calendar, BookOpen, Users, BarChart3, AlertCircle, Settings,
   TestTube, Building2, GraduationCap, Star, Shield,
@@ -157,7 +157,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ activeItem, onItemClick, isCollapsed = false, onToggle, isMobile = false, onMobileClose }: SidebarProps) {
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, signOut } = useAuthBFF();
   const [isScrolled, setIsScrolled] = useState(false);
 
   // Отслеживание скролла для мобильной версии
@@ -400,7 +400,7 @@ export function Sidebar({ activeItem, onItemClick, isCollapsed = false, onToggle
               )}
               <button 
                 onClick={() => {
-                  // Добавить логику выхода
+                  signOut();
                 }}
                 className="flex items-center space-x-3 w-full p-3 text-left rounded-xl hover:bg-red-50/80 transition-all duration-200 active:scale-95 backdrop-blur-sm"
               >

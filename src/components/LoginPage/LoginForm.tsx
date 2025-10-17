@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Eye, EyeOff, CircleCheck as CheckCircle, CircleAlert as AlertCircle, QrCode as QrCodeIcon } from 'lucide-react';
 import { Spinner } from '../ui/Spinner';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthBFF } from '../../hooks/useAuthBFF';
 import { QRScannerModal } from '../QRScannerModal';
 import { useNavigate } from 'react-router-dom';
 import { LastLoginInfo } from '../LastLoginInfo';
@@ -21,7 +21,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   const [showLastLoginInfo, setShowLastLoginInfo] = useState(false);
   const [lastLoginData, setLastLoginData] = useState<{ email: string; fullName: string; timestamp: number } | null>(null);
 
-  const { signIn, user, loading, authError } = useAuth();
+  const { signIn, user, loading, authError } = useAuthBFF();
   const navigate = useNavigate();
 
   // Проверяем, нужно ли показать окно с информацией о последнем входе

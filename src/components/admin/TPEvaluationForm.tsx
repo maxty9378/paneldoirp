@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { Users, Star, TrendingUp, MessageSquare, Award, CheckCircle, XCircle, Info, ChevronDown, ChevronUp } from 'lucide-react';
@@ -89,7 +89,7 @@ const skillLevels = {
 };
 
 export function TPEvaluationForm({ eventId, onClose, onSuccess }: TPEvaluationFormProps) {
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [evaluations, setEvaluations] = useState<Map<string, TPEvaluation>>(new Map());
   const [loading, setLoading] = useState(true);

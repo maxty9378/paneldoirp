@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Star, Users, Target, Award, TrendingUp, MessageSquare, Calendar, Edit2, Trash2, Save, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
@@ -67,7 +67,7 @@ interface ExpertEvaluationResultsProps {
 }
 
 const ExpertEvaluationResults: React.FC<ExpertEvaluationResultsProps> = ({ examEventId }) => {
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
   
   // Отладочная информация
   console.log('ExpertEvaluationResults - userProfile:', userProfile);

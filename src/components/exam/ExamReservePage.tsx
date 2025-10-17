@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Calendar, Users, Target, Clock, Search, Filter, MoreVertical, Edit, Trash2, Eye, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -33,7 +33,7 @@ interface ExamEvent {
 }
 
 export function ExamReservePage() {
-  const { user } = useAuth();
+  const { user } = useAuthBFF();
   const navigate = useNavigate();
   const [exams, setExams] = useState<ExamEvent[]>([]);
   const [loading, setLoading] = useState(true);

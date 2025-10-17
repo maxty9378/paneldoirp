@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useAuthBFF } from '../hooks/useAuthBFF';
 import { supabase } from '../lib/supabase';
 import { TestTakingView } from '../components/admin/TestTakingView';
 import { EnhancedMobileTestTakingView } from '../components/admin/EnhancedMobileTestTakingView';
@@ -54,7 +54,7 @@ async function createAttempt({ eventId, testId, userId }: { eventId: string, tes
 export default function TakeTestPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
   const isMobile = useMobile();
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);

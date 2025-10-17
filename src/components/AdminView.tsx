@@ -1,4 +1,4 @@
-  import React, { useState, useEffect } from 'react';
+﻿  import React, { useState, useEffect } from 'react';
   import { 
     Users, 
     Settings, 
@@ -25,7 +25,7 @@
     MessageSquare,
     Clipboard
   } from 'lucide-react';
-  import { useAuth } from '../hooks/useAuth';
+  import { useAuthBFF } from '../hooks/useAuthBFF';
   import { User, UserRole, USER_ROLE_LABELS } from '../types';
   import { useAdmin } from '../hooks/useAdmin';
   import { NotificationTestPanel } from './admin/NotificationTestPanel';
@@ -82,7 +82,7 @@
   }
 
   export function AdminView() {
-    const { user } = useAuth();
+    const { user } = useAuthBFF();
     const {
       users,
       branches,

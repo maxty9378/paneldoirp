@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { X, User, MapPin, Calendar, Briefcase, Award, GraduationCap, Clock, Phone, Building, Edit, Save } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
@@ -81,7 +81,7 @@ export const DossierModal: React.FC<DossierModalProps> = ({
   loading = false,
   onModalStateChange
 }) => {
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
   const [isEditing, setIsEditing] = useState(false);

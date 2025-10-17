@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Bell, Send, AlertCircle, CheckCircle } from 'lucide-react';
 import { useNotifications } from '../../hooks/useNotifications';
 import { createSystemNotification, createNotificationForRole } from '../../utils/notificationUtils';
 import { useAuth } from '../../hooks/useAuth';
 
 export function NotificationTestPanel() {
-  const { user } = useAuth();
+  const { user } = useAuthBFF();
   const { createNotification } = useNotifications();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');

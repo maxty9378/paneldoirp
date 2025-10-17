@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   AlertTriangle,
   CheckCircle,
@@ -140,7 +140,7 @@ export const TestTakingView: React.FC<TestTakingViewProps> = ({
   onCancel,
   onTestLoaded,
 }) => {
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
   const [test, setTest] = useState<Test | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);

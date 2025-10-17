@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { Users, TrendingUp, Award, BarChart3, Star, CheckCircle, AlertCircle, XCircle } from 'lucide-react';
@@ -35,7 +35,7 @@ interface DetailedEvaluation {
 }
 
 export function TPEvaluationStats({ eventId }: TPEvaluationStatsProps) {
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
   const [stats, setStats] = useState<EvaluationStats | null>(null);
   const [detailedEvaluations, setDetailedEvaluations] = useState<DetailedEvaluation[]>([]);
   const [loading, setLoading] = useState(true);

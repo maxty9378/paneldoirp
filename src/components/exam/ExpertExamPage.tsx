@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useOutletContext, useLocation } from 'react-router-dom';
 import { Calendar, MapPin, Users, Target, User, Star, AlertCircle, RefreshCw, Hash } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -98,7 +98,7 @@ const ExpertExamPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, userProfile } = useAuth();
+  const { user, userProfile } = useAuthBFF();
   const { setIsNavHidden } = useOutletContext<{ setIsNavHidden: (hidden: boolean) => void }>();
   
   const [exam, setExam] = useState<ExamEvent | null>(null);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { X, Star, Send, AlertTriangle, CheckCircle2, MessageSquare } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
@@ -33,7 +33,7 @@ interface FeedbackAnswer {
 }
 
 export function FeedbackForm({ eventId, onClose, onSuccess }: FeedbackFormProps) {
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
   const [template, setTemplate] = useState<FeedbackTemplate | null>(null);
   const [questions, setQuestions] = useState<FeedbackQuestion[]>([]);
   const [answers, setAnswers] = useState<FeedbackAnswer[]>([]);

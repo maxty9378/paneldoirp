@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   AlertTriangle,
   CheckCircle,
@@ -93,7 +93,7 @@ export const MobileTestTakingView: React.FC<MobileTestTakingViewProps> = ({
   onCancel,
   onTestLoaded,
 }) => {
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
   const [submitting, setSubmitting] = useState(false);
   const [showCongrats, setShowCongrats] = useState(false);
   const [showRestoreModal, setShowRestoreModal] = useState(false);

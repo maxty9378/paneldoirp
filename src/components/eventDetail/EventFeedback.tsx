@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { 
@@ -54,7 +54,7 @@ interface EventParticipant {
 }
 
 export function EventFeedback({ event, feedback, onAction }: { event: any; feedback: any; onAction?: any }) {
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
   const [feedbackStats, setFeedbackStats] = useState<FeedbackQuestion[]>([]);
   const [participants, setParticipants] = useState<EventParticipant[]>([]);
   const [submissions, setSubmissions] = useState<FeedbackSubmission[]>([]);

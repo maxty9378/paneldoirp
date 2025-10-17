@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
   Users, 
@@ -128,7 +128,7 @@ interface TestResultsOverviewProps {
 }
 
 export function TestResultsOverview({ eventId, onBack }: TestResultsOverviewProps) {
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);

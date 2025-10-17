@@ -1,4 +1,4 @@
-
+﻿
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { X, FileText, Save, CheckCircle, MessageSquare, User } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -142,7 +142,7 @@ export const CaseEvaluationModal: React.FC<CaseEvaluationModalProps> = ({
   existingEvaluation,
   onModalStateChange
 }) => {
-  const { user } = useAuth();
+  const { user } = useAuthBFF();
 
   const [evaluation, setEvaluation] = useState<{
     id?: string;

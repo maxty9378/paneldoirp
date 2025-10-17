@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import { X, Target, CheckCircle, Presentation, FileText, Save } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
@@ -41,7 +41,7 @@ export const ProjectDefenseModal: React.FC<ProjectDefenseModalProps> = ({
   existingEvaluation,
   onModalStateChange
 }) => {
-  const { user } = useAuth();
+  const { user } = useAuthBFF();
   const [evaluation, setEvaluation] = useState<ProjectDefenseEvaluation>({
     exam_event_id: examId,
     reservist_id: participantId,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import { Calendar, Clock, MapPin, Users, ArrowLeft, ChevronRight, Loader2, AlertOctagon, RefreshCw, UserPlus } from 'lucide-react';
@@ -44,7 +44,7 @@ interface ExamEvent {
 }
 
 const ExpertSchedulePage: React.FC = () => {
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
   const navigate = useNavigate();
   const [exams, setExams] = useState<ExamEvent[]>([]);
   const [loading, setLoading] = useState(true);

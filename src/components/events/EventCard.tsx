@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+﻿import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import {
@@ -249,7 +249,7 @@ export function EventCard({
   onEditEvent?: (id: string) => void;
   onDeleteEvent?: (id: string) => void;
 }) {
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthBFF();
   const navigate = useNavigate();
   const [showTestReview, setShowTestReview] = useState(false);
   const d = parseDate(event);
