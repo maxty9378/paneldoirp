@@ -591,12 +591,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     console.log('🚪 Signing out user');
 
-    // Сохраняем email и сессию перед выходом для быстрого возврата
+    // Сохраняем email и имя перед выходом для быстрого возврата
     const userEmail = user?.email || userProfile?.email || 'unknown';
+    const userFullName = userProfile?.full_name || 
+                        user?.user_metadata?.full_name || 
+                        user?.user_metadata?.name || 
+                        userEmail.split('@')[0];
     
     // Сохраняем информацию о выходе
     const { saveLogoutInfo } = await import('../utils/sessionRecovery');
-    saveLogoutInfo(userEmail);
+    saveLogoutInfo(userEmail, userFullName);
     
     // 1) НЕ вызываем signOut() на сервере - оставляем сессию активной
     // 2) Просто очищаем состояние локально
@@ -674,7 +678,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log('✅ Initial session found');
           
           // Сохраняем информацию о последнем входе
-          saveLastLoginInfo(session.user.email || 'unknown');
+          const fullName = session.user.user_metadata?.full_name || 
+                          session.user.user_metadata?.name || 
+                          session.user.email?.split('@')[0] || 
+                          'Пользователь';
+          saveLastLoginInfo(session.user.email || 'unknown', fullName);
           
           if (window.location.pathname.startsWith('/auth/') || window.authCallbackProcessing) {
             console.log('⏸ Skip initial profile fetch during auth flow');

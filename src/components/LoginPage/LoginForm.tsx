@@ -19,7 +19,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [showLastLoginInfo, setShowLastLoginInfo] = useState(false);
-  const [lastLoginData, setLastLoginData] = useState<{ email: string; timestamp: number } | null>(null);
+  const [lastLoginData, setLastLoginData] = useState<{ email: string; fullName: string; timestamp: number } | null>(null);
 
   const { signIn, user, loading, authError } = useAuth();
   const navigate = useNavigate();
@@ -308,6 +308,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
       {showLastLoginInfo && lastLoginData && (
         <LastLoginInfo
           email={lastLoginData.email}
+          fullName={lastLoginData.fullName}
           timestamp={lastLoginData.timestamp}
           onLoginAgain={handleLoginAgain}
         />

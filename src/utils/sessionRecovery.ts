@@ -94,22 +94,23 @@ export async function initializeSessionRecovery(): Promise<void> {
 }
 
 // Сохраняем информацию о последнем входе
-export function saveLastLoginInfo(email: string): void {
+export function saveLastLoginInfo(email: string, fullName?: string): void {
   try {
     const loginInfo = {
       email,
+      fullName: fullName || email.split('@')[0],
       timestamp: Date.now(),
     };
     
     localStorage.setItem('sns-last-login', JSON.stringify(loginInfo));
-    console.log('💾 Last login info saved:', email);
+    console.log('💾 Last login info saved:', email, fullName);
   } catch (error) {
     console.error('❌ Error saving last login info:', error);
   }
 }
 
 // Получаем информацию о последнем входе
-export function getLastLoginInfo(): { email: string; timestamp: number } | null {
+export function getLastLoginInfo(): { email: string; fullName: string; timestamp: number } | null {
   try {
     const loginInfoStr = localStorage.getItem('sns-last-login');
     if (!loginInfoStr) return null;
@@ -122,22 +123,23 @@ export function getLastLoginInfo(): { email: string; timestamp: number } | null 
 }
 
 // Сохраняем информацию о выходе для отображения
-export function saveLogoutInfo(email: string): void {
+export function saveLogoutInfo(email: string, fullName?: string): void {
   try {
     const logoutInfo = {
       email,
+      fullName: fullName || email.split('@')[0],
       timestamp: Date.now(),
     };
     
     localStorage.setItem('sns-last-logout', JSON.stringify(logoutInfo));
-    console.log('💾 Logout info saved:', email);
+    console.log('💾 Logout info saved:', email, fullName);
   } catch (error) {
     console.error('❌ Error saving logout info:', error);
   }
 }
 
 // Получаем информацию о последнем выходе
-export function getLastLogoutInfo(): { email: string; timestamp: number } | null {
+export function getLastLogoutInfo(): { email: string; fullName: string; timestamp: number } | null {
   try {
     const logoutInfoStr = localStorage.getItem('sns-last-logout');
     if (!logoutInfoStr) return null;

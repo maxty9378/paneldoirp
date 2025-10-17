@@ -3,11 +3,12 @@ import { User, Calendar } from 'lucide-react';
 
 interface LastLoginInfoProps {
   email: string;
+  fullName: string;
   timestamp: number;
   onLoginAgain: () => void;
 }
 
-export function LastLoginInfo({ email, timestamp, onLoginAgain }: LastLoginInfoProps) {
+export function LastLoginInfo({ email, fullName, timestamp, onLoginAgain }: LastLoginInfoProps) {
   // Форматируем дату последнего входа
   const formatLastLogin = (timestamp: number): string => {
     const date = new Date(timestamp);
@@ -79,7 +80,10 @@ export function LastLoginInfo({ email, timestamp, onLoginAgain }: LastLoginInfoP
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 mb-1">Последний вход</p>
-                <p className="text-sm text-gray-600 truncate" title={email}>
+                <p className="text-sm font-semibold text-gray-900 truncate" title={fullName}>
+                  {fullName}
+                </p>
+                <p className="text-xs text-gray-500 truncate" title={email}>
                   {email}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
@@ -107,7 +111,7 @@ export function LastLoginInfo({ email, timestamp, onLoginAgain }: LastLoginInfoP
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            Войти снова как {email.split('@')[0]}
+            Войти снова как {fullName}
           </button>
           
           <button
