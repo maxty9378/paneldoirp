@@ -22,6 +22,31 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     debug: false,
     // Бессрочная авторизация - пользователь остается авторизованным
     storageType: 'localStorage', // Используем localStorage для постоянного хранения
+    // Дополнительные настройки для мобильных операторов
+    lock: {
+      acquireTimeout: 5000, // Таймаут для получения блокировки
+      retryInterval: 100, // Интервал между попытками
+      retryCount: 5, // Количество попыток
+    },
+  },
+  global: {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Mobile; SNS App)',
+    },
+    fetch: (url, options = {}) => {
+      // Добавляем таймауты для медленных соединений
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 секунд
+      
+      return fetch(url, {
+        ...options,
+        signal: controller.signal,
+        headers: {
+          ...options.headers,
+          'Cache-Control': 'no-cache',
+        },
+      }).finally(() => clearTimeout(timeoutId));
+    },
   },
 });
 

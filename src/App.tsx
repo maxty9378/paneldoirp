@@ -59,6 +59,11 @@ function AppContent() {
     loadingPhase,
     retryFetchProfile
   } = useAuth();
+
+  // Инициализируем диагностику сети
+  useEffect(() => {
+    initNetworkDiagnostics();
+  }, []);
   const [showEventModal, setShowEventModal] = useState(false); // Состояние для модалки создания/редактирования события
   const [showQuickLoginOnLogout, setShowQuickLoginOnLogout] = useState(false);
   const navigate = useNavigate();
