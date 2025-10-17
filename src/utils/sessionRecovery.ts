@@ -121,3 +121,44 @@ export function getLastLoginInfo(): { email: string; timestamp: number } | null 
   }
 }
 
+// Сохраняем информацию о выходе для отображения
+export function saveLogoutInfo(email: string): void {
+  try {
+    const logoutInfo = {
+      email,
+      timestamp: Date.now(),
+    };
+    
+    localStorage.setItem('sns-last-logout', JSON.stringify(logoutInfo));
+    console.log('💾 Logout info saved:', email);
+  } catch (error) {
+    console.error('❌ Error saving logout info:', error);
+  }
+}
+
+// Получаем информацию о последнем выходе
+export function getLastLogoutInfo(): { email: string; timestamp: number } | null {
+  try {
+    const logoutInfoStr = localStorage.getItem('sns-last-logout');
+    if (!logoutInfoStr) return null;
+    
+    return JSON.parse(logoutInfoStr);
+  } catch (error) {
+    console.error('❌ Error getting last logout info:', error);
+    return null;
+  }
+}
+
+// Проверяем, нужно ли показать окно с информацией о последнем входе
+export function shouldShowLastLoginInfo(): boolean {
+  const logoutInfo = getLastLogoutInfo();
+  if (!logoutInfo) return false;
+  
+  // Показываем только если выход был недавно (в течение 5 минут)
+  const now = Date.now();
+  const diffMs = now - logoutInfo.timestamp;
+  const diffMins = Math.floor(diffMs / 60000);
+  
+  return diffMins < 5;
+}
+

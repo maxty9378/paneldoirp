@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Eye, EyeOff, CircleCheck as CheckCircle, CircleAlert as AlertCircle, QrCode as QrCodeIcon } from 'lucide-react';
 import { Spinner } from '../ui/Spinner';
 import { useAuth } from '../../hooks/useAuth';
 import { QRScannerModal } from '../QRScannerModal';
 import { useNavigate } from 'react-router-dom';
+import { LastLoginInfo } from '../LastLoginInfo';
+import { getLastLogoutInfo, shouldShowLastLoginInfo } from '../../utils/sessionRecovery';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -15,9 +17,22 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
+  const [showLastLoginInfo, setShowLastLoginInfo] = useState(false);
+  const [lastLoginData, setLastLoginData] = useState<{ email: string; timestamp: number } | null>(null);
 
   const { signIn, user, loading, authError } = useAuth();
   const navigate = useNavigate();
+
+  // Проверяем, нужно ли показать окно с информацией о последнем входе
+  useEffect(() => {
+    if (shouldShowLastLoginInfo()) {
+      const logoutInfo = getLastLogoutInfo();
+      if (logoutInfo) {
+        setLastLoginData(logoutInfo);
+        setShowLastLoginInfo(true);
+      }
+    }
+  }, []);
   
   // Показываем экран успеха только если пользователь загружен и не идет процесс авторизации
   const showSuccessScreen = user && !loading;
@@ -53,6 +68,16 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
     setTimeout(() => {
       window.location.href = `/auth/qr/${token}`;
     }, 100);
+  };
+
+  const handleLoginAgain = () => {
+    // Закрываем окно с информацией о последнем входе
+    setShowLastLoginInfo(false);
+    
+    // Заполняем email в поле логина
+    if (lastLoginData) {
+      setIdentifier(lastLoginData.email);
+    }
   };
 
 
@@ -238,6 +263,15 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
         onClose={() => setShowQRScanner(false)}
         onScan={handleQRScan}
       />
+
+      {/* Окно с информацией о последнем входе */}
+      {showLastLoginInfo && lastLoginData && (
+        <LastLoginInfo
+          email={lastLoginData.email}
+          timestamp={lastLoginData.timestamp}
+          onLoginAgain={handleLoginAgain}
+        />
+      )}
     </div>
   );
 }

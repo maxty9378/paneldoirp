@@ -591,6 +591,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     console.log('🚪 Signing out user');
 
+    // Сохраняем email перед выходом для отображения информации
+    const userEmail = user?.email || userProfile?.email || 'unknown';
+    
     // 1) Сначала разлогиниваем на сервере
     const result = await supabase.auth.signOut();
 
@@ -616,6 +619,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem('cached_users', cachedUsers);
         console.log('💾 Сохранили кэш пользователей для быстрого входа');
       }
+      
+      // Сохраняем информацию о выходе
+      const { saveLogoutInfo } = await import('../utils/sessionRecovery');
+      saveLogoutInfo(userEmail);
       
       console.log('🧹 Cleared sessionStorage, preserved user cache');
     } catch (e) {
