@@ -6,6 +6,7 @@ import { QRScannerModal } from '../QRScannerModal';
 import { useNavigate } from 'react-router-dom';
 import { LastLoginInfo } from '../LastLoginInfo';
 import { getLastLogoutInfo, shouldShowLastLoginInfo } from '../../utils/sessionRecovery';
+import { supabase } from '../../lib/supabase';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -70,17 +71,46 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
     }, 100);
   };
 
-  const handleLoginAgain = () => {
+  const handleLoginAgain = async () => {
+    if (!lastLoginData) return;
+    
     // Закрываем окно с информацией о последнем входе
     setShowLastLoginInfo(false);
     
-    // Заполняем email в поле логина
-    if (lastLoginData) {
-      // Извлекаем email без домена для автозаполнения
+    // Пытаемся восстановить сессию из localStorage
+    try {
+      console.log('🔄 Attempting to restore session for:', lastLoginData.email);
+      
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (session?.user && !error) {
+        console.log('✅ Session restored successfully:', session.user.email);
+        // Сессия восстановлена, пользователь автоматически авторизован
+        // Просто перезагружаем страницу для применения изменений
+        window.location.href = '/';
+        return;
+      }
+      
+      console.log('ℹ️ No active session found, showing login form');
+      
+      // Если сессии нет, показываем форму входа с заполненным логином
       const emailWithoutDomain = lastLoginData.email.replace('@sns.ru', '');
       setIdentifier(emailWithoutDomain);
       
       // Фокусируемся на поле пароля для быстрого ввода
+      setTimeout(() => {
+        const passwordInput = document.getElementById('password') as HTMLInputElement;
+        if (passwordInput) {
+          passwordInput.focus();
+        }
+      }, 100);
+    } catch (error) {
+      console.error('❌ Error restoring session:', error);
+      
+      // В случае ошибки показываем форму входа
+      const emailWithoutDomain = lastLoginData.email.replace('@sns.ru', '');
+      setIdentifier(emailWithoutDomain);
+      
       setTimeout(() => {
         const passwordInput = document.getElementById('password') as HTMLInputElement;
         if (passwordInput) {

@@ -101,9 +101,12 @@ export function LastLoginInfo({ email, timestamp, onLoginAgain }: LastLoginInfoP
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 space-y-3">
           <button
             onClick={onLoginAgain}
-            className="w-full bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 text-white py-3 px-4 font-semibold hover:shadow-lg hover:shadow-blue-500/30 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all duration-300 transform hover:scale-[1.01] active:scale-[0.99] text-sm"
+            className="w-full bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 text-white py-3 px-4 font-semibold hover:shadow-lg hover:shadow-blue-500/30 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all duration-300 transform hover:scale-[1.01] active:scale-[0.99] text-sm flex items-center justify-center gap-2"
             style={{ borderRadius: '14px' }}
           >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
             Войти снова как {email.split('@')[0]}
           </button>
           
