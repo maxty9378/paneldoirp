@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BFF Test</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .result { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .success { background: #d4edda; }
+        .error { background: #f8d7da; }
+    </style>
+</head>
+<body>
+    <h1>BFF Smoke Test</h1>
+    
+    <div>
+        <button onclick="testHealth()">1. Test Health</button>
+        <button onclick="testSignIn()">2. Test Sign In</button>
+        <button onclick="testAuthMe()">3. Test /auth/me</button>
+        <button onclick="testSignOut()">4. Test Sign Out</button>
+    </div>
+    
+    <div id="results"></div>
+
+    <script>
+        const BFF_URL = 'https://51.250.94.103:3001';
+        
+        function addResult(title, success, message) {
+            const div = document.createElement('div');
+            div.className = 'result ' + (success ? 'success' : 'error');
+            div.innerHTML = `<strong>${title}:</strong> ${message}`;
+            document.getElementById('results').appendChild(div);
+        }
+        
+        async function testHealth() {
+            try {
+                const response = await fetch(`${BFF_URL}/health`);
+                const data = await response.json();
+                addResult('Health', response.ok, JSON.stringify(data));
+            } catch (e) {
+                addResult('Health', false, e.message);
+            }
+        }
+        
+        async function testSignIn() {
+            try {
+                const response = await fetch(`${BFF_URL}/auth/sign-in`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        email: 'doirp.sns777@gmail.com',
+                        password: '123456'
+                    })
+                });
+                const data = await response.json();
+                addResult('Sign In', response.ok, `Status: ${response.status}, User: ${data.user?.email || 'N/A'}`);
+            } catch (e) {
+                addResult('Sign In', false, e.message);
+            }
+        }
+        
+        async function testAuthMe() {
+            try {
+                const response = await fetch(`${BFF_URL}/auth/me`, {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                addResult('/auth/me', response.ok, `Status: ${response.status}, User: ${data.user?.email || 'N/A'}, Name: ${data.user?.user_metadata?.full_name || 'N/A'}`);
+            } catch (e) {
+                addResult('/auth/me', false, e.message);
+            }
+        }
+        
+        async function testSignOut() {
+            try {
+                const response = await fetch(`${BFF_URL}/auth/sign-out`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                addResult('Sign Out', response.ok, `Status: ${response.status}`);
+            } catch (e) {
+                addResult('Sign Out', false, e.message);
+            }
+        }
+    </script>
+</body>
+</html>
+
