@@ -8,7 +8,34 @@
  * - Маскировка прямых обращений к *.supabase.co
  */
 
-const BFF_URL = 'https://51.250.94.103:3001';
+const trimTrailingSlash = (value: string) => value.replace(/\/+$/, '');
+
+const resolveBffUrl = (): string => {
+  let envUrl: string | undefined;
+  try {
+    envUrl = ((import.meta as any)?.env?.VITE_BFF_URL as string | undefined) || undefined;
+  } catch {
+    envUrl = undefined;
+  }
+
+  if (envUrl) {
+    return trimTrailingSlash(envUrl);
+  }
+
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    try {
+      const derived = new URL(window.location.origin);
+      derived.port = '3001';
+      return trimTrailingSlash(derived.toString());
+    } catch {
+      // fall through to default
+    }
+  }
+
+  return 'http://localhost:3001';
+};
+
+const BFF_URL = resolveBffUrl();
 
 export interface SignInCredentials {
   email: string;

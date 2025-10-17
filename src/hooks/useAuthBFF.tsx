@@ -1,15 +1,17 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { bffClient, User } from '../lib/supabase-bff';
 import { supabase } from '../lib/supabase';
+import { saveLastLoginInfo, saveLogoutInfo } from '../utils/sessionRecovery';
 
 interface AuthContextType {
   user: User | null;
-  userProfile: any | null;
+  userProfile: User | null;
   loading: boolean;
   authError: string | null;
   signIn: (email: string, password: string) => Promise<{ data: any; error: any }>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
   resetAuth: () => void;
 }
 
@@ -17,128 +19,106 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProviderBFF({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [userProfile, setUserProfile] = useState<any | null>(null);
+  const [userProfile, setUserProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  // Загрузка профиля пользователя через BFF
-  const fetchUserProfile = useCallback(async () => {
-    try {
-      const response = await fetch('https://51.250.94.103:3001/auth/me', {
-        method: 'GET',
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        console.error('Ошибка загрузки профиля:', response.status);
-        return null;
-      }
-
-      const data = await response.json();
-      return data.user;
-    } catch (error: any) {
-      console.error('Ошибка загрузки профиля:', error);
-      return null;
-    }
+  const applyUserState = useCallback((nextUser: User | null) => {
+    setUser(nextUser);
+    setUserProfile(nextUser);
   }, []);
 
-  // Проверка текущего пользователя при инициализации
-  const checkCurrentUser = useCallback(async () => {
+  const loadCurrentUser = useCallback(async (): Promise<User | null> => {
     try {
-      setLoading(true);
       const currentUser = await bffClient.auth.getCurrentUser();
-      setUser(currentUser);
+      applyUserState(currentUser);
       setAuthError(null);
-      
-      // Загружаем профиль пользователя через BFF
-      if (currentUser) {
-        const profile = await fetchUserProfile();
-        setUserProfile(profile);
-      } else {
-        setUserProfile(null);
-      }
-    } catch (error: any) {
-      console.log('Не авторизован:', error.message);
-      setUser(null);
-      setUserProfile(null);
-      setAuthError(null);
+      return currentUser;
+    } catch (error) {
+      console.error('Failed to fetch current user via BFF:', error);
+      applyUserState(null);
+      return null;
+    }
+  }, [applyUserState]);
+
+  const checkCurrentUser = useCallback(async () => {
+    setLoading(true);
+    try {
+      await loadCurrentUser();
     } finally {
       setLoading(false);
     }
-  }, [fetchUserProfile]);
+  }, [loadCurrentUser]);
 
-  // Инициализация при монтировании
   useEffect(() => {
     checkCurrentUser();
   }, [checkCurrentUser]);
 
-  const signIn = async (email: string, password: string): Promise<{ data: any; error: any }> => {
-    try {
-      setLoading(true);
-      setAuthError(null);
+  const signIn = useCallback(
+    async (email: string, password: string): Promise<{ data: any; error: any }> => {
+      try {
+        setLoading(true);
+        setAuthError(null);
 
-      const response = await bffClient.auth.signIn({ email, password });
-      setUser(response.user);
-      
-      // Загружаем профиль пользователя через BFF
-      if (response.user) {
-        const profile = await fetchUserProfile();
-        setUserProfile(profile);
+        const response = await bffClient.auth.signIn({ email, password });
+        const enrichedUser = await loadCurrentUser();
+
+        if (enrichedUser) {
+          const lastEmail = enrichedUser.email || email;
+          const lastFullName =
+            (enrichedUser as any)?.full_name || enrichedUser.email || email;
+          saveLastLoginInfo(lastEmail, lastFullName);
+        }
+
+        return { data: response, error: null };
+      } catch (error: any) {
+        const errorMessage = error?.message || 'Не удалось выполнить вход';
+        setAuthError(errorMessage);
+        return { data: null, error: { message: errorMessage } };
+      } finally {
+        setLoading(false);
       }
-      
-      return { data: response, error: null };
-    } catch (error: any) {
-      const errorMessage = error.message || 'Ошибка входа';
-      setAuthError(errorMessage);
-      return { data: null, error: { message: errorMessage } };
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [loadCurrentUser],
+  );
 
-  const signOut = async (): Promise<void> => {
+  const signOut = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
+      const logoutEmail = userProfile?.email || user?.email;
+      const logoutName =
+        (userProfile as any)?.full_name || (user as any)?.full_name || logoutEmail || 'unknown';
+
+      if (logoutEmail) {
+        saveLogoutInfo(logoutEmail, logoutName);
+      }
+
       await bffClient.auth.signOut();
-      setUser(null);
-      setUserProfile(null);
-      setAuthError(null);
-    } catch (error: any) {
-      console.error('Ошибка выхода:', error);
-      // Даже если выход не удался, очищаем состояние
-      setUser(null);
-      setUserProfile(null);
+    } catch (error) {
+      console.error('Failed to sign out via BFF:', error);
     } finally {
+      try {
+        await supabase.auth.signOut();
+      } catch (supabaseError) {
+        console.warn('Failed to clear Supabase client session:', supabaseError);
+      }
+      applyUserState(null);
+      setAuthError(null);
       setLoading(false);
     }
-  };
+  }, [applyUserState, user, userProfile]);
 
-  const refreshUser = async (): Promise<void> => {
-    try {
-      const currentUser = await bffClient.auth.getCurrentUser();
-      setUser(currentUser);
-      setAuthError(null);
-      
-      // Загружаем профиль пользователя через BFF
-      if (currentUser) {
-        const profile = await fetchUserProfile();
-        setUserProfile(profile);
-      } else {
-        setUserProfile(null);
-      }
-    } catch (error: any) {
-      console.error('Ошибка обновления пользователя:', error);
-      setUser(null);
-      setUserProfile(null);
-    }
-  };
+  const refreshUser = useCallback(async () => {
+    await loadCurrentUser();
+  }, [loadCurrentUser]);
 
-  const resetAuth = (): void => {
-    setUser(null);
-    setUserProfile(null);
+  const refreshProfile = refreshUser;
+
+  const resetAuth = useCallback(() => {
+    applyUserState(null);
     setAuthError(null);
     setLoading(false);
-  };
+  }, [applyUserState]);
 
   const value: AuthContextType = {
     user,
@@ -148,6 +128,7 @@ export function AuthProviderBFF({ children }: { children: React.ReactNode }) {
     signIn,
     signOut,
     refreshUser,
+    refreshProfile,
     resetAuth,
   };
 
@@ -161,4 +142,3 @@ export function useAuthBFF(): AuthContextType {
   }
   return context;
 }
-

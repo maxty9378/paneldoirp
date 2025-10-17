@@ -6,9 +6,18 @@ interface LastLoginInfoProps {
   fullName: string;
   timestamp: number;
   onLoginAgain: () => void;
+  onSignOut?: () => Promise<void>;
 }
 
-export function LastLoginInfo({ email, fullName, timestamp, onLoginAgain }: LastLoginInfoProps) {
+export function LastLoginInfo({ email, fullName, timestamp, onLoginAgain, onSignOut }: LastLoginInfoProps) {
+  // Обработчик для кнопки "Войти другим аккаунтом"
+  const handleSignOutAndRedirect = async () => {
+    if (onSignOut) {
+      await onSignOut();
+    }
+    window.location.href = '/';
+  };
+
   // Форматируем дату последнего входа
   const formatLastLogin = (timestamp: number): string => {
     const date = new Date(timestamp);
@@ -115,7 +124,7 @@ export function LastLoginInfo({ email, fullName, timestamp, onLoginAgain }: Last
           </button>
           
           <button
-            onClick={() => window.location.href = '/'}
+            onClick={handleSignOutAndRedirect}
             className="w-full bg-white border-2 border-gray-300 text-gray-700 py-3 px-4 font-semibold hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-all duration-200 text-sm"
             style={{ borderRadius: '14px' }}
           >

@@ -21,7 +21,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   const [showLastLoginInfo, setShowLastLoginInfo] = useState(false);
   const [lastLoginData, setLastLoginData] = useState<{ email: string; fullName: string; timestamp: number } | null>(null);
 
-  const { signIn, user, loading, authError } = useAuthBFF();
+  const { signIn, signOut, user, loading, authError } = useAuthBFF();
   const navigate = useNavigate();
 
   // Проверяем, нужно ли показать окно с информацией о последнем входе
@@ -311,6 +311,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           fullName={lastLoginData.fullName}
           timestamp={lastLoginData.timestamp}
           onLoginAgain={handleLoginAgain}
+          onSignOut={signOut}
         />
       )}
     </div>
