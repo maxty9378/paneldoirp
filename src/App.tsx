@@ -35,7 +35,6 @@ import AuthCallback from './pages/AuthCallback';
 import QRAuthPage from './pages/QRAuthPage';
 import { LoadingOverlay } from './components/LoadingOverlay';
 import { Spinner } from './components/ui/Spinner';
-import { initNetworkDiagnostics } from './utils/networkDiagnostics';
 
 function EventDetailPage({ onStartTest }: { onStartTest: (testId: string, eventId: string, attemptId: string) => void }) {
   const { eventId } = useParams();
@@ -60,11 +59,6 @@ function AppContent() {
     loadingPhase,
     retryFetchProfile
   } = useAuth();
-
-  // Инициализируем диагностику сети
-  useEffect(() => {
-    initNetworkDiagnostics();
-  }, []);
   const [showEventModal, setShowEventModal] = useState(false); // Состояние для модалки создания/редактирования события
   const [showQuickLoginOnLogout, setShowQuickLoginOnLogout] = useState(false);
   const navigate = useNavigate();

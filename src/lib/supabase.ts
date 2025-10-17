@@ -10,7 +10,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Supabase URL and Anon Key are required. Please check your .env file.');
 }
 
-// Создаем простой и надежный клиент Supabase с бессрочной авторизацией
+// Создаем оптимизированный клиент Supabase для мобильных сетей
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true, // Сохраняем сессию в localStorage
@@ -25,21 +25,23 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
   global: {
     headers: {
-      'User-Agent': 'Mozilla/5.0 (Mobile; SNS App)',
+      'X-Client-Info': 'doirp-web-app',
     },
+    // Увеличиваем таймауты для медленных мобильных сетей
     fetch: (url, options = {}) => {
-      // Добавляем таймауты для медленных соединений
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 секунд
-      
       return fetch(url, {
         ...options,
-        signal: controller.signal,
-        headers: {
-          ...options.headers,
-          'Cache-Control': 'no-cache',
-        },
-      }).finally(() => clearTimeout(timeoutId));
+        // Увеличиваем таймаут до 60 секунд для мобильных сетей
+        signal: AbortSignal.timeout(60000),
+      });
+    },
+  },
+  db: {
+    schema: 'public',
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
     },
   },
 });
