@@ -10,16 +10,18 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Supabase URL and Anon Key are required. Please check your .env file.');
 }
 
-// Создаем простой и надежный клиент Supabase
+// Создаем простой и надежный клиент Supabase с бессрочной авторизацией
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: true,
-    autoRefreshToken: true,
+    persistSession: true, // Сохраняем сессию в localStorage
+    autoRefreshToken: true, // Автоматически обновляем токены
     detectSessionInUrl: false, // было true — отключаем, чтоб не дублировать с AuthCallback
     storage: isIOS ? createFallbackStorage() : window.localStorage,
-    storageKey: 'sns-session-v1',
+    storageKey: 'sns-session-v1', // Уникальный ключ для хранения
     flowType: 'pkce',
     debug: false,
+    // Бессрочная авторизация - пользователь остается авторизованным
+    storageType: 'localStorage', // Используем localStorage для постоянного хранения
   },
 });
 

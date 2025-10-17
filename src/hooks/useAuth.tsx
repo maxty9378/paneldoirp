@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useRef, useState, useCallb
 import { supabase } from '../lib/supabase';
 import { getUserFromCache, cacheUserProfile, isCachedUserValid } from '../lib/userCache';
 import { Session } from '@supabase/supabase-js';
+import { initializeSessionRecovery, saveLastLoginInfo } from '../utils/sessionRecovery';
 
 // Расширяем window для флага обработки
 declare global {
@@ -663,6 +664,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoadingPhase('session-fetch');
       console.log('📥 Starting session fetch');
       
+      // Инициализируем механизм восстановления сессии
+      await initializeSessionRecovery();
+      
       try {
         // Получаем сессию с увеличенным таймаутом
         const sessionResult = await getSessionSoft(30000);
@@ -673,6 +677,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         if (session?.user) {
           console.log('✅ Initial session found');
+          
+          // Сохраняем информацию о последнем входе
+          saveLastLoginInfo(session.user.email || 'unknown');
           
           if (window.location.pathname.startsWith('/auth/') || window.authCallbackProcessing) {
             console.log('⏸ Skip initial profile fetch during auth flow');
@@ -739,28 +746,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const startTokenRefresh = () => {
       if (refreshInterval) clearInterval(refreshInterval);
       
+      // Агрессивное обновление токенов - каждые 30 минут
       refreshInterval = setInterval(async () => {
         if (!isMounted || isRefreshing) return;
         
         try {
           const { data: { session: currentSession } } = await supabase.auth.getSession();
-          if (currentSession?.user && !isSessionValid(currentSession)) {
+          if (currentSession?.user) {
             // Проверяем, что прошло достаточно времени с последнего обновления
             const now = Date.now();
-            if (now - lastRefreshTime < 10 * 60 * 1000) { // минимум 10 минут между обновлениями
+            if (now - lastRefreshTime < 5 * 60 * 1000) { // минимум 5 минут между обновлениями
               console.log('⏳ Skipping refresh - too soon since last refresh');
               return;
             }
             
-            console.log('🔄 Periodic token refresh triggered');
+            console.log('🔄 Periodic token refresh triggered (keep-alive)');
             isRefreshing = true;
             lastRefreshTime = now;
             
             const { data, error } = await supabase.auth.refreshSession();
             if (error) {
               console.warn('Periodic refresh failed:', error);
+              // Если токен истек, пытаемся восстановить сессию
+              if (error.message?.includes('expired') || error.message?.includes('invalid')) {
+                console.log('🔄 Token expired, attempting to restore session...');
+                const { data: restoredSession } = await supabase.auth.getSession();
+                if (restoredSession?.session) {
+                  console.log('✅ Session restored from storage');
+                  setSession(restoredSession.session);
+                }
+              }
             } else if (data.session) {
-              console.log('✅ Periodic refresh successful');
+              console.log('✅ Periodic refresh successful - session extended');
               setSession(data.session);
             }
           }
@@ -769,7 +786,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } finally {
           isRefreshing = false;
         }
-      }, 4 * 60 * 60 * 1000); // 4 часа
+      }, 30 * 60 * 1000); // Обновляем каждые 30 минут вместо 4 часов
     };
 
     // Listen for auth changes
