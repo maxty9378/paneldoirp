@@ -29,6 +29,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     fetch: (url, options = {}) => {
       return fetch(url, {
         ...options,
+        credentials: 'include', // Отправляем cookies с каждым запросом
         // Увеличиваем таймаут до 60 секунд для мобильных сетей
         signal: AbortSignal.timeout(60000),
       });
