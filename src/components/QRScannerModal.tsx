@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X, Camera, AlertCircle } from 'lucide-react';
+import { X, Camera, AlertCircle, Smartphone } from 'lucide-react';
 import jsQR from 'jsqr';
 
 interface QRScannerModalProps {
@@ -17,32 +17,58 @@ export function QRScannerModal({ isOpen, onClose, onScan }: QRScannerModalProps)
   const animationFrameRef = useRef<number>();
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      // Останавливаем камеру при закрытии
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      return;
+    }
 
     const startCamera = async () => {
       try {
         setError('');
         setScanning(true);
 
-        // Запрашиваем доступ к камере
-        const stream = await navigator.mediaDevices.getUserMedia({
+        // Запрашиваем доступ к камере с разными настройками
+        const constraints = {
           video: {
-            facingMode: 'environment', // Используем заднюю камеру
+            facingMode: { ideal: 'environment' }, // Задняя камера
             width: { ideal: 1280 },
             height: { ideal: 720 }
-          }
-        });
+          },
+          audio: false
+        };
+
+        console.log('📷 Запрашиваем доступ к камере...');
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        console.log('✅ Доступ к камере получен');
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           streamRef.current = stream;
+          
+          // Ждем, пока видео загрузится
+          await new Promise((resolve) => {
+            videoRef.current!.onloadedmetadata = () => {
+              videoRef.current!.play().then(resolve).catch((err) => {
+                console.error('Ошибка воспроизведения видео:', err);
+                setError('Не удалось запустить камеру');
+                setScanning(false);
+              });
+            };
+          });
         }
 
         // Запускаем распознавание QR-кода
         startQRDetection();
       } catch (err: any) {
-        console.error('Camera error:', err);
-        setError('Не удалось получить доступ к камере. Проверьте разрешения.');
+        console.error('❌ Ошибка камеры:', err);
+        setError(`Не удалось получить доступ к камере: ${err.message || 'Неизвестная ошибка'}`);
         setScanning(false);
       }
     };
@@ -96,26 +122,29 @@ export function QRScannerModal({ isOpen, onClose, onScan }: QRScannerModalProps)
   }, [isOpen]);
 
   const handleQRDetected = (data: string) => {
+    console.log('📱 QR-код распознан:', data);
+    
     // Извлекаем токен из URL
     const match = data.match(/\/auth\/qr\/([a-f0-9]{64})/);
     if (match && match[1]) {
       const token = match[1];
+      console.log('✅ Токен извлечен:', token.substring(0, 8) + '...');
       onScan(token);
       onClose();
     } else {
       setError('Неверный QR-код. Отсканируйте QR-код эксперта.');
-      // Продолжаем сканирование
+      // Продолжаем сканирование через 3 секунды
       setTimeout(() => setError(''), 3000);
     }
   };
 
   const handleManualInput = () => {
-    const token = prompt('Введите токен QR-кода:');
+    const token = prompt('Введите токен QR-кода (64 символа):');
     if (token && token.length === 64) {
       onScan(token);
       onClose();
     } else if (token) {
-      setError('Неверный формат токена');
+      setError('Неверный формат токена. Токен должен содержать 64 символа.');
     }
   };
 
@@ -125,10 +154,10 @@ export function QRScannerModal({ isOpen, onClose, onScan }: QRScannerModalProps)
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
       <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
         {/* Заголовок */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-white">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10">
-              <Camera className="h-5 w-5 text-emerald-500" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500 text-white">
+              <Camera className="h-5 w-5" />
             </div>
             <div>
               <h3 className="text-lg font-semibold text-gray-900">Сканирование QR</h3>
@@ -145,41 +174,52 @@ export function QRScannerModal({ isOpen, onClose, onScan }: QRScannerModalProps)
 
         {/* Видео камеры */}
         <div className="relative bg-black">
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="w-full h-auto"
-            style={{ maxHeight: '400px', objectFit: 'cover' }}
-          />
-          
-          {/* Рамка для сканирования */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="relative w-64 h-64">
-              {/* Углы рамки */}
-              <div className="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-emerald-500 rounded-tl-lg" />
-              <div className="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-emerald-500 rounded-tr-lg" />
-              <div className="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-emerald-500 rounded-bl-lg" />
-              <div className="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-emerald-500 rounded-br-lg" />
-              
-              {/* Анимированная линия сканирования */}
-              <div className="absolute inset-0 overflow-hidden rounded-lg">
-                <div 
-                  className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent animate-scan-line" 
-                  style={{
-                    top: '50%',
-                    animation: 'scanLine 2s ease-in-out infinite'
-                  }} 
-                />
+          {!scanning ? (
+            <div className="flex items-center justify-center h-96 bg-gray-900">
+              <div className="text-center text-white">
+                <Smartphone className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                <p className="text-sm">Загрузка камеры...</p>
               </div>
             </div>
-          </div>
+          ) : (
+            <>
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-auto"
+                style={{ maxHeight: '400px', objectFit: 'cover' }}
+              />
+              
+              {/* Рамка для сканирования */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="relative w-64 h-64">
+                  {/* Углы рамки */}
+                  <div className="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-emerald-400 rounded-tl-lg" />
+                  <div className="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-emerald-400 rounded-tr-lg" />
+                  <div className="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-emerald-400 rounded-bl-lg" />
+                  <div className="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-emerald-400 rounded-br-lg" />
+                  
+                  {/* Анимированная линия сканирования */}
+                  <div className="absolute inset-0 overflow-hidden rounded-lg">
+                    <div 
+                      className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent" 
+                      style={{
+                        top: '50%',
+                        animation: 'scanLine 2s ease-in-out infinite'
+                      }} 
+                    />
+                  </div>
+                </div>
+              </div>
 
-          {/* Оверлей с затемнением */}
-          <div className="absolute inset-0 bg-black/50 pointer-events-none" style={{
-            clipPath: 'polygon(0% 0%, 0% 100%, 25% 100%, 25% 25%, 75% 25%, 75% 75%, 25% 75%, 25% 100%, 100% 100%, 100% 0%)'
-          }} />
+              {/* Оверлей с затемнением */}
+              <div className="absolute inset-0 bg-black/50 pointer-events-none" style={{
+                clipPath: 'polygon(0% 0%, 0% 100%, 25% 100%, 25% 25%, 75% 25%, 75% 75%, 25% 75%, 25% 100%, 100% 100%, 100% 0%)'
+              }} />
+            </>
+          )}
           
           <canvas ref={canvasRef} className="hidden" />
         </div>
@@ -188,19 +228,31 @@ export function QRScannerModal({ isOpen, onClose, onScan }: QRScannerModalProps)
         {error && (
           <div className="mx-6 mt-4 flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 animate-fade-in">
             <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-red-600">{error}</p>
+            <div className="flex-1">
+              <p className="text-sm text-red-600 font-medium">{error}</p>
+              {error.includes('доступ') && (
+                <p className="text-xs text-red-500 mt-1">
+                  Проверьте разрешения браузера в настройках
+                </p>
+              )}
+            </div>
           </div>
         )}
 
         {/* Подсказка */}
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+        <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-emerald-50 border-t border-gray-200">
           <div className="flex items-center justify-between gap-4">
-            <p className="text-sm text-gray-600">
-              {scanning ? 'Сканирование...' : 'Разрешите доступ к камере'}
-            </p>
+            <div>
+              <p className="text-sm font-medium text-gray-700">
+                {scanning ? 'Сканирование...' : 'Ожидание камеры'}
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {scanning ? 'Наведите камеру на QR-код' : 'Разрешите доступ к камере'}
+              </p>
+            </div>
             <button
               onClick={handleManualInput}
-              className="text-sm text-emerald-600 hover:text-emerald-700 font-medium whitespace-nowrap"
+              className="text-sm text-emerald-600 hover:text-emerald-700 font-semibold whitespace-nowrap px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition-colors"
             >
               Ввести вручную
             </button>
