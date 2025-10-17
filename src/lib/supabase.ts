@@ -22,12 +22,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     debug: false,
     // Бессрочная авторизация - пользователь остается авторизованным
     storageType: 'localStorage', // Используем localStorage для постоянного хранения
-    // Дополнительные настройки для мобильных операторов
-    lock: {
-      acquireTimeout: 5000, // Таймаут для получения блокировки
-      retryInterval: 100, // Интервал между попытками
-      retryCount: 5, // Количество попыток
-    },
   },
   global: {
     headers: {
