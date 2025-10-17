@@ -104,7 +104,7 @@ export function LastLoginInfo({ email, timestamp, onLoginAgain }: LastLoginInfoP
             className="w-full bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 text-white py-3 px-4 font-semibold hover:shadow-lg hover:shadow-blue-500/30 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all duration-300 transform hover:scale-[1.01] active:scale-[0.99] text-sm"
             style={{ borderRadius: '14px' }}
           >
-            Войти снова
+            Войти снова как {email.split('@')[0]}
           </button>
           
           <button

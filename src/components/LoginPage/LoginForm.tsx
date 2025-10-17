@@ -76,7 +76,17 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
     
     // Заполняем email в поле логина
     if (lastLoginData) {
-      setIdentifier(lastLoginData.email);
+      // Извлекаем email без домена для автозаполнения
+      const emailWithoutDomain = lastLoginData.email.replace('@sns.ru', '');
+      setIdentifier(emailWithoutDomain);
+      
+      // Фокусируемся на поле пароля для быстрого ввода
+      setTimeout(() => {
+        const passwordInput = document.getElementById('password') as HTMLInputElement;
+        if (passwordInput) {
+          passwordInput.focus();
+        }
+      }, 100);
     }
   };
 
