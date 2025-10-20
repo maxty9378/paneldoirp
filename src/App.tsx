@@ -188,6 +188,16 @@ function AppContent() {
     );
   }
 
+  // ⚠️ Разрешаем доступ к тестовой странице пользователей без авторизации
+  const isTestUsers = location.pathname === '/test-users';
+  if (isTestUsers) {
+    return (
+      <Routes>
+        <Route path="/test-users" element={<TestUsersView />} />
+      </Routes>
+    );
+  }
+
   // Для Layout: определяем текущий view по location.pathname
   const getCurrentView = () => {
     if (location.pathname.startsWith('/take-test')) return 'take-test';
