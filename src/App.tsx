@@ -20,6 +20,7 @@ import { ExpertEventsView } from './components/ExpertEventsView';
 import { TasksView } from './components/TasksView'; 
 import { TestingView } from './components/admin/TestingView';
 import { TrainerTerritoriesView } from './components/TrainerTerritoriesView';
+import { TestUsersView } from './components/TestUsersView';
 import { ExamReservePage, ExamDetailsPage, ExpertExamPage } from './components/exam';
 import CaseEvaluationPage from './components/exam/CaseEvaluationPage';
 import ExpertSchedulePage from './components/exam/ExpertSchedulePage';
@@ -201,6 +202,7 @@ function AppContent() {
     if (location.pathname.startsWith('/testing')) return 'tests';
     if (location.pathname.startsWith('/admin')) return 'admin';
     if (location.pathname.startsWith('/employees')) return 'employees';
+    if (location.pathname.startsWith('/test-users')) return 'test-users';
     if (location.pathname.startsWith('/exam-management')) return 'exam-reserve';
     if (location.pathname.startsWith('/exam-reserve')) return 'exam-reserve';
     if (location.pathname.startsWith('/expert-schedule')) return 'schedule';
@@ -407,6 +409,7 @@ function AppContent() {
           <Route path="/trainer-territories" element={<TrainerTerritoriesView />} />
           <Route path="/admin" element={<AdminView />} />
           <Route path="/employees" element={<EmployeesView />} />
+          <Route path="/test-users" element={<TestUsersView />} />
           <Route path="/exam-reserve" element={<ExamReservePage />} />
           <Route path="/exam-details/:id" element={<ExamDetailsPage />} />
           <Route path="/expert-schedule" element={<ExpertSchedulePage />} />
