@@ -12,7 +12,6 @@ interface User {
   role: string;
   subdivision: string;
   branch_subrole?: string;
-  position: string;
   department: string;
   is_active: boolean;
   created_at: string;
@@ -210,9 +209,6 @@ export function TestUsersView() {
                     Подразделение
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Должность
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Статус
                   </th>
                 </tr>
@@ -257,12 +253,6 @@ export function TestUsersView() {
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${getSubdivisionBadgeColor(user.subdivision)}`}>
                           {user.subdivision === 'management_company' ? 'УК' : 'Филиалы'}
                         </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center text-sm text-gray-900">
-                        <Briefcase className="h-4 w-4 mr-2 text-gray-400" />
-                        {user.position || '-'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
