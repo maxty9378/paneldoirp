@@ -1,0 +1,92 @@
+#!/bin/bash
+set -e
+
+echo "🚀 Установка Supabase на Яндекс.Облако ВМ..."
+
+# Проверяем Docker
+if ! command -v docker &> /dev/null; then
+    echo "❌ Docker не установлен. Устанавливаем..."
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    sudo sh get-docker.sh
+    sudo usermod -aG docker $USER
+    rm get-docker.sh
+fi
+
+# Устанавливаем Docker Compose
+if ! command -v docker-compose &> /dev/null; then
+    echo "📦 Устанавливаем Docker Compose..."
+    sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    sudo chmod +x /usr/local/bin/docker-compose
+fi
+
+# Устанавливаем Supabase CLI через npm (проще)
+if ! command -v supabase &> /dev/null; then
+    echo "📦 Устанавливаем Node.js и npm..."
+    if ! command -v node &> /dev/null; then
+        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+        sudo apt-get install -y nodejs
+    fi
+    echo "📦 Устанавливаем Supabase CLI через npm..."
+    sudo npm install -g supabase
+fi
+
+# Создаем директорию
+mkdir -p ~/supabase
+cd ~/supabase
+
+# Инициализируем проект
+if [ ! -f "supabase/config.toml" ]; then
+    echo "🔧 Инициализируем Supabase проект..."
+    supabase init
+fi
+
+# Генерируем пароли
+POSTGRES_PASSWORD=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-25)
+JWT_SECRET=$(openssl rand -base64 32)
+ANON_KEY=$(openssl rand -base64 32 | tr -d "=+/")
+SERVICE_ROLE_KEY=$(openssl rand -base64 32 | tr -d "=+/")
+
+# Создаем .env файл
+cat > .env << EOF
+POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+JWT_SECRET=$JWT_SECRET
+ANON_KEY=$ANON_KEY
+SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY
+API_URL=http://51.250.94.103:8000
+SITE_URL=http://51.250.94.103:3000
+EOF
+
+echo "✅ Конфигурация создана"
+echo ""
+echo "📋 Ключи для подключения:"
+echo "ANON_KEY=$ANON_KEY"
+echo "SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+echo ""
+echo "🔧 Настраиваем config.toml..."
+
+# Обновляем config.toml
+cat >> supabase/config.toml << 'EOF'
+
+[api]
+enabled = true
+port = 8000
+schemas = ["public", "storage", "graphql_public"]
+
+[db]
+port = 5432
+major_version = 15
+
+[auth]
+enabled = true
+site_url = "http://51.250.94.103:3000"
+additional_redirect_urls = ["http://51.250.94.103:3000/**"]
+EOF
+
+echo "🚀 Запускаем Supabase..."
+supabase start
+
+echo ""
+echo "✅ Supabase развернут!"
+echo "API URL: http://51.250.94.103:8000"
+echo "Studio URL: http://51.250.94.103:54323"
+

@@ -420,7 +420,8 @@ export function DashboardView() {
               event_type:event_types(id, name, name_ru),
               event_participants(id)
             `)
-            .order('start_date', { ascending: false })
+            .neq('status', 'completed')
+            .order('start_date', { ascending: true })
             .limit(6);
         } else if (isExpert) {
           query = supabase
@@ -431,7 +432,8 @@ export function DashboardView() {
               event_participants(id)
             `)
             .contains('expert_emails', [userProfile?.email])
-            .order('start_date', { ascending: false })
+            .neq('status', 'completed')
+            .order('start_date', { ascending: true })
             .limit(6);
         } else {
           query = supabase
@@ -495,12 +497,13 @@ export function DashboardView() {
 
       if (isAdmin) {
         const { data: eventsData } = await supabase.from('events').select('id, status').eq('status', 'active');
+        const { data: completedEventsData } = await supabase.from('events').select('id, status').eq('status', 'completed');
         const { data: participantsData } = await supabase.from('event_participants').select('id');
 
         setStats({
           activeEvents: eventsData?.length || 0,
           totalParticipants: participantsData?.length || 0,
-          completedCourses: 0,
+          completedCourses: completedEventsData?.length || 0,
           averageRating: 4.8
         });
       } else if (isExpert) {
@@ -509,11 +512,17 @@ export function DashboardView() {
           .select('id, status')
           .contains('expert_emails', [userProfile?.email])
           .eq('status', 'active');
+        
+        const { data: completedExpertEventsData } = await supabase
+          .from('events')
+          .select('id, status')
+          .contains('expert_emails', [userProfile?.email])
+          .eq('status', 'completed');
 
         setStats({
           activeEvents: expertEventsData?.length || 0,
           totalParticipants: 0,
-          completedCourses: 0,
+          completedCourses: completedExpertEventsData?.length || 0,
           averageRating: 0
         });
       } else {
@@ -522,11 +531,17 @@ export function DashboardView() {
           .select('id, status')
           .eq('status', 'active')
           .eq('event_participants.user_id', user.id);
+        
+        const { data: completedUserEventsData } = await supabase
+          .from('events')
+          .select('id, status')
+          .eq('status', 'completed')
+          .eq('event_participants.user_id', user.id);
 
         setStats({
           activeEvents: userEventsData?.length || 0,
           totalParticipants: 0,
-          completedCourses: 0,
+          completedCourses: completedUserEventsData?.length || 0,
           averageRating: 0
         });
       }
@@ -567,7 +582,7 @@ export function DashboardView() {
         tone: 'emerald' as const
       },
       {
-        title: 'Завершенные курсы',
+        title: 'Завершённые мероприятия',
         value: stats.completedCourses,
         icon: <Award className="h-5 w-5" />,
         tone: 'amber' as const
