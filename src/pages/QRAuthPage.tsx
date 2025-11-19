@@ -33,18 +33,26 @@ export default function QRAuthPage() {
         const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hb2NrbWVzb295ZHZhdXNmb2NhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEzNzI4NDEsImV4cCI6MjA2Njk0ODg0MX0.gwWS35APlyST7_IUvQvJtGO4QmGsvbE95lnQf0H1PUE';
 
         // Получаем email и пароль от Edge Function
-        const response = await fetch(`${supabaseUrl}/functions/v1/qr-auth-simple`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': anonKey,
-            'Authorization': `Bearer ${anonKey}`
-          },
-          body: JSON.stringify({ token })
-        });
+        let response;
+        try {
+          response = await fetch(`${supabaseUrl}/functions/v1/qr-auth-simple`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': anonKey,
+              'Authorization': `Bearer ${anonKey}`
+            },
+            body: JSON.stringify({ token })
+          });
+        } catch (fetchError: any) {
+          console.error('Fetch error:', fetchError);
+          throw new Error(`Не удалось подключиться к серверу: ${fetchError?.message || 'load failed'}`);
+        }
 
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+          const errorText = await response.text().catch(() => 'Unknown error');
+          console.error('Response error:', response.status, errorText);
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
 
         const data = await response.json();
