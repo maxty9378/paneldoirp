@@ -65,7 +65,7 @@ serve(async (req) => {
     console.log('✅ User found:', user.user.email)
 
     // Генерируем прямую ссылку авторизации
-    const baseAppUrl = Deno.env.get('PUBLIC_APP_URL') || 'http://51.250.94.103'
+    const baseAppUrl = Deno.env.get('PUBLIC_APP_URL') || 'https://doirp.ru'
     
     // Создаем сессию напрямую через admin API
     const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({

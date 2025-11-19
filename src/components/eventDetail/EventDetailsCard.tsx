@@ -309,7 +309,7 @@ export function EventDetailsCard({ event, isCreator = false, participants = [], 
   const shareEventInfo = useCallback(async (platform: 'whatsapp' | 'telegram') => {
     if (!event) return;
 
-    const appBaseUrl = location.hostname === 'localhost' ? 'http://51.250.94.103' : location.origin;
+    const appBaseUrl = location.hostname === 'localhost' ? 'http://localhost:3000' : location.origin;
     const url = `${appBaseUrl}/event/${event.id}`;
 
     const start = new Date(event.start_date);

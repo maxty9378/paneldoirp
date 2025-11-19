@@ -130,7 +130,7 @@ function AppContent() {
       if (userId && qrToken) {
         // Перенаправляем на callback с фиктивными токенами для iPhone
         console.log('🍎 iPhone: Redirecting to callback with mock tokens');
-        const mockCallbackUrl = `/auth/callback?token=iphone_${qrToken}&type=magiclink&redirect_to=http://51.250.94.103/`;
+        const mockCallbackUrl = `/auth/callback?token=iphone_${qrToken}&type=magiclink&redirect_to=${location.origin}/`;
         window.location.replace(mockCallbackUrl);
         return;
       }

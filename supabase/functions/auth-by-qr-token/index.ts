@@ -115,7 +115,7 @@ serve(async (req) => {
     // НОВЫЙ ПОДХОД: Генерируем magic link, но возвращаем URL напрямую
     console.log('🔑 Generating magic link for user...')
     
-    const baseAppUrl = Deno.env.get('PUBLIC_APP_URL') || 'http://51.250.94.103'
+    const baseAppUrl = Deno.env.get('PUBLIC_APP_URL') || 'https://doirp.ru'
     
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
